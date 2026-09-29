@@ -117,6 +117,13 @@ configurations {
 }
 
 dependencies {
+    // Pure-math unit tests run on the JVM without booting Minecraft.
+    // That is only viable because com.cortes.combat.reach.ConeMath has no Minecraft types in
+    // its signature. Keep it that way: if you add a Vec3 parameter, this test stops working.
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
@@ -138,6 +145,13 @@ dependencies {
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

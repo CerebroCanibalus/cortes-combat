@@ -179,14 +179,27 @@ Verificado en servidor real: `components=4 attachments=5`.
 - **5 records de estado** en `state/`, cada uno con su `Codec` y su lógica de tick. La lógica de negocio ya vive adentro del estado, no en los listeners.
 - Los ítems y tags quedan para el paso 9 (armas + datagen). No se registraron ítems de prueba.
 
+## Fase 3: `reach/` — HECHA
+
+El check de cono, con **21 tests unitarios verdes**. Es la clase más testeable del proyecto y va primera a propósito: si el cono está mal, todo lo que se construya encima hereda el error.
+
+- **`reach/ConeMath.java`** — geometría en `double` puro, **sin un solo tipo de Minecraft en la firma**. Corre en JVM pelado, sin mundo ni bootstrap. Por eso el test es JUnit y no gametest.
+- **`reach/Reach.java`** — adaptador finísimo que extrae posición y look de las entidades y calcula el punto más cercano de la AABB del objetivo. Toda la lógica está en `ConeMath`.
+- **Los dos límites se miden en marcos distintos, a propósito:**
+  - **Horizontal**: ángulo respecto de la proyección en el suelo de la mirada. Algo directamente atrás da 180° y falla sin caso especial.
+  - **Vertical**: diferencia entre la elevación mundial del objetivo y la de la mirada. Esto se mantiene bien definido en los polos: al mirar recto arriba, ambas elevaciones son 90 y un objetivo recto arriba es *dead ahead*, no 90° de desvío. Medirlo contra el eje `upLocal` degeneraba ahí y rechazaba justo lo que el jugador está mirando.
+
+**Bug real que encontraron los tests:** la primera versión medía el ángulo vertical contra el eje local `up` y fallaba al mirar recto arriba (2 tests en rojo). Los tests atraparon una degeneración matemática real, no un problema del test. La corrección está comentada en el código.
+
+- `build.gradle`: JUnit 5 agregado, `useJUnitPlatform()`. Comment en el build advierte que `ConeMath` **no** puede ganar tipos de Minecraft o los tests dejan de funcionar.
+
 ## Próximos pasos
 
-1. **Paso 3:** `reach/` (el check de cono) con sus gametests de geometría. Va antes que el flujo de ataque porque es lógica pura y testeable.
-2. Paso 4: cooldown duro + attachment `COOLDOWN`.
-3. Paso 5: flujo de ataque nuevo (reemplazo del vanilla). El de mayor riesgo.
-4. Vertical slice: barra de cooldown + cono + daño + indicador de aguante, de punta a punta.
-5. Números: completar la tabla de alcances (sección 2 de `DESIGN.md`) y definir el escalado del martillo.
-6. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
+1. Paso 4: cooldown duro + attachment `COOLDOWN`.
+2. Paso 5: flujo de ataque nuevo (reemplazo del vanilla). El de mayor riesgo.
+3. Vertical slice: barra de cooldown + cono + daño + indicador de aguante, de punta a punta.
+4. Números: completar la tabla de alcances (sección 2 de `DESIGN.md`) y definir el escalado del martillo.
+5. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
 
 ## Trampas de diseño marcadas
 
@@ -211,3 +224,4 @@ Verificado en servidor real: `components=4 attachments=5`.
 - **Arquitectura aprobada** con un cambio: prioridad sobre mods de combate vía blocklist, y el mod se niega a cargar con mensaje accionable en vez de ceder el turno.
 - **Fase 1 (esqueleto) completa y verificada.** Build OK, jar OK, mod carga en `runServer` sin errores. Cuatro trampas del build documentadas (Groovy en el template, `replaceProperties`, ASCII en `gradle.properties`, `filteringCharset`).
 - **Fase 2 (registros) completa y verificada en servidor**: 4 data components + 5 attachments, confirmado con un log temporal `components=4 attachments=5`. Seis trampas de API de 1.21.1 documentadas, todas verificadas con `javap` contra el jar compilado.
+- **Fase 3 (`reach/`) completa**: 21 tests JUnit verdes. `ConeMath` es geometría en `double` puro, sin tipos de Minecraft en la firma, para que los tests corran sin levantar el juego. Los tests encontraron un bug real de degeneración matemática al mirar recto arriba.
