@@ -305,6 +305,91 @@ Agregamos al patrón de damageoverlay:
 - **Indicador direccional de daño**: cuña en el borde de la pantalla en la dirección desde la que vino el golpe. No existe en ninguno de los 3 mods.
 - **Flash en la barra de cooldown** cuando se completa, para que el timing sea visible sin mirar números.
 
+### Orden de render del HUD (verificado en 1.21.1)
+
+El orden real de `VanillaGuiLayers` es:
+
+```
+CAMERA_OVERLAYS → CROSSHAIR → HOTBAR → JUMP_METER → EXPERIENCE_BAR
+→ PLAYER_HEALTH → ARMOR_LEVEL → FOOD_LEVEL → ... → EFFECTS → ...
+```
+
+De ahí sale dónde se registra cada capa, sin adivinar:
+
+| Capa | Registro | Razón |
+|---|---|---|
+| Viñeta + flash | `registerBelowAll(rl("player_health"))` | Bajo la vida, como damageoverlay |
+| Barra de cooldown | `registerAbove(rl("hotbar"))` | Directamente sobre la hotbar, sin tapar nada |
+| Esferitas de aguante | `registerAbove(rl("crosshair"))` | Encima de la crosshair, no encima de todo |
+| Indicador direccional | `registerBelowAll(...)` | Bordes de pantalla, que no estorban a nada |
+| FOV de carga | `ComputeFovModifierEvent` | No es una capa, es un evento |
+
+`registerAboveAll` no se usa para nada del HUD: la viñeta tiene que ir debajo de la salud, no encima de todo.
+
+---
+
+## 9bis. Vista: viewmodel, partículas, cámara y sonido
+
+### Restricción técnica de 1.21.1 (`[VERIFICADO]`)
+
+**1.21.1 no tiene sistema de animaciones de item.** Eso llega en 1.21.4 con los archivos `equippable`. En 1.21.1 el swing del viewmodel es código hardcodeado en `ItemInHandRenderer`.
+
+Consecuencias directas:
+- **Toda animación de viewmodel se hace con mixin**, no con JSON. No hay atajo.
+- **`RenderHandEvent` existe pero no sirve para esto**: es cancellable, no expone la `PoseStack` de forma utilizable para transformar. Sirve para tapar la mano, no para animarla.
+- Para animar hay que meter mixin en `ItemInHandRenderer` / `ItemInHandLayer` y reemplazar la transformación del swing.
+
+Combatify hace exactamente esto (`ClientAttackAnimMixin`, `ItemInHandMixin`, `ClientAttackAnimMixin`), así que hay referencia directa.
+
+### Viewmodel por arma
+
+**`[DECIDIDO]`** Animación distinta por arma. Cada arma tiene su propio perfil de swing, definido como datos (curva de rotación, ángulo, timing) y no como código.
+
+- **Un solo mixin**, tabla de perfiles por item. Cinco mixes serían cinco lugares donde arreglar el mismo bug.
+- Los perfiles se declaran vía data component, así que un mod externo puede definir el suyo sin tocar el código.
+- La curva base es la misma para todas; lo que cambia es la forma. Una espada corta, el martillo hace un arco pesado y lento, la daga es un tajo seco y rápido.
+
+Es la parte del trabajo con más riesgo técnico del proyecto, porque cada ajuste es a ojo hasta que se siente bien. Por eso va al final, no en el vertical slice.
+
+### Partículas
+
+**`[DECIDIDO]`** Partículas custom **2D**, animadas y no animadas, solo para **ataques, parries y ataques especiales**.
+
+En 1.21.1 las partículas 2D se registran con `RegisterParticleProvidersEvent` (mod bus, lado cliente). Las animadas usan la hoja de sprites del atlas; las no animadas, una textura simple.
+
+Ninguna partícula se dispara por "?se recibió daño". Todas disparan por **eventos con significado de juego**:
+
+| Evento | Partícula | Por qué |
+|---|---|---|
+| Impacto de golpe cargado | Estallido mayor, más denso | El jugador tiene que ver que cargó |
+| Impacto normal | Estallido chico | Confirmación mínima |
+| Parry exitoso | Aro que se cierra + destello | Es el momento más tense del juego |
+| Bloqueo de escudo | Chispa de escudo | Confirma el aguante gastado |
+| Perdida de aguante | Estallido de ruptura | El stun tiene que verse |
+| Golpe de alabarda (multi-hit) | Línea de barrido | El multi-hit es lo que define el arma |
+| Escalado del martillo | Onda que crece con el streak | El combo tiene que ser visible |
+| Ignorar armadura | Destello de fractura | Armadura rota |
+
+### Cámara
+
+**`[DECIDIDO]`** Solo **FOV** y viñeta de daño, curación y vida baja.
+
+- **FOV de carga:** se cierra mientras se carga y se abre de golpe al soltar. Va por `ComputeFovModifierEvent`, que existe en 1.21.1 y es limpio. El `fovEffectScale` vanilla ya está respected por ese evento, así que un jugador que lo bajó por mareo lo sigue teniendo apagado.
+- **Viñeta de daño, curación y vida baja:** el patrón de damageoverlay, extendido con dos señales más.
+
+**Sin screen shake y sin slow motion.** La cámara quieta: el feedback viene de sonido, partícula y viewmodel. Es una decisión de legibilidad, y evita el problema de mareo y de desync en multiplayer.
+
+Nota sobre las tres viñetas: daño, curación y vida baja comparten la misma textura y el mismo color base para que se lean como un sistema. Se diferencian por **dirección del color**, no por tres texturas distintas.
+
+### Sonido
+
+**`[DECIDIDO]`** Ambos: reusar vanilla **y** soundscape propio.
+
+- **Vanilla reusado** con variación de pitch: lo trivial ya suena bien y hace juego coherente con el resto de Minecraft.
+- **Soundscape propio** para lo que necesita identidad: carga completa, parry, agotamiento de aguante, escalado del martillo. Son los cuatro eventos que el jugador tiene que reconocer sin mirar la pantalla.
+
+El soundscape propio es la parte que más tiempo de producción se lleva: grabar, editar, empaquetar. Por eso se hace al final y no bloquea el vertical slice. La arquitectura de sonido queda preparada desde el principio para que entre después sin refactor.
+
 ---
 
 ## 10. Cerrado
@@ -330,6 +415,18 @@ Ajustes de diseño que salieron de definirlas:
 - **Solo 2 de 5 armas nuevas tienen click derecho.** El click derecho pasó de ser "el special de cada arma" a ser una excepción que tiene que ganarse su lugar. Eso baja la complejidad y sube el peso de elegir bien el arma.
 - **3 de 5 no cargan.** Menos carga en el set del que se asumiría, lo cual compensa que el autoataque ya cargue solo.
 
+## 13. Capa visual: cerrado en v4
+
+- **Viewmodel por arma:** perfiles de swing como datos, un solo mixin. Es la parte con más riesgo técnico, va al final.
+- **Partículas:** custom 2D (animadas y no animadas), disparadas por evento de gameplay, nunca por "?recibí daño".
+- **Cámara:** solo FOV de carga + viñeta de daño, curación y vida baja. Sin shake ni slow motion, por legibilidad.
+- **Sonido:** vanilla reusado con variación de pitch + soundscape propio para los 4 eventos que el jugador tiene que reconocer sin mirar.
+- **Orden de render del HUD verificado** en las fuentes de 1.21.1, así que la posición de cada capa no es a ojo.
+
+Restricción de versión que condiciona todo lo de arriba: **1.21.1 no tiene animaciones de item.** Se llega en 1.21.4. Toda animación de viewmodel es mixin obligatorio.
+
 ## 12. Pendiente
 
 Nada grande. Antes de implementar, ajustar los valores numéricos concretos de la tabla de la sección 2 con los números de las armas nuevas, y decidir el escalado exacto del martillo (multiplicador por golpe y dónde deja de crecer de forma útil).
+
+Lo visual no bloquea el gameplay: el vertical slice puede ir con sound placeholder y sin viewmodel, y la vista se agrega encima.
