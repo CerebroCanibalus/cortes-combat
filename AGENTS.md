@@ -224,11 +224,24 @@ Defaults de alcance y carga de los 12 perfiles ya están en `WeaponStats` (tabla
 
 **Tercer bug real, y el más instructive:** los tests de `DamageResolver` morían con `NoClassDefFoundError`. La causa: `WeaponProfile` y `SpecialType` implementaban `StringRepresentable`, una clase **de Minecraft**, así que cualquier cosa que sostuviera esos enums necesitaba el juego en el classpath para inicializarse. Violé la propia regla que escribí en el paso 3. Arreglé la **causa**, no el síntoma: los dos enums ahora usan un `Codec` escrito a mano y siguen siendo Java puro. `DamageFixerUpper` igual se agrega al test runtime porque los records con `Codec` sí lo necesitan.
 
+## Fase 6: carga cableada al input — HECHA
+
+**52 tests verdes, mod carga en servidor sin errores.** Esto ya es jugable: click izquierdo = swing, mantener = carga.
+
+- **`net/ChargeInputPayload`** (C2S, un solo bool) — el botón bajó o subió. **Solo dos paquetes por golpe**, no un stream: el servidor acumula en su propio tick mientras el flag está activo.
+- **`net/CombatStatePayload`** (S2C, dos floats) — `chargeRatio` y `cooldownRatio`, los dos valores que el HUD necesita.
+- **`client/ChargeInputHandler`** — el cliente **solo reporta intención**. Predice localmente para que el indicador sea instantáneo y le avisa al servidor; el servidor acumula solo y es lo único que cuenta para el daño. `acceptServerState` corrige hacia el valor del servidor sin saltar para atrás, así que un paquete atrasado no teletransporta la barra.
+- **`client/CortesCombatClient`** — `@Mod(dist = Dist.CLIENT)` separado. `InputEvent` no existe en servidor dedicado, así que referenciarlo desde código común rompe la carga ahí. NeoForge permite varias clases `@Mod` con el mismo id si difieren en `dist`.
+
+**Anti-cheat del input:** el servidor **ignora un "down" si ya está apretando**. Un cliente que spamee el paquete no acumula carga más rápido que mantenerlo honestamente. Está en `handleChargeInput` con el comentario explicando por qué.
+
+**Sync con bandwidth:** enviar cada tick a cada jugador serían 20 paquetes/segundo para una barra que casi no cambia. Solo se manda si el valor se movió más de 0.01. Eso obligó a guardar el último valor enviado... en un `static Map`, **que es exactamente lo que la arquitectura veta**. Se limpia en `PlayerLoggedOutEvent` y está comentado como deuda: si crece, el fix es un attachment, no otro listener.
+
 ## Próximos pasos
 
-1. Paso 6: carga (wirear `beginCharge` / `endCharge` al input real del click izquierdo).
-2. Paso 7: barra de cooldown en HUD + el indicador vanilla driven por carga. Necesita sync del attachment al cliente.
-3. Paso 8: aguante escudo/espada + 3 esferitas.
+1. **Paso 7: HUD.** Barra de cooldown bajo la hotbar (`registerAbove(rl("hotbar"))`), 3 esferitas de aguante sobre la crosshair (`registerAbove(rl("crosshair"))`), y el indicador vanilla representando carga. Es el primer paso donde se ve todo lo anterior.
+2. Paso 8: aguante escudo/espada (la lógica ya existe en `GuardState`, falta el input de bloqueo y el damage reduction).
+3. Paso 9: las 30 armas + datagen + recetas.
 4. Paso 10: especiales (alabarda multi-hit, parry de la sable) + damage type de ignore de armadura.
 5. Números: definir el escalado del martillo en playtest (`WARHAMMER_STEP` está en 0.15 como punto de partida).
 6. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
@@ -259,3 +272,4 @@ Defaults de alcance y carga de los 12 perfiles ya están en `WeaponStats` (tabla
 - **Fase 3 (`reach/`) completa**: 21 tests JUnit verdes. `ConeMath` es geometría en `double` puro, sin tipos de Minecraft en la firma, para que los tests corran sin levantar el juego. Los tests encontraron un bug real de degeneración matemática al mirar recto arriba.
 - **Fase 4 (cooldown duro) completa**: 35 tests verdes. Resolver de 4 capas con derivación automática por tag (la compat), un solo `CombatTicker` para los 5 estados, y `AttackCooldown` como puerta. Segundo bug real encontrado por tests: el multiplicador de carga con bonus negativo reducía el daño; el piso ahora se fuerza en código.
 - **Fase 5 (reemplazo del flujo de ataque) completa**: 52 tests verdes, mixin aplica limpio contra `Player`. **El vanilla ya no corre en el ataque.** Tercer bug: los enums implementaban `StringRepresentable` (clase de Minecraft) y rompían los tests con `NoClassDefFoundError`; ahora usan un `Codec` propio y siguen siendo Java puro.
+- **Fase 6 (carga cableada al input) completa**: es jugable — click = swing, mantener = carga. Un payload C2S con un bool (no un stream), el cliente predice y el servidor valida, clase `@Mod` client-only separada porque `InputEvent` no existe en servidor.

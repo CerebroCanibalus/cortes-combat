@@ -1,5 +1,6 @@
 package com.cortes.combat.attack;
 
+import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
@@ -8,7 +9,12 @@ import com.cortes.combat.state.ParryState;
 import com.cortes.combat.state.StreakState;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Advances every piece of per-tick combat state, in one place, server side only.
@@ -35,6 +41,28 @@ public final class CombatTicker {
         tickGuard(player);
         tickStreak(player);
         tickParry(player);
+        ModNetworking.syncTo(player, lastCharge.get(player.getUUID()), lastCooldown.get(player.getUUID()));
+        lastCharge.put(player.getUUID(), AttackCooldown.chargeRatio(
+                player, WeaponStats.of(player.getMainHandItem()).charge()));
+        lastCooldown.put(player.getUUID(), player.getData(ModAttachments.COOLDOWN.get())
+                .ratio(AttackCooldown.intervalFor(player)));
+    }
+
+    /**
+     * Last values sent per player, so the sync only fires when something visibly moved.
+     *
+     * <p>This is static mutable state, which the architecture rules out for gameplay. It is
+     * only a bandwidth optimisation, not a rule, and it is cleaned up on logout. If it ever
+     * grows, the fix is to move it into an attachment, not to add another listener.</p>
+     */
+    private static final Map<UUID, Float> lastCharge = new HashMap<>();
+    private static final Map<UUID, Float> lastCooldown = new HashMap<>();
+
+    @SubscribeEvent
+    public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        UUID id = event.getEntity().getUUID();
+        lastCharge.remove(id);
+        lastCooldown.remove(id);
     }
 
     private static void tickCooldown(ServerPlayer player) {
