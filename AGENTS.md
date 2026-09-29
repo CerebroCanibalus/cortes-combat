@@ -12,7 +12,8 @@ Mod de NeoForge **1.21.1** que unifica y reworksa el combate de Minecraft. Sin a
 
 ```
 .                  → el mod (git propio, rama main)
-DESIGN.md          → diseño de combate, pendiente de aprobación
+DESIGN.md          → qué hace el juego (diseño, cerrado v6)
+ARCHITECTURE.md    → cómo está construido (propuesta, pendiente de aprobación)
 refs/              → clones upstream, SOLO LECTURA, gitignored
   combatify/           Fabric, MC 26.1.2, Java 25  (port de Combat Test 8c)
   rafts_combat/        NeoForge, MC 1.21.1         (alcance horizontal + ataque con carga)
@@ -73,7 +74,7 @@ Entorno: JDK instalado es **25**. El toolchain pide **21**, y el `foojay-resolve
 
 ## Fase activa: 2 — Investigación de diseño
 
-Estado: diseño **cerrado** (v5 en `DESIGN.md`). Gameplay, HUD, alcance, catálogo, capa visual, crafteo y supervivencia definidos. Próximo paso: ajustar números concretos y arrancar la Fase 1.
+Estado: diseño **cerrado** (`DESIGN.md` v6). Arquitectura **propuesta, pendiente de aprobación** (`ARCHITECTURE.md`). Próximo paso: aprobar arquitectura → Fase 1 (esqueleto).
 
 ## Decisiones tomadas
 
@@ -104,6 +105,16 @@ Estado: diseño **cerrado** (v5 en `DESIGN.md`). Gameplay, HUD, alcance, catálo
 - **Martillo de guerra:** escalado por golpe consecutivo, ventana 4s, sin tope. Golpe cargado ignora armadura.
 - **Shotel:** parry con cooldown 5s que devuelve **solo el golpe parriado**, sin búfer acumulado. Carga da doble.
 - **Feedback:** patrón de damageoverlay + indicador direccional de daño (no existe en ninguno de los 3 mods).
+
+## Arquitectura (propuesta, `ARCHITECTURE.md`)
+
+- **Todo el estado mutable de combate va en attachments**, nunca en campos de mixin. `AttachType` verificado en NeoForge 21.1.250: tiene serialización, sync y `copyOnDeath`.
+- **El cliente nunca decide.** Predice para dibujar, manda intención; el servidor resuelve. `CHARGE` se predice, `COOLDOWN` y `PARRY_READY` son del servidor.
+- **Ningún número de gameplay hardcodeado.** 4 data components: `weapon_profile`, `reach_profile`, `charge_profile`, `special`. Separados para que un mod externo cambie el alcance sin romper la carga.
+- **`canCharge = false` no es un caso especial** en el código: el sistema consulta el componente. La ropera y la daga no cargan sin una sola rama.
+- **Se reemplaza el flujo de ataque vanilla entero.** El vanilla hace 4 cosas que el diseño no quiere (incluido `getAttackStrengthScale`). Parchear las 4 sería 4 mixins acoplados.
+- **Orden de 15 pasos por dependencia, no por dificultad.** `reach/` va antes que el flujo de ataque porque es geometría pura y testeable. `FoodData` al final, en commit propio.
+- **Vetado:** lista de mods en el código, bus de eventos propio, lógica de gameplay en cliente, `static mutable` para gameplay, mixins que reescriban media clase.
 
 ## Decisiones de alcance (qué queda fuera)
 
@@ -139,3 +150,4 @@ El autoataque que carga y dispara deja el ritmo en manos del jugador, lo que con
 - v4: capa visual (viewmodel por arma, partículas, FOV, sonido mixto). Verificado que 1.21.1 no tiene animaciones de item → todo viewmodel es mixin. Verificado el orden de render del HUD.
 - v5: crafteo y supervivencia. La comida deja de ser energía: se elimina exhaustion, queda recurso de curación autociclico. Recetas con forma única por arma + ingredient extra en madera y piedra.
 - v6: grids canónicos de las 5 armas (los del usuario, no los inventados). Tiers desiguales → 30 items. Set de cobre propio. **Shotel corregido: es el sable musulmán, no un cañón** — el error fue mío, inventé el cañón porque el usuario nunca nombró las armas. Cañón de mano anotado fuera de alcance.
+- `ARCHITECTURE.md`: estado por attachments, datos por data components, reemplazo del flujo de ataque vanilla, plan de 15 pasos. Pendiente de aprobación.
