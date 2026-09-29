@@ -210,54 +210,88 @@ Las pociones pasan a ser una opción **real** de supervivencia en pelea y no mar
 
 ## 5bis. Crafteo de las armas nuevas
 
-**`[DECIDIDO]`** Cada arma tiene una **forma de receta propia**, que refleja su silueta. No son todas iguales como la espada vanilla.
+**`[DECIDIDO]`** Cada arma tiene una **forma de receta propia** que se lee por silueta. No son todas iguales como la espada vanilla.
 
-**`[DECIDIDO]`** Los tiers son los normales (madera, piedra, cobre, hierro, oro, diamante, netherite), **pero madera y piedra requieren un ingredient extra**. Los tiers de cobre en adelante son recetas limpias de mineral + palo.
+Notación: `X` = material del tier, `/` = palo, `*` = material extra, `#` = celda vacía.
 
-La razón del ingredient extra: sin él, la ropera de madera sería estrictamente mejor que la espada de madera en DPS, y el jugador no entiende por qué. Con un extra, el tier bajo es alcanzable pero se siente como un acceso, y la espada vanilla sigue siendo competitive al principio. El arma nueva no desplaza a la vanilla, la complementa.
+### Grids (canónicos)
 
-### Formas propuestas (ajustables en mesa de crafteo)
+**Ropera** — sin tier de madera. Diagonal pura, la punta arriba.
+```
+*##
+#X#
+##/
+```
+`*` cambia por tier y es lo único que varía: pedernal (piedra), pepita (metales), esmeralda (diamante), lingote de oro (netherite).
 
-`X` = material del tier, `#` = palo, `E` = ingredient extra del tier bajo.
+**Daga** — la única con tier de madera. Un palo y un material, y ya está.
+```
+X#
+/#
+```
 
-| Arma | Forma | Lectura |
-|---|---|---|
-| **Ropera** | `E X E` / `X X X` / ` # #` | Hoja delgada y larga, punta hacia arriba |
-| **Daga** | `X E` / `E #` | Corta y en diagonal, se lee como daga |
-| **Alabarda** | `E X X` / ` # X` / ` # #` | Asta larga con cabeza en ángulo |
-| **Martillo** | `E X X` / `E X E` / ` # #` | Cabeza ancha y simétrica, se lee como martillo |
-| **Shotel** | `X E X` / ` E X ` / ` # E ` | Cañón abierto que se dispersa |
+**Alabarda** — sin tier de madera. Tres palos en diagonal antidiagonal, cuatro materiales.
+```
+XX/
+X/X
+/##
+```
 
-Cada forma es una silueta reconocible. El jugador que nunca vio el mod entiende qué arma está crafteando por la forma, no por el nombre.
+**Martillo de guerra** — sin madera ni piedra. Cabeza arriba, asta vertical de dos palos abajo, alma metálica en el centro.
+```
+X*X
+#/#
+#/#
+```
+`*` = lingote de hierro en todos los tiers, **lingote de oro en netherite**.
 
-### Ingredient extra (propuesta)
+**Shotel (sable)** — sin tier de madera. Tres materiales en la esquina y el palo cerrando el contorno.
+```
+###
+X##
+XX/
+```
 
-Se usa un ingredient temático por arma, todos vanilla, todos thematic:
+### Tiers
 
-| Arma | Ingredient extra | Por qué |
-|---|---|---|
-| Ropera | Redstone | Arma de precisión y timing |
-| Daga | Leather | Arma de sigilo, cuero = cuero |
-| Alabarda | Iron ingot | Instrumento largo, requiere ferretería |
-| Martillo | Cobblestone block | Cabeza pesada, necesita masa |
-| Shotel | Copper ingot | Cañón deEconomicía, cobre por peso |
+**`[DECIDIDO]`** Los tiers son **desiguales por arma**, y esa asimetría es intencional:
 
-**`[PENDIENTE]`** Estos extras son propuesta mía. La regla general —"cada arma con un ingredient temático en madera y piedra"— está decidida; los ingredientes concretos se pueden cambiar.
+| Arma | Madera | Piedra | Cobre | Hierro | Oro | Diamante | Netherite | Total |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Ropera | — | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 6 |
+| Daga | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 7 |
+| Alabarda | — | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 6 |
+| Martillo | — | — | ✓ | ✓ | ✓ | ✓ | ✓ | 5 |
+| Shotel | — | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 6 |
+
+**30 items en total**, no 35.
+
+**La daga es la única con madera.** Es el arma de acceso: se consigue primero, se usa para aprender el sistema, y es la única que se puede tener en el primer día sin extras.
+
+**El martillo arranca en cobre.** Es el único sin madera ni piedra: no tiene versión de principiante. Es el arma con el techo de daño más alto del set, y se cobra con que no exista hasta que llegues a cobre.
+
+### Set de cobre propio
+
+**`[DECIDIDO]`** Hacemos **nuestra propia versión del set de cobre**, tomando la de 1.21.9. Eso implica: **pepita de cobre, texturas de cobre y las armas de cobre propias.**
+
+**Por qué:** el balance de cobre de Mojang es malo y no va a mejorar. Cuando actualicemos a la versión que trae el copper age, reemplazamos nuestro set por el de Mojang y nos ahorramos el trabajo de sprites.
+
+**`[CONSECUENCIA]`** El nombre `pepita` de la ropera **queda resuelto**: la pepita de cobre es nuestra. Es la pieza que faltaba y ahora existe por decisión de diseño, no por accidente.
+
+El trabajo de sprites es el mismo que hizo Mojang: Set de cobre completo, pepita, y las 5 armas en copper. Es la partida de producción más grande del mod después del soundscape.
 
 ### Estructura de datos
 
-Las recetas se generan por **datagen**, una por arma × tier. Se usa la tag `#minecraft:<tier>_tool_materials` para el material, igual que hace Combatify, así que el ingredient de cada tier se escribe una vez y no siete.
+Las recetas se generan por **datagen**, una por arma × tier. Se usa la tag `#minecraft:<tier>_tool_materials` para el material, igual que Combatify, así que el material de cada tier se escribe una vez y no seis.
 
-- 35 recetas de arma (5 armas × 7 tiers).
-- Las 10 de madera y piedra llevan el extra.
-- Todas con `category: "equipment"` y su advancement, para que no aparezcan como recetas discoveries raras.
+- **30 recetas de arma.**
+- El `*` de la ropera **no es el mismo material que el cuerpo**: por eso esas 4 recetas no salen de la tag y se escriben a mano.
+- Todas con `category: "equipment"` y su advancement, para que no aparezcan como recetas descubiertas raras.
 
 ---
-## 6. Catálogo de 5 armas nuevas × 7 tiers
+## 6. Catálogo de las armas nuevas
 
-**`[DECIDIDO]`** 5 armas nuevas, todas con tiers de mineral.
-
-Tiers: madera, piedra, cobre, hierro, oro, diamante, netherite. (7 × 5 = 35 items, por datagen.)
+**`[DECIDIDO]`** 5 armas nuevas con tiers **desiguales**: la daga tiene 7, el martillo 5. Total **30 items**. Ver la tabla de tiers en la sección 5bis.
 
 ### 1. Espada Ropera (Rapier)
 
@@ -269,7 +303,7 @@ Es la respuesta al duelo de precisión: alcance corto y bien orientado, un golpe
 
 Más lenta que la espada, daño ligeramente más alto, pero **mucho más alcance y cono**. Click derecho: **multi-hit a todos los enemigos en el cono**, con el siguiente ataque izquierdo más lento.
 
-Arma de área. Cubre la pantalla en frente, castiga a los que se agrupan, y tiene un solo click derecho real. El alcance largo la hace buena contra el shotel, que es justo de rango corto.
+Arma de área. Cubre la pantalla en frente, castiga a los que se agrupan, y tiene un solo click derecho real. El alcance largo la hace buena contra la sable, que es justo de rango corto.
 
 ### 3. Martillo de guerra
 
@@ -285,7 +319,9 @@ Daño pequeño, **sumamente rápida**, **no carga**, rango corto pero **radio al
 
 La versión extrema de la ropera en velocidad a cambio de daño. El radio alto la hace forgiving de apuntar: más fácil conectar sin estar perfectamente alineado. Es la que gana cuando necesitás Many weak hits y no querés parar de moverte.
 
-### 5. Shotel
+### 5. Shotel (sable)
+
+**`[DECIDIDO]`** El nombre es **shotel**: el sable musulmán, hoja curva. No es un cañón — ese se planifica aparte (ver sección 6ter).
 
 **Radio más alto entre todas las armas**, pero rango **mucho más corto** que una espada. Daño **igual al de una espada** pero más rápido. Click derecho: **parry** con cooldown de **5s** que devuelve el daño del golpe recibido. El **ataque cargado da doble**.
 
@@ -304,6 +340,18 @@ Compensa un rango terrible con el cono más ancho del juego y con un parry que d
 | Shotel | **Máximo** | Muy corto | Rápida | Sí (**doble**) | Parry (5s) |
 
 Tres de las cinco no cargan. Eso reduce el papel de la carga y sube el de la selección de arma, que es justo lo que necesitamos dado que el autoataque ya cubre la otra mitad.
+
+---
+
+## 6ter. Arma a distancia futura: cañón de mano
+
+**`[DECIDIDO — FUERA DE ALCANCE]`** Hay un **cañón de mano** en el plan. Queda anotado y **no se implementa** en esta versión.
+
+**Por qué queda afuera:** el diseño decidió que los proyectiles quedan fuera del sistema de cono (sección 6bis). Un arma a distancia nueva choca directamente con esa decisión: o entra al cono, y hay que rebalancear todo el ranged, o queda con su propio modelo y rompe la coherencia del sistema.
+
+**Lo que sí está decidido:** es un arma de un solo disparo, no un arma de rango. El concepto es un golpe determining que decide la pelea, con lo que eso implica de peso, recarga y riesgo.
+
+**Lo que falta decidir cuando llegue:** si entra al cono o tiene modelo propio, qué hace el click derecho, y si el alcance es un proyectil real o un hitbox instantáneo. Esa conversación es completa y no se adelanta acá.
 
 ---
 
@@ -514,9 +562,11 @@ Restricción de versión que condiciona todo lo de arriba: **1.21.1 no tiene ani
 
 ## 14. Crafteo y supervivencia: cerrado en v5
 
-- **Crafteo:** forma única por arma, 5 formas distintas que se leen por silueta. Tiers normales, con **ingredient extra en madera y piedra** para que el arma nueva no desplace a la vanilla al principio.
+- **Crafteo:** forma única por arma, 5 grids canónicos que se leen por silueta. Tiers **desiguales** (la daga tiene 7, el martillo 5), **30 items total**.
+- **Set de cobre propio**: pepita de cobre, texturas y armas. Se reemplaza por el de Mojang al actualizar a la versión con copper age. Esto resolvió la "pepita de la punta" de la ropera.
 - **Supervivencia:** la comida deja de ser energía. Se elimina el **exhaustion** entero — correr, picar y golpear no cuestan nada. La comida pasa a ser recurso de curación con ciclo cerrado: se gasta al curar y se regenera sola.
 - **Rebalanceo de pociones y manzana dorada** siguiendo los números de Combatify.
+- **Shotel es el sable musulmán**, no un cañón. El cañón de mano queda anotado como arma a distancia **fuera de alcance** (sección 6ter).
 
 `[TRAMPA PRINCIPAL]` El número `foodRegenInterval` es el más importante del proyecto. Rápido → la comida es decorativa. Lento → pelear es un callejón sin salida, que es justo lo que el mod viene a arreglar. Solo playtest lo resuelve.
 

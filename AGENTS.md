@@ -73,7 +73,7 @@ Entorno: JDK instalado es **25**. El toolchain pide **21**, y el `foojay-resolve
 
 ## Fase activa: 2 — Investigación de diseño
 
-Estado: diseño **cerrado** (v5 en `DESIGN.md`). Gameplay, HUD, alcance, catálogo, capa visual, crafteo y supervivencia definidos. Falta ajustar números concretos antes de implementar.
+Estado: diseño **cerrado** (v5 en `DESIGN.md`). Gameplay, HUD, alcance, catálogo, capa visual, crafteo y supervivencia definidos. Próximo paso: ajustar números concretos y arrancar la Fase 1.
 
 ## Decisiones tomadas
 
@@ -95,8 +95,11 @@ Estado: diseño **cerrado** (v5 en `DESIGN.md`). Gameplay, HUD, alcance, catálo
 - **Escudo:** 100% de reducción excepto explosiones, aguante de **3 golpes**, arco frontal solamente. Agotarse produce stun. El hacha stunea de un golpe.
 - **Aguante en HUD:** 3 esferitas tenues sobre la crosshair, visibles al llevar escudo.
 - **Supervivencia: la comida deja de ser energía.** Se elimina el sistema de **exhaustion**: correr, picar y golpear no cuestan nada. La comida es **recurso de curación con ciclo cerrado**: se gasta al curar y se regenera sola. Regen 1 hp cada 2s, cura hasta 6 de comida, comer se interrumpe al recibir daño (la regen pasiva no), comida líquida 20 ticks. Pociones y manzana dorada rebalanceadas (curación I = 6, II = 12, manzana = 8).
-- **Crafteo:** forma de receta **única por arma**, 5 siluetas distintas. Tiers normales (7), con **ingredient extra en madera y piedra** para no desplazar a la espada vanilla al principio. Datagen con tags de material.
-- **5 armas nuevas × 7 tiers:** ropera, alabarda, martillo de guerra, daga, shotel. Solo alabarda y shotel tienen click derecho. Solo alabarda, martillo y shotel cargan.
+- **Crafteo:** 5 grids canónicos, forma única por arma. Tiers **desiguales**: daga 7 (única con madera), ropera/alabarda/shotel 6, martillo 5 (sin madera ni piedra). **30 items total.**
+- **Set de cobre propio** (pepita, texturas, armas). Se reemplaza por el de Mojang al actualizar a la versión con copper age. Resolvió la "pepita de la punta" de la ropera.
+- **Shotel = sable musulmán**, hoja curva. NO es un cañón.
+- **Cañón de mano:** anotado como arma a distancia **fuera de alcance** (`DESIGN.md` 6ter). Choca con la decisión de que los proyectiles quedan fuera del cono.
+- **5 armas nuevas:** ropera, alabarda, martillo de guerra, daga, shotel. Solo alabarda y shotel tienen click derecho. Solo alabarda, martillo y shotel cargan.
 - **Aguante unificada escudo/espada:** la aguante solo se gasta al **recibir** un golpe bloqueado, nunca por mantener la guardia. De ahí sale, sin caso especial, que la espada pueda cubrirse indefinidamente gratis.
 - **Martillo de guerra:** escalado por golpe consecutivo, ventana 4s, sin tope. Golpe cargado ignora armadura.
 - **Shotel:** parry con cooldown 5s que devuelve **solo el golpe parriado**, sin búfer acumulado. Carga da doble.
@@ -115,7 +118,8 @@ El autoataque que carga y dispara deja el ritmo en manos del jugador, lo que con
 
 1. Fase 1: esqueleto. Copiar el build de `refs/rafts_combat`, `mod_id = cortescombat`, paquete `com.cortes.combat`, `[[mixins]]` habilitado, primer commit con README/LICENSE.
 2. Vertical slice: barra de cooldown + cono de alcance + daño + indicador de aguante, de punta a punta, antes de meter las armas nuevas.
-3. Números: completar la tabla de la sección 2 de `DESIGN.md` con las armas nuevas, y definir el escalado del martillo (multiplicador por golpe, dónde deja de crecer de forma útil).
+3. Números: completar la tabla de alcances (sección 2 de `DESIGN.md`) y definir el escalado del martillo (multiplicador por golpe, dónde deja de crecer de forma útil).
+4. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
 
 ## Trampas de diseño marcadas
 
@@ -134,3 +138,4 @@ El autoataque que carga y dispara deja el ritmo en manos del jugador, lo que con
 - v3: catálogo definido por el usuario (ropera, alabarda, martillo, daga, shotel). Consecuencias: aguante unificada escudo/espada, click derecho pasó a ser excepción, 3 de 5 armas no cargan.
 - v4: capa visual (viewmodel por arma, partículas, FOV, sonido mixto). Verificado que 1.21.1 no tiene animaciones de item → todo viewmodel es mixin. Verificado el orden de render del HUD.
 - v5: crafteo y supervivencia. La comida deja de ser energía: se elimina exhaustion, queda recurso de curación autociclico. Recetas con forma única por arma + ingredient extra en madera y piedra.
+- v6: grids canónicos de las 5 armas (los del usuario, no los inventados). Tiers desiguales → 30 items. Set de cobre propio. **Shotel corregido: es el sable musulmán, no un cañón** — el error fue mío, inventé el cañón porque el usuario nunca nombró las armas. Cañón de mano anotado fuera de alcance.
