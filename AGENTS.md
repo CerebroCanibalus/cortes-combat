@@ -74,7 +74,7 @@ Entorno: JDK instalado es **25**. El toolchain pide **21**, y el `foojay-resolve
 
 ## Fase activa: 2 — Investigación de diseño
 
-Estado: diseño **cerrado** (`DESIGN.md` v6). Arquitectura **propuesta, pendiente de aprobación** (`ARCHITECTURE.md`). Próximo paso: aprobar arquitectura → Fase 1 (esqueleto).
+Estado: diseño **cerrado** (`DESIGN.md` v6). Arquitectura **aprobada** (`ARCHITECTURE.md`, sección 10). Próximo paso: Fase 1 (esqueleto).
 
 ## Decisiones tomadas
 
@@ -113,8 +113,10 @@ Estado: diseño **cerrado** (`DESIGN.md` v6). Arquitectura **propuesta, pendient
 - **Ningún número de gameplay hardcodeado.** 4 data components: `weapon_profile`, `reach_profile`, `charge_profile`, `special`. Separados para que un mod externo cambie el alcance sin romper la carga.
 - **`canCharge = false` no es un caso especial** en el código: el sistema consulta el componente. La ropera y la daga no cargan sin una sola rama.
 - **Se reemplaza el flujo de ataque vanilla entero.** El vanilla hace 4 cosas que el diseño no quiere (incluido `getAttackStrengthScale`). Parchear las 4 sería 4 mixins acoplados.
+- **Tenemos PRIORIDAD sobre mods de combate.** No cedemos el turno: hay **blocklist** de mods incompatibles, chequeada con `ModList` al iniciar. Si se detecta uno, el mod **se niega a cargar** con un mensaje que nombre el mod — **no es un crash con stack trace** (un crash parece bug nuestro y no dice qué hacer). La blocklist arranca vacía y se llena con reportes; a diferencia de una compat list, no se pudre.
+- **Convertimos armas ajenas pero nos negamos a pelear con sistemas ajenos.** Esas dos cosas no se contradicen.
 - **Orden de 15 pasos por dependencia, no por dificultad.** `reach/` va antes que el flujo de ataque porque es geometría pura y testeable. `FoodData` al final, en commit propio.
-- **Vetado:** lista de mods en el código, bus de eventos propio, lógica de gameplay en cliente, `static mutable` para gameplay, mixins que reescriban media clase, archivo único de config autogenerada, ruido aleatorio por frame en el shake.
+- **Vetado:** compat list de mods en el código (sí se permite la **blocklist** de incompatibles, que es otra cosa: se niega a correr, no integra), bus de eventos propio, lógica de gameplay en cliente, `static mutable` para gameplay, mixins que reescriban media clase, archivo único de config autogenerada, ruido aleatorio por frame en el shake, crash con stack trace por incompatibilidad.
 
 ### Conversión de armas de otros mods (`ARCHITECTURE.md` 12)
 
@@ -166,3 +168,4 @@ El autoataque que carga y dispara deja el ritmo en manos del jugador, lo que con
 - v6: grids canónicos de las 5 armas (los del usuario, no los inventados). Tiers desiguales → 30 items. Set de cobre propio. **Shotel corregido: es el sable musulmán, no un cañón** — el error fue mío, inventé el cañón porque el usuario nunca nombró las armas. Cañón de mano anotado fuera de alcance.
 - `ARCHITECTURE.md`: estado por attachments, datos por data components, reemplazo del flujo de ataque vanilla, plan de 15 pasos. Pendiente de aprobación.
 - Framework de viewmodel (capas aditivas, easing, shake determinista) y **conversión automática de armas de otros mods** con config procedural en dos archivos.
+- **Arquitectura aprobada** con un cambio: prioridad sobre mods de combate vía blocklist, y el mod se niega a cargar con mensaje accionable en vez de ceder el turno.

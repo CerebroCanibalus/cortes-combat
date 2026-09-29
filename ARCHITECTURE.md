@@ -93,9 +93,43 @@ El vanilla hace cuatro cosas que este mod **no quiere**:
 
 Parchear las cuatro sería cuatro mixins acoplados. Reemplazar es **un punto de entrada** y reglas limpias.
 
-### El límite de esta decisión
+### Prioridad: nosotros, no ellos
 
-> Reemplazar el flujo vanilla **rompe compat con mods que reescriben el ataque**. Está asumido. El mitigador es que los hooks de NeoForge se siguen disparando: si otro mod cancela el `AttackEvent`, nosotros no aplicamos daño. No es que ignoremos a los demás, es que **cedemos el turno**.
+**`[DECIDIDO]`** Cortés Combat tiene **prioridad sobre cualquier otro mod** que toque el flujo de ataque. No cedemos el turno.
+
+Reemplazar el flujo vanilla rompe compat con mods de combate. Eso está **asumido a propósito**: es un mod de combate, y un mod que reescribe el ataque está reescribiendo lo que nosotros somos.
+
+**Detección por blocklist, no por heurística.** No se puede preguntar "otro mod hookeó este método" — los mixins de los demás simplemente corren y no dejan rastro consultable. La detección viable es una lista explícita de mods incompatibles, chequeada con `ModList` al iniciar.
+
+**Fallo controlado, no crash.** Si se detecta un mod incompatible, el mod **se niega a cargar** con un mensaje que diga qué pasó:
+
+```
+Cortes Combat no puede correr junto a <mod>.
+Ambos reescriben el flujo de ataque de Minecraft.
+Desactivá <mod> para jugar con Cortés Combat.
+```
+
+**No es un crash con stack trace.** Un crash parece un bug nuestro y deja al jugador sin saber qué hacer. Un refusal con el nombre del mod y la instrucción es accionable. La diferencia entre "se rompió" y "esto no es compatible, sacá X" es la diferencia entre una queja y un bug reportado.
+
+### La contradicción que esto crea, y cómo se resuelve
+
+`DESIGN.md` y `ARCHITECTURE.md` dicen "vetado: lista de mods en el código". Y esta decisión **es** una lista de mods en el código.
+
+La distinción que lo resuelve:
+
+| Lista | Propósito | Mantenimiento |
+|---|---|---|
+| **Blocklist** (esta) | **Negarse a correr** | Corta, estática, 5-10 entradas. No crece. |
+| Compat list (vetada) | **Hacer que funcione con ellos** | Crece sin límite, se pudre. |
+
+Una blocklist no se pudre: si un mod deja de ser incompatible, se borra una línea y ya. No hay que mantener código de integración para nadie.
+
+### Dos cosas que esta decisión NO cambia
+
+- **Las armas de otros mods se siguen convirtiendo** (sección 12). Convertir *items* y pelear contra *sistemas de combate* son cosas distintas.
+- **La derivación automática sigue funcionando.** Un mod de armas con stats razonables entra sin código nuestro.
+
+> Traducción: **convertimos sus armas, nos negamos a pelear con sus sistemas.**
 
 ---
 
@@ -197,17 +231,24 @@ Estas decisiones son tan importantes como las de hacer:
 - **No** acceso directo a campos privados de vanilla sin accessor mixin. Y el accessor se anota como tech debt.
 - **No** un archivo único de config autogenerada. Regenerar pisaría los cambios del jugador. Ver sección 12.
 - **No** ruido aleatorio por frame en el viewmodel. El shake se siembra por golpe, o el mismo golpe se ve distinto cada vez.
+- **No** un crash con stack trace por incompatibilidad. Se niega a cargar con un mensaje accionable. Ver sección 3.
 
 ---
 
-## 10. Decisiones que necesitan tu aprobación
+## 10. Decisiones: APROBADAS
 
-1. **Reemplazar el flujo de ataque vanilla entero** (sección 3). Rompe compat con mods de combate. El diseño lo pide, pero es la decisión más grande del proyecto.
-2. **`FoodData` al final, en commit propio.** Caro de implementar, caro de revertir.
-3. **Los attachments con predicción del cliente.** Más código que sin predicción, pero sin desync.
-4. **Viewmodel al final** (paso 14), aunque sé que es la parte que más se nota si falta.
-5. **El resolver de armas en 4 capas con prioridad fija** (sección 12). Que el override del jugador gane sobre la derivación automática.
-6. **Config procedural en dos archivos** (generado + override), en JSON y no en `ModConfigSpec`.
+Aprobadas por el usuario. La 4 se aprovou **con una modificación**: la prioridad es nuestra y el mod se niega a cargar ante mods incompatibles, en vez de ceder el turno. Ver sección 3.
+
+| # | Decisión | Estado |
+|---|---|---|
+| 1 | Reemplazar el flujo de ataque vanilla entero | ✅ Aprobada (con prioridad + blocklist) |
+| 2 | `FoodData` al final, en commit propio | ✅ Aprobada |
+| 3 | Attachments con predicción del cliente | ✅ Aprobada |
+| 4 | Viewmodel al final (paso 14 de 15) | ✅ Aprobada |
+| 5 | Resolver en 4 capas, override del jugador gana | ✅ Aprobada |
+| 6 | Config procedural en dos archivos JSON | ✅ Aprobada |
+
+**Pendiente de la blocklist:** la lista concreta de mods incompatibles se arma cuando sepamos cuáles son los que rompen. Se arranca vacía y se llena con reportes.
 ---
 
 ## 11. Framework de viewmodel
