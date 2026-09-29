@@ -73,7 +73,7 @@ Entorno: JDK instalado es **25**. El toolchain pide **21**, y el `foojay-resolve
 
 ## Fase activa: 2 — Investigación de diseño
 
-Estado: `DESIGN.md` escrito, **pendiente de aprobación del usuario**. No se empieza a implementar hasta que lo apruebe.
+Estado: estructura de diseño **cerrada** (v2 en `DESIGN.md`). Falta una decisión: **las 5 armas nuevas no están definidas.** El usuario pidió "5 armas nuevas" sin nombrarlas; la tabla que había en el diseño era invención mía y está borrada. Hay que definirlas con él antes de implementar.
 
 ## Decisiones tomadas
 
@@ -86,22 +86,36 @@ Estado: `DESIGN.md` escrito, **pendiente de aprobación del usuario**. No se emp
 
 ## Mecánicas acordadas con el usuario
 
-- **Barra de arma con doble lectura:** tramo izquierdo = cooldown (cuándo podés atacar), tramo derecho = carga (bonus de daño). La carga nunca resta daño base.
-- **Velocidad de ataque dura:** no se puede atacar a medio cooldown, y el daño es plano (se elimina el multiplicador de timing del vanilla).
-- **Click derecho = movimiento especial por arma.**
-- **Alcance en cono frontal,** con distancia, ángulo horizontal y ángulo vertical independientes por arma.
-- **Escudo:** 100% de reducción excepto explosiones, con **aguante** que se agota y produce stun. Arco frontal solamente. El hacha stunea de un golpe.
+- **Velocidad de ataque dura:** no se puede atacar a medio cooldown, y el daño es plano (se elimina el multiplicador de timing del vanilla, que premia spamear más rápido).
+- **Carga** = bonus de daño encima del base. Nunca resta.
+- **Dos indicadores separados:** el vanilla bajo la crosshair muestra **carga**; barra horizontal nueva bajo la hotbar muestra **cooldown**.
+- **Autoataque carga y dispara:** mantener el click hace las dos cosas.
+- **Click derecho = movimiento especial por arma.** Tiene que hacer algo que el click izquierdo no puede, no más daño.
+- **Alcance en cono frontal fijo** (mismo ángulo a 1m que a 4m), con distancia, ángulo horizontal y vertical independientes por arma.
+- **Escudo:** 100% de reducción excepto explosiones, aguante de **3 golpes**, arco frontal solamente. Agotarse produce stun. El hacha stunea de un golpe.
+- **Aguante en HUD:** 3 esferitas tenues sobre la crosshair, visibles al llevar escudo.
 - **Supervivencia:** regen cada 2s, cura hasta 6 puntos de comida, comer se interrumpe al recibir daño, comida líquida en 20 ticks.
-- **5 armas nuevas × 7 tiers de mineral:** cuchillo, espada larga, lanza, hachón, garrote.
+- **5 armas nuevas × 7 tiers de mineral.** Nombres y roles **sin definir**.
 - **Feedback:** patrón de damageoverlay + indicador direccional de daño (no existe en ninguno de los 3 mods).
+
+## Decisiones de alcance (qué queda fuera)
+
+- **Proyectiles** (arco, ballesta, tridente lanzado): fuera del cono, comportamiento actual.
+- **Mobs:** sin cambios, siguen con el sistema vanilla. Candidato número uno a revisión después del vertical slice, empezando por el zombi.
+
+## Trampa conocida
+
+El autoataque que carga y dispara deja el ritmo en manos del jugador, lo que consume una de las fuentes de profundidad (el timing del golpe). La profundidad restante tiene que venir de: elección de arma, momento del click derecho, lectura de la aguante del rival, y gestión de la propia aguante. No reintroducir profundidad con más timing.
 
 ## Próximos pasos
 
-1. Obtener aprobación de `DESIGN.md`. Resolver las 6 open questions de la sección 10.
+1. **Definir las 5 armas nuevas** con el usuario. Es lo único grande que bloquea.
 2. Fase 1: esqueleto. Copiar el build de `refs/rafts_combat`, `mod_id = cortescombat`, paquete `com.cortes.combat`, `[[mixins]]` habilitado, primer commit con README/LICENSE.
-3. Vertical slice: barra de arma + cono de alcance + daño, de punta a punta, antes de meter las 5 armas nuevas.
+3. Vertical slice: barra de cooldown + cono de alcance + daño + indicador de aguante, de punta a punta, antes de meter las armas nuevas.
 
 ## Changelog
 
 - Setup inicial: 3 clones en `refs/`, repo del mod en la raíz, instrucciones escritas.
-- `DESIGN.md` redactado con las mecánicas acordadas.
+- `DESIGN.md` v1 redactado con las mecánicas acordadas.
+- v2: las 6 preguntas de estructura resueltas por el usuario. Cambios: indicadores separados (vanilla = carga, barra nueva = cooldown), cono fijo, autoataque carga y dispara, aguante como 3 esferitas sobre la crosshair, proyectiles y mobs fuera de alcance.
+- Tabla de armas nuevas borrada por ser invención sin respaldo del usuario.

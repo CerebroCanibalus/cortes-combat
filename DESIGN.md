@@ -1,6 +1,6 @@
 # DESIGN.md — Cortés Combat
 
-Diseño de combate. Estado: **propuesta v1, pendiente de aprobación**. Lo marcado `[DECIDIDO]` viene del usuario; lo demás es propuesta mía y se puede mover.
+Diseño de combate. Estado: **v2, decisiones de estructura cerradas**. Lo marcado `[DECIDIDO]` viene del usuario; lo demás es propuesta mía y se puede mover.
 
 Principio rector: **un jugador nuevo nunca hace algo que le salga mal; uno experto tiene razones para dominar la mecánica.** Ninguna decisión de diseño puede castigar la falta de conocimiento.
 
@@ -8,21 +8,24 @@ Principio rector: **un jugador nuevo nunca hace algo que le salga mal; uno exper
 
 ## 1. El loop central
 
-Una sola idea sostiene todo: **la barra de estado del arma hace dos trabajos a la vez.**
+**`[DECIDIDO]`** El arma tiene **velocidad de ataque dura**: no se puede atacar a medio cooldown. Y **el daño nunca baja por click rápido** — se elimina el multiplicador de timing del vanilla (que premia spamear más rápido).
 
-```
- ATAQUE          [████████████░░░░░░░░░░░░]  40% → 80% carga
-                  └────只能在 100%────┘
- BARRA           ├──── cooldown ────┼──── carga extra ────┤
-```
+La carga acumula **bonus de daño encima del base**, que siempre se conserva. Nunca resta.
 
-- **Tramo izquierdo (cooldown):** el arma no está lista. No se puede atacar. Se llena solo.
-- **Tramo derecho (carga):** bonus de daño. Solo se acumula mientras se **mantiene** el click izquierdo.
-- El punto de unión es 100% = el momento exacto en que podés atacar de nuevo.
+### Los dos indicadores
 
-Por qué funciona: el mismo objeto visual que te dice *"podés atacar"* te dice *"cuánto te falta para atacar más fuerte"*. Un solo lugar donde mirar. Y la parte de carga nunca resta: el daño base se conserva siempre.
+**`[DECIDIDO]`** Son dos barras separadas con trabajos separados:
 
-**`[DECIDIDO]`** Velocidad de ataque dura (no se puede atacar a medio cooldown) y **el daño nunca baja por click rápido**. El daño es plano y predecible. El vanilla multiplica el daño por qué tan bien cronometrado hiciste el click, lo cual significa que spamear más rápido = más daño. Eso se elimina.
+| Indicador | Muestra | Dónde |
+|---|---|---|
+| **Indicador vanilla** (sprite del brazo, `getAttackStrengthScale`) | **Carga** | Bajo la crosshair, el nativo de MC |
+| **Barra horizontal nueva** | **Cooldown** | Bajo la hotbar |
+
+Por qué así: el indicador vanilla es un sprite pequeño que se llena. No tiene resolución visual para ser un medidor fino de cooldown, pero es *perfecto* para "sincronía" — que es exactamente lo que es la carga. Y la barra horizontal nueva tiene el espacio y la resolución para mostrar un cooldown con precisión, que es un dato que necesita ser exacto.
+
+- La carga solo se acumula mientras se **mantiene** el click izquierdo.
+- El cooldown se llena solo, y es la fuente de verdad de si podés atacar.
+- El cooldown nunca se saltea: la barra horizontal es el permiso para atacar.
 
 ### Números
 
@@ -37,11 +40,23 @@ Consecuencia intencional: una espada llega a carga completa en ~1.25s, una hacha
 
 La decisión real en cada golpe es: **ataco ya al 50% o espero 0.6s más por el 100%.** Esa es la profundidad, y no requiere saber nada que no esté en la barra.
 
+### Autoataque
+
+**`[DECIDIDO]`** Mantener el click **carga y dispara**. El juego se juega solo con un poco de pulgar: no hace falta hacer clic repeatedly.
+
+Consecuencia que hay que tener presente: la carga se vuelve el estado por defecto en combate sostenido, y **el ritmo del jugador pasa a ser la única variable**. Eso es coherente con "intuitivo", pero significa que el juego base ya está en las manos del jugador y la profundidad tiene que venir de otro lado — no de la carga.
+
+Fuentes de profundidad restantes, que son las que quedan de verdad:
+- **Elegir arma** para el objetivo (alcance, cono, cooldown) y para la situación (escudo o carga).
+- **Click derecho** en el momento correcto, contra el cooldown del special.
+- **Leer al rival**: cuántos golpes le quedan de aguante, si está por stuning.
+- **Gestionar la aguante** del escudo: cuándo gastarla y cuándo no.
+
 ---
 
 ## 2. Alcance: cono por arma
 
-**`[DECIDIDO]`** Cada arma tiene alcance horizontal y vertical distinto, en cono, hacia el frente.
+**`[DECIDIDO]`** Cada arma tiene alcance horizontal y vertical distinto, en cono, hacia el frente. **Cono fijo**: el ángulo es el mismo a 1 metro que a 4.
 
 Tres parámetros independientes por arma:
 
@@ -50,6 +65,8 @@ Tres parámetros independientes por arma:
 - `verticalAngle` — medio ángulo vertical (grados, más ceñido)
 
 El vertical ceñido es lo que hace que el combate se sienta bien: no golpeás lo que tenés a los pies ni lo que pasa volando arriba. Y hace que la posición importa sin necesidad de hitboxes raros.
+
+El cono fijo se elige sobre el progresivo de rafts_combat porque el jugador puede predecir su alcance sin consultar el indicador: "si está ahí, lo alcance". El progresivo obligaba a mirar un widget para saber si algo estaba dentro, que es exactamente la fricción que queremos evitar.
 
 Mismo check para el jugador que para las entidades, así que el autoataque y el golpe a distancia se sienten igual.
 
@@ -71,20 +88,20 @@ Mismo check para el jugador que para las entidades, así que el autoataque y el 
 
 **`[DECIDIDO]`** Reduce 100% del daño **excepto explosiones**. Tras unos golpes "cansa" al personaje y lo stunea. El hacha lo stunea al instante de un golpe.
 
-Sistema de **aguante** (stamina), con tres estados:
+La aguante son **3 golpes**, no una barra continua. Ver *Feedback* más abajo para cómo se comunica.
 
 | Estado | Comportamiento |
 |---|---|
-| Normal | Bloquea 100%. Cada bloqueo consume aguanté. Regenera fuera de combate. |
-| Agotado | **Stun**: no bloquea, no aguanta, y hay unJhueco de invulnerabilidad. Se recupera solo. |
-| Desarmado (hacha) | Un golpe de hacha = stun inmediato, sin importar la aguanté. |
+| Normal | Bloquea 100%. Cada bloqueo consume 1 golpe de aguante. |
+| Agotado (0/3) | **Stun**: no bloquea, no aguanta, y hay un hueco de invulnerabilidad. Se recupera solo. |
+| Desarmado (hacha) | Un golpe de hacha = stun inmediato, sin importar la aguante. |
 
 Más: **el arco de bloqueo es frontal.** El escudo no cubre la espalda. Flanquear funciona, y es la única forma de dealar a alguien que bloquea bien sin esperar a que se canse.
 
-- Explosiones: daño completo, y **no** consumen aguanté (el escudo no estaba trabajando).
-- El agotamiento se recupera: 2s sin bloquear = aguanté completa.
+- Explosiones: daño completo, y **no** consumen aguante (el escudo no estaba trabajando).
+- El agotamiento se recupera: 2s sin bloquear = aguante completa.
 
-**Por qué así:** el escudo vanilla de 100% hace que el combate defensivo sea una Binaria de sí/no. Con aguanté tenés una tercera vía (bloquear un rato y salir), que es donde aparece la lectura de opponent sin ser un sistema complejo.
+**Por qué 3 golpes y no una barra:** una barra continua obliga a leer un número y calcular cuánto falta. "Me quedan 2 de 3" es información completa sin aritmética. Además hace que el agotamiento sea un evento con peso en vez de una degradación silenciosa, que es justo lo que tiene que tener un stun para que el rival lo entienda.
 
 ---
 
@@ -96,19 +113,21 @@ Cada uno es un ataque con las mismas reglas de cooldown, pero con forma propia. 
 
 Propuesta:
 
+Para las armas vanilla:
+
 | Arma | Especial | Efecto |
 |---|---|---|
-| Espada | Tajo amplio | Arco horizontal ancho, poco daño, aturde levemente |
+| Manos | Empuje | Empuje corto con la mano abierta, sin daño, aturde un tick |
+| Espada | Tajo amplio | Arco horizontal ancho, daño bajo, aturde levemente |
 | Hacha | Mandoble | AoE en el suelo, levanta por knockback |
+| Pico | Estocada | Avance corto, el único pickaxe que se mueve |
+| Pala | Apertura | Golpe al suelo que empuja en arco hacia adelante |
 | Maza | Arremate | Golpe cargado: con 100% de carga hace el triple y empuja lejos |
-| Tridente | Arremate | Lanzar (vanilla) |
-| Cuchillo | Retroceso | After-image, dash corto hacia atrás, recarga rápida |
-| Espada larga | Barrido | 180° frontal, el más ancho del juego |
-| Lanza | Estocada | Advance, el de mayor distancia, muy ceñido |
-| Hachón | Gancho | Tira al enemigo hacia vos. **Contradice el bloqueo.** |
-| Garrote | Enroscado | Al soltar la carga, el área de daño se duplica |
+| Tridente | Lanzar | Vanilla, sin cambios |
 
-El gancho del hachón contra el escudo de alguien es la combinación que quiero que exista en el juego.
+Los especiales de las 5 armas nuevas se definen cuando se defina el catálogo (ver sección 6).
+
+Regla de diseño del special: tiene que hacer algo que **el click izquierdo no puede hacer**, no más daño. Si un special es solo "más daño", es un click derecho inútil.
 
 ---
 
@@ -132,17 +151,22 @@ El gancho del hachón contra el escudo de alguien es la combinación que quiero 
 
 Tiers: madera, piedra, cobre, hierro, oro, diamante, netherite. (7 × 5 = 35 items, por datagen.)
 
-Cada arma existe para cubrir una silueta distinta, no para ser "la espada pero mejor":
+> **BORRADO — tabla inventada.** El usuario pidió "5 armas nuevas" pero nunca las nombró. Los nombres y roles de esta tabla eran propuesta mía sin respaldo. Las 5 armas se definen aparte; abajo queda solo el criterio.
 
-| Arma | Rol | Identidad |
-|---|---|---|
-| **Cuchillo** | Speed / crit | Intervalo más corto del juego (8 ticks). Alcance mínimo. El bonus de carga más alto (+0.8) porque tenés que viver del timing. |
-| **Espada larga** | Control de área | El cono horizontal más ancho (70°). Lenta (24 ticks). Cubre un flanco entero. |
-| **Lanza** | Control de distancia | Distance 4.5, cono casi nulo (10°). Avance con click derecho. Castiga a los que se acercan. |
-| **Hachón** | Anti-escudo | El hacha ya stunea; el hachón además **desarma**. Combo con el escudo. |
-| **Garrote** | Charging | La carga al 100% **duplica el área**. Recompensa fuerte por esperar, riesgo si te interrumpen. |
+**Criterio para elegir las 5:** cada una cubre una silueta distinta, no "la espada pero mejor". Conviene diagramar el set completo (vanilla + nuevas) y ver qué roles quedan vacíos: speed, control de área, distancia, anti-escudo, y lo que surja.
 
-**`[DECIDIDO]`** El hacha vanilla stunea al instante. El hachón es la versión extrema: stunea *y* deja al objetivo sin bloqueo.
+**Criterio para el special de cada arma nueva:** tiene que hacer algo que el click izquierdo no puede, y no solo más daño.
+
+---
+
+## 6bis. Alcance excluido
+
+**`[DECIDIDO]`** Dos cosas quedan **fuera** del sistema, a propósito:
+
+- **Proyectiles (arco, ballesta, tridente lanzado).** Fuera del cono, con su comportamiento actual. Solo el cuerpo a cuerpo cambia. Agregarlos al cono obligaría a rebalancear todo el ranged en el mismo commit, y el riesgo no vale la pena.
+- **Mobs.** No usan el cooldown duro ni el cono. Siguen con el sistema vanilla.
+
+Consecuencia honesta de dejar los mobs fuera: una pelea contra un zombi se siente distinta a una pelea contra un jugador. El jugador tiene ritmo, alcance deliberado y aguante; el zombi no. Se acepta por ahora, pero es el candidato número uno a revisión cuando el vertical slice esté andando. Lo natural es arrancar por el zombi, que es el mob que más se parece a un jugador en comportamiento.
 
 ---
 
@@ -197,17 +221,41 @@ Lo que **no** vamos a hacer: una lista de mods en el código fuente. Eso se pudr
 - Flash de daño cuya intensidad escala con el daño recibido.
 - Detección por delta de salud guardado (`lastKnownHealth`), no por evento.
 
-Agregamos:
-- **Indicador direccional de daño**: cuña en el borde de la pantalla en la dirección desde la que vino el golpe. Currently inexistente en cualquiera de los 3 mods.
-- **Flash de carga en la barra del arma** cuando se completa, para que el timing sea visible.
+### Indicadores, cada uno en su lugar
+
+| Indicador | Ubicación | Qué muestra |
+|---|---|---|
+| Carga | Indicador vanilla, bajo la crosshair | Cuánta carga acumulada |
+| Cooldown | Barra horizontal nueva, bajo la hotbar | Cuándo podés atacar (fuente de verdad) |
+| Aguante del escudo | **3 esferitas sobre la crosshair**, tenues | Cuántos golpes de bloqueo te quedan |
+| Viñeta + flash | Pantalla completa | Salud baja / daño recibido |
+| Indicador direccional | Borde de la pantalla | Desde qué dirección vino el golpe |
+
+**`[DECIDIDO]`** Aguante = **3 esferitas sobre la crosshair**, visibles al llevar un escudo, en tono tenue. Cada una es un golpe que podés bloquear.
+
+Esto es mejor que una barra continua por una razón concreta: "me quedan 2 de 3" no requiere leer un número ni calcular. Con barra hay que interpretar cuánto se movió el fill; con esferitas el estado es un conteo directo. Además, una agotación que se ve como transición gradual se siente como desgaste lento, mientras que perder una esfera de golpe se siente como un evento. Eso es justo lo que tiene que ser un stun: que el rival lo note.
+
+Tono tenue en reposo, brillante al perder una. La capa se registra con `registerAbove` sobre la crosshair para que quede encima, no debajo como la viñeta.
+
+Agregamos al patrón de damageoverlay:
+- **Indicador direccional de daño**: cuña en el borde de la pantalla en la dirección desde la que vino el golpe. No existe en ninguno de los 3 mods.
+- **Flash en la barra de cooldown** cuando se completa, para que el timing sea visible sin mirar números.
 
 ---
 
-## 10. open Questions
+## 10. Cerrado
 
-1. ¿El cono es solo horizontal-progresivo como el de rafts (que se ensancha con la distancia) o cono fijo con `distance`? Propongo fijo, es más fácil de leer.
-2. ¿El autoataque (mantener click) dispara solo, o también carga? Si carga solo, el juego se plays solo.
-3. La aguanté del escudo, ¿es visible en el HUD o se siente por el escudo en la mano? Propuesta: barra sutil bajo la de salud, solo cuando está en uso.
-4. ¿Los proyectiles (arco, ballesta, tridente lanzado) entran en el alcance por cono o quedan en su modelo actual? Propongo: fuera del cono, con su propio balanceo.
-5. ¿Los mobs usan la misma barra de cooldown? Si no,ITEM contra el jugador se siente falso.
-6. ¿El garrote duplicando el área al 100% es suficiente incentivo, o necesita más reward de riesgo?
+Las 6 preguntas de la v1 quedaron resueltas. Resumen:
+
+| # | Pregunta | Respuesta |
+|---|---|---|
+| 1 | Cono fijo o progresivo | **Fijo** |
+| 2 | Autoataque | **Carga y dispara** |
+| 3 | Aguante en HUD | **3 esferitas sobre la crosshair** |
+| 4 | Proyectiles | **Fuera del sistema** |
+| 5 | Mobs | **Sin cambios** |
+| 6 | Garrote | **Arma inexistente, tabla borrada** — el catálogo se define aparte |
+
+## 11. Pendiente
+
+Definir las 5 armas nuevas. Es la única decisión grande que falta antes de arrancar la implementación.
