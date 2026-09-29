@@ -77,6 +77,17 @@ Entorno: JDK instalado es **25**. El toolchain pide **21**, y el `foojay-resolve
 
 Verificado que el esqueleto compila (`gradlew build`) y que el mod **carga en un servidor real** (`gradlew runServer`, mod coordinates encontrados, log `CortesCombat/]: Cortés Combat loading`, cero errores de mixin).
 
+### Trampas de la API de 1.21.1 (verificadas con `javap`)
+
+Ninguna de estas se adivina, y varias están en versión **distinta** a 1.21.2+:
+
+- **Data components:** el registro es `DeferredRegister.create(Registries.DATA_COMPONENT_TYPE, MODID)`. **No** existe `Registry.DATA_COMPONENT_REGISTRY`.
+- **`StreamCodec.fromCodec(codec)` NO existe en 1.21.1.** El que existe es **`ByteBufCodecs.fromCodec(codec)`**. `StreamCodec.fromCodec` llegó después.
+- **`Mth.clamp` siempre toma 3 argumentos** `(valor, min, max)`. No hay versión de un solo argumento.
+- **Enum que implementa `StringRepresentable` tiene que implementar `getSerializedName()`**, no alcanza con tener un `id()`.
+- **`AttachmentType.builder(Supplier<T>)`** quiere un supplier: `() -> ChargeState.EMPTY`, no la referencia al campo `ChargeState::EMPTY`.
+- Los sources de vanilla **no están** en el jar de NeoForge ni en el de FML. Para verificar un símbolo de vanilla hay que usar `javap` contra el jar compilado que deja ModDevGradle en `~/.gradle/caches/neoformruntime/intermediate_results/compiledWithNeoForge_*_output.jar`.
+
 ---
 
 # PARTE 2 — Memoria del proyecto
@@ -157,16 +168,25 @@ Esqueleto NeoForge 1.21.1 creado en la raíz y **verificado**: `gradlew build` c
 - `mod_id=cortescombat`, paquete `com.cortes.combat`, grupo `com.cortes.combat`
 - `neo_version=21.1.250` (la que está en el cache local), Gradle wrapper 9.2.1
 - `cortescombat.mixins.json` creado y **registrado** en `mods.toml` (el bloque `[[mixins]]` ya está)
-- `CortesCombat.java` deliberadamente vacío: solo registra y loguea. Ningún sistema se registra todavía.
 - `build.sh` copia el jar a `test-server/mods/`; `test.sh` delega a Gradle
+
+## Fase 2: registros — HECHA
+
+Verificado en servidor real: `components=4 attachments=5`.
+
+- **4 data components** (`ModComponents`): `weapon_profile` (enum de 12 perfiles), `reach_profile` (cono), `charge_profile` (canCharge + bonus), `special` (tipo de click derecho).
+- **5 attachments** (`ModAttachments`): `charge`, `guard_stamina`, `cooldown`, `hammer_streak`, `parry`. Todos serializados; los de combate con `copyOnDeath`.
+- **5 records de estado** en `state/`, cada uno con su `Codec` y su lógica de tick. La lógica de negocio ya vive adentro del estado, no en los listeners.
+- Los ítems y tags quedan para el paso 9 (armas + datagen). No se registraron ítems de prueba.
 
 ## Próximos pasos
 
-1. **Paso 2 del plan de arquitectura:** registros — data components, attachments, tags, ítems. Todo vacío pero compilando.
-2. **Paso 3:** `reach/` (el check de cono) con sus gametests de geometría. Va antes que el flujo de ataque porque es lógica pura y testeable.
-3. Vertical slice: barra de cooldown + cono + daño + indicador de aguante, de punta a punta.
-4. Números: completar la tabla de alcances (sección 2 de `DESIGN.md`) y definir el escalado del martillo.
-5. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
+1. **Paso 3:** `reach/` (el check de cono) con sus gametests de geometría. Va antes que el flujo de ataque porque es lógica pura y testeable.
+2. Paso 4: cooldown duro + attachment `COOLDOWN`.
+3. Paso 5: flujo de ataque nuevo (reemplazo del vanilla). El de mayor riesgo.
+4. Vertical slice: barra de cooldown + cono + daño + indicador de aguante, de punta a punta.
+5. Números: completar la tabla de alcances (sección 2 de `DESIGN.md`) y definir el escalado del martillo.
+6. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
 
 ## Trampas de diseño marcadas
 
@@ -190,3 +210,4 @@ Esqueleto NeoForge 1.21.1 creado en la raíz y **verificado**: `gradlew build` c
 - Framework de viewmodel (capas aditivas, easing, shake determinista) y **conversión automática de armas de otros mods** con config procedural en dos archivos.
 - **Arquitectura aprobada** con un cambio: prioridad sobre mods de combate vía blocklist, y el mod se niega a cargar con mensaje accionable en vez de ceder el turno.
 - **Fase 1 (esqueleto) completa y verificada.** Build OK, jar OK, mod carga en `runServer` sin errores. Cuatro trampas del build documentadas (Groovy en el template, `replaceProperties`, ASCII en `gradle.properties`, `filteringCharset`).
+- **Fase 2 (registros) completa y verificada en servidor**: 4 data components + 5 attachments, confirmado con un log temporal `components=4 attachments=5`. Seis trampas de API de 1.21.1 documentadas, todas verificadas con `javap` contra el jar compilado.
