@@ -73,7 +73,7 @@ Entorno: JDK instalado es **25**. El toolchain pide **21**, y el `foojay-resolve
 
 ## Fase activa: 2 — Investigación de diseño
 
-Estado: diseño **cerrado** (v3 en `DESIGN.md`). Mecánicas, HUD, alcance y catálogo de armas están definidos. Falta ajustar números concretos antes de implementar.
+Estado: diseño **cerrado** (v5 en `DESIGN.md`). Gameplay, HUD, alcance, catálogo, capa visual, crafteo y supervivencia definidos. Falta ajustar números concretos antes de implementar.
 
 ## Decisiones tomadas
 
@@ -94,7 +94,8 @@ Estado: diseño **cerrado** (v3 en `DESIGN.md`). Mecánicas, HUD, alcance y cat�
 - **Alcance en cono frontal fijo** (mismo ángulo a 1m que a 4m), con distancia, ángulo horizontal y vertical independientes por arma.
 - **Escudo:** 100% de reducción excepto explosiones, aguante de **3 golpes**, arco frontal solamente. Agotarse produce stun. El hacha stunea de un golpe.
 - **Aguante en HUD:** 3 esferitas tenues sobre la crosshair, visibles al llevar escudo.
-- **Supervivencia:** regen cada 2s, cura hasta 6 puntos de comida, comer se interrumpe al recibir daño, comida líquida en 20 ticks.
+- **Supervivencia: la comida deja de ser energía.** Se elimina el sistema de **exhaustion**: correr, picar y golpear no cuestan nada. La comida es **recurso de curación con ciclo cerrado**: se gasta al curar y se regenera sola. Regen 1 hp cada 2s, cura hasta 6 de comida, comer se interrumpe al recibir daño (la regen pasiva no), comida líquida 20 ticks. Pociones y manzana dorada rebalanceadas (curación I = 6, II = 12, manzana = 8).
+- **Crafteo:** forma de receta **única por arma**, 5 siluetas distintas. Tiers normales (7), con **ingredient extra en madera y piedra** para no desplazar a la espada vanilla al principio. Datagen con tags de material.
 - **5 armas nuevas × 7 tiers:** ropera, alabarda, martillo de guerra, daga, shotel. Solo alabarda y shotel tienen click derecho. Solo alabarda, martillo y shotel cargan.
 - **Aguante unificada escudo/espada:** la aguante solo se gasta al **recibir** un golpe bloqueado, nunca por mantener la guardia. De ahí sale, sin caso especial, que la espada pueda cubrirse indefinidamente gratis.
 - **Martillo de guerra:** escalado por golpe consecutivo, ventana 4s, sin tope. Golpe cargado ignora armadura.
@@ -121,6 +122,8 @@ El autoataque que carga y dispara deja el ritmo en manos del jugador, lo que con
 - El autoataque carga y dispara → el ritmo ya es del jugador. La profundidad tiene que venir de arma, click derecho, lectura de aguante y gestión de aguante. **No reintroducir profundidad metiendo más timing.**
 - El martillo **no resetea** al recibir daño, por decisión. Es un arma de compromiso. Si en el playtest resulta demasiado fuerte, se cambia con el dato medido, no por intuición.
 - Cubrirse no tiene coste. Si el escudo termina siendo inútil porque todos cubren gratis con la espada, el problema es la densidad de aguante, no el click derecho.
+- **`foodRegenInterval` es el número más importante del proyecto.** Rápido → la comida es decorativa. Lento → pelear es un callejón sin salida, que es justo lo que el mod viene a arreglar. Solo playtest lo resuelve.
+- **`FoodData` es vanilla puro, sin patch de NeoForge** (verificado). Los umbrales internos hay que leerlos de las fuentes de 1.21.1, no de memoria.
 
 ## Changelog
 
@@ -129,3 +132,5 @@ El autoataque que carga y dispara deja el ritmo en manos del jugador, lo que con
 - v2: las 6 preguntas de estructura resueltas por el usuario. Cambios: indicadores separados (vanilla = carga, barra nueva = cooldown), cono fijo, autoataque carga y dispara, aguante como 3 esferitas sobre la crosshair, proyectiles y mobs fuera de alcance.
 - Tabla de armas nuevas borrada por ser invención sin respaldo del usuario.
 - v3: catálogo definido por el usuario (ropera, alabarda, martillo, daga, shotel). Consecuencias: aguante unificada escudo/espada, click derecho pasó a ser excepción, 3 de 5 armas no cargan.
+- v4: capa visual (viewmodel por arma, partículas, FOV, sonido mixto). Verificado que 1.21.1 no tiene animaciones de item → todo viewmodel es mixin. Verificado el orden de render del HUD.
+- v5: crafteo y supervivencia. La comida deja de ser energía: se elimina exhaustion, queda recurso de curación autociclico. Recetas con forma única por arma + ingredient extra en madera y piedra.

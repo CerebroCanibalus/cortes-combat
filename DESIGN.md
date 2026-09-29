@@ -152,20 +152,107 @@ Click derecho entra en parry. El golpe que parried durante esa ventana **se devu
 
 ---
 
-## 5. Supervivencia
+## 5. Supervivencia: la comida deja de ser energía
 
-**`[DECIDIDO]`** Alcance: combate + supervivencia. El objetivo es que una pelea no te deje en 3 corazones sin poder recuperarte.
+**`[DECIDIDO]`** Alcance: combate + supervivencia. Y el cambio de fondo es que **la comida deja de ser un medidor de energía y pasa a ser un recurso de curación.**
 
-- Regeneración natural: cada **2s** en vez de 8s.
-- Cura hasta **6** puntos de comida, no hasta 18.
-- Comer se **interrumpe** al recibir un golpe (anti-heal-mobile).
-- Comida líquida (caldos, miel, leche, pociones) en **20 ticks**.
-- La aguanté del escudo es un recurso de combate, no de supervivencia: se regenera rápido y sin hambre.
+### Qué se elimina
 
-**Por qué:** el vanilla te castiga por pelear. 8s de regen y comer Kisthmetro te deja expuesto durante toda la fight. A 2s, pelear es una decisión viable.
+**`[DECIDIDO]`** La comida **no se consume** al correr, picar, golpear ni con el tiempo. Se elimina el sistema de **exhaustion** completo.
+
+En el vanilla la comida es un sistema de dos capas: el `exhaustionLevel` sube con cada acción, la saturación se consume, y cuando se agota el exhaustion empieza a bajar la comida. Eso significa que correr cuesta. Acá se elimina entero: correr, picar y golpear **no cuestan nada** (`[DECIDIDO]`: sin costo, sin límite).
+
+Consecuencia directa: **la comida es un solo número.** La saturación deja de usarse como mecánica — el campo sigue existiendo en `FoodData` porque es vanilla, pero no lo leemos. Un número, una regla.
+
+### Qué se agrega
+
+| Regla | Valor | Nota |
+|---|---|---|
+| Regeneración natural | 1 de vida cada **2s** | Antes 8s |
+| Tope de curación | Cura hasta **6** de comida | Antes 18 |
+| **Costo de curar** | Curar **consume comida** | Cada punto de vida curado baja comida |
+| **Regen de comida** | La comida **se regenera sola** | Cierra el ciclo sin comer tras cada pelea |
+| Comer al recibir daño | **Se interrumpe** | Pero la regen pasiva **no** se interrumpe |
+| Comida líquida | **20 ticks** | Caldos, miel, leche, pociones |
+| Aguante del escudo | Recurso de combate, **sin comida** | Se regenera por tiempo, no por hambre |
+
+El modelo final es un **recurso con ciclo cerrado**: la comida se gasta al curar y vuelve sola. En una pelea podés recuperar vida, pero no infinitamente rápido. Ese es el balance fino que hay que tunear.
+
+### Números propuestos (a validar en playtest)
+
+| Parámetro | Propuesta | Efecto |
+|---|---|---|
+| `healInterval` | 40 ticks (2s) | 1 hp cada 2s |
+| `healFoodCost` | 1 de comida por hp | Curarse 20 de vida cuesta 20 de comida |
+| `foodRegenInterval` | 1 punto cada **4s** | Recuperas 1 hp cada 8s de forma sostenible |
+| Curar 20 de vida | ~160s de espera | Hay que comer para curar rápido en una pelea |
+
+**`[TRAMPA]`** Si `foodRegenInterval` es rápido demais, la comida deja de importar y el sistema es decorativo. Si es lento demais, pelear es un callejón sin salida, que es justo lo que este mod viene a arreglar. Es el número más importante de tunear del proyecto y solo se ajusta con playtest, no con intuición.
+
+### Rebalanceo de curación (`[DECIDIDO]`)
+
+Basado en Combatify, que es la referencia:
+
+| Objeto | Vanilla | Cortés Combat |
+|---|---|---|
+| Poción de curación I | 4 de vida | **6** |
+| Poción de curación II | 8 de vida | **12** |
+| Poción de daño I | 4 de daño | **6** |
+| Manzana dorada | 4 de vida | **8** |
+
+Las pociones pasan a ser una opción **real** de supervivencia en pelea y no marginales. La manzana dorada sube más porque es la que cuesta más.
+
+### Nota técnica
+
+`FoodData` **no tiene patch de NeoForge** (verificado en el userdev jar): es vanilla puro. La implementación va por mixin sobre sus métodos. Los números exactos de `tickCount` y los umbrales internos hay que leerlos de las fuentes de 1.21.1 al implementar, no de memoria.
 
 ---
 
+## 5bis. Crafteo de las armas nuevas
+
+**`[DECIDIDO]`** Cada arma tiene una **forma de receta propia**, que refleja su silueta. No son todas iguales como la espada vanilla.
+
+**`[DECIDIDO]`** Los tiers son los normales (madera, piedra, cobre, hierro, oro, diamante, netherite), **pero madera y piedra requieren un ingredient extra**. Los tiers de cobre en adelante son recetas limpias de mineral + palo.
+
+La razón del ingredient extra: sin él, la ropera de madera sería estrictamente mejor que la espada de madera en DPS, y el jugador no entiende por qué. Con un extra, el tier bajo es alcanzable pero se siente como un acceso, y la espada vanilla sigue siendo competitive al principio. El arma nueva no desplaza a la vanilla, la complementa.
+
+### Formas propuestas (ajustables en mesa de crafteo)
+
+`X` = material del tier, `#` = palo, `E` = ingredient extra del tier bajo.
+
+| Arma | Forma | Lectura |
+|---|---|---|
+| **Ropera** | `E X E` / `X X X` / ` # #` | Hoja delgada y larga, punta hacia arriba |
+| **Daga** | `X E` / `E #` | Corta y en diagonal, se lee como daga |
+| **Alabarda** | `E X X` / ` # X` / ` # #` | Asta larga con cabeza en ángulo |
+| **Martillo** | `E X X` / `E X E` / ` # #` | Cabeza ancha y simétrica, se lee como martillo |
+| **Shotel** | `X E X` / ` E X ` / ` # E ` | Cañón abierto que se dispersa |
+
+Cada forma es una silueta reconocible. El jugador que nunca vio el mod entiende qué arma está crafteando por la forma, no por el nombre.
+
+### Ingredient extra (propuesta)
+
+Se usa un ingredient temático por arma, todos vanilla, todos thematic:
+
+| Arma | Ingredient extra | Por qué |
+|---|---|---|
+| Ropera | Redstone | Arma de precisión y timing |
+| Daga | Leather | Arma de sigilo, cuero = cuero |
+| Alabarda | Iron ingot | Instrumento largo, requiere ferretería |
+| Martillo | Cobblestone block | Cabeza pesada, necesita masa |
+| Shotel | Copper ingot | Cañón deEconomicía, cobre por peso |
+
+**`[PENDIENTE]`** Estos extras son propuesta mía. La regla general —"cada arma con un ingredient temático en madera y piedra"— está decidida; los ingredientes concretos se pueden cambiar.
+
+### Estructura de datos
+
+Las recetas se generan por **datagen**, una por arma × tier. Se usa la tag `#minecraft:<tier>_tool_materials` para el material, igual que hace Combatify, así que el ingredient de cada tier se escribe una vez y no siete.
+
+- 35 recetas de arma (5 armas × 7 tiers).
+- Las 10 de madera y piedra llevan el extra.
+- Todas con `category: "equipment"` y su advancement, para que no aparezcan como recetas discoveries raras.
+
+---
 ## 6. Catálogo de 5 armas nuevas × 7 tiers
 
 **`[DECIDIDO]`** 5 armas nuevas, todas con tiers de mineral.
@@ -425,8 +512,20 @@ Ajustes de diseño que salieron de definirlas:
 
 Restricción de versión que condiciona todo lo de arriba: **1.21.1 no tiene animaciones de item.** Se llega en 1.21.4. Toda animación de viewmodel es mixin obligatorio.
 
+## 14. Crafteo y supervivencia: cerrado en v5
+
+- **Crafteo:** forma única por arma, 5 formas distintas que se leen por silueta. Tiers normales, con **ingredient extra en madera y piedra** para que el arma nueva no desplace a la vanilla al principio.
+- **Supervivencia:** la comida deja de ser energía. Se elimina el **exhaustion** entero — correr, picar y golpear no cuestan nada. La comida pasa a ser recurso de curación con ciclo cerrado: se gasta al curar y se regenera sola.
+- **Rebalanceo de pociones y manzana dorada** siguiendo los números de Combatify.
+
+`[TRAMPA PRINCIPAL]` El número `foodRegenInterval` es el más importante del proyecto. Rápido → la comida es decorativa. Lento → pelear es un callejón sin salida, que es justo lo que el mod viene a arreglar. Solo playtest lo resuelve.
+
 ## 12. Pendiente
 
-Nada grande. Antes de implementar, ajustar los valores numéricos concretos de la tabla de la sección 2 con los números de las armas nuevas, y decidir el escalado exacto del martillo (multiplicador por golpe y dónde deja de crecer de forma útil).
+Nada grande. Antes de implementar:
+1. Ajustar los valores de la tabla de la sección 2 con los números de las armas nuevas.
+2. Decidir el escalado exacto del martillo (multiplicador por golpe, dónde deja de crecer de forma útil).
+3. Confirmar o cambiar los ingredients extra propuestos de la sección 5bis.
+4. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
 
-Lo visual no bloquea el gameplay: el vertical slice puede ir con sound placeholder y sin viewmodel, y la vista se agrega encima.
+Lo visual y los recipes no bloquean el gameplay: el vertical slice puede ir con sonido placeholder, sin viewmodel y sin recetas, y todo eso se agrega encima.
