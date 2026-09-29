@@ -114,7 +114,21 @@ Estado: diseño **cerrado** (`DESIGN.md` v6). Arquitectura **propuesta, pendient
 - **`canCharge = false` no es un caso especial** en el código: el sistema consulta el componente. La ropera y la daga no cargan sin una sola rama.
 - **Se reemplaza el flujo de ataque vanilla entero.** El vanilla hace 4 cosas que el diseño no quiere (incluido `getAttackStrengthScale`). Parchear las 4 sería 4 mixins acoplados.
 - **Orden de 15 pasos por dependencia, no por dificultad.** `reach/` va antes que el flujo de ataque porque es geometría pura y testeable. `FoodData` al final, en commit propio.
-- **Vetado:** lista de mods en el código, bus de eventos propio, lógica de gameplay en cliente, `static mutable` para gameplay, mixins que reescriban media clase.
+- **Vetado:** lista de mods en el código, bus de eventos propio, lógica de gameplay en cliente, `static mutable` para gameplay, mixins que reescriban media clase, archivo único de config autogenerada, ruido aleatorio por frame en el shake.
+
+### Conversión de armas de otros mods (`ARCHITECTURE.md` 12)
+
+- **Resolver en 4 capas por prioridad:** data components → override del jugador → **derivación automática** → default. El override siempre gana.
+- **La derivación automática ES la compat.** Lee `ItemAttributeModifiers` del item + perfil por tag + escala alcance por velocidad. Un mod de armas con stats razonables entra **sin una línea de código nuestro**.
+- **Config procedural en DOS archivos:** `generated_weapons.json` (lo escribe el mod, no editar) y `weapon_overrides.json` (el jugador). Uno solo regeneraría y pisaría los cambios del jugador.
+- **Va en JSON plano, no en `ModConfigSpec`.** No se pudo verificar si `ModConfigSpec` soporta mapas (sources de FML no están en el cache local) y un archivo autogenerado necesita precedencia explícita. `ModConfigSpec` queda para los números de balance estáticos.
+
+### Framework de viewmodel (`ARCHITECTURE.md` 11)
+
+- **El framework es código, los perfiles son datos.** Machinery una vez, un perfil declarativo por arma, un solo mixin.
+- Composición **aditiva** por capas: `vanilla + perfil + shake + fov`. Cada capa desactivable por config (mareo).
+- Curvas de Penter propias (`back`, `expo`, `elastic`, `bounce`): `Mth` solo trae lineal/cuadrática/cúbica y no alcanzan para un golpe con peso.
+- **Shake determinista sembrado por golpe.** Aleatorio por frame = el mismo golpe se ve distinto cada vez, y se siente como ruido gráfico, no como animación.
 
 ## Decisiones de alcance (qué queda fuera)
 
@@ -151,3 +165,4 @@ El autoataque que carga y dispara deja el ritmo en manos del jugador, lo que con
 - v5: crafteo y supervivencia. La comida deja de ser energía: se elimina exhaustion, queda recurso de curación autociclico. Recetas con forma única por arma + ingredient extra en madera y piedra.
 - v6: grids canónicos de las 5 armas (los del usuario, no los inventados). Tiers desiguales → 30 items. Set de cobre propio. **Shotel corregido: es el sable musulmán, no un cañón** — el error fue mío, inventé el cañón porque el usuario nunca nombró las armas. Cañón de mano anotado fuera de alcance.
 - `ARCHITECTURE.md`: estado por attachments, datos por data components, reemplazo del flujo de ataque vanilla, plan de 15 pasos. Pendiente de aprobación.
+- Framework de viewmodel (capas aditivas, easing, shake determinista) y **conversión automática de armas de otros mods** con config procedural en dos archivos.

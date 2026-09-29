@@ -175,11 +175,14 @@ Recordatorio de la sección 8 de `DESIGN.md`, con lo que significa a nivel de c�
 
 | Nivel | Mecanismo | Cubre |
 |---|---|---|
-| Declarativo | Item con nuestros data components | La mayoría de los mods de armas |
+| Declarativo | Item con nuestros data components | Mods que adoptan nuestra API |
+| **Derivación automática** | Resolver por atributos del item | **Todo mod de armas, sin código nuestro** |
 | Reactivo | `AttackEvent` cancelado → no aplicamos | Mods que reescriben el ataque |
-| Config | Override por item en `ModConfigSpec` | El caso raro |
+| Config | Override por item en JSON | El jugador decide |
 
 **Lo que sigue vetado:** una lista de mods en el código. Se pudre.
+
+El nivel de **derivación automática** es nuevo y es el que resuelve la compat real. Ver sección 12.
 
 ---
 
@@ -187,11 +190,13 @@ Recordatorio de la sección 8 de `DESIGN.md`, con lo que significa a nivel de c�
 
 Estas decisiones son tan importantes como las de hacer:
 
-- **Noicros mixin** que reescriba la mitad de una clase de vanilla. Cada mixin es un `@Shadow` de algo que puede cambiar.
-- **No** un bus de eventos propio. NeoForge ya tiene uno; agregar otro esbugs esperando.
+- **No** un mixin que reescriba la mitad de una clase de vanilla. Cada mixin es un `@Shadow` de algo que puede cambiar.
+- **No** un bus de eventos propio. NeoForge ya tiene uno; agregar otro es bugs esperando.
 - **No** lógica de gameplay en clases cliente. El cliente dibuja, no decide.
 - **No** `static mutable state` para nada que afecte gameplay. Los attachments existen para eso.
 - **No** acceso directo a campos privados de vanilla sin accessor mixin. Y el accessor se anota como tech debt.
+- **No** un archivo único de config autogenerada. Regenerar pisaría los cambios del jugador. Ver sección 12.
+- **No** ruido aleatorio por frame en el viewmodel. El shake se siembra por golpe, o el mismo golpe se ve distinto cada vez.
 
 ---
 
@@ -201,3 +206,146 @@ Estas decisiones son tan importantes como las de hacer:
 2. **`FoodData` al final, en commit propio.** Caro de implementar, caro de revertir.
 3. **Los attachments con predicción del cliente.** Más código que sin predicción, pero sin desync.
 4. **Viewmodel al final** (paso 14), aunque sé que es la parte que más se nota si falta.
+5. **El resolver de armas en 4 capas con prioridad fija** (sección 12). Que el override del jugador gane sobre la derivación automática.
+6. **Config procedural en dos archivos** (generado + override), en JSON y no en `ModConfigSpec`.
+---
+
+## 11. Framework de viewmodel
+
+**`[PROPUESTA]`** Un framework chico para animar el item en primera persona **desde código**: shake, easing, timelines y composición por capas.
+
+Restricción de versión que lo obliga: en 1.21.1 no hay animaciones de item (`[VERIFICADO]`). Sin esto habría que escribir mixes a mano por cada arma. Con el framework, **un perfil por arma** y el mixin es uno solo, fijo.
+
+### El principio: el framework es código, los perfiles son datos
+
+Se escribe la machinery **una vez** y cada arma declara una línea de tiempo. Si el framework no puede expresar una animación, se agrega una función nueva — no se escribe un mixin nuevo.
+
+### Estructura
+
+```
+client/viewmodel/
+  ViewmodelPipeline.java   compone todas las capas
+  Channel.java             interfaz: float value(float t, Ctx ctx)
+  motion/                  una línea de tiempo
+    Motion.java            canal + inicio + duración + easing + amplitud
+    Timeline.java          lista ordenada + evaluación
+  easing/
+    Easing.java            interfaz + registro
+    Curves.java            linear, inOutCubic, back, elastic, bounce, expo
+  noise/
+    ShakeNoise.java        ruido determinista
+```
+
+### Composición por capas (aditiva)
+
+```
+final = vanilla(t)
+      + profile(t)      ← la animación del arma
+      + shake(t)        ← ruido
+      + fov(t)          ← FOV de carga
+```
+
+Cada capa es un `Channel`. Sumar es barato, y las capas se pueden **desactivar por config**: un jugador con mareo apaga `shake` y `fov` y le queda la animación sola.
+
+### Easing
+
+Vanilla `Mth` solo trae lineal, cuadrática y cúbica, que no alcanzan para un golpe que tiene que sentirse con peso. El framework trae las curvas de Penner estándar:
+
+`linear` · `inOutCubic` · `back` (sobrepasa y vuelve — un golpe que se frena) · `elastic` · `bounce` · `expo` (impacto instantáneo, la más útil para armas)
+
+`back` y `expo` son las dos que hacen que un golpe se sienta distinto según el arma. La alabarda usa `back` porque el mandoble pesa; la daga usa `expo` porque corta.
+
+### Shake determinista
+
+**`[REGLA]`** El ruido es **determinista y sembrado por golpe**, no aleatorio por frame.
+
+Si el shake usa `Math.random()` por frame, tiembla de forma distinta cada vez que mirás el mismo golpe. Con ruido sembrado (`sin(f·t + φ)` sumado en varias frecuencias) el mismo golpe se ve **idéntico** cada vez. Eso es lo que lo hace sentir como animación y no como ruido gráfico.
+
+Se suma 3-4 senos con frecuencias y fases distintas. Barato, sin tablas de ruido, y suficiente.
+
+### Un perfil se ve así
+
+```java
+Timeline.of(
+    Motion.of(Channel.ROT_X, 0f,  4,  Easing.expo(),  -1.2f),  // el golpe
+    Motion.of(Channel.POS_Y, 2f,  6,  Easing.back(),  -0.15f),  // el levantamiento
+    Motion.of(Channel.SHAKE,  1f,  8,  Easing.expo(),   0.4f)   // el temblor
+)
+```
+
+Un arma con `Timeline.EMPTY` no hace nada, y eso no es un caso especial: el pipeline corre igual.
+
+---
+
+## 12. Conversión de armas + config procedural
+
+**`[PROPUESTA]`** El problema real: el mod tiene 30 armas propias y el jugador tiene 300 items de otros mods. No todos son armas, y los que lo son necesitan alcance, carga y especial.
+
+**La respuesta no es "qué mods soportamos". Es "cómo convierte el sistema cualquier item".**
+
+### El resolver: una función, cuatro capas de prioridad
+
+```
+WeaponStats resolve(ItemStack stack)
+  1. data components presentes   → declarativo (nuestro, y mods que adoptan la API)
+  2. override en config          → lo que el jugador escribió
+  3. derivación por atributos    → automático para CUALQUIER item
+  4. default                     → manos
+```
+
+El orden importa y está documentado. El jugador escribiendo en config **gana** sobre lo automático; lo automático gana sobre el default.
+
+### El paso 3 es la conversión, y es automática
+
+No hay código por mod. La derivación hace tres cosas:
+
+1. **Lee los atributos del item**: attack damage y attack speed salen de su propio `ItemAttributeModifiers`. Un mod que seteó 8 de daño y 1.6 de velocidad ya está balanceado solo.
+2. **Elige un perfil por tag**: `minecraft:swords` → perfil espada, `minecraft:axes` → perfil hacha, y así.
+3. **Escala el alcance por la velocidad**: un arma rápida hereda alcance corto, una lenta alcance largo. La coherencia sale sola.
+
+> Un mod de armas con stats razonables entra a nuestro sistema **sin una línea de código nuestro**. Esa es toda la compat que hace falta, y no depende de que sepamos que el mod existe.
+
+### La config procedural: generada + override
+
+Dos archivos, con precedencia clara:
+
+| Archivo | Quién lo toca | Contenido |
+|---|---|---|
+| `config/cortescombat/generated_weapons.json` | **Lo escribe el mod.** No editar a mano. | Todos los items detectados y su perfil asignado |
+| `config/cortescombat/weapon_overrides.json` | **El jugador.** | Solo lo que quiere cambiar |
+
+Se fusionan: **override gana siempre**. El archivo generado lleva un header que dice que se regenera, para que nadie edite el equivocado.
+
+**Por qué dos archivos y no uno:** si fuera uno solo, regenerarlo pisaría lo que el jugador escribió. Ese es el bug clásico de las configs procedurales.
+
+**Cuándo se regenera:** al primer arranque, y cuando cambia el registro de items (se compara un hash). No en cada load.
+
+### Qué puede cambiar el jugador
+
+Cualquier cosa, sin código:
+
+```json
+{
+  "othermod:ruby_sword": {
+    "profile": "alabarda",
+    "reach": { "distance": 4.2, "horizontal": 55, "vertical": 35 },
+    "canCharge": true,
+    "chargeBonus": 0.7,
+    "special": "multi_hit"
+  }
+}
+```
+
+Ese ítem pasa a tener alcance de alabarda, con su propio special. El jugador puede darle a un arma de otro mod un comportamiento que **ni existe en nuestro catálogo**.
+
+### Detección: qué entra y qué no
+
+- **Entra** si está en un tag de arma cuerpo a cuerpo **y** tiene atributo de attack damage.
+- **No entra** si no tiene daño (mesas, capas, comida, bloques).
+- **Se avisa al jugador** al arrancar: *"N items convertidos, M sobrescritos por tu config"*. Sin eso es magia invisible.
+
+### Nota de API
+
+La config va en **JSON plano**, no en `ModConfigSpec`. Motivo: no pude verificar en el cache local si `ModConfigSpec` soporta mapas (las sources de FML no están descargadas), y **un archivo que se regenera necesita Priorities explícitas y estables** — una tabla autogenerada dentro de un TOML de Gradle es frágil. JSON nos da precedencia clara, y es independiente de la API.
+
+`ModConfigSpec` se queda para lo que sí es estático: los números globales de balance (`healInterval`, `foodRegenInterval`, escalado del martillo).
