@@ -87,6 +87,8 @@ Ninguna de estas se adivina, y varias están en versión **distinta** a 1.21.2+:
 - **Enum que implementa `StringRepresentable` tiene que implementar `getSerializedName()`**, no alcanza con tener un `id()`.
 - **`AttachmentType.builder(Supplier<T>)`** quiere un supplier: `() -> ChargeState.EMPTY`, no la referencia al campo `ChargeState::EMPTY`.
 - Los sources de vanilla **no están** en el jar de NeoForge ni en el de FML. Para verificar un símbolo de vanilla hay que usar `javap` contra el jar compilado que deja ModDevGradle en `~/.gradle/caches/neoformruntime/intermediate_results/compiledWithNeoForge_*_output.jar`.
+- **`SubscribeEvent` es `net.neoforged.bus.api.SubscribeEvent`**, no `net.neoforged.neoforge.eventbus.api`. Ese último paquete no existe.
+- **`ItemStack.forEachModifier` toma un `EquipmentSlot` o `EquipmentSlotGroup`**, no un `Holder<Attribute>`. Para sacar los modificadores de un item hay que pasar el slot y filtrar el atributo adentro del consumer. Para el intervalo de ataque ni hace falta: `LivingEntity.getAttributeValue(Attributes.ATTACK_SPEED)` ya incluye el item en la mano, el equipo y las pociones.
 
 ---
 
@@ -193,12 +195,25 @@ El check de cono, con **21 tests unitarios verdes**. Es la clase más testeable 
 
 - `build.gradle`: JUnit 5 agregado, `useJUnitPlatform()`. Comment en el build advierte que `ConeMath` **no** puede ganar tipos de Minecraft o los tests dejan de funcionar.
 
+## Fase 4: cooldown duro — HECHA
+
+**35 tests verdes** (21 de `ConeMath` + 14 de `AttackTiming`). Mod carga en servidor sin errores.
+
+- **`attack/AttackTiming.java`** — matemática pura: intervalo desde attack speed, multiplicador de carga, spread. Sin tipos de Minecraft, testeable en JVM pelado.
+- **`attack/WeaponStats.java`** — el resolver de 4 capas. Our components → override (paso 12, todavía cae al default) → **derivación automática por tag vanilla** → default. Es la capa de compat: un arma de otro mod entra por tag sin una línea de código nuestro.
+- **`attack/CombatTicker.java`** — **un solo handler** avanza los 5 estados por tick, solo en servidor. Uno y no cinco: el orden entre ellos es una regla y las reglas que no están escritas en un mismo lugar dejan de ser ciertas en cuanto alguien agrega un sexto listener.
+- **`attack/AttackCooldown.java`** — la puerta: `isReady` / `consume` / `beginCharge` / `endCharge`.
+
+**Segundo bug real que encontraron los tests:** `chargeMultiplier` con bonus negativo devolvía 0.5 en vez de 1.0, contradiciendo la invariante de "la carga nunca resta". El piso ahora se fuerza **en el código**, no se confía en el dato, porque un override de config puede escribir cualquier bonus y esa invariante es demasiado importante para dejarla en manos de quien edite ese archivo.
+
+Defaults de alcance y carga de los 12 perfiles ya están en `WeaponStats` (tabla de la sección 2 de `DESIGN.md`). La de la sable carga al doble (`bonus = 1.0`), la única que lo hace.
+
 ## Próximos pasos
 
-1. Paso 4: cooldown duro + attachment `COOLDOWN`.
-2. Paso 5: flujo de ataque nuevo (reemplazo del vanilla). El de mayor riesgo.
-3. Vertical slice: barra de cooldown + cono + daño + indicador de aguante, de punta a punta.
-4. Números: completar la tabla de alcances (sección 2 de `DESIGN.md`) y definir el escalado del martillo.
+1. **Paso 5: flujo de ataque nuevo** (reemplazo del vanilla). El de mayor riesgo del proyecto. Requiere el mixin sobre `Player#attack` / `Item#hurtEnemy`.
+2. Vertical slice: barra de cooldown + cono + daño + indicador de aguante, de punta a punta.
+3. Paso 7: barra de cooldown en HUD (necesita sync del attachment al cliente).
+4. Números: definir el escalado del martillo (multiplicador por golpe, dónde deja de crecer).
 5. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
 
 ## Trampas de diseño marcadas
@@ -225,3 +240,4 @@ El check de cono, con **21 tests unitarios verdes**. Es la clase más testeable 
 - **Fase 1 (esqueleto) completa y verificada.** Build OK, jar OK, mod carga en `runServer` sin errores. Cuatro trampas del build documentadas (Groovy en el template, `replaceProperties`, ASCII en `gradle.properties`, `filteringCharset`).
 - **Fase 2 (registros) completa y verificada en servidor**: 4 data components + 5 attachments, confirmado con un log temporal `components=4 attachments=5`. Seis trampas de API de 1.21.1 documentadas, todas verificadas con `javap` contra el jar compilado.
 - **Fase 3 (`reach/`) completa**: 21 tests JUnit verdes. `ConeMath` es geometría en `double` puro, sin tipos de Minecraft en la firma, para que los tests corran sin levantar el juego. Los tests encontraron un bug real de degeneración matemática al mirar recto arriba.
+- **Fase 4 (cooldown duro) completa**: 35 tests verdes. Resolver de 4 capas con derivación automática por tag (la compat), un solo `CombatTicker` para los 5 estados, y `AttackCooldown` como puerta. Segundo bug real encontrado por tests: el multiplicador de carga con bonus negativo reducía el daño; el piso ahora se fuerza en código.

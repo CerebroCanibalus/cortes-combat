@@ -1,9 +1,11 @@
 package com.cortes.combat;
 
 import com.mojang.logging.LogUtils;
+import com.cortes.combat.attack.CombatTicker;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.registry.ModComponents;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import org.slf4j.Logger;
@@ -23,6 +25,7 @@ public class CortesCombat {
     public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         ModComponents.DATA_COMPONENT_TYPES.register(modEventBus);
         ModAttachments.ATTACHMENT_TYPES.register(modEventBus);
+        NeoForge.EVENT_BUS.register(CombatTicker.class);
         LOGGER.info("Cortés Combat loading");
     }
 }
