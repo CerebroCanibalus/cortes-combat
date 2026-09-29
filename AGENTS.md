@@ -73,7 +73,7 @@ Entorno: JDK instalado es **25**. El toolchain pide **21**, y el `foojay-resolve
 
 ## Fase activa: 2 — Investigación de diseño
 
-Estado: estructura de diseño **cerrada** (v2 en `DESIGN.md`). Falta una decisión: **las 5 armas nuevas no están definidas.** El usuario pidió "5 armas nuevas" sin nombrarlas; la tabla que había en el diseño era invención mía y está borrada. Hay que definirlas con él antes de implementar.
+Estado: diseño **cerrado** (v3 en `DESIGN.md`). Mecánicas, HUD, alcance y catálogo de armas están definidos. Falta ajustar números concretos antes de implementar.
 
 ## Decisiones tomadas
 
@@ -95,7 +95,10 @@ Estado: estructura de diseño **cerrada** (v2 en `DESIGN.md`). Falta una decisi�
 - **Escudo:** 100% de reducción excepto explosiones, aguante de **3 golpes**, arco frontal solamente. Agotarse produce stun. El hacha stunea de un golpe.
 - **Aguante en HUD:** 3 esferitas tenues sobre la crosshair, visibles al llevar escudo.
 - **Supervivencia:** regen cada 2s, cura hasta 6 puntos de comida, comer se interrumpe al recibir daño, comida líquida en 20 ticks.
-- **5 armas nuevas × 7 tiers de mineral.** Nombres y roles **sin definir**.
+- **5 armas nuevas × 7 tiers:** ropera, alabarda, martillo de guerra, daga, shotel. Solo alabarda y shotel tienen click derecho. Solo alabarda, martillo y shotel cargan.
+- **Aguante unificada escudo/espada:** la aguante solo se gasta al **recibir** un golpe bloqueado, nunca por mantener la guardia. De ahí sale, sin caso especial, que la espada pueda cubrirse indefinidamente gratis.
+- **Martillo de guerra:** escalado por golpe consecutivo, ventana 4s, sin tope. Golpe cargado ignora armadura.
+- **Shotel:** parry con cooldown 5s que devuelve **solo el golpe parriado**, sin búfer acumulado. Carga da doble.
 - **Feedback:** patrón de damageoverlay + indicador direccional de daño (no existe en ninguno de los 3 mods).
 
 ## Decisiones de alcance (qué queda fuera)
@@ -109,9 +112,15 @@ El autoataque que carga y dispara deja el ritmo en manos del jugador, lo que con
 
 ## Próximos pasos
 
-1. **Definir las 5 armas nuevas** con el usuario. Es lo único grande que bloquea.
-2. Fase 1: esqueleto. Copiar el build de `refs/rafts_combat`, `mod_id = cortescombat`, paquete `com.cortes.combat`, `[[mixins]]` habilitado, primer commit con README/LICENSE.
-3. Vertical slice: barra de cooldown + cono de alcance + daño + indicador de aguante, de punta a punta, antes de meter las armas nuevas.
+1. Fase 1: esqueleto. Copiar el build de `refs/rafts_combat`, `mod_id = cortescombat`, paquete `com.cortes.combat`, `[[mixins]]` habilitado, primer commit con README/LICENSE.
+2. Vertical slice: barra de cooldown + cono de alcance + daño + indicador de aguante, de punta a punta, antes de meter las armas nuevas.
+3. Números: completar la tabla de la sección 2 de `DESIGN.md` con las armas nuevas, y definir el escalado del martillo (multiplicador por golpe, dónde deja de crecer de forma útil).
+
+## Trampas de diseño marcadas
+
+- El autoataque carga y dispara → el ritmo ya es del jugador. La profundidad tiene que venir de arma, click derecho, lectura de aguante y gestión de aguante. **No reintroducir profundidad metiendo más timing.**
+- El martillo **no resetea** al recibir daño, por decisión. Es un arma de compromiso. Si en el playtest resulta demasiado fuerte, se cambia con el dato medido, no por intuición.
+- Cubrirse no tiene coste. Si el escudo termina siendo inútil porque todos cubren gratis con la espada, el problema es la densidad de aguante, no el click derecho.
 
 ## Changelog
 
@@ -119,3 +128,4 @@ El autoataque que carga y dispara deja el ritmo en manos del jugador, lo que con
 - `DESIGN.md` v1 redactado con las mecánicas acordadas.
 - v2: las 6 preguntas de estructura resueltas por el usuario. Cambios: indicadores separados (vanilla = carga, barra nueva = cooldown), cono fijo, autoataque carga y dispara, aguante como 3 esferitas sobre la crosshair, proyectiles y mobs fuera de alcance.
 - Tabla de armas nuevas borrada por ser invención sin respaldo del usuario.
+- v3: catálogo definido por el usuario (ropera, alabarda, martillo, daga, shotel). Consecuencias: aguante unificada escudo/espada, click derecho pasó a ser excepción, 3 de 5 armas no cargan.

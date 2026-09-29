@@ -88,7 +88,7 @@ Mismo check para el jugador que para las entidades, así que el autoataque y el 
 
 **`[DECIDIDO]`** Reduce 100% del daño **excepto explosiones**. Tras unos golpes "cansa" al personaje y lo stunea. El hacha lo stunea al instante de un golpe.
 
-La aguante son **3 golpes**, no una barra continua. Ver *Feedback* más abajo para cómo se comunica.
+**Un solo sistema de bloqueo**, compartido por el escudo y por la espada vanilla. La aguante son **3 golpes**.
 
 | Estado | Comportamiento |
 |---|---|
@@ -96,38 +96,59 @@ La aguante son **3 golpes**, no una barra continua. Ver *Feedback* más abajo pa
 | Agotado (0/3) | **Stun**: no bloquea, no aguanta, y hay un hueco de invulnerabilidad. Se recupera solo. |
 | Desarmado (hacha) | Un golpe de hacha = stun inmediato, sin importar la aguante. |
 
-Más: **el arco de bloqueo es frontal.** El escudo no cubre la espalda. Flanquear funciona, y es la única forma de dealar a alguien que bloquea bien sin esperar a que se canse.
+### La aguante solo se gasta al recibir
+
+**`[DECIDIDO]`** La aguante se consume **únicamente cuando un golpe es bloqueado**, nunca por mantener la guardia.
+
+Esto resuelve la cobertura de la espada de forma limpia: con click derecho la espada **cubre un solo ataque y después entra en cooldown, y el cooldown no arranca hasta que recibe daño**. Traducido al sistema unificado, eso es exactamente lo que sale de la regla "la aguante solo se gasta al recibir": podés cubrirte indefinidamente con la espada, gratis, y solo pagás cuando alguien efectivamente te golpea.
+
+Cubrirse no es un estado que cuesta, es un estado que **se resuelve**. Y por eso la espada no es un escudo peor: es un escudo de 1 golpe que se recarga solo, contra un escudo de 3 golpes que agota.
 
 - Explosiones: daño completo, y **no** consumen aguante (el escudo no estaba trabajando).
 - El agotamiento se recupera: 2s sin bloquear = aguante completa.
+- **El arco de bloqueo es frontal** en ambos casos. El escudo no cubre la espalda. Flanquear funciona, y es la única forma de dealar a alguien que bloquea bien sin esperar a que se canse.
 
 **Por qué 3 golpes y no una barra:** una barra continua obliga a leer un número y calcular cuánto falta. "Me quedan 2 de 3" es información completa sin aritmética. Además hace que el agotamiento sea un evento con peso en vez de una degradación silenciosa, que es justo lo que tiene que tener un stun para que el rival lo entienda.
 
 ---
 
-## 4. Movimientos especiales (click derecho)
+## 4. Click derecho
 
-**`[DECIDIDO]`** Click derecho = un movimiento por arma, catálogo propio.
+**`[DECIDIDO]`** El click derecho no es un special genérico. **Cada arma define qué hace**, y la respuesta correcta para varias es "nada". No todas las armas necesitan un click derecho: el que no lo necesita es el que más fb forcefully.
 
-Cada uno es un ataque con las mismas reglas de cooldown, pero con forma propia. Cooldown propio, independiente del izquierdo, para que se puedan encadenar.
+### Uso de click derecho por arma
 
-Propuesta:
+| Arma | Click derecho |
+|---|---|
+| Manos | — |
+| **Espada** | **Cubrirse** (ver sección 3, sistema de aguante) |
+| Hacha | Mandoble: AoE en el suelo, levanta por knockback |
+| Pico | — |
+| Pala | Apertura: empuja en arco hacia adelante |
+| Maza | Arremate cargado: con 100% de carga hace el triple y empuja lejos |
+| Tridente | Lanzar (vanilla) |
+| Ropera | — (sin ataque especial) |
+| **Alabarda** | **Multi-hit**, con penalización en el siguiente ataque |
+| Martillo de guerra | — (sin ataque especial) |
+| Daga | — (sin ataque especial) |
+| **Shotel** | **Parry**, cooldown 5s |
 
-Para las armas vanilla:
+3 de 5 armas nuevas no tienen click derecho. Eso es intencional: son armas de una sola decisión, se agarran y se hitmean, sin capa de pensamiento extra. El special tiene que **ganar** su espacio de acción.
 
-| Arma | Especial | Efecto |
-|---|---|---|
-| Manos | Empuje | Empuje corto con la mano abierta, sin daño, aturde un tick |
-| Espada | Tajo amplio | Arco horizontal ancho, daño bajo, aturde levemente |
-| Hacha | Mandoble | AoE en el suelo, levanta por knockback |
-| Pico | Estocada | Avance corto, el único pickaxe que se mueve |
-| Pala | Apertura | Golpe al suelo que empuja en arco hacia adelante |
-| Maza | Arremate | Golpe cargado: con 100% de carga hace el triple y empuja lejos |
-| Tridente | Lanzar | Vanilla, sin cambios |
+**Regla:** un click derecho tiene que hacer algo que el click izquierdo no puede. Si es "más daño", no debería existir.
 
-Los especiales de las 5 armas nuevas se definen cuando se defina el catálogo (ver sección 6).
+### Alabarda: multi-hit con coste
 
-Regla de diseño del special: tiene que hacer algo que **el click izquierdo no puede hacer**, no más daño. Si un special es solo "más daño", es un click derecho inútil.
+Click derecho golpea a **todos** los enemigos en el cono, no solo al primero. Pero el siguiente ataque izquierdo entra con **cooldown extendido**.
+
+El coste importa: si el multi-hit no limitara nada, sería estrictamente superior al click izquierdo. Al penalizar el siguiente golpe, la decisión es "si el siguiente va a ser el que importa, no lo uso ahora".
+
+### Shotel: parry
+
+Click derecho entra en parry. El golpe que parried durante esa ventana **se devuelve al atacante**. Solo ese golpe: no hay búfer acumulado, no se guarda daño pendiente.
+
+- Cooldown de **5s** entre parries.
+- El parry no consume aguante del escudo: es un sistema de esquiva, no de bloqueo. Distinto, y esa diferencia es legible para el jugador.
 
 ---
 
@@ -151,11 +172,51 @@ Regla de diseño del special: tiene que hacer algo que **el click izquierdo no p
 
 Tiers: madera, piedra, cobre, hierro, oro, diamante, netherite. (7 × 5 = 35 items, por datagen.)
 
-> **BORRADO — tabla inventada.** El usuario pidió "5 armas nuevas" pero nunca las nombró. Los nombres y roles de esta tabla eran propuesta mía sin respaldo. Las 5 armas se definen aparte; abajo queda solo el criterio.
+### 1. Espada Ropera (Rapier)
 
-**Criterio para elegir las 5:** cada una cubre una silueta distinta, no "la espada pero mejor". Conviene diagramar el set completo (vanilla + nuevas) y ver qué roles quedan vacíos: speed, control de área, distancia, anti-escudo, y lo que surja.
+Cono **muy pequeño**, daño **muy alto**, muy rápida. **No puede cargar.** Sin click derecho.
 
-**Criterio para el special de cada arma nueva:** tiene que hacer algo que el click izquierdo no puede, y no solo más daño.
+Es la respuesta al duelo de precisión: alcance corto y bien orientado, un golpe y salís. El cono chico es el costo, y a cambio el daño por segundo es alto porque la velocidad es extrema. Para acertar hay que estar alineado, que es la habilidad que el juego no te da en ningún otro lado.
+
+### 2. Alabarda
+
+Más lenta que la espada, daño ligeramente más alto, pero **mucho más alcance y cono**. Click derecho: **multi-hit a todos los enemigos en el cono**, con el siguiente ataque izquierdo más lento.
+
+Arma de área. Cubre la pantalla en frente, castiga a los que se agrupan, y tiene un solo click derecho real. El alcance largo la hace buena contra el shotel, que es justo de rango corto.
+
+### 3. Martillo de guerra
+
+Daño y rango **significativamente más bajos** que una espada. Cada golpe consecutivo sobre un enemigo **aumenta el daño**, con ventana de **4s** entre golpes para que el escalado siga subiendo. El escalado **no tiene tope práctico** (`[DECIDIDO]`: sin tope, castigo total). El **golpe cargado ignora armadura**. Sin click derecho.
+
+Es el arma de castigo sostenido y la única que ignora armadura, que en Minecraft es una resistedotada muy dura. El precio es claro: rango corto y daño base bajo, así que sin combo es el peor arma del set. Necesita que alguien se quede quieto. Funciona contra el autoataque que carga y dispara, y no contra el jugador que se mueve.
+
+**Contrapunto de diseño (`[DECIDIDO]`)**: la única defensa es que el rival se aleje o te mate antes. No hay reset por recibir daño. Eso hace que el martillo sea el arma de un compromiso, no de una pelea larga.
+
+### 4. Daga
+
+Daño pequeño, **sumamente rápida**, **no carga**, rango corto pero **radio alto**, sin click derecho.
+
+La versión extrema de la ropera en velocidad a cambio de daño. El radio alto la hace forgiving de apuntar: más fácil conectar sin estar perfectamente alineado. Es la que gana cuando necesitás Many weak hits y no querés parar de moverte.
+
+### 5. Shotel
+
+**Radio más alto entre todas las armas**, pero rango **mucho más corto** que una espada. Daño **igual al de una espada** pero más rápido. Click derecho: **parry** con cooldown de **5s** que devuelve el daño del golpe recibido. El **ataque cargado da doble**.
+
+Compensa un rango terrible con el cono más ancho del juego y con un parry que devuelve el daño. Sin embargo, en un cono tan abierto es fácil que el parry no enganche: tiene que entrar el golpe exacto. Es el arma de precisión defensiva, no de cobertura.
+
+**Sobre el parry (`[DECIDIDO]`)**: devuelve **únicamente el daño del golpe parriado**, no un búfer acumulado. No hay daño guardado esperando.
+
+### Tabla resumen
+
+| Arma | Cono | Rango | Velocidad | Carga | Click derecho |
+|---|---|---|---|---|---|
+| Ropera | Muy pequeño | Medio | Muy rápida | **No** | — |
+| Alabarda | Muy ancho | Muy largo | Lenta | Sí | Multi-hit (penaliza el siguiente) |
+| Martillo | Medio | Muy corto | Media | Sí (+ignora armadura) | — |
+| Daga | Alto | Muy corto | Sumamente rápida | **No** | — |
+| Shotel | **Máximo** | Muy corto | Rápida | Sí (**doble**) | Parry (5s) |
+
+Tres de las cinco no cargan. Eso reduce el papel de la carga y sube el de la selección de arma, que es justo lo que necesitamos dado que el autoataque ya cubre la otra mitad.
 
 ---
 
@@ -179,15 +240,15 @@ com.cortes.combat
   CortesCombat.java          @Mod, registro, config
   ── núcleo (librería, sin UI) ──
   core/
-    weapon/       WeaponStats (record), alcance, cooldown, special
+    weapon/       WeaponStats (record), alcance, cooldown, carga, special
     attack/       resolución del ataque: timing, daño, hitbox
     reach/        check de cono (horizontal + vertical)
-    shield/       aguanté, estados, arco frontal
+    shield/       aguante compartida escudo/espada, arco frontal, stun
     compat/       detección por capacidad
   ── red ──
-  net/            payloads: carga, target en cono, estado de escudo
+  net/            payloads: carga, aguante, escalado de martillo, parry
   ── cliente ──
-  client/         HUD (barra, indicador de cono, damage overlay)
+  client/         HUD: barra de cooldown, 3 esferitas de aguante, damage overlay
   ── datos ──
   data/           tags, recetas, stats por item (datagen)
 ```
@@ -227,9 +288,12 @@ Lo que **no** vamos a hacer: una lista de mods en el código fuente. Eso se pudr
 |---|---|---|
 | Carga | Indicador vanilla, bajo la crosshair | Cuánta carga acumulada |
 | Cooldown | Barra horizontal nueva, bajo la hotbar | Cuándo podés atacar (fuente de verdad) |
-| Aguante del escudo | **3 esferitas sobre la crosshair**, tenues | Cuántos golpes de bloqueo te quedan |
+| Aguante | **3 esferitas sobre la crosshair**, tenues | Cuántos golpes de bloqueo te quedan |
+| Escalado del martillo | Junto a la barra de cooldown | En qué golpe vas de la cadena |
 | Viñeta + flash | Pantalla completa | Salud baja / daño recibido |
 | Indicador direccional | Borde de la pantalla | Desde qué dirección vino el golpe |
+
+Las armas que no cargan (ropera, daga) dejan el indicador vanilla en su estado normal de cooldown, sin bonus. La carga ausente se comunica con el **color** del cono, no con un número.
 
 **`[DECIDIDO]`** Aguante = **3 esferitas sobre la crosshair**, visibles al llevar un escudo, en tono tenue. Cada una es un golpe que podés bloquear.
 
@@ -256,6 +320,16 @@ Las 6 preguntas de la v1 quedaron resueltas. Resumen:
 | 5 | Mobs | **Sin cambios** |
 | 6 | Garrote | **Arma inexistente, tabla borrada** — el catálogo se define aparte |
 
-## 11. Pendiente
+## 11. Cerrado en v3
 
-Definir las 5 armas nuevas. Es la única decisión grande que falta antes de arrancar la implementación.
+Catálogo de armas definido: **ropera, alabarda, martillo de guerra, daga, shotel**.
+
+Ajustes de diseño que salieron de definirlas:
+
+- **Aguante unificada** entre escudo y espada. Cubrirse no cuesta aguante hasta que un golpe entra de verdad. Eso hace que la cobertura de la espada sea una emergent consequence de una regla simple, no un caso especial.
+- **Solo 2 de 5 armas nuevas tienen click derecho.** El click derecho pasó de ser "el special de cada arma" a ser una excepción que tiene que ganarse su lugar. Eso baja la complejidad y sube el peso de elegir bien el arma.
+- **3 de 5 no cargan.** Menos carga en el set del que se asumiría, lo cual compensa que el autoataque ya cargue solo.
+
+## 12. Pendiente
+
+Nada grande. Antes de implementar, ajustar los valores numéricos concretos de la tabla de la sección 2 con los números de las armas nuevas, y decidir el escalado exacto del martillo (multiplicador por golpe y dónde deja de crecer de forma útil).
