@@ -186,12 +186,23 @@ public final class ConeDebugRenderer {
         }
     }
 
+    /**
+     * The line vertex format in 1.21.1 is position, colour AND normal. Leaving the normal
+     * unset does not fail at compile time, it throws "Missing elements in vertex: Normal"
+     * the first time anything is drawn, which is exactly when you least want to find out.
+     */
     private static void line(VertexConsumer lines, PoseStack pose, Vec3 from, Vec3 to,
                              float r, float g, float b, float a) {
+        Vec3 delta = to.subtract(from);
+        // Normalising a zero-length vector yields NaN, and a NaN in a vertex buffer is a
+        // crash several frames later with no useful stack. Guard it here.
+        Vec3 dir = delta.lengthSqr() < 1.0E-9 ? new Vec3(0.0, 1.0, 0.0) : delta.normalize();
         lines.addVertex(pose.last().pose(), (float) from.x, (float) from.y, (float) from.z)
-                .setColor(r, g, b, a);
+                .setColor(r, g, b, a)
+                .setNormal(pose.last(), (float) dir.x, (float) dir.y, (float) dir.z);
         lines.addVertex(pose.last().pose(), (float) to.x, (float) to.y, (float) to.z)
-                .setColor(r, g, b, a);
+                .setColor(r, g, b, a)
+                .setNormal(pose.last(), (float) dir.x, (float) dir.y, (float) dir.z);
     }
 
     private static Vec3 horizontalForward(Vec3 look) {
