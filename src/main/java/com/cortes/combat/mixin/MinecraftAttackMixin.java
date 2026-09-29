@@ -3,8 +3,10 @@ package com.cortes.combat.mixin;
 import com.cortes.combat.client.ConeTargeting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.phys.HitResult;
+import net.neoforged.neoforge.client.ClientHooks;
+import net.neoforged.neoforge.client.event.InputEvent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -21,9 +23,12 @@ import java.util.Optional;
  * at all, so the swing silently did nothing: the player could watch the cone reach the enemy
  * and still deal no damage.</p>
  *
- * <p>Only the entity branch is replaced. Pointing at a block still mines, and pointing at
- * nothing still swings, because the cone is a combat reach and block breaking is a separate
- * system vanilla already gets right.</p>
+ * <p>It also replays the tail of the vanilla method, because in 1.21.1 the arm swing is not
+ * part of the attack. It is one separate statement at the end of {@code startAttack}, behind
+ * {@link ClientHooks#onClickInput}, and cancelling at HEAD deleted it along with everything
+ * else. That is the whole reason nothing animated at all, and it is invisible in the source of
+ * the classes involved: {@code MultiPlayerGameMode#attack} and {@code Player#attack} do not
+ * swing, they only send the packet and apply the damage.</p>
  */
 @Mixin(Minecraft.class)
 public abstract class MinecraftAttackMixin {
@@ -38,20 +43,31 @@ public abstract class MinecraftAttackMixin {
         if (player.isSpectator() || player.isUsingItem()) {
             return;
         }
-        // Pointing at a block means the player is mining, not attacking. Leave it to vanilla.
-        if (mc.hitResult != null && mc.hitResult.getType() == HitResult.Type.BLOCK) {
-            return;
-        }
 
         Optional<LivingEntity> target = ConeTargeting.findTargetForHeldItem(player);
         if (target.isEmpty()) {
-            // Nothing in the cone: fall through so vanilla still swings at air.
+            // Nothing in the cone: fall through so vanilla still swings at air or mines.
             return;
         }
 
-        if (ConeTargeting.sendAttack(player, target.get())) {
-            player.resetAttackStrengthTicker();
-            cir.setReturnValue(true);
+        LivingEntity victim = target.get();
+        if (ConeTargeting.swingBlockedByBlock(mc, victim)) {
+            // Solid geometry really is between the eye and the enemy. That is mining, and
+            // vanilla already gets mining right.
+            return;
         }
+
+        // Vanilla fires this event before touching the target and still swings the hand when
+        // it is cancelled. Replaying both halves keeps the swing cancellable by other mods
+        // instead of forcing it on them.
+        InputEvent.InteractionKeyMappingTriggered event =
+                ClientHooks.onClickInput(0, mc.options.keyAttack, InteractionHand.MAIN_HAND);
+        if (!event.isCanceled()) {
+            mc.gameMode.attack(player, victim);
+        }
+        if (event.shouldSwingHand()) {
+            player.swing(InteractionHand.MAIN_HAND);
+        }
+        cir.setReturnValue(true);
     }
 }

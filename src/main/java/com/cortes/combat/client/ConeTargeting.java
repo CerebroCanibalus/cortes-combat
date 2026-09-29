@@ -3,19 +3,22 @@ package com.cortes.combat.client;
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.core.weapon.ReachProfile;
 import com.cortes.combat.reach.ConeMath;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Picks what the player is aiming at, by cone instead of by crosshair.
+ * Picks what the player is aiming at, by cone instead of by crosshair, and decides whether a
+ * block is genuinely in the way of the swing.
  *
- * <p>This exists because vanilla chooses the target on the <b>client</b> with a raycast at
+ * <p>Targeting exists because vanilla chooses the target on the <b>client</b> with a raycast at
  * the crosshair, and the server only ever receives that choice. Replacing the damage
  * calculation alone is therefore not enough: the cone gets evaluated against whatever
  * happened to be under the crosshair, so aiming a few degrees off silently does nothing. The
@@ -66,13 +69,44 @@ public final class ConeTargeting {
         return Optional.ofNullable(best);
     }
 
-    /** Sends the attack packet for a cone-selected target. */
-    public static boolean sendAttack(LocalPlayer player, LivingEntity target) {
-        if (player == null || target == null || player.connection == null) {
+    /**
+     * True when the swing should be left to vanilla because a block is really in the way.
+     *
+     * <p>The test is a line of sight from the eye to the nearest point of the target, not
+     * "is the crosshair resting on a block". Those are different questions, and answering the
+     * second one is what made a wall <em>behind</em> the enemy eat the swing: the crosshair sat
+     * on the wall, the player started mining, and the hit never happened.</p>
+     *
+     * <p>It also fixes grass, flowers, torches and water for free. They have an empty
+     * collider, so a ray against {@code ClipContext.Block.COLLIDER} passes straight through
+     * them: the swing goes through the lawn instead of eating it. The hoe is untouched, because
+     * this only runs when there is a cone target to hit.</p>
+     */
+    public static boolean swingBlockedByBlock(Minecraft mc, LivingEntity target) {
+        if (mc.hitResult == null || mc.hitResult.getType() != HitResult.Type.BLOCK) {
             return false;
         }
-        player.connection.send(ServerboundInteractPacket.createAttackPacket(target, player.isShiftKeyDown()));
-        return true;
+        return !hasLineOfSight(mc.player, target);
+    }
+
+    /** A ray from the eye to the nearest point of the target's box, against colliders only. */
+    public static boolean hasLineOfSight(LocalPlayer player, LivingEntity target) {
+        if (player == null || player.level() == null || target == null) {
+            return false;
+        }
+        Vec3 eye = player.getEyePosition();
+        Vec3 point = nearestPoint(eye, target.getBoundingBox());
+        return player.level()
+                .clip(new ClipContext(eye, point, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player))
+                .getType() == HitResult.Type.MISS;
+    }
+
+    /** Closest point of a box to a position, per axis. The same point the cone test measures. */
+    public static Vec3 nearestPoint(Vec3 from, AABB box) {
+        return new Vec3(
+                ConeMath.closestOnAxis(from.x, box.minX, box.maxX),
+                ConeMath.closestOnAxis(from.y, box.minY, box.maxY),
+                ConeMath.closestOnAxis(from.z, box.minZ, box.maxZ));
     }
 
     /**

@@ -28,6 +28,16 @@ import net.neoforged.neoforge.registries.NeoForgeRegistries;
  */
 public final class CombatEngine {
 
+    /**
+     * I-frames this mod applies to a target it just hit, in ticks.
+     *
+     * <p>Vanilla uses 20 (a full second). Four is a fifth of that: still enough to stop one
+     * swing landing twice through some other path, short enough that it never decides a
+     * fight. Every weapon in the catalogue has a slower interval than this, so a real
+     * follow-up is never blocked by it.</p>
+     */
+    private static final int IFRAME_TICKS = 4;
+
     private CombatEngine() {
     }
 
@@ -64,12 +74,26 @@ public final class CombatEngine {
         // A whiffed swing still costs the cooldown and still spends the charge. Otherwise
         // holding the button would give free damage by spamming at air.
         AttackCooldown.consume(player, interval);
+        // Swung on every accepted attack, hit or miss, so the swing animation exists at all:
+        // the client plays it locally through gameMode.attack, and this is what makes other
+        // players see it in third person. It is deliberately not swung when the cooldown
+        // rejects the attack, because that arm movement would claim a hit that never was.
+        player.swing(InteractionHand.MAIN_HAND);
         return true;
     }
 
     private static void apply(Player player, Entity target, WeaponStats stats,
                               AttackResult result, float chargeRatio) {
-        if (target.hurt(damageSource(player, result.ignoredArmour()), result.damage())) {
+        // Vanilla's invulnerability window is one full second, which was tuned for a weapon
+        // that swings twice a second. It would swallow the entire follow-up of any fast
+        // weapon and make half the swings feel broken. This system already has its own gate,
+        // the hard cooldown, so the window is cleared before the hit and re-armed to a short
+        // one after: long enough to reject a same-instant double hit, short enough that a
+        // legitimate next swing is never eaten.
+        target.invulnerableTime = 0;
+        boolean hurt = target.hurt(damageSource(player, result.ignoredArmour()), result.damage());
+        target.invulnerableTime = IFRAME_TICKS;
+        if (hurt) {
             onHit(player, target, stats, result, chargeRatio);
         }
     }
@@ -81,7 +105,6 @@ public final class CombatEngine {
             player.setData(ModAttachments.HAMMER_STREAK.get(), streak.onHit());
         }
         Knockback.apply(player, target, result.knockback());
-        player.swing(InteractionHand.MAIN_HAND);
     }
 
     /**

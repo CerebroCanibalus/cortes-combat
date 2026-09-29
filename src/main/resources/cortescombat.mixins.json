@@ -10,7 +10,6 @@
   "client": [
     "MinecraftAttackMixin"
   ],
-  "client": [],
   "injectors": {
     "defaultRequire": 1
   }
