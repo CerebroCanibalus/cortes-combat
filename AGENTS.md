@@ -237,12 +237,55 @@ Defaults de alcance y carga de los 12 perfiles ya están en `WeaponStats` (tabla
 
 **Sync con bandwidth:** enviar cada tick a cada jugador serían 20 paquetes/segundo para una barra que casi no cambia. Solo se manda si el valor se movió más de 0.01. Eso obligó a guardar el último valor enviado... en un `static Map`, **que es exactamente lo que la arquitectura veta**. Se limpia en `PlayerLoggedOutEvent` y está comentado como deuda: si crece, el fix es un attachment, no otro listener.
 
+## Fase 7: HUD + harness de testeo — HECHA
+
+**52 tests verdes, mod carga en servidor, `/cc` registrado (91 comandos raíz).**
+
+### HUD (3 capas, orden verificado contra `VanillaGuiLayers`)
+
+| Capa | Registro | Qué hace |
+|---|---|---|
+| `DamageOverlayLayer` | `registerBelowAll` | Viñeta de vida baja + flash de daño. **Debajo de la salud** a propósito: la viñeta tapa la vida, que es justo lo que advierte. |
+| `CooldownBarLayer` | `registerAbove(HOTBAR)` | Barra de cooldown. Verde cuando podés atacar. |
+| `GuardOrbsLayer` | `registerAbove(CROSSHAIR)` | 3 esferitas de aguante, solo si llevás algo que bloquea. |
+
+La barra de cooldown usa **exponential approach contra `getRealtimeDeltaTicks()`**, no interpolación lineal: la lineal se ve stutter con framerate irregular. Mismo truco que damageoverlay. Y se dibuja del valor **del servidor**, no de la predicción del cliente: si la barra está llena, podés pegarle. La carga vive en el indicador vanilla, así que los dos nunca compiten por la atención.
+
+### Harness: comando `/cc` (requiere permissão 2)
+
+```
+/cc weapons        → te da 11 armas vanilla de una, en la hotbar
+/cc weapon <item>  → cualquier item, con autocompletado
+/cc shield         → escudo en la mano
+/cc fullguard      → restaura la aguante
+/cc nofood         → comida a 2, para probar que la regen se frena
+/cc speed <ticks>  → velocidad para alcanzar objetivos rápido
+/cc teleport <n>   → te teletransporta n bloques hacia adelante
+/cc stats          → IMPRIME las stats resueltas del arma en mano
+```
+
+`/cc stats` es el más importante: imprime perfil, alcance (distance + ángulos), cooldown, carga y especial. Si la derivación automática produce algo raro, se ve ahí en vez de adivinarlo en un combate.
+
+**Trampa de verificación que casi me hace reportar un bug falso:** leí un `server-out.log` que parecía limpio, pero el build **había fallado** y no arrancó servidor. Un log vacío de errores no prueba que todo ande — hay que mirar que el build pasó Y que hay `Done (Xs)`. Verificar en el orden correcto.
+
+## Texturas: PROTOTIPO, HAY QUE REEMPLAZARLAS
+
+**Las texturas en `assets/cortescombat/textures/gui/` son copiadas de los mods de `refs/` y son de prueba. Ninguna puede ir en una publicación.**
+
+| Origen | Licencia | Riesgo |
+|---|---|---|
+| `neoforge-damageoverlay` (la viñeta) | **All Rights Reserved** | **Alto.** No hay `LICENSE` y el autor no concedió permiso. |
+| `combatify` (los sprites de indicador) | LGPL-2.1 | Medio: o se reemplazan, o el mod queda atado a LGPL. |
+| `rafts_combat` | MIT | Bajo: se puede copiar con atribución. |
+
+El detalle está en `textures/gui/PROTOTYPE-ASSETS.md`, archivo por archivo. El plan es que el usuario reemplace cada PNG con su propio dibujo manteniendo **las mismas rutas y dimensiones**, así que ningún código de render cambia.
+
 ## Próximos pasos
 
-1. **Paso 7: HUD.** Barra de cooldown bajo la hotbar (`registerAbove(rl("hotbar"))`), 3 esferitas de aguante sobre la crosshair (`registerAbove(rl("crosshair"))`), y el indicador vanilla representando carga. Es el primer paso donde se ve todo lo anterior.
-2. Paso 8: aguante escudo/espada (la lógica ya existe en `GuardState`, falta el input de bloqueo y el damage reduction).
-3. Paso 9: las 30 armas + datagen + recetas.
-4. Paso 10: especiales (alabarda multi-hit, parry de la sable) + damage type de ignore de armadura.
+1. Paso 8: aguante escudo/espada (la lógica está en `GuardState`, falta input de bloqueo + damage reduction real).
+2. Paso 9: las 30 armas + datagen + recetas.
+3. Paso 10: especiales (alabarda multi-hit, parry de la sable) + damage type de ignore de armadura.
+4. Paso 11: supervivencia (`FoodData`) — el cambio más caro, en commit propio.
 5. Números: definir el escalado del martillo en playtest (`WARHAMMER_STEP` está en 0.15 como punto de partida).
 6. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
 
@@ -273,3 +316,5 @@ Defaults de alcance y carga de los 12 perfiles ya están en `WeaponStats` (tabla
 - **Fase 4 (cooldown duro) completa**: 35 tests verdes. Resolver de 4 capas con derivación automática por tag (la compat), un solo `CombatTicker` para los 5 estados, y `AttackCooldown` como puerta. Segundo bug real encontrado por tests: el multiplicador de carga con bonus negativo reducía el daño; el piso ahora se fuerza en código.
 - **Fase 5 (reemplazo del flujo de ataque) completa**: 52 tests verdes, mixin aplica limpio contra `Player`. **El vanilla ya no corre en el ataque.** Tercer bug: los enums implementaban `StringRepresentable` (clase de Minecraft) y rompían los tests con `NoClassDefFoundError`; ahora usan un `Codec` propio y siguen siendo Java puro.
 - **Fase 6 (carga cableada al input) completa**: es jugable — click = swing, mantener = carga. Un payload C2S con un bool (no un stream), el cliente predice y el servidor valida, clase `@Mod` client-only separada porque `InputEvent` no existe en servidor.
+- **Fase 7 (HUD + harness) completa**: 3 capas GUI registradas en el orden correcto, y comando `/cc` para testear armas sin correr a un cofre. `/cc stats` imprime las stats resueltas del arma en mano.
+- **⚠️ DEUDA LEGAL: las texturas del HUD son de prototipo, copiadas de `refs/`.** La viñeta viene de `neoforge-damageoverlay`, que es **All Rights Reserved**. Los sprites de indicador vienen de `combatify` (LGPL-2.1). **Ninguna puede ir en una publicación.** Ver `textures/gui/PROTOTYPE-ASSETS.md` para el detalle archivo por archivo. El usuario va a reemplazarlas con su propio arte manteniendo rutas y dimensiones.

@@ -50,6 +50,7 @@ public final class ModNetworking {
         if (!(context.player() instanceof net.minecraft.client.player.LocalPlayer player)) {
             return;
         }
+        com.cortes.combat.client.ClientCombatState.set(payload.chargeRatio(), payload.cooldownRatio());
         com.cortes.combat.client.ChargeInputHandler.acceptServerState(
                 payload.chargeRatio(), player.getMainHandItem().isEmpty()
                         ? 0
