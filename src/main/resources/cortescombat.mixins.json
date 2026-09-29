@@ -4,7 +4,9 @@
   "package": "com.cortes.combat.mixin",
   "compatibilityLevel": "JAVA_21",
   "refmap": "cortescombat.refmap.json",
-  "mixins": [],
+  "mixins": [
+    "PlayerAttackMixin"
+  ],
   "client": [],
   "injectors": {
     "defaultRequire": 1

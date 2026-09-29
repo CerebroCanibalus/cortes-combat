@@ -123,6 +123,11 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // DataFixerUpper is dragged in by any class holding a Codec, which every data component
+    // and profile in this mod does. Without it the unit tests die at class-init with
+    // NoClassDefFoundError: com/mojang/datafixers/kinds/App, and the failure looks like a
+    // broken test rather than a missing dependency.
+    testRuntimeOnly 'com.mojang:datafixerupper:8.0.16'
 
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime

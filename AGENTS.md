@@ -194,6 +194,8 @@ El check de cono, con **21 tests unitarios verdes**. Es la clase más testeable 
 **Bug real que encontraron los tests:** la primera versión medía el ángulo vertical contra el eje local `up` y fallaba al mirar recto arriba (2 tests en rojo). Los tests atraparon una degeneración matemática real, no un problema del test. La corrección está comentada en el código.
 
 - `build.gradle`: JUnit 5 agregado, `useJUnitPlatform()`. Comment en el build advierte que `ConeMath` **no** puede ganar tipos de Minecraft o los tests dejan de funcionar.
+- **Los enums (`WeaponProfile`, `SpecialType`) NO implementan `StringRepresentable`.** Es una clase de Minecraft: implementarla hace que cualquier cosa que sostenga el enum necesite el juego en el classpath para inicializarse, y los tests unitarios mueren con `NoClassDefFoundError`. Usan un `Codec` escrito a mano.
+- **DataFixerUpper va en `testRuntimeOnly`.** Cualquier clase con un `Codec` estático lo necesita. Sin eso los tests dieben en `<clinit>` con un error que parece un test roto y no una dependencia faltante.
 
 ## Fase 4: cooldown duro — HECHA
 
@@ -208,13 +210,28 @@ El check de cono, con **21 tests unitarios verdes**. Es la clase más testeable 
 
 Defaults de alcance y carga de los 12 perfiles ya están en `WeaponStats` (tabla de la sección 2 de `DESIGN.md`). La de la sable carga al doble (`bonus = 1.0`), la única que lo hace.
 
+## Fase 5: reemplazo del flujo de ataque — HECHA
+
+**52 tests verdes.** El mixin aplicó limpio contra la clase real (`Mixing PlayerAttackMixin ... into net.minecraft.world.entity.player.Player`, sin `Mixin apply failed`).
+
+- **`mixin/PlayerAttackMixin.java`** — `@Inject` en HEAD de `Player#attack(Entity)`, `cancellable`. Cancelar en HEAD significa que **el vanilla nunca corre**: ni su cálculo de daño, ni su raycast a la crosshair, ni su sweep. Eso es el reemplazo, no un parche.
+- **`attack/CombatEngine.java`** — el flujo entero en un método. Orden: gate de cooldown → stats del arma → check de cono → resolver daño → aplicar → consumir cooldown. **Un swing que falla igual cuesta el cooldown y gasta la carga**: si no, mantener el click sería daño gratis spameando al aire.
+- **`attack/DamageResolver.java`** — la fórmula de daño, pura y testeable. `AttackResult` la devuelve.
+- **`attack/Knockback.java`** — escalado por carga, con piso del 60%. Debajo del piso no hay knockback: ese es el fix del shove-spam.
+- **`PlayerAttackMixin` va en `cortescombat.mixins.json` Y en el `[[mixins]]` de `mods.toml`.** Ambos verificados en el log.
+
+**Pendiente consciously:** el ignore de armadura del martillo **no** se aplica todavía. `DamageSource` pide un `Holder<DamageType>` y eso exige un damage type registrado por datapack, que es trabajo del paso de especiales. El flag `ignoredArmour` se calcula y se testea, pero la fuente de daño es la normal. Está anotado en el código.
+
+**Tercer bug real, y el más instructive:** los tests de `DamageResolver` morían con `NoClassDefFoundError`. La causa: `WeaponProfile` y `SpecialType` implementaban `StringRepresentable`, una clase **de Minecraft**, así que cualquier cosa que sostuviera esos enums necesitaba el juego en el classpath para inicializarse. Violé la propia regla que escribí en el paso 3. Arreglé la **causa**, no el síntoma: los dos enums ahora usan un `Codec` escrito a mano y siguen siendo Java puro. `DamageFixerUpper` igual se agrega al test runtime porque los records con `Codec` sí lo necesitan.
+
 ## Próximos pasos
 
-1. **Paso 5: flujo de ataque nuevo** (reemplazo del vanilla). El de mayor riesgo del proyecto. Requiere el mixin sobre `Player#attack` / `Item#hurtEnemy`.
-2. Vertical slice: barra de cooldown + cono + daño + indicador de aguante, de punta a punta.
-3. Paso 7: barra de cooldown en HUD (necesita sync del attachment al cliente).
-4. Números: definir el escalado del martillo (multiplicador por golpe, dónde deja de crecer).
-5. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
+1. Paso 6: carga (wirear `beginCharge` / `endCharge` al input real del click izquierdo).
+2. Paso 7: barra de cooldown en HUD + el indicador vanilla driven por carga. Necesita sync del attachment al cliente.
+3. Paso 8: aguante escudo/espada + 3 esferitas.
+4. Paso 10: especiales (alabarda multi-hit, parry de la sable) + damage type de ignore de armadura.
+5. Números: definir el escalado del martillo en playtest (`WARHAMMER_STEP` está en 0.15 como punto de partida).
+6. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
 
 ## Trampas de diseño marcadas
 
@@ -241,3 +258,4 @@ Defaults de alcance y carga de los 12 perfiles ya están en `WeaponStats` (tabla
 - **Fase 2 (registros) completa y verificada en servidor**: 4 data components + 5 attachments, confirmado con un log temporal `components=4 attachments=5`. Seis trampas de API de 1.21.1 documentadas, todas verificadas con `javap` contra el jar compilado.
 - **Fase 3 (`reach/`) completa**: 21 tests JUnit verdes. `ConeMath` es geometría en `double` puro, sin tipos de Minecraft en la firma, para que los tests corran sin levantar el juego. Los tests encontraron un bug real de degeneración matemática al mirar recto arriba.
 - **Fase 4 (cooldown duro) completa**: 35 tests verdes. Resolver de 4 capas con derivación automática por tag (la compat), un solo `CombatTicker` para los 5 estados, y `AttackCooldown` como puerta. Segundo bug real encontrado por tests: el multiplicador de carga con bonus negativo reducía el daño; el piso ahora se fuerza en código.
+- **Fase 5 (reemplazo del flujo de ataque) completa**: 52 tests verdes, mixin aplica limpio contra `Player`. **El vanilla ya no corre en el ataque.** Tercer bug: los enums implementaban `StringRepresentable` (clase de Minecraft) y rompían los tests con `NoClassDefFoundError`; ahora usan un `Codec` propio y siguen siendo Java puro.

@@ -1,7 +1,9 @@
 package com.cortes.combat.core.weapon;
 
 import com.mojang.serialization.Codec;
-import net.minecraft.util.StringRepresentable;
+import com.mojang.serialization.DataResult;
+
+import java.util.Locale;
 
 /**
  * What right click does.
@@ -9,8 +11,11 @@ import net.minecraft.util.StringRepresentable;
  * <p>The rule this enum exists to enforce: a special has to do something the left click
  * cannot. If it is just more damage, it should not exist. Most weapons therefore have
  * {@link #NONE} and no right click behaviour at all.</p>
+ *
+ * <p>Like {@link WeaponProfile}, this avoids {@code StringRepresentable} so it stays pure
+ * Java and does not drag the game onto the classpath of anything that holds it.</p>
  */
-public enum SpecialType implements StringRepresentable {
+public enum SpecialType {
 
     NONE("none"),
     /** Halberd: hits everything in the cone, and slows the next left-click attack. */
@@ -28,8 +33,7 @@ public enum SpecialType implements StringRepresentable {
     /** Mace: the vanilla throw. */
     THROW("throw");
 
-    private static final Codec<SpecialType> CODEC = StringRepresentable.fromEnum(() -> values());
-    public static final Codec<SpecialType> TYPE = CODEC;
+    public static final Codec<SpecialType> TYPE = Codec.STRING.comapFlatMap(SpecialType::byId, s -> s.id);
 
     private final String id;
 
@@ -41,9 +45,14 @@ public enum SpecialType implements StringRepresentable {
         return id;
     }
 
-    @Override
-    public String getSerializedName() {
-        return id;
+    private static DataResult<SpecialType> byId(String id) {
+        String key = id.toLowerCase(Locale.ROOT);
+        for (SpecialType type : values()) {
+            if (type.id.equals(key)) {
+                return DataResult.success(type);
+            }
+        }
+        return DataResult.error(() -> "Unknown special type: " + id);
     }
 
     public boolean isPresent() {
