@@ -68,13 +68,22 @@ Entorno: JDK instalado es **25**. El toolchain pide **21**, y el `foojay-resolve
 - Combatify tiene **dos** bloques `loom {}` en su `build.gradle`; el segundo sobreescribe `accessWidenerPath` del primero. Solo aplica `combatify.classtweaker`; el `combatify.accesswidener` del primero es código muerto. No copiar esa duplicación.
 - Escribir `agents.md` en la raíz **pisa `AGENTS.md`** (case-insensitive en Windows). Por eso todo vive en un solo archivo.
 
+### Trampas del build (las 4 que costaron tiempo)
+
+- **La expansión de `mods.toml` es Groovy.** Un backtick en los comentarios del template rompe el parser con `SimpleTemplateScript1.groovy: Unexpected input '('` — un error que apunta lejos de la causa. Dejar los comentarios del template en texto plano.
+- **Toda propiedad usada en `mods.toml` tiene que declararse** en el mapa `replaceProperties` de `generateModMetadata` en `build.gradle`. Falta una y falla con `Missing property (x) for Groovy template expansion`.
+- **`gradle.properties` tiene que ser ASCII puro.** Gradle lo lee como ISO-8859-1. Con un acento literal, el `displayName` del mod se shippea corrupto (`CortǸs Combat`). Usar el escape de Java: `mod_name=Cort\u00E9s Combat`.
+- **`filteringCharset = 'UTF-8'`** está puesto en `generateModMetadata` para escribir el TOML en UTF-8. Sin eso la salida usa el charset de la plataforma.
+
+Verificado que el esqueleto compila (`gradlew build`) y que el mod **carga en un servidor real** (`gradlew runServer`, mod coordinates encontrados, log `CortesCombat/]: Cortés Combat loading`, cero errores de mixin).
+
 ---
 
 # PARTE 2 — Memoria del proyecto
 
-## Fase activa: 2 — Investigación de diseño
+## Fase activa: 3 — Vertical slice
 
-Estado: diseño **cerrado** (`DESIGN.md` v6). Arquitectura **aprobada** (`ARCHITECTURE.md`, sección 10). Próximo paso: Fase 1 (esqueleto).
+Estado: diseño cerrado, arquitectura aprobada, esqueleto compilando y verificado en servidor. Siguiente: paso 2 del plan (registros) y paso 3 (`reach/` con tests).
 
 ## Decisiones tomadas
 
@@ -141,12 +150,23 @@ Estado: diseño **cerrado** (`DESIGN.md` v6). Arquitectura **aprobada** (`ARCHIT
 
 El autoataque que carga y dispara deja el ritmo en manos del jugador, lo que consume una de las fuentes de profundidad (el timing del golpe). La profundidad restante tiene que venir de: elección de arma, momento del click derecho, lectura de la aguante del rival, y gestión de la propia aguante. No reintroducir profundidad con más timing.
 
+## Fase 1: esqueleto — HECHA
+
+Esqueleto NeoForge 1.21.1 creado en la raíz y **verificado**: `gradlew build` compila, el jar sale bien formado, y `gradlew runServer` levanta un servidor donde el mod carga sin errores.
+
+- `mod_id=cortescombat`, paquete `com.cortes.combat`, grupo `com.cortes.combat`
+- `neo_version=21.1.250` (la que está en el cache local), Gradle wrapper 9.2.1
+- `cortescombat.mixins.json` creado y **registrado** en `mods.toml` (el bloque `[[mixins]]` ya está)
+- `CortesCombat.java` deliberadamente vacío: solo registra y loguea. Ningún sistema se registra todavía.
+- `build.sh` copia el jar a `test-server/mods/`; `test.sh` delega a Gradle
+
 ## Próximos pasos
 
-1. Fase 1: esqueleto. Copiar el build de `refs/rafts_combat`, `mod_id = cortescombat`, paquete `com.cortes.combat`, `[[mixins]]` habilitado, primer commit con README/LICENSE.
-2. Vertical slice: barra de cooldown + cono de alcance + daño + indicador de aguante, de punta a punta, antes de meter las armas nuevas.
-3. Números: completar la tabla de alcances (sección 2 de `DESIGN.md`) y definir el escalado del martillo (multiplicador por golpe, dónde deja de crecer de forma útil).
-4. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
+1. **Paso 2 del plan de arquitectura:** registros — data components, attachments, tags, ítems. Todo vacío pero compilando.
+2. **Paso 3:** `reach/` (el check de cono) con sus gametests de geometría. Va antes que el flujo de ataque porque es lógica pura y testeable.
+3. Vertical slice: barra de cooldown + cono + daño + indicador de aguante, de punta a punta.
+4. Números: completar la tabla de alcances (sección 2 de `DESIGN.md`) y definir el escalado del martillo.
+5. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
 
 ## Trampas de diseño marcadas
 
@@ -169,3 +189,4 @@ El autoataque que carga y dispara deja el ritmo en manos del jugador, lo que con
 - `ARCHITECTURE.md`: estado por attachments, datos por data components, reemplazo del flujo de ataque vanilla, plan de 15 pasos. Pendiente de aprobación.
 - Framework de viewmodel (capas aditivas, easing, shake determinista) y **conversión automática de armas de otros mods** con config procedural en dos archivos.
 - **Arquitectura aprobada** con un cambio: prioridad sobre mods de combate vía blocklist, y el mod se niega a cargar con mensaje accionable en vez de ceder el turno.
+- **Fase 1 (esqueleto) completa y verificada.** Build OK, jar OK, mod carga en `runServer` sin errores. Cuatro trampas del build documentadas (Groovy en el template, `replaceProperties`, ASCII en `gradle.properties`, `filteringCharset`).

@@ -1,0 +1,37 @@
+# Expanded by the generateModMetadata Gradle task. Wired into sourceSets.main.resources
+# and into neoForge.ideSyncTask.
+#
+# Keep this file in src/main/templates only. A hand-written copy in src/main/resources
+# would ship with unresolved placeholders.
+
+modLoader="javafml" #mandatory
+loaderVersion="${loader_version_range}" #mandatory
+
+license="${mod_license}"
+
+[[mods]] #mandatory
+modId="${mod_id}" #mandatory
+version="${mod_version}" #mandatory
+displayName="${mod_name}" #mandatory
+authors="${mod_authors}" #optional
+
+description='''${mod_description}'''
+
+# Required so the mixin config actually loads in production. A mixin listed only in
+# cortescombat.mixins.json works in dev and is missing from the shipped jar without this.
+[[mixins]]
+config="${mod_id}.mixins.json"
+
+[[dependencies.${mod_id}]] #mandatory
+    modId="neoforge" #mandatory
+    type="required" #mandatory
+    versionRange="${neo_version_range}" #mandatory
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]] #mandatory
+    modId="minecraft" #mandatory
+    type="required" #mandatory
+    versionRange="${minecraft_version_range}" #mandatory
+    ordering="NONE"
+    side="BOTH"
