@@ -33,6 +33,9 @@ public class CooldownBarLayer implements LayeredDraw.Layer {
 
     @Override
     public void render(GuiGraphics graphics, DeltaTracker delta) {
+        if (!ClientDebugFlags.hudVisible()) {
+            return;
+        }
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null || player.isCreative() || player.isSpectator()) {
             shown = 0.0F;

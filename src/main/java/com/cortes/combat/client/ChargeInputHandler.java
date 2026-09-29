@@ -29,6 +29,12 @@ public final class ChargeInputHandler {
         if (event.getButton() != InputConstants.MOUSE_BUTTON_LEFT) {
             return;
         }
+        // The mouse can be clicked while still on the title screen, in a world preview, or
+        // while a server is loading, and getConnection() is null in all of those. Sending on
+        // a null connection throws and takes the render thread with it.
+        if (Minecraft.getInstance().getConnection() == null) {
+            return;
+        }
         boolean pressed = event.getAction() == org.lwjgl.glfw.GLFW.GLFW_PRESS;
         setHolding(pressed);
     }
@@ -39,8 +45,10 @@ public final class ChargeInputHandler {
         }
         predictedHolding = holding;
         predictedTicks = holding ? predictedTicks : 0;
-        Minecraft.getInstance().getConnection()
-                .send(new ChargeInputPayload(holding));
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection != null) {
+            connection.send(new ChargeInputPayload(holding));
+        }
     }
 
     public static void tickPrediction() {

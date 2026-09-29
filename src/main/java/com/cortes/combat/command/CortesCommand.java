@@ -21,8 +21,10 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.InteractionHand;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * The testing harness, as a command. Development only.
@@ -58,7 +60,11 @@ public final class CortesCommand {
                         .then(Commands.argument("distance", IntegerArgumentType.integer(1, 32))
                                 .executes(CortesCommand::teleportAhead)))
                 .then(Commands.literal("stats")
-                        .executes(CortesCommand::showStats)));
+                        .executes(CortesCommand::showStats))
+                .then(Commands.literal("cone")
+                        .executes(CortesCommand::toggleCone))
+                .then(Commands.literal("gui")
+                        .executes(CortesCommand::toggleGui)));
     }
 
     /** One of every vanilla weapon, so all the derived profiles can be checked at once. */
@@ -176,6 +182,48 @@ public final class CortesCommand {
         ctx.getSource().sendSuccess(() -> Component.literal(
                 "especial=" + stats.special().id()), false);
         return 1;
+    }
+
+    /** Toggle the cone visualisation. The flag lives on the client, so it travels as a packet. */
+    private static int toggleCone(CommandContext<CommandSourceStack> ctx) {
+        ServerPlayer player = player(ctx);
+        if (player == null) {
+            return 0;
+        }
+        boolean now = !get(player).cone();
+        put(player, new DebugFlags(now, get(player).hud()));
+        com.cortes.combat.net.ModNetworking.sendDebugToggle(player, now, get(player).hud());
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "Cono de alcance: " + (now ? "VISIBLE" : "oculto") + " (toggle con /cc cone)"), false);
+        return 1;
+    }
+
+    /** Toggle our own HUD layers, so the vanilla indicator can be compared side by side. */
+    private static int toggleGui(CommandContext<CommandSourceStack> ctx) {
+        ServerPlayer player = player(ctx);
+        if (player == null) {
+            return 0;
+        }
+        boolean now = !get(player).hud();
+        put(player, new DebugFlags(get(player).cone(), now));
+        com.cortes.combat.net.ModNetworking.sendDebugToggle(player, get(player).cone(), now);
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "HUD de Cortes Combat: " + (now ? "visible" : "oculto") + " (toggle con /cc gui)"), false);
+        return 1;
+    }
+
+    /** Server-side mirror of the client's debug flags, one entry per player. */
+    private static final Map<java.util.UUID, DebugFlags> DEBUG = new HashMap<>();
+
+    private record DebugFlags(boolean cone, boolean hud) {
+    }
+
+    private static DebugFlags get(ServerPlayer player) {
+        return DEBUG.getOrDefault(player.getUUID(), new DebugFlags(false, true));
+    }
+
+    private static void put(ServerPlayer player, DebugFlags flags) {
+        DEBUG.put(player.getUUID(), flags);
     }
 
     private static int give(CommandContext<CommandSourceStack> ctx, Item item) {

@@ -4,6 +4,7 @@ import com.cortes.combat.attack.AttackCooldown;
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
+import com.cortes.combat.state.SyncState;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
@@ -28,6 +29,8 @@ public final class ModNetworking {
                 ModNetworking::handleChargeInput);
         registrar.playToClient(CombatStatePayload.TYPE, CombatStatePayload.STREAM_CODEC,
                 ModNetworking::handleCombatState);
+        registrar.playToClient(DebugTogglePayload.TYPE, DebugTogglePayload.STREAM_CODEC,
+                ModNetworking::handleDebugToggle);
     }
 
     private static void handleChargeInput(ChargeInputPayload payload, IPayloadContext context) {
@@ -51,25 +54,45 @@ public final class ModNetworking {
             return;
         }
         com.cortes.combat.client.ClientCombatState.set(payload.chargeRatio(), payload.cooldownRatio());
+        com.cortes.combat.client.ClientCombatState.setGuard(
+                payload.guardStamina(),
+                com.cortes.combat.state.GuardState.MAX_STAMINA);
         com.cortes.combat.client.ChargeInputHandler.acceptServerState(
                 payload.chargeRatio(), player.getMainHandItem().isEmpty()
                         ? 0
                         : WeaponStats.of(player.getMainHandItem()).charge().fullChargeTicks());
     }
 
+    private static void handleDebugToggle(DebugTogglePayload payload, IPayloadContext context) {
+        if (!(context.player() instanceof net.minecraft.client.player.LocalPlayer)) {
+            return;
+        }
+        com.cortes.combat.client.ClientDebugFlags.setConeVisible(payload.cone());
+        com.cortes.combat.client.ClientDebugFlags.setHudVisible(payload.hud());
+    }
+
+    /** Send a debug flag to one player. Development helper. */
+    public static void sendDebugToggle(ServerPlayer player, boolean cone, boolean hud) {
+        PacketDistributor.sendToPlayer(player, new DebugTogglePayload(cone, hud));
+    }
+
     /**
      * Push the HUD values to one player, but only when they moved enough to see. Sending
      * every tick for every player is 20 packets a second for a bar that rarely changes.
      */
-    public static void syncTo(ServerPlayer player, float lastCharge, float lastCooldown) {
+    public static void syncTo(ServerPlayer player) {
         WeaponStats stats = WeaponStats.of(player.getMainHandItem());
         float charge = AttackCooldown.chargeRatio(player, stats.charge());
         float cooldown = player.getData(ModAttachments.COOLDOWN.get())
                 .ratio(AttackCooldown.intervalFor(player));
+        int stamina = player.getData(ModAttachments.GUARD_STAMINA.get()).stamina();
 
-        if (Math.abs(charge - lastCharge) < SYNC_EPSILON && Math.abs(cooldown - lastCooldown) < SYNC_EPSILON) {
+        SyncState last = player.getData(ModAttachments.LAST_SYNCED.get());
+        if (!last.isDirty(charge, cooldown, stamina, SYNC_EPSILON)) {
             return;
         }
-        PacketDistributor.sendToPlayer(player, new CombatStatePayload(charge, cooldown));
+        player.setData(ModAttachments.LAST_SYNCED.get(), new SyncState(charge, cooldown, stamina));
+        PacketDistributor.sendToPlayer(player, new CombatStatePayload(charge, cooldown, stamina));
     }
+
 }

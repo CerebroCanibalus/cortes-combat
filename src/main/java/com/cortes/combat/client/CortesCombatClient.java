@@ -23,6 +23,7 @@ public class CortesCombatClient {
     public CortesCombatClient(IEventBus modEventBus, net.neoforged.fml.ModContainer modContainer) {
         NeoForge.EVENT_BUS.register(ChargeInputHandler.class);
         NeoForge.EVENT_BUS.register(ClientTasks.class);
+        NeoForge.EVENT_BUS.register(ConeDebugRenderer.class);
         modEventBus.addListener(CortesCombatClient::registerLayers);
     }
 

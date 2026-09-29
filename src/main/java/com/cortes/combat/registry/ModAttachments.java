@@ -6,6 +6,7 @@ import com.cortes.combat.state.CooldownState;
 import com.cortes.combat.state.GuardState;
 import com.cortes.combat.state.ParryState;
 import com.cortes.combat.state.StreakState;
+import com.cortes.combat.state.SyncState;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -57,6 +58,16 @@ public final class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<ParryState>> PARRY =
             ATTACHMENT_TYPES.register("parry", () -> AttachmentType.builder(() -> ParryState.READY)
                     .serialize(ParryState.CODEC)
+                    .build());
+
+    /**
+     * What was last pushed to this client's HUD, so an unchanged state is not resent. Bandwidth
+     * bookkeeping only, not gameplay. An attachment rather than a static map because a map
+     * needs a logout cleanup hook and returns null on the first tick, which crashed the server.
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<SyncState>> LAST_SYNCED =
+            ATTACHMENT_TYPES.register("last_synced", () -> AttachmentType.builder(() -> SyncState.NEVER)
+                    .serialize(SyncState.CODEC)
                     .build());
 
     private ModAttachments() {

@@ -25,6 +25,12 @@ public class CortesCombat {
     public static final String MODID = "cortescombat";
     public static final Logger LOGGER = LogUtils.getLogger();
 
+    /**
+     * Console switch for the development overlays, so a tester can be told to run one command
+     * instead of editing anything. Off means the mod draws nothing it was not asked to draw.
+     */
+    public static volatile boolean debug = false;
+
     public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         ModComponents.DATA_COMPONENT_TYPES.register(modEventBus);
         ModAttachments.ATTACHMENT_TYPES.register(modEventBus);

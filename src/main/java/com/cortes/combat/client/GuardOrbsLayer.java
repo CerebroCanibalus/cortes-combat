@@ -30,6 +30,9 @@ public class GuardOrbsLayer implements LayeredDraw.Layer {
 
     @Override
     public void render(GuiGraphics graphics, DeltaTracker delta) {
+        if (!ClientDebugFlags.hudVisible()) {
+            return;
+        }
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null || Minecraft.getInstance().options.hideGui) {
             return;
