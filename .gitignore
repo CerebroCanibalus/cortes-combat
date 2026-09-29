@@ -1,0 +1,29 @@
+# Gradle
+.gradle/
+build/
+out/
+classes/
+
+# Run directories (ModDevGradle)
+run/
+run-data/
+runs/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+*.launch
+.vscode/
+.settings/
+bin/
+.classpath
+.project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Upstream reference clones — not part of this mod
+refs/
