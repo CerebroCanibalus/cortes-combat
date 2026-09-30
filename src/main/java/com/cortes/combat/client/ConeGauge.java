@@ -16,33 +16,45 @@ public final class ConeGauge {
     /**
      * Where the brackets sit at the narrowest cone, and how much further out the widest goes.
      *
-     * <p>Deliberately not a percentage of the screen. A percentage looks correct at one window
-     * size and crowds the crosshair at another, and the crosshair is the one thing on screen
-     * that must never be crowded. Pixels keep a fixed relationship to the crosshair's own 15,
-     * which is the reference the player's eye is already calibrated on.</p>
-     *
-     * <p>These went 12-34, then 22-62, then here. Both earlier ranges put the brackets close
-     * enough to the crosshair that the two merged into one glyph, and the widget read as a
-     * smudge on the aim point rather than as a frame around it. The narrowest cone now clears
-     * the crosshair by more than twice its width.</p>
+     * <p>This went 12-34, then 22-62, then 36-86, and every one of those was too tight: at any
+     * of them the widget read as part of the crosshair rather than as a frame around it. The
+     * range is now wide enough to hold a weapon with a genuinely enormous cone without clamping
+     * it against the top of the scale, because the design has weapons coming that are wider
+     * than anything currently in the table.</p>
      */
-    static final int MIN_HALF_SPAN = 36;
-    static final int MAX_HALF_SPAN = 86;
+    static final int MIN_HALF_SPAN = 46;
+    static final int MAX_HALF_SPAN = 150;
+
+    /**
+     * The widest fraction of the screen the brackets may reach.
+     *
+     * <p>A hard cap, and the reason the span cannot be a pure pixel number: at GUI scale 4 on a
+     * small window, 150 pixels is most of the screen and the brackets would leave it. Capping
+     * against the actual width means a wide cone always stays visible, and the cost is that the
+     * widget is proportionally smaller on a small screen, which is better than being cut off.</p>
+     */
+    static final float MAX_SCREEN_FRACTION = 0.42F;
 
     /** Cone half-angle window the span is stretched across, in degrees. */
     static final float ANGLE_FLOOR = 10.0F;
-    static final float ANGLE_CEILING = 80.0F;
+    static final float ANGLE_CEILING = 100.0F;
 
     /**
-     * Alpha at the bracket end of the bar, and the floor it fades to at the crosshair end.
+     * Alpha at the bracket end of the bar, and the value it fades from at the crosshair end.
      *
-     * <p>The floor was 30, then 90, and both were too low. The soft end sits directly against
-     * the crosshair, which is the brightest part of any sky, and below about a hundred and sixty
-     * it stopped reading as a faded line and started reading as scattered dots. That was the
-     * "the bar breaks up near the crosshair" report, and it was an alpha floor, not geometry.</p>
+     * <p>The crosshair end is <b>zero on purpose</b>, and that is the answer to "the brackets
+     * still feel glued to the crosshair". A line that begins fully transparent has no visible
+     * start at all: the eye first sees it about a third of the way out, so the separation is
+     * bought with the gradient instead of with a bigger number, and it costs nothing at any
+     * screen size.</p>
+     *
+     * <p>An earlier version refused to go below a hundred and sixty, on the theory that a low
+     * floor made the bar look like scattered dots. That was a misdiagnosis: the dots came from
+     * the second brightness level, the unfilled socket, which has since been deleted. With one
+     * gradient there is nothing to break up, so the floor can go to zero.</p>
      */
-    public static final int ALPHA_NEAR_BRACKET = 255;
-    public static final int ALPHA_NEAR_CROSSHAIR = 165;
+    public static final int ALPHA_NEAR_BRACKET = 210;
+    public static final int ALPHA_NEAR_CROSSHAIR = 0;
 
     private ConeGauge() {
     }
@@ -103,11 +115,26 @@ public final class ConeGauge {
      * weapons — the 30 to 45 degree band where sword, axe, dagger and pickaxe all live — land
      * within a few pixels of each other, so the four weapons a player actually carries all drew
      * identically. Squaring the parameter spends the range on the band where the weapons differ
-     * instead of on the extremes nobody uses.</p>
+     * instead of on the extremes.</p>
+     *
+     * <p>Capped against the screen so a very wide cone cannot push the brackets off the edge at
+     * a high GUI scale. Only the cap depends on the screen; the mapping is the same everywhere,
+     * so two players on different scales see the same weapon ranked against the same neighbours.</p>
+     *
+     * @param guiWidth the GUI width in pixels, used only for the cap
      */
-    public static int halfSpan(float horizontalAngle) {
+    public static int halfSpan(float horizontalAngle, int guiWidth) {
         float t = (horizontalAngle - ANGLE_FLOOR) / (ANGLE_CEILING - ANGLE_FLOOR);
         t = Math.max(0.0F, Math.min(1.0F, t));
-        return MIN_HALF_SPAN + Math.round(t * t * (MAX_HALF_SPAN - MIN_HALF_SPAN));
+        int span = MIN_HALF_SPAN + Math.round(t * t * (MAX_HALF_SPAN - MIN_HALF_SPAN));
+        if (guiWidth <= 0) {
+            return span;
+        }
+        return Math.min(span, Math.round(guiWidth * MAX_SCREEN_FRACTION));
+    }
+
+    /** As above, for callers that do not care about the screen cap. */
+    public static int halfSpan(float horizontalAngle) {
+        return halfSpan(horizontalAngle, 0);
     }
 }

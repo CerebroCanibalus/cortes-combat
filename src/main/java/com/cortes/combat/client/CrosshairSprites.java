@@ -22,6 +22,20 @@ public final class CrosshairSprites {
     /** Native size of every crosshair sprite. The growth multiplies this. */
     public static final int SIZE = 15;
 
+    /**
+     * Overall opacity of the crosshair.
+     *
+     * <p>Not one, deliberately. The crosshair sits on top of everything the player is trying to
+     * aim at, and at full opacity a block of it is the brightest thing in a dark cave. Backing
+     * it off lets the world show through without making the shape any harder to read, because
+     * the sprite is a hard-edged mark and not a soft glow.</p>
+     *
+     * <p>Multiplied into the feedback colour rather than applied to alpha, so a hit still tints
+     * the crosshair fully red and then dims it: the flash is a colour change, this is a constant
+     * weight on whatever colour is showing.</p>
+     */
+    private static final float ALPHA = 0.85F;
+
     public static final ResourceLocation IDLE = sprite("crosshair");
     /** A target is reachable: the cone has something in it, or a shot is being drawn. */
     public static final ResourceLocation AIM = sprite("crosshair_aim");
@@ -82,7 +96,7 @@ public final class CrosshairSprites {
 
         RenderSystem.enableBlend();
         graphics.setColor(((rgb >> 16) & 0xFF) / 255.0F, ((rgb >> 8) & 0xFF) / 255.0F,
-                (rgb & 0xFF) / 255.0F, 1.0F);
+                (rgb & 0xFF) / 255.0F, ALPHA);
         graphics.blit(texture, x, y, size, size,
                 0.0F, 0.0F, SIZE, SIZE, SIZE, SIZE);
         graphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);

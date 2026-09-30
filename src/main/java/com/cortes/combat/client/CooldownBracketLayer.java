@@ -57,14 +57,14 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
     private static final int RIGHT_ANCHOR = 6;
 
     /**
-     * Bar thickness. Three pixels, not one.
+     * Bar thickness.
      *
-     * <p>One was legible in the source art and illegible on screen: a single GUI pixel is one
-     * to three screen pixels depending on the GUI scale, and at the low end of that range the
-     * fill is a faint dotted line the player cannot track while fighting. Three survives every
-     * GUI scale and still reads as a hairline rather than as a second bar.</p>
+     * <p>Was three, which the player read as a slab laid over the middle of the screen. Two is
+     * the compromise: a one pixel line is one physical pixel at GUI scale one, where it can fall
+     * between two display pixels and break up, and the bar has to survive that. Two survives
+     * every scale and still reads as a line rather than as a plate.</p>
      */
-    private static final int BAR_THICKNESS = 3;
+    private static final int BAR_THICKNESS = 2;
 
     @Override
     public void render(GuiGraphics graphics, DeltaTracker delta) {
@@ -82,7 +82,7 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
 
         // One geometry, computed once. The bar and the brackets both measure from this number,
         // and a second copy of it is a second chance to have them disagree by a pixel.
-        int halfSpan = halfSpanFor(reach.horizontalAngle());
+        int halfSpan = halfSpanFor(reach.horizontalAngle(), graphics.guiWidth());
         // The bar runs from the crosshair's edge to the bracket's inner edge, so the two never
         // overlap even when the crosshair jumps on a hit.
         int inner = halfSpan - LEFT_ANCHOR - 1;
@@ -105,11 +105,11 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
     /**
      * How far the brackets sit from the centre, for a cone of the given half-angle.
      *
-     * <p>Thin alias kept so the widget reads as one thing. The arithmetic and the reasoning
-     * behind the curve live in {@link ConeGauge}, where they can be tested.</p>
+     * <p>Thin alias kept so the widget reads as one thing. The arithmetic, the curve and the
+     * screen cap live in {@link ConeGauge}, where they can be tested without a game.</p>
      */
-    private static int halfSpanFor(float horizontalAngle) {
-        return ConeGauge.halfSpan(horizontalAngle);
+    private static int halfSpanFor(float horizontalAngle, int guiWidth) {
+        return ConeGauge.halfSpan(horizontalAngle, guiWidth);
     }
 
     /**
