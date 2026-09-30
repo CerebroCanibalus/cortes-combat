@@ -47,13 +47,19 @@ public final class ConeTargeting {
         Vec3 eye = player.getEyePosition();
         Vec3 look = player.getLookAngle();
 
+        // The one place in the project that scans for a target on a schedule, and the reason it
+        // runs on a slower one now. Level#getEntities also has an overload that takes a
+        // Consumer and fills a caller-supplied list, which would save the ArrayList and the
+        // Optional per call; that is left for later, on evidence. The list is one small object
+        // every few ticks, and the cost that actually showed up in a profile was walking the
+        // entities, which both overloads do identically.
         List<LivingEntity> candidates = player.level().getEntitiesOfClass(
                 LivingEntity.class, player.getBoundingBox().inflate(reach.distance() + SEARCH_MARGIN));
 
         LivingEntity best = null;
         double bestAngle = Double.MAX_VALUE;
         for (LivingEntity candidate : candidates) {
-            if (candidate == player || !candidate.isAlive() || candidate.isSpectator()) {
+            if (!isCandidate(player, candidate)) {
                 continue;
             }
             AABB box = candidate.getBoundingBox();
@@ -67,6 +73,45 @@ public final class ConeTargeting {
             }
         }
         return Optional.ofNullable(best);
+    }
+
+    /**
+     * Whether a target found on an earlier tick is still one, without scanning for anything.
+     *
+     * <p>This is what lets {@link CombatAim} run its scan on a slower cadence. The scan finds a
+     * target; this is what stops the found one from being believed once it stops being true. A
+     * mob that died, got unloaded, changed dimension or stepped out of the cone stops counting
+     * on the same tick instead of up to three ticks later, and a crosshair promising a hit on a
+     * corpse is the one thing this whole class must never do.</p>
+     *
+     * <p>It shares {@link #isCandidate} with the scan rather than repeating the conditions. Two
+     * versions of "is this something we can hit" is precisely how the crosshair and the swing
+     * end up disagreeing, and that disagreement is invisible until a player reports that the
+     * game refuses a hit the crosshair promised.</p>
+     */
+    public static boolean stillHittable(LocalPlayer player, LivingEntity target, ReachProfile reach) {
+        if (player == null || player.level() == null || target == null || reach == null) {
+            return false;
+        }
+        if (!isCandidate(player, target) || target.level() != player.level()) {
+            return false;
+        }
+        return inCone(player.getEyePosition(), player.getLookAngle(), target.getBoundingBox(), reach);
+    }
+
+    /**
+     * What an entity has to be before a swing is allowed to pick it, in one place.
+     *
+     * <p>{@code isRemoved} is in the list on top of what vanilla's own check covers because
+     * {@code isAlive} is defined in terms of it on some versions and not on others, and a target
+     * that has already been unloaded is the case the aiming cache gets wrong if it is not
+     * spelled out.</p>
+     */
+    private static boolean isCandidate(LocalPlayer player, LivingEntity candidate) {
+        return candidate != player
+                && candidate.isAlive()
+                && !candidate.isSpectator()
+                && !candidate.isRemoved();
     }
 
     /**

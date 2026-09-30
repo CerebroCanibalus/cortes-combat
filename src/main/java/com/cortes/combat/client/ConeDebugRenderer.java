@@ -29,6 +29,13 @@ import java.util.List;
  * you see lit up green is genuinely what the game would let you hit. A debug overlay that
  * draws its own approximation would be worse than none.</p>
  *
+ * <p>It also scans for entities itself, every frame, instead of reading what
+ * {@link CombatAim} cached. That is the one place in the project where doing the expensive
+ * thing is the correct choice: the cache throttles its scan to keep a hint current, and an
+ * overlay whose whole job is answering "why did that not hit" must not be three ticks behind
+ * the world it is drawing. It is off unless asked for, so the cost is only ever paid
+ * deliberately.</p>
+ *
  * <p>Colour code: cyan is the cone itself, green marks a target that is actually hittable,
  * red one that is just outside, and the vertical limit is drawn as the flat blue cross so the
  * vertical angle is visible rather than something you have to infer.</p>

@@ -1,15 +1,16 @@
 package com.cortes.combat.client;
 
 import com.cortes.combat.attack.WeaponStats;
+import com.cortes.combat.core.weapon.ReachProfile;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.CrossbowItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TridentItem;
-
-import java.util.Optional;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Decides whether the crosshair should read as "you can hit something".
@@ -29,27 +30,169 @@ import java.util.Optional;
  * the player holds right click drawing a bow-shaped charge they cannot release.</p>
  *
  * <p>This is a hint and never a rule. It decides what the HUD draws; the server still validates
- * every swing with the same cone test.</p>
+ * every swing with the same cone test, and the attack path resolves its own target from scratch
+ * on every click rather than reading the one cached here.</p>
+ *
+ * <h2>Why the scan is throttled</h2>
+ *
+ * <p>The HUD wants a yes or a no. It does not want the entity. Paying a full
+ * {@code getEntitiesOfClass} scan for that on every one of the twenty ticks a second was the
+ * single most expensive thing this mod did on the client, and almost all of it produced a
+ * boolean that had not changed since last tick.</p>
+ *
+ * <p>So the scan runs when the answer could have changed, and not otherwise. Two rules, and the
+ * second is the one that makes the first safe:</p>
+ * <ol>
+ *   <li><b>Scan when the aim moved.</b> A rescan is forced by a change of player, item or reach
+ *       profile, by the player physically moving, by the player turning, and by a mob walking
+ *       into the cone. So a player sweeping the mouse across a room sees the crosshair react
+ *       every tick, exactly as before.</li>
+ *   <li><b>Re-check the cached target every tick regardless.</b> The scan is what <em>finds</em> a
+ *       target; this is what keeps the found one honest. A target that died, got unloaded, changed
+ *       level or stepped out of the cone stops the crosshair claiming a hit on it on that same
+ *       tick, not three ticks later.</li>
+ * </ol>
+ *
+ * <p>What rule 2 cannot cover is a <em>different</em> target arriving: while nothing moves, a mob
+ * that walks into the cone can go unnoticed for at most {@link #STILL_SCAN_TICKS}. At three ticks
+ * that is a hundred and fifty milliseconds on a hint, and the attack itself is unaffected because
+ * it re-derives the target at the moment of the click.</p>
  */
 public final class CombatAim {
+
+    /**
+     * Ticks between scans when the player has not moved, turned or changed weapon.
+     *
+     * <p>Three is a hundred and fifty milliseconds. Long enough to cut the scan by two thirds
+     * while the player is standing still reading their own crosshair, short enough that the
+     * polling is not what they notice when a mob wanders in.</p>
+     */
+    private static final int STILL_SCAN_TICKS = 3;
+
+    /**
+     * How far the player has to move, squared, before it counts as having moved. A centimetre.
+     *
+     * <p>The tolerance is the entire point of the throttle. At zero, every bit of mouse jitter
+     * counts as turning, the scan runs on every tick, and the optimisation costs nothing while
+     * appearing to work: the most likely way to break this is to set an epsilon to zero and see
+     * no difference, which reads as "the scan is free" rather than "the threshold is wrong".</p>
+     */
+    private static final double MOVE_EPSILON_SQUARED = 1.0E-4;
+
+    /**
+     * The dot product below which the player counts as having turned. {@code 0.9999} is about
+     * four tenths of a degree, comfortably under the smallest aim correction that changes what
+     * the crosshair is about to say.
+     */
+    private static final double TURN_DOT_THRESHOLD = 0.9999;
+
+    private static LivingEntity target;
+    private static LocalPlayer tracked;
+    private static Item trackedItem;
+    private static ReachProfile trackedReach;
+    private static Vec3 scannedFromEye;
+    private static Vec3 scannedAlong;
+    private static int tick;
+    private static int scannedAtTick;
 
     private CombatAim() {
     }
 
     /** Called once per client tick. */
     public static void update() {
+        tick++;
         LocalPlayer player = Minecraft.getInstance().player;
-        ClientCombatState.setAiming(player != null && isAiming(player));
+        if (player == null || player.level() == null || player.isSpectator()) {
+            forget();
+            ClientCombatState.setAiming(false);
+            return;
+        }
+
+        ItemStack held = player.getMainHandItem();
+        if (isRanged(held)) {
+            // A projectile is aimed with the crosshair, not with the cone, so there is nothing
+            // to scan for and the melee cache is dropped rather than kept: swapping to a bow and
+            // back should not resurrect whoever happened to be standing in front of the sword.
+            forget();
+            ClientCombatState.setAiming(isDrawingRanged(player, held));
+            return;
+        }
+
+        ClientCombatState.setAiming(stillAiming(player, held, WeaponStats.of(held).reach()));
     }
 
-    public static boolean isAiming(LocalPlayer player) {
-        if (player == null || player.isSpectator()) {
-            return false;
+    /**
+     * The melee answer, from the cache when the cache is allowed to speak.
+     *
+     * @return whether there is a target in the cone right now
+     */
+    private static boolean stillAiming(LocalPlayer player, ItemStack held, ReachProfile reach) {
+        // Three reference compares, deliberately. What can change the cone is the player object,
+        // which respawn and rejoin replace, the type of item in hand, and the reach profile
+        // that item carries. Comparing the whole component patch instead would walk it every tick
+        // to learn what three references already answer; comparing only the item would miss a
+        // mod rewriting a component on that same item, and the profile is a record held by the
+        // component, so an unchanged value is the same instance.
+        boolean contextChanged = player != tracked
+                || held.getItem() != trackedItem
+                || reach != trackedReach;
+        if (contextChanged) {
+            tracked = player;
+            trackedItem = held.getItem();
+            trackedReach = reach;
+            target = null;
+            scannedFromEye = null;
+            scannedAlong = null;
+            scannedAtTick = 0;
         }
-        ItemStack held = player.getMainHandItem();
-        return isRanged(held)
-                ? isDrawingRanged(player, held)
-                : ConeTargeting.findTarget(player, WeaponStats.of(held).reach()).isPresent();
+
+        // Every tick, not every scan. See rule two in the class comment: this is what keeps the
+        // throttle from ever showing a hit that is not there.
+        boolean invalidated = target != null && !ConeTargeting.stillHittable(player, target, reach);
+        if (invalidated) {
+            target = null;
+        }
+
+        if (target == null) {
+            // A target that just went invalid is itself the reason to look again, and that is the
+            // one case where the interval and the movement checks are both beside the point.
+            if (!contextChanged && !invalidated && !moved(player) && !turned(player)
+                    && tick - scannedAtTick < STILL_SCAN_TICKS) {
+                return false;
+            }
+            target = ConeTargeting.findTarget(player, reach).orElse(null);
+            // Recorded only on a scan and not on a revalidation, on purpose. While the cached
+            // target holds up, the player is free to walk all over the place: the movement check
+            // exists to catch a stale answer the instant there is one, and there is no answer to
+            // go stale until the target drops out.
+            scannedFromEye = player.getEyePosition();
+            scannedAlong = player.getLookAngle();
+            scannedAtTick = tick;
+        }
+        return target != null;
+    }
+
+    /** Whether the player has shifted far enough that the cone points somewhere else. */
+    private static boolean moved(LocalPlayer player) {
+        return scannedFromEye == null
+                || player.getEyePosition().distanceToSqr(scannedFromEye) > MOVE_EPSILON_SQUARED;
+    }
+
+    /** Whether the player has turned far enough that the cone points somewhere else. */
+    private static boolean turned(LocalPlayer player) {
+        return scannedAlong == null
+                || player.getLookAngle().dot(scannedAlong) < TURN_DOT_THRESHOLD;
+    }
+
+    /** Drops the cached target and everything that keys it, so the next tick rescans. */
+    private static void forget() {
+        tracked = null;
+        trackedItem = null;
+        trackedReach = null;
+        target = null;
+        scannedFromEye = null;
+        scannedAlong = null;
+        scannedAtTick = 0;
     }
 
     /**
@@ -81,14 +224,5 @@ public final class CombatAim {
             return CrossbowItem.isCharged(held);
         }
         return player.isUsingItem();
-    }
-
-    /** The target the player is currently aiming at, if any. Shared with the debug renderer. */
-    public static Optional<LivingEntity> target() {
-        LocalPlayer player = Minecraft.getInstance().player;
-        if (player == null || isRanged(player.getMainHandItem())) {
-            return Optional.empty();
-        }
-        return ConeTargeting.findTarget(player, WeaponStats.of(player.getMainHandItem()).reach());
     }
 }

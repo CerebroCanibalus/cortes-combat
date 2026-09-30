@@ -118,12 +118,8 @@ Lo que queda del vertical slice y en qué orden:
 | 14 | framework de viewmodel (capas aditivas, easing, shake por golpe) | pendiente |
 | 15 | compat / conversión de armas de otros mods | pendiente |
 
-Pendiente de una sesión y **sin hacer desde hace varias rondas**, con diagnóstico ya hecho:
-optimización del cono del cliente (bajar la frecuencia de `CombatAim.update()` y cachear el
-objetivo revalidándolo, en vez de re-escanear entidades cada tick). El cono en sí no es el
-problema: es geometría pura. Lo caro es el `getEntitiesOfClass` que lo rodea. El orden que se
-acordó es primero bajar la frecuencia, después cachear; el reuso de la lista solo si el perfil
-sigue mostrando que domina.
+Pendiente de una sesión, con diagnóstico hecho: **la optimización del cono del cliente ya
+está hecha** (ver "Optimización del cono" más abajo). Ya no queda ahí.
 
 ## Decisiones tomadas
 
@@ -330,14 +326,94 @@ que evita volver a cometer los errores:
 
 Ver `PROTOTYPE-ASSETS.md` y la tabla de arriba para lo que falta de assets.
 
+## Optimización del cono (hecha)
+
+El diagnóstico estaba desde hacía varias rondas y era correcto: **`ConeMath` no era el costo.**
+Es geometría pura en `double`, unas veinte operaciones por entidad. Lo caro era el
+`getEntitiesOfClass` alrededor, que se ejecutaba 20 veces por segundo en el cliente.
+
+Y el hallazgo que justificaba el trabajo: **`CombatAim.target()` no lo llamaba nadie.** El HUD
+solo consume un booleano, `ClientCombatState.aiming()`. O sea que cada tick pagábamos una
+resolución de objetivo completa y **tirábamos la entidad**. Ese era el desperdicio real, más que
+la frecuencia.
+
+**Dos reglas, y la segunda es la que hace segura a la primera:**
+
+1. **Escanear cuando la puntería se movió.** Fuerza el reescaneo un cambio de jugador, de item o
+   de perfil de alcance; que el jugador se haya desplazado; que haya girado; y que un mob haya
+   entrado al cono. Barriendo el mouse con el cursor el crosshair reacciona cada tick, igual que
+   antes.
+2. **Revalidar el objetivo cacheado CADA tick, igual.** El escaneo es lo que *encuentra* un
+   objetivo; esto es lo que deja de creerse al que encontró. Un mob que murió, se descargó, cambió
+   de dimensión o salió del cono deja de contar en el mismo tick, no tres ticks después.
+
+Lo que la regla 2 **no** cubre es la llegada de un objetivo *distinto*: si nada se mueve, un mob
+que entra al cono puede pasar hasta `STILL_SCAN_TICKS` (3) inadvertido. Son 150 ms sobre una
+pista visual, y el ataque no se entera porque re-deriva el objetivo en el click.
+
+**Lo que hay que entender para no romperlo:**
+
+- **La tolerancia es el throttle entero.** `MOVE_EPSILON_SQUARED` y `TURN_DOT_THRESHOLD` no son
+  detalles: en cero, cada vibración del mouse cuenta como girar, el escaneo corre cada tick, y la
+  optimización no cuesta nada *pareciendo* funcionar. La forma más probable de romper esto es
+  poner un epsilon en cero, no ver diferencia, y concluir que el escaneo es gratis.
+- **La revalidación se registra en el escaneo, no en cada chequeo.** El jugador puede pasearse
+  libremente mientras el objetivo aguante: el chequeo de movimiento existe para descubrir una
+  respuesta vieja *en el instante* en que existe, y no hay respuesta vieja hasta que el objetivo
+  se cae.
+- **Tres comparaciones de referencia, no comparación de componentes.** `ItemStack.isSameItemSameComponents`
+  recorre el patch entero cada tick para aprender lo que tres referencias ya dicen. Pero con solo
+  el `Item` se pierde un mod que reescriba un componente sobre ese mismo item, y el perfil de
+  alcance es un record guardado por el componente, así que un valor sin cambios es la misma
+  instancia.
+- **`isCandidate` es una sola definición compartida** entre el escaneo y la revalidación. Dos
+  versiones de "esto es algo a lo que se puede pegar" es exactamente cómo el crosshair y el
+  swing terminan discrepando, y esa discrepancia es invisible hasta que un jugador reporta que el
+  juego rechazó un golpe que el crosshair había prometido.
+- **`ConeDebugRenderer` escanea por su cuenta, cada frame, a propósito.** Es el único lugar donde
+  pagar lo caro es lo correcto: un overlay cuyo trabajo es responder "por qué no pegó" no puede
+  ir tres ticks atrasado respecto del mundo que dibuja. Está apagado salvo que se pida.
+- **El reuso de la lista sigue sin hacerse, y ahora está justificado por escrito.** Existe un
+  overload de `Level#getEntities` que toma un `Consumer` y llena una lista del llamador, que
+  ahorraría un `ArrayList` y un `Optional` por llamada. Son un objeto chico cada tres ticks. El
+  costo que dominaba el perfil era recorrer las entidades, y los dos overloads lo hacen igual.
+
+## Deuda conocida: el ataque cargado es un placeholder
+
+Decidido explícitamente por el usuario: **la falta de animación del golpe cargado se deja para
+el final.** No es un bug y no se cierra ahora. Lo que sí conviene tener escrito es *qué* es
+exactamente el placeholder, porque "sin animación" esconde más cosas que la animación.
+
+**Lo que el golpe cargado ya hace y es real:** el daño. `base × (1 + chargeRatio × bonus)` con
+el piso forzado en código, y el bonus vive en `charge_profile`, así que el sabre al doble y la
+ropera sin carga salen del mismo camino. La carga se acumula en el tick del servidor, no en el
+cliente. Todo eso es el sistema de verdad y no se toca.
+
+**Lo que es placeholder, punto por punto:**
+
+| Falta | Dónde está decidido | Nota |
+|---|---|---|
+| Viewmodel del golpe cargado | paso 14 | El vanilla no tiene animaciones de item en 1.21.1: todo viewmodel es mixin |
+| **FOV de carga** | `DESIGN.md` 512 | Va por `ComputeFovModifierEvent`, que **existe** en 1.21.1 (verificado). No es una capa, es un evento |
+| Sonido de carga completa | `DESIGN.md` 524 | El proyecto tiene **un solo sonido**: `SHIELD_BREAK` en `GuardHandler`. Los cuatro eventos que el jugador tiene que reconocer sin mirar son carga completa, parry, agotamiento de aguante y escalado del martillo: ninguno existe |
+| Impacto de golpe cargado | `DESIGN.md` 499 | `addParticle` no aparece en ninguna parte del código |
+| **Retroalimentación de "esto fue cargado"** | — | `CombatFeedback` solo tiene `HIT`, `KILL` y `GUARDED`. Un golpe a carga completa se ve **idéntico** a uno de carga cero: misma expansión, mismo color, misma duración. El jugador tiene que inferirlo del número de daño, que es la lectura que el diseño de HUD evita |
+
+La última fila es la que más duele y la que no está escrita en `DESIGN.md`: el crosshair no
+distingue un golpe cargado de uno normal. Cuando se implemente el FOV y el sonido, lo
+necesario es un valor más en `CombatFeedback` (un `CHARGED`, o un tono aparte del que usa
+`HIT`), porque un HUD que reacciona a todo deja de significar nada y ese enum es una lista
+cerrada a propósito.
+
 ## Próximos pasos
 
 1. **Paso 9: las 30 armas + datagen + recetas + set de cobre.** Es el paso grande que falta.
 2. Paso 10: especiales (alabarda multi-hit, parry de la sable) + damage type de ignore de armadura. El flag `ignoredArmour` ya se calcula y se testea, pero la fuente de daño sigue siendo la normal.
 3. Paso 11: supervivencia (`FoodData`) — el cambio más caro, en commit propio.
-4. Optimización del cono del cliente (ver la nota en "Fase activa").
+4. Paso 14: viewmodel, FOV de carga, sonido de carga completa y el valor `CHARGED` de `CombatFeedback`. El placeholder del golpe cargado se cierra acá, no antes.
 5. Números: definir el escalado del martillo en playtest (`WARHAMMER_STEP` está en 0.15 como punto de partida).
 6. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
+7. Pendiente de decidir: extraer las tablas de `WeaponStats` a una clase pura, para que el orden de los alcances sea un test y no una acordada. Hoy no se puede testear porque el `<clinit>` de `WeaponStats` usa `Registries` y `TagKey`, que son de Minecraft.
 
 ## Trampas de diseño marcadas
 
@@ -377,4 +453,5 @@ Ver `PROTOTYPE-ASSETS.md` y la tabla de arriba para lo que falta de assets.
   - **Un test que falla puede tener razón el código.** Me pasó dos veces: una aserción sobre el eje `up` que era imposible (es perpendicular a la mirada por definición, así que a 60° da 0.5 y no 0.9), y otra sobre el relleno de la barra. Reconocer cuándo el test está mal es parte del trabajo.
   - **`refs/rafts_combat` tiene un `RangeIndicatorHud` que resuelve mal lo mismo.** Usa `191.5 * 0.33` y un `widthRatio` que es una tabla de números mágicos por arma en su config. Copiar su enfoque era copiar el bug; la proyección angular lo resuelve sin un número por resolución.
 - **Balance:** espada 3.2 → 3.6, manos desnudas 3.0 → 1.9 de alcance y tempo 1.25 (lo más rápido del juego), daga tempo 0.7, espada 0.85.
+- **Optimización del cono, hecha.** Escaneo throttleado a 3 ticks cuando nada se movió, con revalidación del objetivo cacheado **cada tick**. El hallazgo que la justificaba: `CombatAim.target()` no tenía un solo llamador y el HUD solo lee un booleano, así que cada tick se pagaba una resolución de objetivo completa y se tiraba la entidad. Se borró el método muerto. La invalidación del objetivo es lo que hace segura la frecuencia: lo único que puede quedar viejo es la *llegada* de un objetivo distinto, y eso va a un hint. Detalle en la sección "Optimización del cono".
 - **⚠️ DEUDA LEGAL: quedan DOS texturas de `refs/`.** La viñeta viene de `neoforge-damageoverlay`, que es **All Rights Reserved**. Las dos esferitas de aguante vienen de `combatify` (LGPL-2.1). El resto del HUD ya es arte original del usuario. Ver `textures/gui/PROTOTYPE-ASSETS.md`.
