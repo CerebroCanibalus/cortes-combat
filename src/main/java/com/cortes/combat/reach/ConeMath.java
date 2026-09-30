@@ -66,41 +66,15 @@ public final class ConeMath {
 
         // --- The frame, built around the look direction so the cone follows the gaze ---
         //
-        // The frame is orthonormal and anchored to the look vector: forward is where the player
-        // is looking, right is perpendicular to it in the horizontal-ish plane, and up completes
-        // the basis. Building it on the world up instead (the obvious shortcut) makes the cone
-        // a fan that stays bolted to the ground no matter where you look, which is why hitting
-        // a bat directly overhead or a zombie at your feet used to mean fighting the camera.
-        //
-        // Degenerate case: looking straight up or down, "right" from a cross product with world
-        // up is undefined. Any unit vector perpendicular to the look works there, and the one
-        // picked below is the compass direction the player is most likely facing, so the cone
-        // keeps pointing where it was instead of spinning.
-        double rx;
-        double ry;
-        double rz;
-        double horizLen = Math.sqrt(lx * lx + lz * lz);
-        if (horizLen < EPSILON) {
-            // Vertical gaze. North as right.
-            rx = 1.0;
-            ry = 0.0;
-            rz = 0.0;
-        } else {
-            // right = normalize(worldUp x forward), the horizontal perpendicular.
-            rx = -lz / horizLen;
-            ry = 0.0;
-            rz = lx / horizLen;
-        }
+        // Shared with the debug renderer through frame(), so the shape drawn on screen and the
+        // shape the hit test uses cannot drift apart. The debug overlay is only worth anything
+        // if it is literally the same cone, and the first version of this class had the maths
+        // inlined here and retyped in the renderer, which is exactly how they diverged.
+        Frame frame = frame(lx, ly, lz);
 
-        // up = right x forward. Completes a right-handed orthonormal basis, so the three
-        // components below are exact and no re-normalisation is needed.
-        double ux = ry * lz - rz * ly;
-        double uy = rz * lx - rx * lz;
-        double uz = rx * ly - ry * lx;
-
-        double along = dx * lx + dy * ly + dz * lz;
-        double lateral = dx * rx + dy * ry + dz * rz;
-        double vertical = dx * ux + dy * uy + dz * uz;
+        double along = dx * frame.fx() + dy * frame.fy() + dz * frame.fz();
+        double lateral = dx * frame.rx() + dy * frame.ry() + dz * frame.rz();
+        double vertical = dx * frame.ux() + dy * frame.uy() + dz * frame.uz();
 
         // Atan2 of the absolute lateral offset: a target behind the attacker yields an angle
         // above 90 degrees, so it fails any sane limit without a special case.
@@ -111,6 +85,67 @@ public final class ConeMath {
         double verticalOffset = Math.toDegrees(Math.atan2(Math.abs(vertical), along));
 
         return horizontal <= horizontalAngle && verticalOffset <= verticalAngle;
+    }
+
+    /**
+     * The orthonormal frame the cone is measured in, from a normalised look vector.
+     *
+     * <p>Forward is where the player is looking, right is perpendicular to it, and up completes
+     * a right-handed basis. Anchoring all three to the gaze is what makes the cone reorient with
+     * the camera; building the frame on the world up vector instead produces a fan bolted to
+     * the ground, which is what made hitting a bat overhead or a zombie at your feet feel like
+     * fighting the camera.</p>
+     *
+     * <p>Degenerate case: looking straight up or down, right as a cross product with the world
+     * up is undefined. Any unit vector perpendicular to the gaze is valid there, and north is
+     * chosen so the cone keeps pointing the way it was rather than spinning to an arbitrary
+     * orientation.</p>
+     *
+     * <p>Public so the debug renderer draws this exact frame. Two copies of this maths is how
+     * the overlay came to show a cone the game was not using.</p>
+     */
+    public static Frame frame(double lx, double ly, double lz) {
+        double horizLen = Math.sqrt(lx * lx + lz * lz);
+        double rx;
+        double ry;
+        double rz;
+        if (horizLen < EPSILON) {
+            rx = 1.0;
+            ry = 0.0;
+            rz = 0.0;
+        } else {
+            rx = -lz / horizLen;
+            ry = 0.0;
+            rz = lx / horizLen;
+        }
+        // up = right x forward. Exact, because right and forward are both unit and perpendicular.
+        return new Frame(lx, ly, lz,
+                rx, ry, rz,
+                ry * lz - rz * ly, rz * lx - rx * lz, rx * ly - ry * lx);
+    }
+
+    /**
+     * A unit vector on the sphere, so the debug renderer can walk the cone's rim without
+     * duplicating the trigonometry.
+     */
+    public static double[] direction(double f, double r, double u) {
+        double length = Math.sqrt(f * f + r * r + u * u);
+        if (length < EPSILON) {
+            return new double[] {0.0, 0.0, 1.0};
+        }
+        return new double[] {f / length, r / length, u / length};
+    }
+
+    /**
+     * The cone's three axes, each a unit vector.
+     *
+     * <p>A record of nine doubles rather than three {@code Vec3}s so this class keeps its
+     * promise of having no Minecraft type in its signature, which is the only reason the unit
+     * tests can run at all.</p>
+     */
+    public record Frame(double fx, double fy, double fz,
+                        double rx, double ry, double rz,
+                        double ux, double uy, double uz) {
     }
 
     /**

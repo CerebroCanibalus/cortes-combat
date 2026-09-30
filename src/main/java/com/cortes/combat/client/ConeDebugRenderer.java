@@ -74,58 +74,52 @@ public final class ConeDebugRenderer {
         VertexConsumer lines = Minecraft.getInstance().renderBuffers().bufferSource()
                 .getBuffer(RenderType.lines());
 
-        Vec3 forward = horizontalForward(look);
-        Vec3 right = new Vec3(-forward.z, 0.0, forward.x);
-        Vec3 up = look.subtract(forward.scale(look.dot(forward))).normalize();
+        // The frame the hit test uses, asked for from the same method it uses. This renderer
+        // used to rebuild the axes by hand and built a ground-anchored fan while the game used
+        // a gaze-anchored cone, so looking up drew one shape and hit another. Asking ConeMath for
+        // its frame is the fix, and the reason it stays fixed is that there is now exactly one
+        // implementation of the maths instead of two that can drift.
+        ConeMath.Frame frame = ConeMath.frame(look.x, look.y, look.z);
+        Vec3 forward = new Vec3(frame.fx(), frame.fy(), frame.fz());
+        Vec3 right = new Vec3(frame.rx(), frame.ry(), frame.rz());
+        Vec3 up = new Vec3(frame.ux(), frame.uy(), frame.uz());
 
         double hRad = Math.toRadians(reach.horizontalAngle());
         double vRad = Math.toRadians(reach.verticalAngle());
         double distance = reach.distance();
 
-        // Cone outline: the axis, plus the circular rim at max distance.
-        line(lines, pose, eye, eye.add(look.scale(distance)), 0.0F, 0.9F, 0.9F, 1.0F);
+        // The gaze axis itself, so it is obvious which way the cone points.
+        line(lines, pose, eye, eye.add(forward.scale(distance)), 0.0F, 0.9F, 0.9F, 1.0F);
 
-        int segments = 24;
-        for (int i = 0; i < segments; i++) {
-            double a = (Math.PI * 2.0 * i) / segments;
-            // Tilt the rim by the vertical half-angle so the drawn shape is a real cone.
-            Vec3 rim = forward.scale(Math.cos(hRad) * Math.cos(vRad))
-                    .add(right.scale(Math.sin(hRad) * Math.cos(vRad)))
-                    .add(up.scale(Math.sin(vRad)))
-                    .normalize()
-                    .scale(distance);
-            double b = (Math.PI * 2.0 * (i + 1)) / segments;
-            Vec3 rimNext = forward.scale(Math.cos(hRad) * Math.cos(vRad))
-                    .add(right.scale(Math.sin(hRad) * Math.cos(vRad) * Math.cos(b - a)))
-                    .add(up.scale(Math.sin(vRad)))
-                    .normalize()
-                    .scale(distance);
-            line(lines, pose, eye.add(rim), eye.add(rimNext), 0.0F, 0.9F, 0.9F, 1.0F);
-        }
+        // The two limit curves, each in its own colour.
+        //
+        // The hit region is not an ellipse. In this frame a point is hittable when
+        // |lateral| <= along * tan(horizontal) AND |vertical| <= along * tan(vertical), which is
+        // the intersection of two half-spaces: a rectangular pyramid, not a cone of revolution.
+        // An earlier version of this renderer walked the rim as an ellipse, which put most of
+        // its points ninety degrees off the gaze line, outside the region it was claiming to
+        // show. So the boundary is drawn as the two curves it actually is.
+        limitCurve(lines, pose, eye, forward, right, up, hRad, vRad, distance, true);
+        limitCurve(lines, pose, eye, forward, right, up, hRad, vRad, distance, false);
 
-        // Radial spokes every quarter turn, which makes the horizontal spread readable.
-        for (int i = 0; i < 4; i++) {
-            double a = (Math.PI * 2.0 * i) / 4.0;
-            Vec3 edge = forward.scale(Math.cos(hRad))
-                    .add(right.scale(Math.sin(hRad) * Math.cos(a)))
-                    .add(up.scale(Math.sin(hRad) * Math.sin(a)))
-                    .normalize()
-                    .scale(distance);
-            line(lines, pose, eye, eye.add(edge), 0.0F, 0.7F, 0.7F, 0.5F);
-        }
-
-        // The vertical limit, drawn flat at the max distance so it is a plane you can see.
-        Vec3 centre = eye.add(look.scale(distance));
+        // The distance limit: a flat cap at max reach, with an edge to each of its corners.
+        // The cap is a rectangle, not a disc, because the hit region is a rectangular pyramid
+        // in this frame rather than a cone of revolution.
         double halfWidth = distance * Math.tan(hRad);
         double halfHeight = distance * Math.tan(vRad);
-        line(lines, pose, centre.add(right.scale(-halfWidth)).add(up.scale(-halfHeight)),
-                centre.add(right.scale(halfWidth)).add(up.scale(-halfHeight)), 0.2F, 0.4F, 1.0F, 0.8F);
-        line(lines, pose, centre.add(right.scale(-halfWidth)).add(up.scale(halfHeight)),
-                centre.add(right.scale(halfWidth)).add(up.scale(halfHeight)), 0.2F, 0.4F, 1.0F, 0.8F);
-        line(lines, pose, centre.add(right.scale(-halfWidth)).add(up.scale(-halfHeight)),
-                centre.add(right.scale(-halfWidth)).add(up.scale(halfHeight)), 0.2F, 0.4F, 1.0F, 0.8F);
-        line(lines, pose, centre.add(right.scale(halfWidth)).add(up.scale(-halfHeight)),
-                centre.add(right.scale(halfWidth)).add(up.scale(halfHeight)), 0.2F, 0.4F, 1.0F, 0.8F);
+        double[][] corners = {
+                {-halfWidth, -halfHeight}, {halfWidth, -halfHeight},
+                {halfWidth, halfHeight}, {-halfWidth, halfHeight}
+        };
+        Vec3 capCentre = eye.add(forward.scale(distance));
+        for (int i = 0; i < corners.length; i++) {
+            double[] here = corners[i];
+            double[] next = corners[(i + 1) % corners.length];
+            Vec3 a = capCentre.add(right.scale(here[0])).add(up.scale(here[1]));
+            Vec3 b = capCentre.add(right.scale(next[0])).add(up.scale(next[1]));
+            line(lines, pose, a, b, 0.2F, 0.4F, 1.0F, 0.8F);
+            line(lines, pose, eye, a, 0.0F, 0.7F, 0.7F, 0.5F);
+        }
 
         // Every nearby entity, lit by the real hit test. This is the part that answers
         // "why did that not hit".
@@ -148,6 +142,48 @@ public final class ConeDebugRenderer {
 
         Minecraft.getInstance().renderBuffers().bufferSource().endBatch(RenderType.lines());
     }
+
+    /**
+     * One boundary curve of the hit region, walked across the other axis.
+     *
+     * <p>A point at horizontal angle {@code a} and vertical angle {@code v} is the direction
+     * {@code forward + right * tan(a) + up * tan(v)}, which is what the test measures: its
+     * lateral and vertical components come out as tan(a) and tan(v) against a forward component
+     * of 1, and the two atan2 calls return exactly the angles asked for. Drawing the boundary
+     * this way means the line on screen and the condition in the code are the same statement
+     * rather than two descriptions of it that have to be kept in step.</p>
+     *
+     * @param horizontal true to sweep the horizontal limit across the vertical, false to sweep
+     *                   the vertical limit across the horizontal
+     */
+    private static void limitCurve(VertexConsumer lines, PoseStack pose, Vec3 eye,
+                                   Vec3 forward, Vec3 right, Vec3 up,
+                                   double hRad, double vRad, double distance, boolean horizontal) {
+        int steps = 32;
+        double across = horizontal ? vRad : hRad;
+        // Drawn a hair inside the limit rather than exactly on it. The line the player sees is
+        // the guarantee "everything inside this is hittable", and a line sitting exactly on the
+        // boundary cannot make that promise: tan and atan2 do not round-trip, so a pixel drawn
+        // at exactly 35 degrees can fail a 35 degree test by a millionth of a degree. A tenth of
+        // a degree is a hundredth of a pixel at any sane distance and makes the promise true.
+        double limit = Math.tan(horizontal ? hRad : vRad) * LIMIT_INSET;
+        double span = Math.tan(across) * LIMIT_INSET;
+        Vec3 previous = null;
+        for (int i = 0; i <= steps; i++) {
+            double a = -span + (2.0 * span * i) / steps;
+            Vec3 direction = horizontal
+                    ? forward.add(right.scale(limit)).add(up.scale(a))
+                    : forward.add(right.scale(a)).add(up.scale(limit));
+            Vec3 scaled = direction.normalize().scale(distance);
+            if (previous != null) {
+                line(lines, pose, eye.add(previous), eye.add(scaled), 0.9F, 0.6F, 0.1F, 0.9F);
+            }
+            previous = scaled;
+        }
+    }
+
+    /** How far inside its own limit the drawn boundary sits. See {@link #limitCurve}. */
+    private static final double LIMIT_INSET = 0.995;
 
     private static double nearestX(Vec3 eye, Entity target) {
         AABB b = target.getBoundingBox();
@@ -203,10 +239,5 @@ public final class ConeDebugRenderer {
         lines.addVertex(pose.last().pose(), (float) to.x, (float) to.y, (float) to.z)
                 .setColor(r, g, b, a)
                 .setNormal(pose.last(), (float) dir.x, (float) dir.y, (float) dir.z);
-    }
-
-    private static Vec3 horizontalForward(Vec3 look) {
-        Vec3 flat = new Vec3(look.x, 0.0, look.z);
-        return flat.lengthSqr() < 1.0E-7 ? new Vec3(0, 0, 1) : flat.normalize();
     }
 }

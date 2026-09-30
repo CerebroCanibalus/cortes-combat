@@ -45,8 +45,15 @@ public final class WeaponStats {
     private static final Map<WeaponProfile, SpecialType> DEFAULT_SPECIAL = new HashMap<>();
 
     static {
+        // Bare hands sit at vanilla's 3.0 and are meant to be useless, not merely short.
         DEFAULT_REACH.put(WeaponProfile.UNARMED, new ReachProfile(3.0F, 25.0F, 20.0F));
-        DEFAULT_REACH.put(WeaponProfile.SWORD, new ReachProfile(3.2F, 35.0F, 30.0F));
+        // 3.0 -> 3.6. The sword was 3.2, a fifth of a block over vanilla, which the player read
+        // as "the same reach, shorter animation": the whole point of a hard cooldown is that you
+        // commit to a spacing, and committing to vanilla's spacing is not a change. At 3.6 a
+        // sword outranges an axe (3.0), which inverts vanilla's relationship between the two and
+        // is deliberate: the sword is the weapon you are expected to have, so it should be the
+        // one that reaches far enough to matter, and the tools pay for it with their own reach.
+        DEFAULT_REACH.put(WeaponProfile.SWORD, new ReachProfile(3.6F, 35.0F, 30.0F));
         DEFAULT_REACH.put(WeaponProfile.AXE, new ReachProfile(3.0F, 45.0F, 35.0F));
         DEFAULT_REACH.put(WeaponProfile.PICKAXE, new ReachProfile(3.0F, 35.0F, 30.0F));
         DEFAULT_REACH.put(WeaponProfile.SHOVEL, new ReachProfile(3.0F, 35.0F, 30.0F));

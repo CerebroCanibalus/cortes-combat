@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -264,6 +265,129 @@ class ConeMathTest {
             // A 90 degree vertical allowance must not become a loophole that lets a swing land
             // on whatever happens to be nearby, in any direction.
             assertFalse(ConeMath.inCone(0, 0, 0, 0, 0.5, 0.866, 0, -2, 0, 10, 35, 90));
+        }
+    }
+
+    @Nested
+    @DisplayName("the debug overlay draws the cone the game uses")
+    class FrameIsShared {
+
+        @Test
+        @DisplayName("the frame is orthonormal")
+        void orthonormal() {
+            // The renderer draws the rim by walking these three axes. If they are not unit
+            // length and perpendicular, the drawn cone is a different shape from the tested one
+            // and the overlay is lying in a way no test of the hit test alone would catch.
+            for (double pitch : new double[] {-80, -30, 0, 30, 80, 90, -90}) {
+                double r = Math.toRadians(pitch);
+                double lx = 0.0, ly = Math.sin(r), lz = Math.cos(r);
+                ConeMath.Frame f = ConeMath.frame(lx, ly, lz);
+                assertEquals(1.0, length(f.fx(), f.fy(), f.fz()), 1.0E-9, "forward, pitch " + pitch);
+                assertEquals(1.0, length(f.rx(), f.ry(), f.rz()), 1.0E-9, "right, pitch " + pitch);
+                assertEquals(1.0, length(f.ux(), f.uy(), f.uz()), 1.0E-9, "up, pitch " + pitch);
+                assertEquals(0.0, dot(f.fx(), f.fy(), f.fz(), f.rx(), f.ry(), f.rz()), 1.0E-9,
+                        "forward and right must be perpendicular, pitch " + pitch);
+                assertEquals(0.0, dot(f.fx(), f.fy(), f.fz(), f.ux(), f.uy(), f.uz()), 1.0E-9,
+                        "forward and up must be perpendicular, pitch " + pitch);
+                assertEquals(0.0, dot(f.rx(), f.ry(), f.rz(), f.ux(), f.uy(), f.uz()), 1.0E-9,
+                        "right and up must be perpendicular, pitch " + pitch);
+            }
+        }
+
+        @Test
+        @DisplayName("the frame tilts with the gaze instead of staying bolted to the ground")
+        void frameFollowsGaze() {
+            // This is the bug the overlay was hiding: it drew a ground-anchored fan while the
+            // game used a gaze-anchored cone, so /cc cone showed a shape the game did not use.
+            //
+            // Look 60 degrees up and the up axis has to tilt 60 degrees off vertical. It cannot
+            // stay pointing at the sky, because it is defined as perpendicular to the gaze: a
+            // frame whose up axis did not tilt would no longer be orthonormal.
+            double r = Math.toRadians(60.0);
+            ConeMath.Frame f = ConeMath.frame(0.0, Math.sin(r), Math.cos(r));
+            assertEquals(Math.cos(r), f.uy(), 1.0E-9,
+                    "the up axis must tilt with the pitch, was " + f.uy());
+            // And right stays horizontal, so "35 degrees to the right" means the same thing on
+            // a slope as on flat ground.
+            assertEquals(0.0, f.ry(), 1.0E-9, "right must stay horizontal");
+        }
+
+        @Test
+        @DisplayName("a point on each drawn limit curve is inside the cone")
+        void limitCurvesAreInside() {
+            // The overlay draws two boundary curves. If every point on them passes the hit test,
+            // the drawn boundary is the real boundary. An earlier version walked an ellipse as
+            // the "rim" and most of its points sat ninety degrees off the gaze, outside the
+            // region it claimed to be showing, so this is the test that would have caught it.
+            for (double pitch : new double[] {-70, -20, 0, 45, 89}) {
+                double r = Math.toRadians(pitch);
+                ConeMath.Frame f = ConeMath.frame(0.0, Math.sin(r), Math.cos(r));
+                for (boolean horizontal : new boolean[] {true, false}) {
+                    for (int i = 0; i <= 16; i++) {
+                        double a = -1.0 + (2.0 * i) / 16.0;
+                        double[] d = limitDirection(f, horizontal, a);
+                        assertTrue(ConeMath.inCone(
+                                0, 0, 0,
+                                f.fx(), f.fy(), f.fz(),
+                                d[0] * 2.0, d[1] * 2.0, d[2] * 2.0,
+                                5, 35, 30),
+                                "a drawn limit point at pitch " + pitch
+                                        + " horizontal=" + horizontal + " t=" + a
+                                        + " must be hittable, or the overlay is drawing a lie");
+                    }
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("a point just outside a limit curve is rejected")
+        void justOutsideIsRejected() {
+            // The complement of the test above, and the one that proves the curves are on the
+            // boundary rather than comfortably inside it. An overlay whose "edge" is a fifth of
+            // the cone in from the real edge is worse than no overlay.
+            double r = Math.toRadians(30.0);
+            ConeMath.Frame f = ConeMath.frame(0.0, Math.sin(r), Math.cos(r));
+            // One degree past the 35 degree horizontal limit, not inside it.
+            double over = Math.tan(Math.toRadians(36.0));
+            double[] d = ConeMath.direction(
+                    f.fx() + f.rx() * over, f.fy() + f.ry() * over, f.fz() + f.rz() * over);
+            assertFalse(ConeMath.inCone(0, 0, 0, f.fx(), f.fy(), f.fz(),
+                    d[0] * 2.0, d[1] * 2.0, d[2] * 2.0, 5, 35, 30),
+                    "one degree past the horizontal limit must be rejected");
+        }
+
+        /**
+         * A point on the drawn boundary, mirrored from {@code ConeDebugRenderer.limitCurve}.
+         *
+         * <p>Mirrored rather than shared on purpose: the renderer builds {@code Vec3}s, which
+         * this class may not touch, so sharing a helper would drag a Minecraft type in here and
+         * kill every test in the file. Writing it out means the two have to be kept in step, and
+         * the tests above are what catch them when they are not.</p>
+         *
+         * <p>The inset matches the renderer's: the drawn line sits a hair inside the limit so
+         * that "everything inside the line is hittable" is true rather than approximately true.</p>
+         *
+         * @param horizontal true to sweep the horizontal limit, false the vertical one
+         * @param t -1..1, the position along the other axis as a fraction of its limit
+         */
+        private static double[] limitDirection(ConeMath.Frame f, boolean horizontal, double t) {
+            final double hRad = Math.toRadians(35.0);
+            final double vRad = Math.toRadians(30.0);
+            final double inset = 0.995;
+            double across = Math.tan(horizontal ? vRad : hRad) * inset * t;
+            double limit = Math.tan(horizontal ? hRad : vRad) * inset;
+            return ConeMath.direction(
+                    f.fx() + f.rx() * (horizontal ? limit : across) + f.ux() * (horizontal ? across : limit),
+                    f.fy() + f.ry() * (horizontal ? limit : across) + f.uy() * (horizontal ? across : limit),
+                    f.fz() + f.rz() * (horizontal ? limit : across) + f.uz() * (horizontal ? across : limit));
+        }
+
+        private static double length(double x, double y, double z) {
+            return Math.sqrt(x * x + y * y + z * z);
+        }
+
+        private static double dot(double ax, double ay, double az, double bx, double by, double bz) {
+            return ax * bx + ay * by + az * bz;
         }
     }
 
