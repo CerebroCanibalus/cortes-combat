@@ -45,8 +45,12 @@ public final class WeaponStats {
     private static final Map<WeaponProfile, SpecialType> DEFAULT_SPECIAL = new HashMap<>();
 
     static {
-        // Bare hands sit at vanilla's 3.0 and are meant to be useless, not merely short.
-        DEFAULT_REACH.put(WeaponProfile.UNARMED, new ReachProfile(3.0F, 25.0F, 20.0F));
+        // Bare hands are the shortest reach in the game, below even the dagger's 2.4. A punch
+        // that reaches as far as a sword is not a punch, it is a worse sword, and the player
+        // would carry a weapon for nothing. Short, fast and nearly harmless is the whole
+        // character: the speed is what makes it a real option when you have nothing else, and
+        // it is the only thing that makes it one.
+        DEFAULT_REACH.put(WeaponProfile.UNARMED, new ReachProfile(1.9F, 25.0F, 20.0F));
         // 3.0 -> 3.6. The sword was 3.2, a fifth of a block over vanilla, which the player read
         // as "the same reach, shorter animation": the whole point of a hard cooldown is that you
         // commit to a spacing, and committing to vanilla's spacing is not a change. At 3.6 a
@@ -211,13 +215,18 @@ public final class WeaponStats {
     private static final Map<WeaponProfile, Float> TEMPO = new HashMap<>();
 
     static {
-        // Vanilla's sword is 12-13 ticks. 0.85 puts it at 10, which is the fastest anything in
-        // the game gets without also being a dagger, and it is what a sword should feel like
-        // when it is the weapon in your hand and the thing in front of you needs two hits.
+        // Vanilla's sword is 12-13 ticks. 0.85 puts it at 10, which is what a sword should feel
+        // like when it is the weapon in your hand and the thing in front of you needs two hits.
         TEMPO.put(WeaponProfile.SWORD, 0.85F);
-        // The dagger buys its speed back with a 2.4 block reach and a 45 degree cone, so it is
-        // the fastest melee in the game and that is the trade the design is making.
+        // The dagger buys its speed back with a 2.4 block reach and a 45 degree cone.
         TEMPO.put(WeaponProfile.DAGGER, 0.7F);
+        // Bare hands are the fastest thing in the game, and the only entry here above 1.0.
+        //
+        // The player's base attack speed is vanilla's 4.0, which is already five ticks, so
+        // "fastest" cannot mean leaving this alone: at 1.0 the fists tie with a dagger and lose
+        // to nothing. 1.25 puts them on four ticks, and the only thing that keeps that from
+        // being strictly better than a weapon is that a punch does one damage.
+        TEMPO.put(WeaponProfile.UNARMED, 1.25F);
     }
 
     public static CooldownState cooldownOf(Player player) {

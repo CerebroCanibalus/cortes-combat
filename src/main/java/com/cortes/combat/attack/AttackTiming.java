@@ -14,8 +14,11 @@ import java.util.concurrent.ThreadLocalRandom;
 public final class AttackTiming {
 
     /**
-     * Vanilla hands. A bare-handed player has no attack speed attribute at all, so the
-     * interval has to be supplied rather than derived.
+     * Fallback interval when the holder has no usable attack speed at all.
+     *
+     * <p>Not the bare-handed case: a player always has {@code ATTACK_SPEED}, and vanilla gives
+     * it a base of 4.0, which is five ticks. This only fires for an entity whose attribute is
+     * missing, zero or not a number, which is a modded-entity problem rather than a player one.</p>
      */
     public static final int UNARMED_INTERVAL = 12;
 
