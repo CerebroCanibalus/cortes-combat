@@ -31,6 +31,8 @@ public final class ModNetworking {
                 ModNetworking::handleChargeInput);
         registrar.playToServer(GuardInputPayload.TYPE, GuardInputPayload.STREAM_CODEC,
                 ModNetworking::handleGuardInput);
+        registrar.playToServer(WhiffPayload.TYPE, WhiffPayload.STREAM_CODEC,
+                ModNetworking::handleWhiff);
         registrar.playToClient(CombatStatePayload.TYPE, CombatStatePayload.STREAM_CODEC,
                 ModNetworking::handleCombatState);
         registrar.playToClient(DebugTogglePayload.TYPE, DebugTogglePayload.STREAM_CODEC,
@@ -61,6 +63,23 @@ public final class ModNetworking {
             return;
         }
         GuardHandler.setGuard(player, payload.holding());
+    }
+
+    /**
+     * A swing at nothing still costs the cooldown.
+     *
+     * <p>Guarded by {@code isReady} exactly like a real attack, and for the same reason: a
+     * client that spams this must not be able to extend its own cooldown, which would turn a
+     * missed swing into a way to lock yourself out.</p>
+     */
+    private static void handleWhiff(WhiffPayload payload, IPayloadContext context) {
+        if (!(context.player() instanceof ServerPlayer player)) {
+            return;
+        }
+        if (!AttackCooldown.isReady(player)) {
+            return;
+        }
+        AttackCooldown.consume(player, AttackCooldown.intervalFor(player));
     }
 
     private static void handleChargeInput(ChargeInputPayload payload, IPayloadContext context) {

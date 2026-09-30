@@ -57,29 +57,40 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
     private static final int RIGHT_ANCHOR = 6;
 
     /**
-     * Where the brackets sit at the narrowest cone in the game, and how much further out the
-     * widest one goes. Both numbers are about the <em>width</em> of the cone, so a weapon with a
-     * tight cone keeps the brackets in close where they belong.
+     * Where the brackets sit for a given cone, and every other dimension of the widget.
+     *
+     * <p>The span itself is {@link ConeGauge#halfSpan} rather than a number here, so it can be
+     * unit tested: this class implements {@code LayeredDraw.Layer}, which does not exist without
+     * the game on the classpath.</p>
      */
-    private static final int MIN_HALF_SPAN = 12;
-    private static final int MAX_HALF_SPAN = 34;
+    private static final int MIN_HALF_SPAN = ConeGauge.MIN_HALF_SPAN;
+    private static final int MAX_HALF_SPAN = ConeGauge.MAX_HALF_SPAN;
 
-    /** Cone half-angle window the span is stretched across, in degrees. */
-    private static final float ANGLE_FLOOR = 10.0F;
-    private static final float ANGLE_CEILING = 80.0F;
+    /**
+     * Bar thickness. Three pixels, not one.
+     *
+     * <p>One was legible in the source art and illegible on screen: a single GUI pixel is one
+     * to three screen pixels depending on the GUI scale, and at the low end of that range the
+     * fill is a faint dotted line the player cannot track while fighting. Three survives every
+     * GUI scale and still reads as a hairline rather than as a second bar.</p>
+     */
+    private static final int BAR_THICKNESS = 3;
 
-    /** Bar thickness. One pixel: this is a line between two brackets, not a second bar. */
-    private static final int BAR_THICKNESS = 1;
-
-    /** Alpha at the crosshair end of the fill, and at the bracket end. */
-    private static final int ALPHA_NEAR_CROSSHAIR = 30;
-    private static final int ALPHA_NEAR_BRACKET = 240;
+    /**
+     * Alpha at the crosshair end of the fill, and at the bracket end.
+     *
+     * <p>The near end used to fade to 30, which is effectively invisible: the part of the bar
+     * closest to the aim point was the part the player most needed to read. The fade now starts
+     * at 90, which still softens the tip without hiding it.</p>
+     */
+    private static final int ALPHA_NEAR_CROSSHAIR = 90;
+    private static final int ALPHA_NEAR_BRACKET = 245;
 
     /**
      * The empty part of the bar. Low on purpose: it has to be readable as "not ready yet"
-     * without competing with the fill, and the fill's own fade already makes its far end dim.
+     * without competing with the fill, and the fill's own fade already softens its far end.
      */
-    private static final int ALPHA_SOCKET = 45;
+    private static final int ALPHA_SOCKET = 60;
 
     @Override
     public void render(GuiGraphics graphics, DeltaTracker delta) {
@@ -120,13 +131,11 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
     /**
      * How far the brackets sit from the centre, for a cone of the given half-angle.
      *
-     * <p>A cone angle, not a weapon. Anything between {@link #ANGLE_FLOOR} and
-     * {@link #ANGLE_CEILING} degrees gets a proportional span, and anything outside is clamped,
-     * so a modded weapon with a wider profile is drawn as "wider" rather than as "wrong".</p>
+     * <p>Thin alias kept so the widget reads as one thing. The arithmetic and the reasoning
+     * behind the curve live in {@link ConeGauge}, where they can be tested.</p>
      */
-    static int halfSpanFor(float horizontalAngle) {
-        float t = clamp01((horizontalAngle - ANGLE_FLOOR) / (ANGLE_CEILING - ANGLE_FLOOR));
-        return MIN_HALF_SPAN + Math.round(t * (MAX_HALF_SPAN - MIN_HALF_SPAN));
+    private static int halfSpanFor(float horizontalAngle) {
+        return ConeGauge.halfSpan(horizontalAngle);
     }
 
     /**

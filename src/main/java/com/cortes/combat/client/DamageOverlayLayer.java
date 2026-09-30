@@ -30,6 +30,15 @@ public class DamageOverlayLayer implements LayeredDraw.Layer {
 
     private static final float FADE_SPEED = 6.0F;
     private static final float FLASH_SPEED = 5.0F;
+
+    /**
+     * A flash brighter than this is left alone by smaller hits.
+     *
+     * <p>Without a floor here, every hit in a burst re-raised the alpha to its own value and
+     * the overlay never got to decay between them: taking four hits in a second looked like a
+     * red strobe, which reads as a rendering fault rather than as four things hurting.</p>
+     */
+    private static final float FLASH_REARM = 0.35F;
     private static final float OVERLAY_OPACITY = 0.75F;
     private static final float FLASH_OPACITY = 0.55F;
     private static final float BRIGHTNESS = 1.0F;
@@ -37,6 +46,18 @@ public class DamageOverlayLayer implements LayeredDraw.Layer {
     private float vignetteAlpha;
     private float flashAlpha;
     private float lastKnownHealth;
+
+    /**
+     * The player the remembered health belongs to.
+     *
+     * <p>Respawning and rejoining both hand the client a brand new {@code LocalPlayer}, and the
+     * remembered health stayed from whoever was there before. The first read after that compared
+     * a full 20 health bar against a remembered 0, called it twenty hearts of damage, and set
+     * the flash to maximum — which is the red strobe on respawn. Keying the memory to the player
+     * it describes is the fix, and it is the same class of bug as the {@code SyncState} one: a
+     * value remembered across a lifecycle boundary it was never meant to cross.</p>
+     */
+    private LocalPlayer tracked;
 
     @Override
     public void render(GuiGraphics graphics, DeltaTracker delta) {
@@ -47,6 +68,7 @@ public class DamageOverlayLayer implements LayeredDraw.Layer {
         if (player.isCreative() || player.isSpectator()) {
             vignetteAlpha = 0.0F;
             flashAlpha = 0.0F;
+            tracked = null;
             return;
         }
 
@@ -94,11 +116,28 @@ public class DamageOverlayLayer implements LayeredDraw.Layer {
      * every source of damage, including ones from mods, without having to know they exist.
      */
     private void checkForDamage(LocalPlayer player) {
+        if (player != tracked) {
+            // A different player object: respawn, dimension change, or a rejoin. Adopt its
+            // current health without calling it damage, and drop any flash still in flight so a
+            // stale red does not carry into a fresh life.
+            tracked = player;
+            lastKnownHealth = player.getHealth();
+            flashAlpha = 0.0F;
+            return;
+        }
         float health = player.getHealth();
         if (health < lastKnownHealth + 0.499F) {
             float damage = lastKnownHealth - health;
             // Half a heart of damage or more, so chip damage does not strobe the screen.
-            flashAlpha = Math.max(flashAlpha, Math.max(0.0F, Math.min(1.0F, damage * 0.125F)));
+            float incoming = Math.max(0.0F, Math.min(1.0F, damage * 0.125F));
+            // Only a flash that has mostly faded gets re-armed. Four hits in a second used to
+            // each re-raise the alpha, so the overlay never decayed between them and read as a
+            // strobe rather than as one hit that hurt. A single stronger hit still overrides,
+            // which is the case that matters: the second hit of a burst should not be quieter
+            // than the first.
+            if (incoming > flashAlpha || flashAlpha < FLASH_REARM) {
+                flashAlpha = Math.max(flashAlpha, incoming);
+            }
         }
         lastKnownHealth = health;
     }

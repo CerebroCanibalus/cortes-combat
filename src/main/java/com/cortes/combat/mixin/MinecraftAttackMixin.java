@@ -2,10 +2,12 @@ package com.cortes.combat.mixin;
 
 import com.cortes.combat.client.ClientCombatState;
 import com.cortes.combat.client.ConeTargeting;
+import com.cortes.combat.net.WhiffPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.HitResult;
 import net.neoforged.neoforge.client.ClientHooks;
 import net.neoforged.neoforge.client.event.InputEvent;
 import org.spongepowered.asm.mixin.Mixin;
@@ -60,8 +62,22 @@ public abstract class MinecraftAttackMixin {
         }
 
         Optional<LivingEntity> target = ConeTargeting.findTargetForHeldItem(player);
+
+        // A swing at nothing still has to cost something.
+        //
+        // Falling through to vanilla here meant the arm swung and nothing else happened: no
+        // packet, so the server never charged the cooldown, so the next click was free. Holding
+        // the button against empty air was therefore a way to bank attacks, and a player who
+        // swung, missed and immediately swung again got two swings off one cooldown. The
+        // cooldown is a cost paid on the attempt, not on the contact.
         if (target.isEmpty()) {
-            // Nothing in the cone: fall through so vanilla still swings at air or mines.
+            if (isMining(mc)) {
+                // A block under the crosshair is not a whiffed attack, it is mining. Vanilla
+                // already gets that right and it has nothing to do with the combat cooldown.
+                return;
+            }
+            swingAtAir(player);
+            cir.setReturnValue(true);
             return;
         }
 
@@ -84,5 +100,29 @@ public abstract class MinecraftAttackMixin {
             player.swing(InteractionHand.MAIN_HAND);
         }
         cir.setReturnValue(true);
+    }
+
+    /** Whether the crosshair is resting on a block, which makes the click a mining click. */
+    private static boolean isMining(Minecraft mc) {
+        return mc.hitResult != null && mc.hitResult.getType() == HitResult.Type.BLOCK;
+    }
+
+    /**
+     * Spends the cooldown on a swing that hit nothing.
+     *
+     * <p>There is no vanilla packet for "I swung at air", and {@code Player#attack} cannot be
+     * called with a null target because it dereferences it immediately. So the swing is played
+     * locally and a one-byte payload tells the server to charge the cooldown, which is the only
+     * part of the swing that has to be authoritative.</p>
+     *
+     * <p>The alternative, letting vanilla handle it, is what produced free attacks: vanilla
+     * swings, never tells the server anything, and the cooldown is still full a moment later.</p>
+     */
+    private static void swingAtAir(LocalPlayer player) {
+        player.swing(InteractionHand.MAIN_HAND);
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection != null) {
+            connection.send(new WhiffPayload());
+        }
     }
 }
