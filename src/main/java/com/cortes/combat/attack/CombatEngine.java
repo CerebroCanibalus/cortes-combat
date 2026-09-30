@@ -1,11 +1,11 @@
 package com.cortes.combat.attack;
 
 import com.cortes.combat.core.CombatFeedback;
+import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.reach.Reach;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
-import com.cortes.combat.state.CooldownState;
 import com.cortes.combat.state.StreakState;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
@@ -14,18 +14,33 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
 /**
- * The whole attack flow, in one method.
+ * The whole attack flow, in one method, resolved on the release of one button.
  *
  * <p>This replaces vanilla {@code Player#attack} rather than patching it, because vanilla does
  * four things the design does not want: it multiplies damage by click timing, uses a single
  * raycast at the crosshair, resets its cooldown on item swap, and computes damage inside the
  * item. Patching all four would be four coupled mixins; replacing is one entry point.</p>
  *
- * <p>Order matters and is the design: charge is spent only by a swing that is actually allowed,
- * and a swing that whiffs still costs the cooldown, so holding the button is never free.</p>
+ * <h2>Why the release, and not the press</h2>
+ *
+ * <p>One button has to mean two things: tap to hit, hold to charge. The only way to tell them
+ * apart at the moment the press happens is to not know yet, so the decision cannot be made then.
+ * Resolving on the press and charging on top of it is what produced the old behaviour, and it
+ * is broken in a way that is not subtle: the press fired a hit with no charge, the hold kept
+ * accumulating, and the release threw all of it away. The charge was built and discarded on
+ * every single swing, so the multiplier never applied and the meter was a promise the game did
+ * not keep.</p>
+ *
+ * <p>On the release, one press is one attack, always, and the charge is whatever the server
+ * measured while the button was down.</p>
+ *
+ * <h2>Order</h2>
+ *
+ * <p>The cooldown is paid and the charge is spent <em>before</em> the target is even looked at.
+ * That ordering is the design: a whiff still costs, so holding the button against air is never
+ * a way to bank attacks, and the cost of an attempt does not depend on whether it connected.</p>
  */
 public final class CombatEngine {
 
@@ -42,45 +57,95 @@ public final class CombatEngine {
     private CombatEngine() {
     }
 
-    /** @return true if the attack was resolved by us and vanilla must not run */
-    public static boolean handleAttack(Player player, Entity target) {
-        if (player.level().isClientSide) {
-            return false;
-        }
-        if (!AttackCooldown.isReady(player)) {
-            return true;
+    /**
+     * Resolve one released swing.
+     *
+     * <p>Called by the payload handler on the server. Does nothing at all unless a press is
+     * actually open, which is both the anti-replay gate and the reason a stray release cannot
+     * hand a player free damage.</p>
+     *
+     * @param targetId the entity the client resolved against the cone, or zero for a whiff
+     */
+    public static void resolveSwing(Player player, int targetId) {
+        ChargeState charge = player.getData(ModAttachments.CHARGE.get());
+        if (!charge.holding()) {
+            // No open swing. Either the release arrived twice, or it arrived without a press,
+            // or the press was refused client side because the cooldown was not ready. All three
+            // mean the same thing: this is not an attack and must not cost anything.
+            return;
         }
 
         ItemStack held = player.getMainHandItem();
         WeaponStats stats = WeaponStats.of(held);
         int interval = AttackCooldown.intervalFor(player);
 
-        float chargeRatio = AttackCooldown.chargeRatio(player, stats.charge());
-        boolean inCone = target instanceof LivingEntity living
-                && Reach.inCone(player, living, stats.reach());
-
-        AttackResult result = inCone
-                ? DamageResolver.resolve(
-                        player.getAttributeValue(Attributes.ATTACK_DAMAGE),
-                        stats.charge(),
-                        stats.profile(),
-                        chargeRatio,
-                        player.getData(ModAttachments.HAMMER_STREAK.get()))
-                : AttackResult.MISS;
-
-        if (inCone) {
-            apply(player, target, stats, result, chargeRatio);
-        }
-
-        // A whiffed swing still costs the cooldown and still spends the charge. Otherwise
-        // holding the button would give free damage by spamming at air.
+        // Paid first, hit or miss, and it closes the swing. A second release for the same press
+        // finds nothing open and stops here.
         AttackCooldown.consume(player, interval);
-        // Swung on every accepted attack, hit or miss, so the swing animation exists at all:
-        // the client plays it locally through gameMode.attack, and this is what makes other
-        // players see it in third person. It is deliberately not swung when the cooldown
-        // rejects the attack, because that arm movement would claim a hit that never was.
+
+        float ratio = chargedRatio(charge, stats.charge());
+        resolveTarget(player, targetId, stats, ratio);
+    }
+
+    /**
+     * The charge this swing gets, or zero if it was a tap.
+     *
+     * <p>The threshold is a hard cut, not a scale. A swing under it is exactly a normal hit,
+     * because a click that quietly did a bit more is a click the player cannot learn from
+     * watching, and the only way they would find out is by having hit for less than expected.</p>
+     */
+    private static float chargedRatio(ChargeState charge, ChargeProfile profile) {
+        if (!profile.canCharge() || charge.ticks() < AttackTiming.MIN_CHARGE_HOLD_TICKS) {
+            return 0.0F;
+        }
+        return charge.ratio(profile.fullChargeTicks());
+    }
+
+    private static void resolveTarget(Player player, int targetId, WeaponStats stats,
+                                      float chargeRatio) {
+        if (targetId == com.cortes.combat.net.SwingPayload.NO_TARGET) {
+            swingArm(player);
+            return;
+        }
+        Entity found = player.level().getEntity(targetId);
+        if (!(found instanceof LivingEntity target)
+                || target == player
+                || !target.isAlive()
+                || target.isSpectator()
+                || target.isRemoved()) {
+            swingArm(player);
+            return;
+        }
+        // The client picked the target with the same cone the server checks with, and it is
+        // checked again here rather than trusted: a client that sends an id from outside its own
+        // reach gets a swing that visibly happens and does nothing, which is worse than a wrong
+        // number, because it looks like lag.
+        if (!Reach.inCone(player, target, stats.reach())) {
+            swingArm(player);
+            return;
+        }
+        swingArm(player);
+
+        AttackResult result = DamageResolver.resolve(
+                player.getAttributeValue(Attributes.ATTACK_DAMAGE),
+                stats.charge(),
+                stats.profile(),
+                chargeRatio,
+                player.getData(ModAttachments.HAMMER_STREAK.get()));
+        apply(player, target, stats, result, chargeRatio);
+    }
+
+    /**
+     * Swings the arm on every accepted swing, hit or miss.
+     *
+     * <p>Deliberately after the target is settled, so a rejected swing and a landed one look the
+     * same to everyone else. The local player does not see this one: when the weapon's viewmodel
+     * owns the strike, the client plays its own motion instead of the vanilla one, and
+     * {@code ItemViewModel.ownsSwing} is what the input code asks before calling
+     * {@code player.swing} locally.</p>
+     */
+    private static void swingArm(Player player) {
         player.swing(InteractionHand.MAIN_HAND);
-        return true;
     }
 
     private static void apply(Player player, Entity target, WeaponStats stats,

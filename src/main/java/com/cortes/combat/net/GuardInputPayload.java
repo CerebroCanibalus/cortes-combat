@@ -10,7 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 /**
  * Client to server: the guard button went down or came up.
  *
- * <p>One bool, two packets per raise, the same shape as {@link ChargeInputPayload}. The vanilla
+ * <p>One bool, two packets per raise, the same shape the swing payload has. The vanilla
  * shield raise is not reused for the sword, because a sword has no vanilla raise to reuse: the
  * same input path for both is what makes them one mechanic instead of two.</p>
  */

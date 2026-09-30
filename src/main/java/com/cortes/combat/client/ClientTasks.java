@@ -6,8 +6,8 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 /**
  * Client-side per-tick work that is not input.
  *
- * <p>Kept separate from the charge input handler so that "something happened this tick" and
- * "a button changed state" do not end up in the same class.</p>
+ * <p>Kept separate from the input handler so that "something happened this tick" and "a button
+ * changed state" do not end up in the same class.</p>
  */
 public final class ClientTasks {
 
@@ -16,11 +16,16 @@ public final class ClientTasks {
 
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
-        ChargeInputHandler.tickPrediction();
         // Ahead of the feedback tick, so a flash that arrived this tick is already counted as
         // one tick old and decays on schedule rather than sitting at full strength for an extra
         // frame.
         CombatAim.update();
         CrosshairFeedback.onTick(ClientCombatState.aiming());
+        // Advances the local charge, which the meter and the viewmodel both read.
+        SwingInputHandler.tick();
+        // Last, because it clears the verdict on the press: vanilla can run the attack path more
+        // than once in a tick, and every one of those has to see the same verdict. Clearing it
+        // anywhere earlier would let the second of them through to a free vanilla attack.
+        SwingInputHandler.endTick();
     }
 }

@@ -33,17 +33,39 @@ public final class AttackCooldown {
         player.setData(ModAttachments.CHARGE.get(), ChargeState.EMPTY);
     }
 
-    /** Begin accumulating charge. Called when the attack button goes down. */
+    /**
+     * Open a swing, which is also what starts the charge counting.
+     *
+     * <p>Refused on a cooldown that is not ready, and refused silently for the same reason the
+     * client refuses it: a press that visibly starts something and then does nothing reads as
+     * dropped input.</p>
+     *
+     * <p>Ignored while a swing is already open, which is not a formality. A client that spams
+     * presses must not accumulate charge faster than holding the button honestly would, and the
+     * charge is the only thing a long hold is actually buying.</p>
+     *
+     * <p>The client checks the same condition before it ever sends this, from a value that is up
+     * to one round trip old. That is why the check is repeated here rather than trusted: the
+     * repeat is the rule and the client's copy is only the prediction.</p>
+     */
     public static void beginCharge(Player player) {
+        if (!isReady(player)) {
+            return;
+        }
         ChargeState current = player.getData(ModAttachments.CHARGE.get());
         if (!current.holding()) {
             player.setData(ModAttachments.CHARGE.get(), new ChargeState(0, true));
         }
     }
 
-    /** Stop accumulating. The charge is spent; the next swing starts from zero. */
+    /** Stop accumulating without spending anything, for a press that was abandoned. */
     public static void endCharge(Player player) {
         player.setData(ModAttachments.CHARGE.get(), player.getData(ModAttachments.CHARGE.get()).reset());
+    }
+
+    /** Drop the cooldown to zero without touching the charge, for a fresh session. */
+    public static void resetCooldown(Player player) {
+        player.setData(ModAttachments.COOLDOWN.get(), CooldownState.READY);
     }
 
     /** How charged the held weapon currently is, as a 0..1 ratio. */

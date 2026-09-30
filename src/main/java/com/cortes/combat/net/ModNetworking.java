@@ -1,11 +1,11 @@
 package com.cortes.combat.net;
 
 import com.cortes.combat.attack.AttackCooldown;
+import com.cortes.combat.attack.CombatEngine;
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.registry.ModAttachments;
-import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.SyncState;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -27,12 +27,10 @@ public final class ModNetworking {
 
     public static void register(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar("1");
-        registrar.playToServer(ChargeInputPayload.TYPE, ChargeInputPayload.STREAM_CODEC,
-                ModNetworking::handleChargeInput);
+        registrar.playToServer(SwingPayload.TYPE, SwingPayload.STREAM_CODEC,
+                ModNetworking::handleSwing);
         registrar.playToServer(GuardInputPayload.TYPE, GuardInputPayload.STREAM_CODEC,
                 ModNetworking::handleGuardInput);
-        registrar.playToServer(WhiffPayload.TYPE, WhiffPayload.STREAM_CODEC,
-                ModNetworking::handleWhiff);
         registrar.playToClient(CombatStatePayload.TYPE, CombatStatePayload.STREAM_CODEC,
                 ModNetworking::handleCombatState);
         registrar.playToClient(DebugTogglePayload.TYPE, DebugTogglePayload.STREAM_CODEC,
@@ -66,36 +64,26 @@ public final class ModNetworking {
     }
 
     /**
-     * A swing at nothing still costs the cooldown.
+     * One press, one release, one decision point.
      *
-     * <p>Guarded by {@code isReady} exactly like a real attack, and for the same reason: a
-     * client that spams this must not be able to extend its own cooldown, which would turn a
-     * missed swing into a way to lock yourself out.</p>
+     * <p>The press only opens a swing. Nothing is paid and nothing is hit yet, and the charge
+     * starts counting on the server's own ticker. The release closes it, pays the cooldown hit or
+     * miss, and applies the damage if the id names a target the cone agrees with.</p>
+     *
+     * <p>Both edges are gated on the same condition the client used, and that gate is the point
+     * rather than an afterthought: a client that spams presses against a cooldown it knows is not
+     * ready gets nothing, and a release with no press open behind it is dropped rather than
+     * turned into a free attack.</p>
      */
-    private static void handleWhiff(WhiffPayload payload, IPayloadContext context) {
+    private static void handleSwing(SwingPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) {
             return;
         }
-        if (!AttackCooldown.isReady(player)) {
+        if (payload.pressed()) {
+            AttackCooldown.beginCharge(player);
             return;
         }
-        AttackCooldown.consume(player, AttackCooldown.intervalFor(player));
-    }
-
-    private static void handleChargeInput(ChargeInputPayload payload, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer player)) {
-            return;
-        }
-        ChargeState current = player.getData(ModAttachments.CHARGE.get());
-        if (payload.holding()) {
-            // Already holding: ignore. A client spamming "down" must not accumulate charge
-            // faster than holding the button honestly would.
-            if (!current.holding()) {
-                AttackCooldown.beginCharge(player);
-            }
-        } else {
-            AttackCooldown.endCharge(player);
-        }
+        CombatEngine.resolveSwing(player, payload.entityId());
     }
 
     private static void handleCombatState(CombatStatePayload payload, IPayloadContext context) {
@@ -108,7 +96,7 @@ public final class ModNetworking {
                 payload.guardMax(),
                 payload.guardHeld());
         com.cortes.combat.client.GuardInputHandler.acceptServerState(payload.guardHeld());
-        com.cortes.combat.client.ChargeInputHandler.acceptServerState(
+        com.cortes.combat.client.SwingInputHandler.acceptServerState(
                 payload.chargeRatio(), player.getMainHandItem().isEmpty()
                         ? 0
                         : WeaponStats.of(player.getMainHandItem()).charge().fullChargeTicks());

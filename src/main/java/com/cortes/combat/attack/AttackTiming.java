@@ -25,6 +25,24 @@ public final class AttackTiming {
     /** Vanilla mace reaches 1.0, so no vanilla weapon is slower than this. */
     public static final int MAX_INTERVAL = 40;
 
+    /**
+     * How long the attack button has to be held before the swing counts as charged, in ticks.
+     *
+     * <p>Four ticks is two hundred milliseconds, and it is the number that lets one button mean
+     * two things without the player having to learn a modifier. A deliberate click is about a
+     * hundred and fifty, so a click lands under it and anything past it was a decision.</p>
+     *
+     * <p>Deliberately <b>not</b> per weapon. A threshold that varied with the item would mean
+     * the same flick of the wrist charges a sword and not a warhammer, which is precisely the
+     * "you did not know, so you got punished" failure the design exists to avoid: the muscle
+     * memory has to be global or it is not muscle memory at all.</p>
+     *
+     * <p>And a swing under the threshold is exactly flat rather than proportionally charged. A
+     * hidden band where a three tick click does "a bit more" cannot be learned by watching, and
+     * a player only discovers it by having hit for less than they expected.</p>
+     */
+    public static final int MIN_CHARGE_HOLD_TICKS = 4;
+
     private AttackTiming() {
     }
 

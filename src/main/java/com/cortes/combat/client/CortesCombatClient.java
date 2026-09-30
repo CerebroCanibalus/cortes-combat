@@ -27,7 +27,8 @@ public class CortesCombatClient {
 
     public CortesCombatClient(IEventBus modEventBus, ModContainer modContainer) {
         modContainer.registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
-        NeoForge.EVENT_BUS.register(ChargeInputHandler.class);
+        NeoForge.EVENT_BUS.register(SwingInputHandler.class);
+        NeoForge.EVENT_BUS.register(ItemViewModel.class);
         NeoForge.EVENT_BUS.register(GuardInputHandler.class);
         NeoForge.EVENT_BUS.register(ClientTasks.class);
         NeoForge.EVENT_BUS.register(ConeDebugRenderer.class);

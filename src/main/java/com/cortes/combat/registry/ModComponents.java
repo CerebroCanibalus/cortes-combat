@@ -6,6 +6,7 @@ import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.core.weapon.ReachProfile;
 import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.core.weapon.WeaponProfile;
+import com.cortes.combat.viewmodel.ViewModelProfile;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -38,6 +39,18 @@ public final class ModComponents {
 
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<GuardProfile>> GUARD_PROFILE =
             component("guard_profile", GuardProfile.CODEC);
+
+    /**
+     * The viewmodel of an item: a list of tracks, resolved once and evaluated per frame.
+     *
+     * <p>A fifth component, and separate on purpose. The other four are gameplay numbers that
+     * the server resolves and that decide damage, reach and cooldown. This one is pure
+     * presentation, only the client resolves it, and folding it into one of the others would
+     * mean every combat system in the mod had to carry a field it never reads. Presentation data
+     * that a server-side change could invalidate is the thing worth keeping apart.</p>
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<ViewModelProfile>> VIEWMODEL_PROFILE =
+            component("viewmodel_profile", ViewModelProfile.CODEC);
 
     private ModComponents() {
     }

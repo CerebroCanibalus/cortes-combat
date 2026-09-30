@@ -12,6 +12,7 @@ import com.cortes.combat.state.ParryState;
 import com.cortes.combat.state.StreakState;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 
@@ -41,6 +42,27 @@ public final class CombatTicker {
         tickStreak(player);
         tickParry(player);
         ModNetworking.syncTo(player);
+    }
+
+    /**
+     * A session starts with nothing open.
+     *
+     * <p>Without this the charge is a real bug rather than a cosmetic one. It lives in a
+     * persistent attachment, so a player who logs out mid-hold has {@code holding} still set
+     * when they come back and the ticker goes on counting a hold that no button is making: the
+     * release that would have closed it went to a connection that no longer existed. The result
+     * is a player who rejoins silently charged to full, and a free fully loaded swing out of
+     * it.</p>
+     *
+     * <p>The cooldown is dropped too, because a session that opens with a partly spent bar is
+     * just confusing: nothing about reconnecting should cost a swing.</p>
+     */
+    @SubscribeEvent
+    public static void onLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            AttackCooldown.endCharge(player);
+            AttackCooldown.resetCooldown(player);
+        }
     }
 
     private static void tickCooldown(ServerPlayer player) {

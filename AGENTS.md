@@ -27,9 +27,10 @@ refs/              → clones upstream, SOLO LECTURA, gitignored
 - **Target: NeoForge 1.21.1 / Java 21.** No subir a versiones nuevas. Combatify está en MC 26.1.2 con Java 25 y APIs que no existen en 1.21.1: **cualquier idea que tomes de `refs/combatify` hay que traducirla a las APIs de 1.21.1, no copiarla.**
 - **Mod id: `cortescombat`.** Paquete base: `com.cortes.combat`.
 - **`mods.toml` va en `src/main/templates/META-INF/neoforge.mods.toml`** y se expande con `generateModMetadata` (task `ProcessResources` + `neoForge.ideSyncTask`). Nunca escribirlo a mano en `src/main/resources`.
-- **Cada mixin nuevo va en `src/main/resources/cortescombat.mixins.json`** y además en el bloque `[[mixins]]` de `mods.toml`. Olvidarse de la segunda línea = el mixin no se carga en producción, solo en dev.
+- **Cada mixin nuevo va en `src/main/resources/cortescombat.mixins.json`.** El bloque `[[mixins]]` de `mods.toml` nombra el **archivo de config**, no cada mixin: es una sola línea `config="${mod_id}.mixins.json"` y no hay que tocarla nunca. (La versión anterior de esta regla pedía dos lugares y el segundo no existe; costó una búsqueda inútil confirmarlo.)
+- **Queda UN solo mixin: `MinecraftAttackMixin`.** `PlayerAttackMixin` se borró cuando el ataque pasó a resolverse desde un payload.
 - `neoforge.enabledGameTestNamespaces` está fijado al `mod_id` en los run configs. Tests nuevos deben usar ese namespace o no corren.
-- Red: todo payload es un `record` que implementa `CustomPacketPayload` con un `Type` (`ResourceLocation.fromNamespaceAndPath(MOD_ID, "nombre")`) y un `StreamCodec` estático. Registro centralizado, un archivo por payload. No usar `FriendlyByteBuf` a mano.
+- Red: todo payload es un `record` que implementa `CustomPacketPayload` con un `Type` (`ResourceLocation.fromNamespaceAndPath(MOD_ID, "nombre")`) y un `StreamCodec` estático. Registro centralizado, un archivo por payload. No usar `FriendlyByteBuf` a mano. **Y el record necesita el `@Override type()`**: tener el campo `TYPE` no alcanza, la interfaz lo pide explícitamente.
 - Config: `ModConfigSpec` con `BUILDER.define*` y `SPEC` declarado **al final** de la clase. Tipos `CLIENT` y `SERVER` registrados por separado desde el constructor `@Mod`.
 
 ## Comandos
@@ -89,6 +90,13 @@ Ninguna de estas se adivina, y varias están en versión **distinta** a 1.21.2+:
 - **`ATTACK_SPEED` base de un jugador es 4.0**, no 0. `AttackTiming.UNARMED_INTERVAL` es un fallback para entidades sin atributo, no el caso de las manos desnudas.
 - **Aritmética del HUD: las clases que implementan `LayeredDraw.Layer` no se pueden testear en JVM pelada.** Fallan al cargar, antes de la primera aserción. `ConeGauge` existe separada del layer por eso.
 - **`StreamCodec.composite` arranca en 1 componente** (aridades 1 a 6, verificado). Para un payload de 0 campos: `StreamCodec.unit(instancia)`. Para enums: `ByteBufCodecs.idMapper(IntFunction, ToIntFunction)`.
+- **El viewmodel se engancha con `RenderHandEvent`, no con un mixin.** Lo dispara `ClientHooks.renderSpecificFirstPersonHand(hand, pose, buffer, light, partialTick, pitch, swingProgress, equipProgress, stack)`, que `ItemInHandRenderer.renderHandsWithItems` llama **antes** de `renderArmWithItem`. Orden real, verificado con `javap`: `bobbing de vista → [nosotros] → transform del brazo → transform del modelo`. O sea que nuestro transform **envuelve** todo lo de vanilla en vez de ser pisado por él. `ItemInHandRenderer` en 1.21.1 **no tiene** `getItemTransform`, y `ItemProperties` no lo referencia ninguna clase de `client/` salvo `ItemOverrides`: el `display.transform` viene horneado en el modelo.
+- **`InputConstants.GLFW_PRESS` no existe.** Es `org.lwjgl.glfw.GLFW.GLFW_PRESS`.
+- **`com.mojang.serialization.codecs.StringCodec` no existe** en el DFU que trae 1.21.1. Usar `Codec.STRING.xmap(...)`, que está en todas las versiones.
+- **El cuerpo constant-specific de un enum no puede leer un campo de instancia.** `BACK("1.7") { ... overshoot ... }` no compila: el cuerpo no es un contexto de instancia. Con un solo valor hace falta un `private static final`.
+- **Un record no puede tener un método que compite con un accessor de componente.** `amplitude()` en un record con un componente `amplitude` es "invalid accessor method". Renombrar el método o el componente.
+- **`Axis.rotationDegrees(float)` aloca un `Quaternionf` nuevo en cada llamada.** Para el viewmodel hay que reusar uno scratch con `identity().rotateX(..).rotateY(..).rotateZ(..)`: `mulPose` lo lee antes de volver, así que una sola instancia compartida es segura en el hilo de render.
+- **`Entity.isRemoved()` existe y es público final** en 1.21.1 (no `hasBeenRemoved`). `EntityTypeTest` vive en `net.minecraft.world.level.entity`, no en `net.minecraft.world.entity`.
 - **`StreamCodec.fromCodec(codec)` NO existe en 1.21.1.** El que existe es **`ByteBufCodecs.fromCodec(codec)`**. `StreamCodec.fromCodec` llegó después.
 - **`Mth.clamp` siempre toma 3 argumentos** `(valor, min, max)`. No hay versión de un solo argumento.
 - **Enum que implementa `StringRepresentable` tiene que implementar `getSerializedName()`**, no alcanza con tener un `id()`.
@@ -104,18 +112,20 @@ Ninguna de estas se adivina, y varias están en versión **distinta** a 1.21.2+:
 ## Fase activa: 3 — Vertical slice
 
 Estado: diseño cerrado, arquitectura aprobada, pasos 1 a 8 del plan hechos y verificados en
-cliente real, más un reworks completo del HUD hecho sobre playtest del usuario. **124 tests
-verdes.** Siguiente: paso 9 (las 30 armas + datagen + recetas).
+cliente real, un reworks completo del HUD, el click unificado (que destapó que el golpe
+cargado no existía) y la librería de viewmodel con el primer perfil real. **124 tests
+verdes.** Siguiente: ajustar el viewmodel de la espada en playtest y después el paso 9
+(las 30 armas + datagen + recetas).
 
 Lo que queda del vertical slice y en qué orden:
 
 | # | Paso | Estado |
 |---|---|---|
 | 1-8 | esqueleto, registros, `reach/`, cooldown duro, flujo de ataque, carga, HUD, aguante | HECHOS |
+| 14 | framework de viewmodel | **HECHO** (librería + perfil de espada; falta tercera persona, FOV, sonido, `CHARGED`) |
 | 9 | las 30 armas + datagen + recetas + set de cobre | **SIGUIENTE** |
 | 10 | especiales: multi-hit de alabarda, parry de sable, damage type de ignore-armadura | pendiente |
 | 11 | supervivencia (`FoodData`): quitar exhaustion, curación de ciclo cerrado | pendiente |
-| 14 | framework de viewmodel (capas aditivas, easing, shake por golpe) | pendiente |
 | 15 | compat / conversión de armas de otros mods | pendiente |
 
 Pendiente de una sesión, con diagnóstico hecho: **la optimización del cono del cliente ya
@@ -378,39 +388,185 @@ pista visual, y el ataque no se entera porque re-deriva el objetivo en el click.
   ahorraría un `ArrayList` y un `Optional` por llamada. Son un objeto chico cada tres ticks. El
   costo que dominaba el perfil era recorrer las entidades, y los dos overloads lo hacen igual.
 
-## Deuda conocida: el ataque cargado es un placeholder
+## Deuda conocida: el feedback del golpe cargado
 
-Decidido explícitamente por el usuario: **la falta de animación del golpe cargado se deja para
-el final.** No es un bug y no se cierra ahora. Lo que sí conviene tener escrito es *qué* es
-exactamente el placeholder, porque "sin animación" esconde más cosas que la animación.
-
-**Lo que el golpe cargado ya hace y es real:** el daño. `base × (1 + chargeRatio × bonus)` con
-el piso forzado en código, y el bonus vive en `charge_profile`, así que el sabre al doble y la
-ropera sin carga salen del mismo camino. La carga se acumula en el tick del servidor, no en el
-cliente. Todo eso es el sistema de verdad y no se toca.
-
-**Lo que es placeholder, punto por punto:**
+**El viewmodel ya está hecho** (ver la sección de la librería). Lo que sigue siendo placeholder es
+todo lo demás, y es menos de lo que parece:
 
 | Falta | Dónde está decidido | Nota |
 |---|---|---|
-| Viewmodel del golpe cargado | paso 14 | El vanilla no tiene animaciones de item en 1.21.1: todo viewmodel es mixin |
+| **Retroalimentación de "esto fue cargado"** | — | `CombatFeedback` solo tiene `HIT`, `KILL` y `GUARDED`. Un golpe a carga completa se ve **idéntico** a uno de carga cero: misma expansión, mismo color, misma duración. El jugador tiene que inferirlo del número de daño, que es la lectura que el diseño de HUD evita |
 | **FOV de carga** | `DESIGN.md` 512 | Va por `ComputeFovModifierEvent`, que **existe** en 1.21.1 (verificado). No es una capa, es un evento |
 | Sonido de carga completa | `DESIGN.md` 524 | El proyecto tiene **un solo sonido**: `SHIELD_BREAK` en `GuardHandler`. Los cuatro eventos que el jugador tiene que reconocer sin mirar son carga completa, parry, agotamiento de aguante y escalado del martillo: ninguno existe |
-| Impacto de golpe cargado | `DESIGN.md` 499 | `addParticle` no aparece en ninguna parte del código |
-| **Retroalimentación de "esto fue cargado"** | — | `CombatFeedback` solo tiene `HIT`, `KILL` y `GUARDED`. Un golpe a carga completa se ve **idéntico** a uno de carga cero: misma expansión, mismo color, misma duración. El jugador tiene que inferirlo del número de daño, que es la lectura que el diseño de HUD evita |
+| Impacto de golpe cargado (partículas) | `DESIGN.md` 499 | `addParticle` no aparece en ninguna parte del código |
+| **Tercera persona** | — | El viewmodel es solo first person. El servidor sigue balanceando, así que los demás jugadores ven el brazo de vanilla. Es coherente, pero no es lo que el framework debería terminar siendo |
+| **Las 29 armas sin perfil** | paso 9 | Solo la espada tiene perfil. El resto usa la pose de vanilla, que es el default correcto |
 
-La última fila es la que más duele y la que no está escrita en `DESIGN.md`: el crosshair no
-distingue un golpe cargado de uno normal. Cuando se implemente el FOV y el sonido, lo
+La primera fila es la que más duele y la que no está escrita en `DESIGN.md`: **el crosshair no
+distingue un golpe cargado de uno normal.** Cuando se implemente el FOV y el sonido, lo
 necesario es un valor más en `CombatFeedback` (un `CHARGED`, o un tono aparte del que usa
 `HIT`), porque un HUD que reacciona a todo deja de significar nada y ese enum es una lista
 cerrada a propósito.
+
+**Y lo que se acaba de arreglar de paso:** hasta esta ronda el golpe cargado **no existía**. La
+carga se acumulaba y se tiraba en cada release, así que el multiplicador nunca se aplicó. Ahora
+un click de menos de 4 ticks es un golpe plano y uno de más es un golpe cargado de verdad, y el
+viewmodel lo muestra.
+
+## El click unificado — y el bug que lo motivó
+
+**El bug primero, porque es más grave de lo que parecía.** El síntoma reportado era "a veces los
+ataques cargados se anteponen a los normales y viceversa". La causa real: **el golpe cargado
+nunca ocurría.**
+
+El flujo viejo, rastreado paso a paso:
+
+1. **Bajás el click** → arranca la carga **y en el mismo click** vanilla dispara el ataque.
+2. El servidor lee la carga en ese instante: **0 ticks**. Daño base, siempre.
+3. **Mantenés** → la carga sube a 25/25, el indicador se llena.
+4. **Soltás** → `endCharge` resetea a `EMPTY`. **Los 25 ticks se tiran**, y vanilla no dispara
+   nada en el release porque `startAttack` solo corre en el press.
+
+`DamageResolver` nunca vio un ratio distinto de 0. El multiplicador era código muerto y el
+indicador una promesa incumplida. Lo que el jugador veía — el medidor llenarse y después un
+click normal — es exactamente "se anteponen".
+
+**El arreglo: un solo evento, y el ataque se resuelve en el release.**
+
+Un botón tiene que significar dos cosas: click corto pega, click sostenido carga. En el momento
+del press no se puede distinguir, así que la decisión no se puede tomar ahí. Resolver en el
+release es lo único que hace que **un press sea siempre un ataque**, y la carga es lo que el
+servidor midió mientras el botón estuvo abajo.
+
+| Decisión | Valor | Por qué |
+|---|---|---|
+| Umbral mínimo de carga | `AttackTiming.MIN_CHARGE_HOLD_TICKS` = 4 (200 ms) | Un click deliberado es ~150 ms. Decidido por el usuario |
+| ¿Umbral por arma? | **NO, global** | Si variara, el mismo gesto cargaría una espada y no un martillo. La memoria muscular tiene que ser global o no es memoria muscular |
+| Bajo el umbral | **Daño plano, sin excepciones** | Una banda invisible donde un click de 3 ticks hace "un poco más" no se aprende mirando; se descubre por haber pegado de menos |
+
+**Lo que sobró, y por qué sobró:** `ChargeInputPayload` y `WhiffPayload` se fusionaron en un
+`SwingPayload(entityId, pressed)`, y `PlayerAttackMixin` se borró. El cliente manda **el
+objetivo**, no le pide al servidor que lo busque, y eso es lo que colapsa el peligro de orden:
+antes el release decía "dejá de cargar" y un paquete aparte decía "el swing falló", y cuál de los
+dos llegaba primero decidía si se cobraba el cooldown. **Un paquete no puede llegar en el orden
+equivocado.** `MinecraftAttackMixin` quedó en tres líneas: cancela vanilla y nada más.
+
+**Consecuencia aceptada:** un click corto ahora se resuelve en su release, o sea un par de ticks
+(100 ms) más tarde que antes. Es el precio de un press = un ataque, y es el mismo precio que paga
+todo juego con botón cargable.
+
+**Costo que NO se paga — la predicción de daño.** El cliente ya no llama `gameMode.attack`, así
+que el mob no se encoge hasta el viaje de vuelta. Es deliberado: el mod **borra a propósito** la
+ventana de invulnerabilidad del objetivo antes de pegarle (`invulnerableTime = 0`), así que
+predecir el daño en el cliente lo aplicaría dos veces. El crosshair sigue respondiendo al
+feedback del servidor.
+
+### Tres huecos que aparecieron al implementarlo
+
+Los tres son de la familia "un estado que dura más que el botón que lo creó":
+
+- **Doble click dentro de un tick.** El cliente abría dos swings porque su cooldown llega un viaje
+  de vuelta tarde; el servidor honraba el primero y tiraba el segundo, y el jugador veía dos
+  animaciones de golpe y un impacto. Es exactamente el fallo que el proyecto ya había rechazado
+  ("un swing que se ve y no hace nada"). Se arregla con un **cerrojo local**: `readyAtTick`, que
+  el cliente pone en el release con el intervalo del arma. **El gate del cliente tiene que ser
+  más estricto que el valor que tiene**: puede rechazar un golpe que el servidor habría
+  permitido, por un viaje de vuelta como mucho, y nunca al revés.
+- **Cambio de item con el botón apretado.** Con el scroll se puede cambiar de arma a mitad de
+  carga. El release leía los ticks acumulados y los pasaba por la escala del arma **nueva**: 40
+  ticks de maza (que carga al doble de lento) se convertían en carga completa de espada. Ahora el
+  cambio de item **resuelve el swing como si fuera un release**, que es lo único honesto: se cobra
+  el cooldown porque el jugador sí se comprometió, y se cierra la carga.
+- **Loguearse a mitad de carga.** La carga vive en un attachment persistente, así que un jugador
+  que se desconectaba apretando se reconectaba con `holding` en true y el ticker seguía contando
+  una carga que ningún botón estaba haciendo. Corregido en `PlayerEvent.PlayerLoggedInEvent`.
+
+**Y una decisión de criterio que vale la pena recordar:** minar contra un enemigo en el cono.
+Decidirlo por "el crosshair está en un bloque" hacía que una pared *detrás* del enemigo se comiera
+el golpe; decidirlo por "no hay objetivo" hacía que un zombi a tu espalda te impidiera minar. La
+regla que funciona es **lo que esté más adelante**, comparando el punto del bloque contra el
+centro del objetivo.
+
+## La librería de viewmodel (`viewmodel/`)
+
+Decidido por el usuario: **adelantarla**, antes que las 30 armas, porque con una sola se debuggea
+fácil y de ahí se construye. Y porque hacerlo después de que existan 30 armas es un desastre.
+
+**Todo el cálculo es Java puro. Una sola clase toca Minecraft** (`client/ItemViewModel.java`), y
+esa separación es lo que hace que la librería sea testeable *y* extraíble. La regla ya se había
+aprendido dos veces con `ConeMath` y `AttackTiming`: lo que se puede testear en JVM pelada se
+testea, lo demás no se toca hasta que hace falta.
+
+| Clase | Qué es | Por qué es así |
+|---|---|---|
+| `Curve` | `LINEAR`, `SMOOTH`, `EXPO`, `BACK`, `ELASTIC`, `BOUNCE` | `Mth` solo trae lineal/cuadrática/cúbica y un golpe con peso necesita más. **Todas normalizadas: `f(0)==0`, `f(1)==1`** |
+| `Offset` | record de 3 posiciones + 3 ángulos, aditivo | Posiciones en unidades de item y ángulos en grados: son las unidades de vanilla, así que un número copiado de un `ItemInHandRenderer` descompilado funciona tal cual |
+| `Channel` | `WINDUP`, `STRIKE`, `COOLDOWN`, `HOLD` | Los cuatro significan lo mismo: *cuánto de este movimiento está pasando ahora*. Ninguno es un reloj |
+| `ViewModelInput` | el snapshot de un frame | Un record inmutable, armado una vez por frame. Un perfil **no consulta el juego**, es función de este record |
+| `Track` | `(channel, curve, amplitude, tremor, tremorHz, tremorWeight)` | La fórmula entera es `amplitude × curve(channel)`. Como toda curva arranca en 0, un track no aporta nada en reposo sin que nadie tenga que escribirlo |
+| `ViewModelProfile` | una lista de tracks | Sin timeline, sin keyframes, sin máquina de estados. Un timeline es lo correcto para un ataque con seis tiempos distintos y lo **equivocado** para "el item se tira atrás en proporción a la carga", que es lo que casi todo movimiento del juego es |
+| `ViewModelNoise` | hash entero por bucket, interpolado | El temblor tiene que ser sembrado por golpe, no aleatorio por frame |
+| `ViewModelMotion` | el wind-up y el strike a lo largo del tiempo | Ver abajo, que es la parte difícil |
+
+**No hay timeline, y es un límite deliberado, no una feature faltante.** Si alguna vez hace
+falta, un timeline sería *otro canal*, no un cambio de esta clase.
+
+### El hand-off del release, que es la parte difícil
+
+El item está todo atrás y tiene que venir adelante y pegar. Las dos versiones ingenuas se ven
+mal y con claridad:
+
+- **La carga se pone en cero en el release** → el item teletransporta a reposo en el frame del
+  golpe y *después* se lanza. El swing tiene un tirón visible en su punto más rápido y las dos
+  mitades se leen como dos movimientos.
+- **La carga se queda en 1 y el strike suma encima** → el item va el doble de lejos y nunca
+  vuelve, porque nadie deshizo el wind-up.
+
+Lo que hace `ViewModelMotion` es **entregarse**: el wind-up se desenrolla a lo largo del strike
+mientras el strike empuja hacia adelante atravesándolo, así que el item sale de la posición
+cargada en un movimiento continuo y el pico del follow-through pasa con el wind-up ya a la mitad.
+Los dos canales vuelven a reposo y el item regresa a la pose de vanilla sin que nadie escriba un
+track de "deshacer".
+
+`STRIKE` es un **bump** (0 → 1 → 0) y no un canal que queda en 1, a propósito: si se quedara en 1
+dejaría el item desplazado para siempre al terminar el movimiento, y cada perfil necesitaría un
+segundo track para deshacer su propio primero, y los dos tendrían que coincidir.
+
+### Rendimiento
+
+Un `ViewModelInput` por frame, después una pasada por una lista de records de cuatro elementos
+haciendo unas pocas multiplicaciones. **Sin alocación, sin lookup, sin branch por arma.** Lo
+único que pasa por frame en el código del juego es leer cuatro floats que ya se estaban
+midiendo para el HUD, y el perfil se resuelve cuando cambia el item en mano, no por frame.
+
+Dos decisiones que existen solo por esto:
+
+- **`Axis.rotationDegrees` aloca un `Quaternionf` por llamada.** Se reusa uno scratch con
+  `identity().rotateX().rotateY().rotateZ()` y un solo `mulPose`.
+- **Un `Quaternionf` por frame, no tres**, porque `mulPose` lo lee antes de volver.
+
+### Estado actual: solo la espada, y es placeholder
+
+`ViewModelDefaults` tiene **una** entrada real, la espada: wind-up en proporción a la carga
+(`SMOOTH`), temblor que crece con la carga a 14 Hz sembrado por golpe, y un strike `EXPO` hacia
+adelante y más allá del reposo. **Los números están escritos, no ajustados.** Son la magnitud y
+la forma correctas; lo que no son es un feeling que alguien haya jugado.
+
+El resto de las armas **no tienen perfil a propósito**: sin entrada, la pose es exactamente la de
+vanilla, que es el default correcto. Un viewmodel sutilmente mal es peor que ninguno.
+
+`ownsSwing` en el perfil significa "el perfil dibuja el strike entero", y lo que hace es que el
+cliente **no** llame a `player.swing` (si no, el item se mueve dos veces y las dos animaciones
+se desfasan). El servidor igual balancea, así que **en tercera persona se sigue viendo el
+brazo de vanilla**: first person tiene el viewmodel real, third person tiene vanilla hasta que
+el framework tenga historia de tercera persona.
 
 ## Próximos pasos
 
 1. **Paso 9: las 30 armas + datagen + recetas + set de cobre.** Es el paso grande que falta.
 2. Paso 10: especiales (alabarda multi-hit, parry de la sable) + damage type de ignore de armadura. El flag `ignoredArmour` ya se calcula y se testea, pero la fuente de daño sigue siendo la normal.
 3. Paso 11: supervivencia (`FoodData`) — el cambio más caro, en commit propio.
-4. Paso 14: viewmodel, FOV de carga, sonido de carga completa y el valor `CHARGED` de `CombatFeedback`. El placeholder del golpe cargado se cierra acá, no antes.
+4. Paso 14 (lo que falta): FOV de carga, sonido de carga completa, el valor `CHARGED` de `CombatFeedback`, tercera persona, y los perfiles de las otras 29 armas. **Antes que nada, ajustar los números de la espada en playtest** — están escritos, no jugados.
 5. Números: definir el escalado del martillo en playtest (`WARHAMMER_STEP` está en 0.15 como punto de partida).
 6. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
 7. Pendiente de decidir: extraer las tablas de `WeaponStats` a una clase pura, para que el orden de los alcances sea un test y no una acordada. Hoy no se puede testear porque el `<clinit>` de `WeaponStats` usa `Registries` y `TagKey`, que son de Minecraft.
@@ -454,4 +610,8 @@ cerrada a propósito.
   - **`refs/rafts_combat` tiene un `RangeIndicatorHud` que resuelve mal lo mismo.** Usa `191.5 * 0.33` y un `widthRatio` que es una tabla de números mágicos por arma en su config. Copiar su enfoque era copiar el bug; la proyección angular lo resuelve sin un número por resolución.
 - **Balance:** espada 3.2 → 3.6, manos desnudas 3.0 → 1.9 de alcance y tempo 1.25 (lo más rápido del juego), daga tempo 0.7, espada 0.85.
 - **Optimización del cono, hecha.** Escaneo throttleado a 3 ticks cuando nada se movió, con revalidación del objetivo cacheado **cada tick**. El hallazgo que la justificaba: `CombatAim.target()` no tenía un solo llamador y el HUD solo lee un booleano, así que cada tick se pagaba una resolución de objetivo completa y se tiraba la entidad. Se borró el método muerto. La invalidación del objetivo es lo que hace segura la frecuencia: lo único que puede quedar viejo es la *llegada* de un objetivo distinto, y eso va a un hint. Detalle en la sección "Optimización del cono".
+- **El click unificado, y con él el bug más grande encontrado hasta ahora.** El golpe cargado **no existía**: la carga se acumulaba en cada hold y `endCharge` la tiraba en el release, así que `DamageResolver` nunca vio un ratio distinto de 0. El síntoma ("se anteponen") era el medidor llenándose y después un click normal. Ahora un press abre el swing y el release lo resuelve, con `MIN_CHARGE_HOLD_TICKS = 4` **global** y **plano** por debajo del umbral (decidido por el usuario). `ChargeInputPayload` + `WhiffPayload` → un `SwingPayload(entityId, pressed)`; `PlayerAttackMixin` borrado; `MinecraftAttackMixin` quedó en tres líneas. El cliente manda el objetivo, y por eso no hay dependencia de orden entre paquetes.
+- **Tres huecos del mismo tipo, la familia "un estado que dura más que el botón":** doble click en un tick (se arregla con un cerrojo local `readyAtTick`; **el gate del cliente tiene que ser más estricto que el valor que tiene**), cambio de item a mitad de carga (40 ticks de maza se convertían en carga completa de espada), y loguearse apretando (el attachment persistente dejaba `holding` en true y el ticker seguía contando una carga inexistente). Los tres se buscaron juntos por eso, no por casualidad.
+- **La librería de viewmodel, adelantada antes de las 30 armas por decisión del usuario** (con una sola se debuggea fácil; con 30 es un desastre). 8 clases puras + **una sola** que toca Minecraft. `Curve` con 6 curvas normalizadas, `Offset` aditivo, 4 canales, `Track` = `amplitude × curve(channel)`, `ViewModelProfile` = una lista de tracks. **Sin timeline, y es un límite deliberado.** El punto difícil es el hand-off del release: el wind-up se desenrolla mientras el strike empuja atravesándolo, así que el item sale de la posición cargada en un movimiento continuo. Rendimiento: un record por frame, sin alocación, sin lookup, un `Quaternionf` scratch. El perfil de la espada tiene **los números escritos, no ajustados**.
+- **API verificada que costó encontrar:** el viewmodel se engancha con `RenderHandEvent` (o sea `ClientHooks.renderSpecificFirstPersonHand`), llamado desde `renderHandsWithItems` **antes** de `renderArmWithItem`, así que nuestro transform envuelve todo lo de vanilla. **Ninguna mixin hizo falta para el viewmodel.**
 - **⚠️ DEUDA LEGAL: quedan DOS texturas de `refs/`.** La viñeta viene de `neoforge-damageoverlay`, que es **All Rights Reserved**. Las dos esferitas de aguante vienen de `combatify` (LGPL-2.1). El resto del HUD ya es arte original del usuario. Ver `textures/gui/PROTOTYPE-ASSETS.md`.

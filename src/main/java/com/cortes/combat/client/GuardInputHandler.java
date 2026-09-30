@@ -14,7 +14,7 @@ import org.lwjgl.glfw.GLFW;
  *
  * <p>Predicted locally so the guard pose and the orbs react on the same frame as the click, and
  * sent to the server, which is the only thing that counts. Same shape as
- * {@link ChargeInputHandler}, on purpose: two input systems that differ in how they lie to the
+ * {@link SwingInputHandler}, on purpose: two input systems that differ in how they lie to the
  * client are two things to debug.</p>
  *
  * <p>It ignores the click entirely unless a guard item is in hand, so holding right with bread
