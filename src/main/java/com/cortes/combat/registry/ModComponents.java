@@ -3,6 +3,7 @@ package com.cortes.combat.registry;
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.core.weapon.GuardProfile;
+import com.cortes.combat.core.weapon.KnockbackProfile;
 import com.cortes.combat.core.weapon.ReachProfile;
 import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.core.weapon.WeaponProfile;
@@ -51,6 +52,17 @@ public final class ModComponents {
      */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ViewModelProfile>> VIEWMODEL_PROFILE =
             component("viewmodel_profile", ViewModelProfile.CODEC);
+
+    /**
+     * How hard the item pushes when it hits.
+     *
+     * <p>Its own component because the shove is per weapon and the hit is not. A sword, a
+     * warhammer and a block in the hand were all pushing identically while the other four
+     * components described the same three numbers, and a player who noticed could not change it
+     * because there was nowhere to put the value.</p>
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<KnockbackProfile>> KNOCKBACK_PROFILE =
+            component("knockback_profile", KnockbackProfile.CODEC);
 
     private ModComponents() {
     }

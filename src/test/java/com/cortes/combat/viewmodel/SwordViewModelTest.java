@@ -69,14 +69,32 @@ class SwordViewModelTest {
     }
 
     @Test
-    @DisplayName("a full charge draws the item back, not forward")
+    @DisplayName("a full charge draws the item back and lifts it")
     void fullChargeDrawsBack() {
-        ViewModelInput charged = new ViewModelInput(1.0F, 0.0F, 1.0F, true, 0.0F, 1);
+        ViewModelInput charged = new ViewModelInput(1.0F, 0.0F, 0.0F, true, 0.0F, 1);
         Offset offset = sword.evaluate(charged);
+        // The lift is carried by Y and the pull by Z, because those are the two axes whose sign
+        // is not a guess: vanilla's own arm constants put the hand at ARM_POS_Y = -0.75, which
+        // fixes +Y as up, and its bow pulls back along negative Z.
+        assertTrue(offset.y() > 0.1,
+                "a charged sword should be lifted, was y=" + offset.y());
         assertTrue(offset.z() < -0.05,
-                "a charged sword should be behind the resting pose, was z=" + offset.z());
-        assertTrue(offset.pitch() < -10.0,
-                "and tipped back, was pitch=" + offset.pitch());
+                "and drawn back, was z=" + offset.z());
+    }
+
+    @Test
+    @DisplayName("the wind-up leans as well as lifts, but modestly")
+    void fullChargeLeans() {
+        Offset offset = sword.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, true, 0.0F, 1));
+        // The pitch sign is the one number in this profile that has to be read off a screen
+        // rather than off a constant, so the test pins its magnitude and leaves its direction
+        // to the next playtest. What it does enforce is that the lean stays small enough that
+        // being wrong about the sign cannot invert the read: a first attempt led with -35
+        // degrees of it and the sword came out going down instead of up.
+        assertTrue(Math.abs(offset.pitch()) > 1.0,
+                "the wind-up should lean, was pitch=" + offset.pitch());
+        assertTrue(Math.abs(offset.pitch()) < 30.0,
+                "but modestly, so a wrong sign cannot flip the read, was pitch=" + offset.pitch());
     }
 
     @Test
@@ -108,7 +126,7 @@ class SwordViewModelTest {
         for (int tick = 0; tick <= CHARGE_TICKS; tick++) {
             motion.tick(true, Math.min(1.0F, (tick + 1) / (float) (CHARGE_TICKS + 1)));
         }
-        motion.onStrike();
+        motion.onStrike(1.0F);
         float previous = motion.windup();
         for (int tick = 0; tick < ViewModelMotion.STRIKE_TICKS + 1; tick++) {
             motion.tick(false, 0.0F);
@@ -130,7 +148,7 @@ class SwordViewModelTest {
         for (int i = 0; i < CHARGE_TICKS + 1; i++) {
             motion.tick(true, Math.min(1.0F, (i + 1) / (float) (CHARGE_TICKS + 1)));
         }
-        motion.onStrike();
+        motion.onStrike(1.0F);
         for (int i = 0; i < ViewModelMotion.STRIKE_TICKS + 2; i++) {
             motion.tick(false, 0.0F);
         }
@@ -146,7 +164,7 @@ class SwordViewModelTest {
         for (int i = 0; i < CHARGE_TICKS + 1; i++) {
             motion.tick(true, Math.min(1.0F, (i + 1) / (float) (CHARGE_TICKS + 1)));
         }
-        motion.onStrike();
+        motion.onStrike(1.0F);
         motion.tick(false, 0.0F);
         double atStart = depth(sword.evaluate(motion.snapshot(0.0F, 0.0F, false)));
         double afterTwo = depth(sword.evaluate(motion.snapshot(0.5F, 0.0F, false)));

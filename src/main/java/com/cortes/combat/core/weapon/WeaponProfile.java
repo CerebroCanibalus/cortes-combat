@@ -23,6 +23,22 @@ import java.util.stream.Stream;
  */
 public enum WeaponProfile {
 
+    /**
+     * Not a weapon at all: a block, a stick, a bowl, anything held that is not in a tool tag.
+     *
+     * <p>This value exists because the derivation used to fall back to {@link #SWORD}, and the
+     * consequence was that <em>every item in the game charged</em>. A dirt block in the hand
+     * derived to a sword, inherited a sword's charge profile, and could be charged for a damage
+     * bonus. "If we do not recognise it, treat it as the most common weapon" is a default that
+     * quietly turns the whole world into a weapon, and it was invisible until a player picked
+     * up a block.</p>
+     *
+     * <p>It is its own profile rather than a special case inside the charge system, so the rule
+     * stays a data lookup: this item has no charge, this reach, this viewmodel. Adding a weapon
+     * that is not a tool is still just a tag.</p>
+     */
+    NONE("none"),
+
     UNARMED("unarmed"),
     SWORD("sword"),
     AXE("axe"),

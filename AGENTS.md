@@ -611,6 +611,123 @@ que `fase × rango` — más una aserción de que la *media* por frame está muy
 daría una señal escalonada. Esa segunda es la que distingue un temblor de un zumbido, y no se
 rompe al cambiar la frecuencia.
 
+## Seis reportes de playtest — y uno sigue abierto
+
+Ronda de seis cambios a partir de un playtest largo. **223 tests verdes** (201 + 22 nuevos),
+cliente verificado con `runClient`: mod carga, mundo entra, cero crashes, mixin aplica.
+
+### 1. "Cualquier objeto con el que golpeo tiene carga"
+
+**Causa: una sola línea.** `deriveProfile` caía a `WeaponProfile.SWORD` cuando no reconocía el
+item. Un bloque de tierra no está en ningún tag de vanilla → derivaba a espada → heredaba su
+`charge_profile` → podía cargarse para bonus de daño. **Todo objeto del juego era un arma.**
+
+Agregué `WeaponProfile.NONE`, y el default de la derivación pasó a ser ese:
+
+> **"Si no lo reconocemos, tratémoslo como lo más común" es un default que convierte discretamente
+> todo el mundo en un arma.** Es invisible hasta que un jugador agarra un bloque, y el síntoma
+> ("¿por qué mi bloque carga?") no señala ni de lejos a la línea culpable.
+
+Es un perfil y no un `if`: el item tiene no-carga, este alcance, este viewmodel. Agregar un arma
+que no sea una herramienta sigue siendo solo un tag.
+
+### 2. "Al cargar está invertido: el ítem se hace hacia abajo"
+
+**Acá me equivoqué y la lección es la que importa: no verifiqué el signo antes de escribir los
+números.** Lo deduje mal, y el usuario lo vio en un segundo.
+
+Lo que sí es verificable, con `javap` sobre las constantes de `ItemInHandRenderer`:
+
+| Constante | Valor | Qué fija |
+|---|---|---|
+| `ARM_POS_Y` | `-0.75` | **+Y es arriba** en este frame. No es una opinión |
+| arco de vanilla | `BOW_CHARGE_Z_POS_SCALE = 0.04` | el arco tira hacia **-Z** |
+
+Entonces el wind-up ahora **lo lleva la traslación en Y (+0.22)**, y el pitch quedó como un
+**lean chico de 18°**. Ese 18 es deliberadamente pequeño: aunque su signo esté mal, no puede dar
+vuelta la lectura. La primera versión leading con −35° de pitch y la espada salía **hacia
+abajo**; ahora el error posible es una inclinación, no una inversión.
+
+**El pitch es el único eje del perfil que hay que leer de la pantalla.** El test lo admite
+explícitamente: asserta la magnitud y deja la dirección para el próximo playtest.
+
+### 3. "La animación de golpe normal se ve como una carga mal hecha"
+
+Causa exacta: **el strike era el mismo para todos.** Un click de 2 ticks y una carga completa
+jugaban los mismos 34° de barrido; lo único que cambiaba era la duración. Una versión corta
+del movimiento equivocado sigue siendo el movimiento equivocado.
+
+`ViewModelMotion.onStrike(charge)` ahora escala **wind-up y strike** por la carga del release.
+Con un piso, `TAP_FLOOR = 0.2`:
+
+> Un tap con strike literalmente cero **salta** el item de donde esté a reposo en un frame. Eso
+> es un pop visible en cada click commonplace. Un quinto del swing completo es bastante para
+> leerse como swing y demasiado poco para confundirse con el cargado.
+
+El cliente pasa **`AttackTiming.chargeRatioFor`, el mismo umbral que el servidor**, así que el
+viewmodel es un *readout* de la regla: lo que ves es la clasificación que va a recibir tu golpe.
+
+### 4. "Cualquier ataque me lo detecta como carga" — ⚠️ ABIERTO
+
+**No encontré la causa raíz y no la inventé.** Lo que hice fue volverla diagnosticable:
+
+- `/cc stats` ahora imprime **cuenta viva, umbral y veredicto** (`TAP` o `CARGADO`).
+- El viewmodel usa el mismo corte que el servidor, así que **la item misma dice qué clasificación
+  va a recibir el golpe**.
+
+Eso parte el problema en dos y cada mitad tiene un dueño distinto:
+
+| Síntoma | Dónde está el bug |
+|---|---|
+| El item dibuja wind-up, el daño es plano | el umbral en el cliente |
+| El item NO dibuja wind-up, el daño sale cargado | la cuenta en el servidor |
+
+Sospecha — **sin confirmar** — que el umbral de 4 ticks (200 ms) es corto para el ritmo de click
+del usuario. Eso es balance, no bug, y el número es suyo.
+
+### 5. "El FOV no se ve afectado al cargar"
+
+**No lo había implementado nunca.** Estaba anotado como deuda y el usuario lo probó, así que se
+hizo. `ComputeFovModifierEvent` con **`setNewFovModifier(float)`** (verificado en el jar: existe
+`getFovModifier`, `getNewFovModifier` y el setter).
+
+Dos decisiones que no son cosméticas:
+
+- **Resta, no reemplaza.** Reemplazar pelearía con el FOV del sprint, con el efecto de velocidad
+  y con cada mod que también toque el FOV, y la pelea se vería como parpadeo cuando coincidieran
+  dos en el mismo tick.
+- **3° a carga completa, y se mantiene cerrado durante el follow-through** para que el snap de
+  apertura caiga **en el golpe** y no antes. El mundo cerrándose mientras cargas y abriéndose
+  cuando la espada impacta es un ritmo; cerrarlo temprano lo arruina.
+
+Compone con el `fovEffectScale` del jugador: el que lo apagó por mareo lo sigue teniendo apagado.
+
+### 6. "El knockback es muy intenso y demasiado vertical, debería ser por arma"
+
+Nuevo `KnockbackProfile(horizontal, vertical)` como **sexto data component**, con una tabla por
+arma. Y **el knockback salió del `AttackResult`**: era un subproducto del daño, y ahora es del
+arma. Ese es el cambio de fondo — un número que viajaba dentro del resultado del golpe no
+tenía dónde vivir como parámetro de un arma.
+
+Defaults (bajados enteros de los 0.4–0.9 que había):
+
+| Arma | h | v | | Arma | h | v |
+|---|---|---|---|---|---|---|
+| Bloque (`NONE`) | 0.12 | 0.02 | | Ropera | 0.16 | 0.03 |
+| Manos | 0.10 | 0.02 | | Daga | 0.14 | 0.03 |
+| Espada | 0.28 | 0.05 | | Alabarda | 0.45 | 0.14 |
+| Hacha | 0.34 | 0.08 | | **Martillo** | **0.55** | **0.30** |
+| Pico / Pala | 0.22 | 0.05 | | Shotel | 0.38 | 0.06 |
+| Maza | 0.30 | 0.10 | | Tridente | 0.30 | 0.12 |
+
+El vertical está **separado a propósito** porque escalarlos juntos es lo que hacía que todo
+golpe se sintiera como una catapulta: el knockback de vanilla suma un término vertical que escala
+con el empuje, así que un empujón fuerte también saca al mob del piso. Nada de golpear con una
+espada debería poner a nadie en el aire. Además `MAX_VERTICAL = 0.35` está **muy por debajo** de
+`MAX_HORIZONTAL = 1.2`, y hay un test que lo verifica: los topes son la forma de que "casi nada"
+signifique exactamente cero en vez de un número chico que todavía levanta.
+
+
 ## Próximos pasos
 
 1. **Paso 9: las 30 armas + datagen + recetas + set de cobre.** Es el paso grande que falta.

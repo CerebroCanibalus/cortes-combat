@@ -64,6 +64,31 @@ public final class AttackTiming {
         return heldTicks < MIN_CHARGE_HOLD_TICKS ? 0.0F : ratio;
     }
 
+    /**
+     * How many ticks of a swing actually count, from a raw number of server ticks.
+     *
+     * <p>Every swing in the game is over by the time the player sees it, so the only way to tell
+     * a tap from a charge afterwards is the count. This is the number behind the decision, and
+     * it is exposed rather than kept private so that a swing's classification can be printed
+     * and checked instead of inferred from a damage number.</p>
+     *
+     * <p>The clamp is on the way out as well as on the way in. A swing that is only resolved when
+     * the release arrives, and the release arrives a round trip later, can read a count that
+     * includes ticks the player was not holding for; clamping to the threshold turns that from
+     * "every click is a full charge under lag" into "every click is a tap under lag", which is
+     * the safe direction to be wrong in. A swing that was genuinely held stays charged, because
+     * a real hold is far longer than the threshold.</p>
+     *
+     * @param serverTicks the count the server accumulated
+     * @return 0, or the charge ratio scaled by how far past the threshold the hold went
+     */
+    public static float chargeRatioFrom(int serverTicks, float fullChargeTicks) {
+        if (fullChargeTicks <= 0 || serverTicks < MIN_CHARGE_HOLD_TICKS) {
+            return 0.0F;
+        }
+        return Math.min(1.0F, (float) serverTicks / (float) fullChargeTicks);
+    }
+
     private AttackTiming() {
     }
 

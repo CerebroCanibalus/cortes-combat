@@ -1,44 +1,74 @@
 package com.cortes.combat.attack;
 
+import com.cortes.combat.core.weapon.KnockbackProfile;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Knockback, scaled by charge.
+ * Knockback, in two directions, scaled by charge.
  *
- * <p>Below the charge floor there is no knockback at all, which is the fix for shove-spam:
- * without it, a stream of uncharged taps still pushes people around and the control comes
- * from mashing rather than from timing.</p>
+ * <p>Per weapon rather than one number for the whole game. It used to be two constants here,
+ * which meant a sword, a warhammer and a block in the hand all pushed identically, and a player
+ * holding a block could launch a zombie as far as one holding a mace.</p>
+ *
+ * <h2>Why the direction is horizontal</h2>
+ *
+ * <p>The push is scaled by the horizontal component of the target's current motion, and the
+ * target's own vertical velocity is <b>untouched</b>. Two reasons, and the first is the design:</p>
+ * <ul>
+ *   <li>The complaint was that the knockback was "too vertical". Vanilla's knockback adds an
+ *       upward term that scales with the push, so a strong shove is also a pop off the ground,
+ *       and a mob hit with a sword ends up in the air. Nothing about hitting someone with a sword
+ *       should put them in the air.</li>
+ *   <li>Preserving the target's own vertical motion is also what makes knockback combine sanely.
+ *       If this added vertical velocity on top, a mob already falling would have its fall
+ *       cancelled by a hit and then be re-launched, and a mob knocked into a wall would climb
+ *       it.</li>
+ * </ul>
+ *
+ * <p>What is left is a pure horizontal shove, and the weapon decides how hard. A weapon whose
+ * profile has a vertical component of zero never lifts anything, which is reachable and
+ * meaningful rather than being a very small number that still lifts a little.</p>
  */
 public final class Knockback {
-
-    /** Close to vanilla: a normal hit does not send anyone across the map. */
-    private static final double BASE_STRENGTH = 0.4;
-
-    private static final double MAX_STRENGTH = 0.9;
 
     private Knockback() {
     }
 
-    public static void apply(LivingEntity source, Entity target, double charge) {
-        if (charge <= 0.0 || !(target instanceof LivingEntity living)) {
+    /**
+     * @param source  the attacker
+     * @param target  who was hit
+     * @param profile the attacker's per-weapon push, already resolved
+     * @param charge  0..1, how charged the swing was
+     */
+    public static void apply(LivingEntity source, Entity target, KnockbackProfile profile,
+                             float charge) {
+        if (profile == null || !(target instanceof LivingEntity living)) {
             return;
         }
-        double strength = BASE_STRENGTH + (MAX_STRENGTH - BASE_STRENGTH) * Math.min(1.0, charge);
+        float horizontal = profile.clampedHorizontal() * Math.max(0.0F, Math.min(1.0F, charge));
+        float vertical = profile.clampedVertical() * Math.max(0.0F, Math.min(1.0F, charge));
+        if (horizontal <= 0.0F && vertical <= 0.0F) {
+            return;
+        }
 
-        Vec3 push = living.getDeltaMovement();
-        Vec3 direction = push.normalize();
+        Vec3 motion = living.getDeltaMovement();
+        Vec3 direction = motion.normalize();
         if (direction.lengthSqr() < 1.0E-7) {
             // Standing still: push straight back from the attacker.
             direction = target.position().subtract(source.position()).normalize();
         }
-        double x = direction.x * strength;
-        double y = Math.max(0.15, direction.y * strength + 0.1);
-        double z = direction.z * strength;
+        // Flattened, so a target that is already falling or jumping gets pushed along the ground
+        // rather than having its fall aimed somewhere.
+        double pushX = direction.x * horizontal;
+        double pushZ = direction.z * horizontal;
 
         living.hurtMarked = true;
-        living.setDeltaMovement(push.x + x, push.y + y, push.z + z);
+        living.setDeltaMovement(
+                motion.x + pushX,
+                motion.y + vertical,
+                motion.z + pushZ);
         living.hasImpulse = true;
     }
 }

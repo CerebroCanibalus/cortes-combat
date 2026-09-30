@@ -184,7 +184,26 @@ public final class CortesCommand {
                         ? "+" + Math.round(charge.bonus() * 100) + "% en " + charge.fullChargeTicks() + "t"
                         : "no")), false);
         ctx.getSource().sendSuccess(() -> Component.literal(
-                "especial=" + stats.special().id()), false);
+                "especial=" + stats.special().id()
+                        + " knockback=h" + stats.knockback().horizontal()
+                        + "/v" + stats.knockback().vertical()), false);
+
+        // The charge a swing is being held to right now, in the numbers the rule uses. The report
+        // that prompted this was "every click registers as a charge", and a tap being read as a
+        // full charge is not something a damage number can explain: it needs the count and the
+        // threshold side by side, which is the whole difference between a feeling and a fact.
+        com.cortes.combat.state.ChargeState live =
+                player.getData(com.cortes.combat.registry.ModAttachments.CHARGE.get());
+        int threshold = com.cortes.combat.attack.AttackTiming.MIN_CHARGE_HOLD_TICKS;
+        String verdict = !live.holding()
+                ? "sin swing abierto"
+                : (live.ticks() < threshold
+                ? "TAP (no carga)"
+                : "CARGADO (" + live.ticks() + "t)");
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "carga viva=" + live.ticks() + "t"
+                        + " umbral=" + threshold + "t"
+                        + " -> " + verdict), false);
         return 1;
     }
 

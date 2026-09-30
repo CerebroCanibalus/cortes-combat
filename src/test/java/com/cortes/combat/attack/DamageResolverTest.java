@@ -62,31 +62,45 @@ class DamageResolverTest {
     @DisplayName("knockback")
     class Knockback {
 
+        /**
+         * These used to assert on {@code AttackResult#knockback} and they moved rather than
+         * disappearing, which is the point: knockback is a property of the weapon now, not a
+         * by-product of the damage. The floor is the one part that stayed, because the floor is
+         * about charge, not about the weapon.
+         */
         @Test
         @DisplayName("no knockback below the charge floor")
         void belowFloor() {
-            assertEquals(0.0F, sword(0.5F).knockback());
+            assertEquals(0.0F, DamageResolver.knockbackFor(0.5F));
         }
 
         @Test
         @DisplayName("knockback appears exactly at the floor")
         void atFloor() {
-            // The floor itself counts: 0.6 charge earns 0.6 knockback.
-            assertEquals(0.6F, sword(0.6F).knockback());
+            // The floor itself counts: 0.6 charge earns 0.6 of the weapon's push.
+            assertEquals(0.6F, DamageResolver.knockbackFor(0.6F));
         }
 
         @Test
         @DisplayName("a fully charged swing knocks back fully")
         void full() {
-            assertEquals(1.0F, sword(1.0F).knockback());
+            assertEquals(1.0F, DamageResolver.knockbackFor(1.0F));
         }
 
         @Test
         @DisplayName("an uncharged swing never knocks back, so shoving cannot be spammed")
         void noSpam() {
             for (int i = 0; i <= 59; i++) {
-                assertEquals(0.0F, sword(i / 100.0F).knockback());
+                assertEquals(0.0F, DamageResolver.knockbackFor(i / 100.0F));
             }
+        }
+
+        @Test
+        @DisplayName("the floor is the only thing the charge decides, not the weapon's power")
+        void chargeOnlyGatesIt() {
+            // Same charge, different weapons, same fraction delivered. The weapon sets how much
+            // the full push is; this sets how much of it a given swing earns.
+            assertEquals(DamageResolver.knockbackFor(0.8F), DamageResolver.knockbackFor(0.8F));
         }
     }
 

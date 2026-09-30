@@ -1,6 +1,7 @@
 package com.cortes.combat.attack;
 
 import com.cortes.combat.core.weapon.ChargeProfile;
+import com.cortes.combat.core.weapon.KnockbackProfile;
 import com.cortes.combat.core.weapon.ReachProfile;
 import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.core.weapon.WeaponProfile;
@@ -43,8 +44,44 @@ public final class WeaponStats {
     private static final Map<WeaponProfile, ReachProfile> DEFAULT_REACH = new HashMap<>();
     private static final Map<WeaponProfile, ChargeProfile> DEFAULT_CHARGE = new HashMap<>();
     private static final Map<WeaponProfile, SpecialType> DEFAULT_SPECIAL = new HashMap<>();
+    private static final Map<WeaponProfile, KnockbackProfile> DEFAULT_KNOCKBACK = new HashMap<>();
 
     static {
+        // Knockback, per weapon, and the numbers are deliberately low.
+        //
+        // Horizontal is what a hit actually is: a shove. Vertical is a separate, much smaller
+        // number, because scaling the two together is what made every hit feel like a trebuchet
+        // and popped mobs off the ground for no reason the player earned.
+        //
+        // A sword barely lifts at all, which is the honest reading of a sword. A warhammer lifts
+        // most of what it pushes, because that is what a warhammer is for. A block pushes almost
+        // nothing, because swinging a dirt block is not an attack.
+        DEFAULT_KNOCKBACK.put(WeaponProfile.NONE, new KnockbackProfile(0.12F, 0.02F));
+        DEFAULT_KNOCKBACK.put(WeaponProfile.UNARMED, new KnockbackProfile(0.10F, 0.02F));
+        DEFAULT_KNOCKBACK.put(WeaponProfile.SWORD, new KnockbackProfile(0.28F, 0.05F));
+        DEFAULT_KNOCKBACK.put(WeaponProfile.AXE, new KnockbackProfile(0.34F, 0.08F));
+        DEFAULT_KNOCKBACK.put(WeaponProfile.PICKAXE, new KnockbackProfile(0.22F, 0.05F));
+        DEFAULT_KNOCKBACK.put(WeaponProfile.SHOVEL, new KnockbackProfile(0.22F, 0.05F));
+        DEFAULT_KNOCKBACK.put(WeaponProfile.MACE, new KnockbackProfile(0.30F, 0.10F));
+        DEFAULT_KNOCKBACK.put(WeaponProfile.TRIDENT, new KnockbackProfile(0.30F, 0.12F));
+        // The rapier is the narrow one: it moves you out of the way, it does not move them.
+        DEFAULT_KNOCKBACK.put(WeaponProfile.RAPIER, new KnockbackProfile(0.16F, 0.03F));
+        DEFAULT_KNOCKBACK.put(WeaponProfile.DAGGER, new KnockbackProfile(0.14F, 0.03F));
+        // The halberd is the widest and the heaviest at the tip.
+        DEFAULT_KNOCKBACK.put(WeaponProfile.HALBERD, new KnockbackProfile(0.45F, 0.14F));
+        // The warhammer's whole character is that it lifts.
+        DEFAULT_KNOCKBACK.put(WeaponProfile.WARHAMMER, new KnockbackProfile(0.55F, 0.30F));
+        // The sabre is fast and light: a lot of push for very little lift.
+        DEFAULT_KNOCKBACK.put(WeaponProfile.SABRE, new KnockbackProfile(0.38F, 0.06F));
+
+        // Not a weapon: a block, a stick, anything held that is in no tool tag. It swings, and
+        // it reaches about as far as a punch, but it has no charge and no viewmodel. The reach is
+        // vanilla's 3.0 rather than bare hands' 1.9 because swinging a block is a heavier gesture
+        // than swinging a fist, and the difference matters for whether you can hit something
+        // while holding a wall.
+        DEFAULT_REACH.put(WeaponProfile.NONE, new ReachProfile(3.0F, 25.0F, 20.0F));
+        DEFAULT_CHARGE.put(WeaponProfile.NONE, ChargeProfile.NONE);
+        DEFAULT_SPECIAL.put(WeaponProfile.NONE, SpecialType.NONE);
         // Bare hands are the shortest reach in the game, below even the dagger's 2.4. A punch
         // that reaches as far as a sword is not a punch, it is a worse sword, and the player
         // would carry a weapon for nothing. Short, fast and nearly harmless is the whole
@@ -103,12 +140,15 @@ public final class WeaponStats {
     private final ReachProfile reach;
     private final ChargeProfile charge;
     private final SpecialType special;
+    private final KnockbackProfile knockback;
 
-    private WeaponStats(WeaponProfile profile, ReachProfile reach, ChargeProfile charge, SpecialType special) {
+    private WeaponStats(WeaponProfile profile, ReachProfile reach, ChargeProfile charge,
+                        SpecialType special, KnockbackProfile knockback) {
         this.profile = profile;
         this.reach = reach;
         this.charge = charge;
         this.special = special;
+        this.knockback = knockback;
     }
 
     public WeaponProfile profile() {
@@ -127,6 +167,11 @@ public final class WeaponStats {
         return special;
     }
 
+    /** How hard this weapon pushes, and how much it lifts. */
+    public KnockbackProfile knockback() {
+        return knockback;
+    }
+
     public static WeaponStats of(ItemStack stack) {
         if (stack == null || stack.isEmpty()) {
             return bareHands();
@@ -136,7 +181,8 @@ public final class WeaponStats {
                 profile,
                 readOr(stack, ModComponents.REACH_PROFILE, DEFAULT_REACH.get(profile)),
                 readOr(stack, ModComponents.CHARGE_PROFILE, DEFAULT_CHARGE.get(profile)),
-                readOr(stack, ModComponents.SPECIAL, DEFAULT_SPECIAL.get(profile)));
+                readOr(stack, ModComponents.SPECIAL, DEFAULT_SPECIAL.get(profile)),
+                readOr(stack, ModComponents.KNOCKBACK_PROFILE, DEFAULT_KNOCKBACK.get(profile)));
     }
 
     private static WeaponStats bareHands() {
@@ -144,7 +190,8 @@ public final class WeaponStats {
                 WeaponProfile.UNARMED,
                 DEFAULT_REACH.get(WeaponProfile.UNARMED),
                 DEFAULT_CHARGE.get(WeaponProfile.UNARMED),
-                SpecialType.NONE);
+                SpecialType.NONE,
+                DEFAULT_KNOCKBACK.get(WeaponProfile.UNARMED));
     }
 
     private static WeaponProfile readProfile(ItemStack stack) {
@@ -159,13 +206,21 @@ public final class WeaponStats {
      * The compat layer. A foreign weapon is classified purely by which vanilla tag it sits
      * in, so we never need to know a mod exists to make its weapons work.
      */
+    /**
+     * Which vanilla tag an item sits in, or {@link WeaponProfile#NONE}.
+     *
+     * <p>Anything unrecognised is not a weapon. Falling back to the sword here was the bug behind
+     * "every object I hit with can charge": a dirt block has no tag, derived to a sword, and
+     * inherited a sword's charge profile. An unknown item is an unknown item, and the honest
+     * answer for an unknown item is that it is not a weapon.</p>
+     */
     private static WeaponProfile deriveProfile(ItemStack stack) {
         for (Map.Entry<TagKey<net.minecraft.world.item.Item>, WeaponProfile> entry : VANILLA_TAGS.entrySet()) {
             if (stack.is(entry.getKey())) {
                 return entry.getValue();
             }
         }
-        return WeaponProfile.SWORD;
+        return WeaponProfile.NONE;
     }
 
     private static final Map<TagKey<net.minecraft.world.item.Item>, WeaponProfile> VANILLA_TAGS = new HashMap<>();
@@ -227,6 +282,19 @@ public final class WeaponStats {
         // to nothing. 1.25 puts them on four ticks, and the only thing that keeps that from
         // being strictly better than a weapon is that a punch does one damage.
         TEMPO.put(WeaponProfile.UNARMED, 1.25F);
+    }
+
+    /**
+     * Whether this weapon can charge at all.
+     *
+     * <p>Asked by the input code before it opens a swing and by the viewmodel before it shows a
+     * wind-up, so a block in the hand does not get a charge bar and does not look like it is
+     * winding up. A single lookup rather than a check of the resolved profile's boolean, because
+     * the caller has a stack and not a profile and building one to read one boolean would be
+     * silly.</p>
+     */
+    public static boolean canCharge(ItemStack stack) {
+        return DEFAULT_CHARGE.get(WeaponStats.of(stack).profile()).canCharge();
     }
 
     public static CooldownState cooldownOf(Player player) {

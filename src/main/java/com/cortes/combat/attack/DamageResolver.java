@@ -12,8 +12,30 @@ import com.cortes.combat.state.StreakState;
  */
 public final class DamageResolver {
 
-    /** Knockback only starts being meaningful past this charge, so light taps do not shove. */
+    /**
+     * Below this charge a swing pushes nobody at all.
+     *
+     * <p>Without the floor, a stream of uncharged taps still pushed people around and the
+     * control came from mashing rather than from timing. It sits high enough that a light tap
+     * does not shove, because a shove the player did not ask for reads as the game being
+     * unpredictable.</p>
+     */
     public static final float KNOCKBACK_CHARGE_FLOOR = 0.6F;
+
+    /**
+     * How much of a weapon's knockback a given charge actually delivers.
+     *
+     * <p>Below this there is no push at all, which is the fix for shove-spam: without it, a
+     * stream of uncharged taps still pushed people around and the control came from mashing
+     * rather than from timing.</p>
+     *
+     * <p>This is the ramp, not the floor. It sits where a light tap still moves someone a little
+     * and a full charge moves them the weapon's full amount, and it is shared by the server and
+     * the client so that a shove and the crosshair agree about what just happened.</p>
+     */
+    public static float knockbackFor(float ratio) {
+        return ratio < KNOCKBACK_CHARGE_FLOOR ? 0.0F : ratio;
+    }
 
     /** Escalation per consecutive warhammer hit. */
     public static final float WARHAMMER_STEP = 0.15F;
@@ -45,10 +67,6 @@ public final class DamageResolver {
         float damage = (float) baseDamage * multiplier;
         boolean ignoreArmour = warhammer && ratio >= 1.0F;
 
-        // Knockback scales with charge, and below the floor there is none at all. This stops
-        // a stream of light taps from being a shove spam exploit.
-        float knockback = ratio < KNOCKBACK_CHARGE_FLOOR ? 0.0F : ratio;
-
-        return new AttackResult(damage, ratio, knockback, ignoreArmour);
+        return new AttackResult(damage, ratio, ignoreArmour);
     }
 }

@@ -1,5 +1,6 @@
 package com.cortes.combat.client;
 
+import com.cortes.combat.attack.AttackTiming;
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.net.SwingPayload;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -143,6 +144,12 @@ public final class SwingInputHandler {
             claim = Claim.REFUSED;
             return;
         }
+        // An item that cannot charge does not get a charge bar and does not get a wind-up. This
+        // is asked before the swing is opened rather than at the release, because a block that
+        // fills a charge meter while you hold it is already telling the player it is a weapon.
+        if (!WeaponStats.canCharge(player.getMainHandItem())) {
+            return;
+        }
 
         Optional<LivingEntity> target = ConeTargeting.findTargetForHeldItem(player);
         if (target.isPresent() ? blockIsNearer(mc, player, target.get()) : isOnBlock(mc)) {
@@ -199,7 +206,12 @@ public final class SwingInputHandler {
         // Local prediction of the two things the player sees immediately. Neither is the damage:
         // that is the server's, and predicting it would double-apply it, because this mod
         // deliberately clears the target's invulnerability window before hitting.
-        ItemViewModel.onStrike();
+        //
+        // The charge passed to the viewmodel goes through the *same* threshold the server
+        // applies, so a tap is a tap on screen as well as in the damage. Passing the raw
+        // predicted ratio instead is what made a two tick click draw the whole wind-up briefly
+        // and read as a charge that had gone wrong.
+        ItemViewModel.onStrike(chargedRatio());
         if (!ItemViewModel.ownsSwing(player.getMainHandItem())) {
             // A weapon whose viewmodel draws its own strike must not also play the vanilla arm
             // animation, or the item moves twice and the two motions land out of step.
@@ -295,6 +307,18 @@ public final class SwingInputHandler {
     public static float predictedRatio() {
         LocalPlayer player = Minecraft.getInstance().player;
         return player == null ? 0.0F : predictedRatio(player);
+    }
+
+    /**
+     * The charge this swing will actually be paid with, threshold applied.
+     *
+     * <p>The same {@link AttackTiming#chargeRatioFor} the server runs, on the client's own tick
+     * count. It is a prediction and the server's count wins, but the threshold is a fixed number
+     * that both sides evaluate the same way, so the classification agrees rather than the value:
+     * a click under four ticks is a tap on both sides no matter whose count is off by one.</p>
+     */
+    public static float chargedRatio() {
+        return AttackTiming.chargeRatioFor(predictedTicks, predictedRatio());
     }
 
     private static float predictedRatio(LocalPlayer player) {

@@ -48,6 +48,17 @@ public final class ViewModelMotion {
      */
     public static final int STRIKE_TICKS = 6;
 
+    /**
+     * The smallest follow-through an uncharged tap gets, as a fraction of the full one.
+     *
+     * <p>Not zero. A tap has no charge in it and its wind-up is correctly nothing, but the strike
+     * is what makes the arm move at all, so a literal zero leaves an ordinary attack with no
+     * motion and the item snapping to rest in one frame, which is a visible pop on every single
+     * click. A fifth of the full swing is enough to read as a swing and small enough that it
+     * cannot be mistaken for the charged one.</p>
+     */
+    public static final float TAP_FLOOR = 0.2F;
+
     /** Ticks since the last strike, or -1 when no strike is playing. */
     private int strikeAge = -1;
 
@@ -60,6 +71,15 @@ public final class ViewModelMotion {
      * show the item drawn all the way back.</p>
      */
     private boolean pendingStrike;
+
+    /**
+     * The charge the last release carried, held for the length of the strike.
+     *
+     * <p>Captured rather than read live, because the live charge is gone by the time the
+     * follow-through plays. A swing has one amount of charge in it, decided at the release, and
+     * the whole motion has to agree on which one that was.</p>
+     */
+    private float released;
 
     private int seed = 1;
 
@@ -79,8 +99,23 @@ public final class ViewModelMotion {
     /** Whether the button was down as of the last tick. Decides which of the two wind-ups applies. */
     private boolean holding;
 
-    /** The strike just resolved. Starts the follow-through and re-rolls the tremble pattern. */
-    public void onStrike() {
+    /**
+     * The strike just resolved, and how charged it was.
+     *
+     * <p>The charge is passed in rather than read from the wind-up, and it is the single most
+     * important argument in this class. Scaling the whole strike by it is what makes a tap read
+     * as a tap: before, the strike channel was the same size for every release, so a two tick
+     * click played the same thirty degree swing as a full charge and looked like a charge that
+     * had gone wrong.</p>
+     *
+     * <p>It also makes the viewmodel a readout of the rule. The caller passes the same value
+     * the server will use, threshold included, so what the player sees is the classification
+     * their swing is about to get rather than a guess at it.</p>
+     *
+     * @param charge 0 for a tap, up to 1 for a full charge
+     */
+    public void onStrike(float charge) {
+        released = Math.max(TAP_FLOOR, clamp01(charge));
         pendingStrike = true;
         // An integer LCG rather than Random: one multiply and one add, no shared global state,
         // and the only thing asked of it is that consecutive swings differ while the same swing
@@ -92,6 +127,7 @@ public final class ViewModelMotion {
     public void onCancel() {
         strikeAge = -1;
         pendingStrike = false;
+        released = 0.0F;
     }
 
     /**
@@ -104,8 +140,12 @@ public final class ViewModelMotion {
         ticks++;
         this.holding = holding;
         if (holding) {
+            // A new press abandons whatever the last one was doing, and zeroes the charge it
+            // released with. Otherwise a fast second click would inherit the first one's charge
+            // and the wind-up would jump to a value the player never charged to.
             strikeAge = -1;
             pendingStrike = false;
+            released = 0.0F;
         } else if (pendingStrike) {
             strikeAge = 0;
             pendingStrike = false;
@@ -154,6 +194,10 @@ public final class ViewModelMotion {
      * <p>While the button is down this is the charge, which the tick already has. Once the swing
      * has resolved it is the unwind, and the phase is taken from the strike's age so the two move
      * as one number rather than as two that have to be kept in step by hand.</p>
+     *
+     * <p>Scaled by the released charge, so a tap unwinds from nothing and never had a wind-up to
+     * unwind from. Without that a click still played the whole draw-back, just briefly, and the
+     * two reads of "tapping" and "charging" were the same motion at different lengths.</p>
      */
     private float windupAt(float offset) {
         if (holding) {
@@ -162,15 +206,22 @@ public final class ViewModelMotion {
         if (strikeAge < 0) {
             return 0.0F;
         }
-        return clamp01(1.0F - (strikeAge + offset) / (float) STRIKE_TICKS);
+        return released * clamp01(1.0F - (strikeAge + offset) / (float) STRIKE_TICKS);
     }
 
+    /**
+     * The follow-through, as a bump scaled by the released charge.
+     *
+     * <p>The scaling is the fix for a tap looking like a badly done charge. A two tick click and
+     * a full charge used to drive the same channel to the same peak, so the only difference
+     * between them was how long the motion lasted. Now a tap is a small jab.</p>
+     */
     private float strikeAt(float offset) {
         if (strikeAge < 0) {
             return 0.0F;
         }
         float phase = clamp01((strikeAge + offset) / (float) STRIKE_TICKS);
-        return 1.0F - Math.abs(2.0F * phase - 1.0F);
+        return released * (1.0F - Math.abs(2.0F * phase - 1.0F));
     }
 
     private static float clamp01(float t) {
@@ -196,6 +247,11 @@ public final class ViewModelMotion {
     /** The tremble pattern for the swing in progress. Advances per strike, never per frame. */
     public int seed() {
         return seed;
+    }
+
+    /** The charge the last strike was released with, 0 for a tap. */
+    public float released() {
+        return released;
     }
 
     /** Test hook: back to a clean rest. */

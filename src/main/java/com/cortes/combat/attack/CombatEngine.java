@@ -195,7 +195,11 @@ public final class CombatEngine {
             StreakState streak = player.getData(ModAttachments.HAMMER_STREAK.get());
             player.setData(ModAttachments.HAMMER_STREAK.get(), streak.onHit());
         }
-        Knockback.apply(player, target, result.knockback());
+        // The weapon's own push, not a number from the damage result. Knockback is what the
+        // weapon does, not a by-product of how hard it hit, and folding it into the damage
+        // result is what made every item in the game shove a mob equally far.
+        Knockback.apply(player, target, stats.knockback(),
+                DamageResolver.knockbackFor(chargeRatio));
     }
 
     /**

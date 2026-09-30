@@ -54,7 +54,7 @@ class ViewModelMotionTest {
     @DisplayName("on the frame of the release the item is still wound all the way back")
     void releaseStartsFromTheWoundBackPosition() {
         tick(true, 1.0F);
-        motion.onStrike();
+        motion.onStrike(1.0F);
         tick(false, 0.0F);
         // The frame after the release, so the strike has not advanced yet. If this is not still
         // 1, the item is already snapping to rest on the frame the player let go, which is the
@@ -67,7 +67,7 @@ class ViewModelMotionTest {
     @DisplayName("the wind-up unwinds monotonically across the strike")
     void windUpUnwindsMonotonically() {
         tick(true, 1.0F);
-        motion.onStrike();
+        motion.onStrike(1.0F);
         float previous = Float.POSITIVE_INFINITY;
         // One more tick than the strike is long: the release frame is itself a frame of the
         // motion, and the strike is only over once its age has run past the end.
@@ -85,7 +85,7 @@ class ViewModelMotionTest {
     @Test
     @DisplayName("the strike is a bump: it rises, peaks, and comes back to nothing")
     void strikeIsABump() {
-        motion.onStrike();
+        motion.onStrike(1.0F);
         float peak = 0.0F;
         for (int i = 0; i <= ViewModelMotion.STRIKE_TICKS; i++) {
             tick(false, 0.0F);
@@ -102,7 +102,7 @@ class ViewModelMotionTest {
     @DisplayName("the item is resting again once the strike is over")
     void everythingReturnsToRest() {
         tick(true, 1.0F);
-        motion.onStrike();
+        motion.onStrike(1.0F);
         for (int i = 0; i < ViewModelMotion.STRIKE_TICKS + 2; i++) {
             tick(false, 0.0F);
         }
@@ -113,7 +113,7 @@ class ViewModelMotionTest {
     @Test
     @DisplayName("a press during a follow-through cancels it rather than layering on top")
     void pressCancelsAnUnfinishedStrike() {
-        motion.onStrike();
+        motion.onStrike(1.0F);
         tick(false, 0.0F);
         tick(false, 0.0F);
         assertTrue(motion.strike() > 0.0F, "the strike should be running by now");
@@ -126,9 +126,9 @@ class ViewModelMotionTest {
     @DisplayName("consecutive strikes get different tremble seeds")
     void seedAdvancesPerStrike() {
         int first = motion.seed();
-        motion.onStrike();
+        motion.onStrike(1.0F);
         int second = motion.seed();
-        motion.onStrike();
+        motion.onStrike(1.0F);
         int third = motion.seed();
         assertFalse(first == second, "two strikes in a row should not shake identically");
         assertFalse(second == third, "the seed should keep advancing");
@@ -139,8 +139,8 @@ class ViewModelMotionTest {
     void seedIsReproducible() {
         ViewModelMotion other = new ViewModelMotion();
         for (int i = 0; i < 5; i++) {
-            motion.onStrike();
-            other.onStrike();
+            motion.onStrike(1.0F);
+            other.onStrike(1.0F);
             assertEquals(other.seed(), motion.seed(),
                     "two runs of the same swings should end on the same tremble pattern");
         }
@@ -150,7 +150,7 @@ class ViewModelMotionTest {
     @DisplayName("cancelling drops the swing without pretending one happened")
     void cancelDropsEverything() {
         tick(true, 1.0F);
-        motion.onStrike();
+        motion.onStrike(1.0F);
         tick(false, 0.0F);
         motion.onCancel();
         tick(false, 0.0F);

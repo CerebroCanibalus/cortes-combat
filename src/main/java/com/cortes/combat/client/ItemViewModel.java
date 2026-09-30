@@ -82,14 +82,25 @@ public final class ItemViewModel {
         MOTION.tick(holding, chargeRatio);
     }
 
-    /** The strike just resolved on the client. Starts the follow-through. */
-    public static void onStrike() {
-        MOTION.onStrike();
+    /**
+     * The strike just resolved on the client.
+     *
+     * @param charge how charged the swing was, 0 for a tap. Passed in rather than read from the
+     *               motion so the caller can hand over the same classified value the server will
+     *               use, and the motion the player watches agrees with the damage they get
+     */
+    public static void onStrike(float charge) {
+        MOTION.onStrike(charge);
     }
 
     /** The swing was abandoned: released, cancelled, or the item changed under us. */
     public static void onCancel() {
         MOTION.onCancel();
+    }
+
+    /** The charge the last strike was released with, for the debug readout. */
+    public static float releasedCharge() {
+        return MOTION.released();
     }
 
     @SubscribeEvent
@@ -126,6 +137,17 @@ public final class ItemViewModel {
      */
     private static ViewModelInput input(float partialTick) {
         return MOTION.snapshot(partialTick, cooldownRunning(), ClientCombatState.guardHeld());
+    }
+
+    /**
+     * The charge a swing is currently at, whether it is being wound up or following through.
+     *
+     * <p>One value for the FOV and one for the viewmodel, because they have to agree: a FOV that
+     * closes for a charge the item did not show, or an item that winds up for a charge the FOV
+     * ignored, is worse than having neither.</p>
+     */
+    public static float currentCharge() {
+        return SwingInputHandler.holding() ? SwingInputHandler.chargedRatio() : MOTION.released();
     }
 
     /**
