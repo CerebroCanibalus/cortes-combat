@@ -14,6 +14,7 @@ public final class ClientCombatState {
     private static float cooldownRatio;
     private static int guardStamina;
     private static int guardMax = 3;
+    private static boolean guardHeld;
 
     private ClientCombatState() {
     }
@@ -34,13 +35,18 @@ public final class ClientCombatState {
         return guardMax;
     }
 
+    public static boolean guardHeld() {
+        return guardHeld;
+    }
+
     public static void set(float charge, float cooldown) {
         chargeRatio = charge;
         cooldownRatio = cooldown;
     }
 
-    public static void setGuard(int stamina, int max) {
+    public static void setGuard(int stamina, int max, boolean held) {
         guardStamina = stamina;
         guardMax = Math.max(1, max);
+        guardHeld = held;
     }
 }

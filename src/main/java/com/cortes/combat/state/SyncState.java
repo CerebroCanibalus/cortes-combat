@@ -13,21 +13,24 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  *
  * <p>Not a gameplay value. Nothing reads this to decide damage or cooldown.</p>
  */
-public record SyncState(float lastCharge, float lastCooldown, int lastStamina) {
+public record SyncState(float lastCharge, float lastCooldown, int lastStamina, boolean lastGuardHeld) {
 
-    public static final SyncState NEVER = new SyncState(-1.0F, -1.0F, -1);
+    public static final SyncState NEVER = new SyncState(-1.0F, -1.0F, -1, false);
     public static final Codec<SyncState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.FLOAT.fieldOf("last_charge").forGetter(SyncState::lastCharge),
             Codec.FLOAT.fieldOf("last_cooldown").forGetter(SyncState::lastCooldown),
-            Codec.INT.fieldOf("last_stamina").forGetter(SyncState::lastStamina)
+            Codec.INT.fieldOf("last_stamina").forGetter(SyncState::lastStamina),
+            Codec.BOOL.optionalFieldOf("last_guard_held", false).forGetter(SyncState::lastGuardHeld)
     ).apply(instance, SyncState::new));
 
-    public boolean isDirty(float charge, float cooldown, int stamina, float epsilon) {
+    public boolean isDirty(float charge, float cooldown, int stamina, boolean guardHeld,
+                            float epsilon) {
         if (lastCharge < 0.0F) {
             return true;
         }
         return Math.abs(charge - lastCharge) >= epsilon
                 || Math.abs(cooldown - lastCooldown) >= epsilon
-                || stamina != lastStamina;
+                || stamina != lastStamina
+                || guardHeld != lastGuardHeld;
     }
 }

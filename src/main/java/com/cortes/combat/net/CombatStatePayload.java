@@ -21,9 +21,10 @@ import net.minecraft.resources.ResourceLocation;
  * @param chargeRatio 0..1 accumulated charge
  * @param cooldownRatio 0..1 attack readiness, 1 means the next swing is allowed
  * @param guardStamina remaining blockable hits, 0..3
+ * @param guardHeld whether the server currently considers the guard up
  */
-public record CombatStatePayload(float chargeRatio, float cooldownRatio, int guardStamina)
-        implements CustomPacketPayload {
+public record CombatStatePayload(float chargeRatio, float cooldownRatio, int guardStamina,
+                                boolean guardHeld) implements CustomPacketPayload {
 
     public static final Type<CombatStatePayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "combat_state"));
@@ -33,6 +34,7 @@ public record CombatStatePayload(float chargeRatio, float cooldownRatio, int gua
                     ByteBufCodecs.FLOAT, CombatStatePayload::chargeRatio,
                     ByteBufCodecs.FLOAT, CombatStatePayload::cooldownRatio,
                     ByteBufCodecs.VAR_INT, CombatStatePayload::guardStamina,
+                    ByteBufCodecs.BOOL, CombatStatePayload::guardHeld,
                     CombatStatePayload::new);
 
     @Override

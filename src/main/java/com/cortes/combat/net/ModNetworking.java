@@ -2,6 +2,7 @@ package com.cortes.combat.net;
 
 import com.cortes.combat.attack.AttackCooldown;
 import com.cortes.combat.attack.WeaponStats;
+import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.SyncState;
@@ -27,10 +28,19 @@ public final class ModNetworking {
         PayloadRegistrar registrar = event.registrar("1");
         registrar.playToServer(ChargeInputPayload.TYPE, ChargeInputPayload.STREAM_CODEC,
                 ModNetworking::handleChargeInput);
+        registrar.playToServer(GuardInputPayload.TYPE, GuardInputPayload.STREAM_CODEC,
+                ModNetworking::handleGuardInput);
         registrar.playToClient(CombatStatePayload.TYPE, CombatStatePayload.STREAM_CODEC,
                 ModNetworking::handleCombatState);
         registrar.playToClient(DebugTogglePayload.TYPE, DebugTogglePayload.STREAM_CODEC,
                 ModNetworking::handleDebugToggle);
+    }
+
+    private static void handleGuardInput(GuardInputPayload payload, IPayloadContext context) {
+        if (!(context.player() instanceof ServerPlayer player)) {
+            return;
+        }
+        GuardHandler.setGuard(player, payload.holding());
     }
 
     private static void handleChargeInput(ChargeInputPayload payload, IPayloadContext context) {
@@ -56,7 +66,9 @@ public final class ModNetworking {
         com.cortes.combat.client.ClientCombatState.set(payload.chargeRatio(), payload.cooldownRatio());
         com.cortes.combat.client.ClientCombatState.setGuard(
                 payload.guardStamina(),
-                com.cortes.combat.state.GuardState.MAX_STAMINA);
+                com.cortes.combat.state.GuardState.MAX_STAMINA,
+                payload.guardHeld());
+        com.cortes.combat.client.GuardInputHandler.acceptServerState(payload.guardHeld());
         com.cortes.combat.client.ChargeInputHandler.acceptServerState(
                 payload.chargeRatio(), player.getMainHandItem().isEmpty()
                         ? 0
@@ -85,14 +97,19 @@ public final class ModNetworking {
         float charge = AttackCooldown.chargeRatio(player, stats.charge());
         float cooldown = player.getData(ModAttachments.COOLDOWN.get())
                 .ratio(AttackCooldown.intervalFor(player));
-        int stamina = player.getData(ModAttachments.GUARD_STAMINA.get()).stamina();
+        com.cortes.combat.state.GuardState guard =
+                player.getData(ModAttachments.GUARD_STAMINA.get());
+        int stamina = guard.stamina();
+        boolean held = guard.isActive();
 
         SyncState last = player.getData(ModAttachments.LAST_SYNCED.get());
-        if (!last.isDirty(charge, cooldown, stamina, SYNC_EPSILON)) {
+        if (!last.isDirty(charge, cooldown, stamina, held, SYNC_EPSILON)) {
             return;
         }
-        player.setData(ModAttachments.LAST_SYNCED.get(), new SyncState(charge, cooldown, stamina));
-        PacketDistributor.sendToPlayer(player, new CombatStatePayload(charge, cooldown, stamina));
+        player.setData(ModAttachments.LAST_SYNCED.get(),
+                new SyncState(charge, cooldown, stamina, held));
+        PacketDistributor.sendToPlayer(player,
+                new CombatStatePayload(charge, cooldown, stamina, held));
     }
 
 }
