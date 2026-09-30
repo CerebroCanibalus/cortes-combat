@@ -56,11 +56,19 @@ public class GuardOrbsLayer implements LayeredDraw.Layer {
             return;
         }
         boolean held = ClientCombatState.guardHeld();
+        // Read straight off the client's own synced cooldowns rather than a payload field: the
+        // vanilla bar already draws the countdown, and duplicating that number in a packet
+        // would be a second copy of a fact both sides already have.
+        boolean staggered = player.getCooldowns()
+                .isOnCooldown(GuardHandler.bestFor(player).item().getItem());
 
         int totalWidth = max * ORB_SIZE + (max - 1) * SPACING;
         int startX = (graphics.guiWidth() - totalWidth) / 2;
         int y = graphics.guiHeight() / 2 - VERTICAL_OFFSET;
-        int alpha = held ? ALPHA_UP : ALPHA_DOWN;
+        // Staggered is not the same as down. Dimming the orbs while they are visibly refilling
+        // says the opposite of what the player is watching, so they stay at full brightness and
+        // the vanilla item cooldown carries the "you cannot block yet" part.
+        int alpha = held || staggered ? ALPHA_UP : ALPHA_DOWN;
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();

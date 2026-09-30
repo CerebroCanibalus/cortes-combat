@@ -21,6 +21,9 @@ class GuardStateTest {
 
     private static final int REGEN = 40;
 
+    /** Vanilla's own shield stagger length. */
+    private static final int STAGGER = 100;
+
     private static GuardState state(int max) {
         return new GuardState(false, max, max, REGEN);
     }
@@ -40,7 +43,7 @@ class GuardStateTest {
     @Test
     @DisplayName("blocking spends exactly one point and keeps the guard up")
     void blockSpendsOne() {
-        GuardState after = raised(3).block();
+        GuardState after = raised(3).block(REGEN);
         assertEquals(2, after.stamina());
         assertTrue(after.held(), "two points left means the guard is still up");
         assertTrue(after.isActive());
@@ -49,7 +52,7 @@ class GuardStateTest {
     @Test
     @DisplayName("the sword's single point drops the guard outright")
     void swordExhaustsImmediately() {
-        GuardState after = raised(1).block();
+        GuardState after = raised(1).block(REGEN);
         assertEquals(0, after.stamina());
         assertTrue(after.isExhausted());
         assertFalse(after.held(), "spending the last point has to drop the guard, or exhaustion is invisible");
@@ -61,8 +64,8 @@ class GuardStateTest {
     void blockResetsTheCounter() {
         // The counter restarts on every block, so a player under pressure cannot be chipped
         // down one point at a time while never quite getting back a full one.
-        GuardState partly = new GuardState(true, 3, 2, 39);
-        assertEquals(0, partly.block().regenTicks());
+        GuardState partly = new GuardState(true, 3, 2, 7);
+        assertEquals(REGEN, partly.block(REGEN).regenTicks());
     }
 
     @Test
@@ -78,7 +81,7 @@ class GuardStateTest {
         GuardState partiallySpent = new GuardState(true, 3, 1, REGEN);
         GuardState ticked = partiallySpent;
         for (int i = 0; i < REGEN * 3; i++) {
-            ticked = ticked.tick(REGEN);
+            ticked = ticked.tick(REGEN, false, STAGGER);
         }
         assertEquals(1, ticked.stamina(), "a raised guard is the cost of not being able to block twice");
     }
@@ -89,18 +92,74 @@ class GuardStateTest {
         GuardState spent = new GuardState(false, 3, 0, REGEN);
         GuardState ticked = spent;
         for (int i = 0; i < REGEN - 1; i++) {
-            ticked = ticked.tick(REGEN);
+            ticked = ticked.tick(REGEN, false, STAGGER);
         }
         assertEquals(0, ticked.stamina(), "must still be empty one tick before the interval is up");
-        ticked = ticked.tick(REGEN);
+        ticked = ticked.tick(REGEN, false, STAGGER);
         assertEquals(1, ticked.stamina());
+    }
+
+    @Test
+    @DisplayName("a stagger refills the guard exactly as the cooldown runs out")
+    void staggerIsTheRefillClock() {
+        // Three points over a 100 tick stagger: one back every 33 ticks, so the guard is full
+        // the instant the item becomes usable again and not a moment before.
+        GuardState empty = new GuardState(false, 3, 0, REGEN);
+        GuardState ticked = empty;
+        for (int i = 0; i < STAGGER; i++) {
+            ticked = ticked.tick(REGEN, true, STAGGER);
+        }
+        assertEquals(3, ticked.stamina());
+    }
+
+    @Test
+    @DisplayName("a stagger does not refill faster than the cooldown lasts")
+    void staggerCannotOutrunTheCooldown() {
+        // Half the stagger must not already be two thirds of the way back.
+        GuardState empty = new GuardState(false, 3, 0, REGEN);
+        GuardState ticked = empty;
+        for (int i = 0; i < STAGGER / 2; i++) {
+            ticked = ticked.tick(REGEN, true, STAGGER);
+        }
+        assertTrue(ticked.stamina() <= 1,
+                "at half the cooldown the guard should still be mostly empty, was " + ticked.stamina());
+    }
+
+    @Test
+    @DisplayName("being staggered refills even with the button still held")
+    void staggerBeatsTheHeldPenalty() {
+        // The player never let go of the button; the guard broke on its own. Charging them for
+        // holding it on top of the stagger would be two punishments for one mistake.
+        GuardState empty = new GuardState(true, 3, 0, REGEN);
+        GuardState ticked = empty;
+        for (int i = 0; i < STAGGER; i++) {
+            ticked = ticked.tick(REGEN, true, STAGGER);
+        }
+        assertEquals(3, ticked.stamina());
+    }
+
+    @Test
+    @DisplayName("blocking does not hand back a point on the very next tick")
+    void blockStartsTheCountdownFull() {
+        // The countdown begins full. Starting it at zero made the first point free.
+        // Lowered, because a guard that is still raised never regenerates by design and that
+        // would be testing the other rule instead of this one.
+        GuardState after = raised(3).block(REGEN).lower();
+        assertEquals(2, after.stamina());
+        GuardState ticked = after;
+        for (int i = 0; i < REGEN - 1; i++) {
+            ticked = ticked.tick(REGEN, false, STAGGER);
+        }
+        assertEquals(2, ticked.stamina(), "still nothing back one tick before the interval");
+        ticked = ticked.tick(REGEN, false, STAGGER);
+        assertEquals(3, ticked.stamina());
     }
 
     @Test
     @DisplayName("swapping to a bigger item does not bank the difference")
     void raisingTheMaximumDoesNotGiftPoints() {
         // Sword with 1 point of 1, then pick up a shield.
-        GuardState fromSword = state(1).block();
+        GuardState fromSword = state(1).block(REGEN);
         assertEquals(0, fromSword.stamina());
         GuardState asShield = fromSword.withMax(3);
         assertEquals(3, asShield.max());
@@ -122,7 +181,7 @@ class GuardStateTest {
         GuardState nothing = new GuardState(true, 0, 0, REGEN);
         assertFalse(nothing.isActive());
         // And it must not tick itself into existence either.
-        assertEquals(0, nothing.tick(REGEN).stamina());
+        assertEquals(0, nothing.tick(REGEN, false, STAGGER).stamina());
     }
 
     @Test
@@ -131,7 +190,7 @@ class GuardStateTest {
         GuardState lowered = new GuardState(false, 3, 1, 0);
         GuardState ticked = lowered;
         for (int i = 0; i < REGEN; i++) {
-            ticked = ticked.tick(REGEN);
+            ticked = ticked.tick(REGEN, false, STAGGER);
         }
         assertEquals(2, ticked.stamina());
     }

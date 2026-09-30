@@ -83,7 +83,7 @@ public final class GuardHandler {
             return;
         }
 
-        GuardState after = state.block();
+        GuardState after = state.block(guard.profile().regenTicks());
         player.setData(ModAttachments.GUARD_STAMINA.get(), after);
 
         event.setBlocked(true);

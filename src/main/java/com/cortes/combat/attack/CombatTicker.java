@@ -2,6 +2,7 @@ package com.cortes.combat.attack;
 
 import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.guard.GuardHandler;
+import com.cortes.combat.guard.GuardStats;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
@@ -67,9 +68,13 @@ public final class CombatTicker {
         GuardState guard = player.getData(ModAttachments.GUARD_STAMINA.get());
         // The item decides the timings, read fresh every tick so a hotbar swap cannot leave a
         // stale regen rate running.
-        GuardProfile profile = GuardHandler.bestFor(player).profile();
+        GuardStats.Resolved resolved = GuardHandler.bestFor(player);
+        GuardProfile profile = resolved.profile();
+        // Same cooldown the handler gates blocking on, so the refill and the stagger are one
+        // clock instead of two unrelated timers.
+        boolean staggered = player.getCooldowns().isOnCooldown(resolved.item().getItem());
         GuardState resized = guard.withMax(profile.safePoints());
-        GuardState ticked = resized.tick(profile.regenTicks());
+        GuardState ticked = resized.tick(profile.regenTicks(), staggered, profile.stunTicks());
         if (ticked != resized) {
             player.setData(ModAttachments.GUARD_STAMINA.get(), ticked);
         }
