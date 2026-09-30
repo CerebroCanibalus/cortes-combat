@@ -1,5 +1,6 @@
 package com.cortes.combat.client;
 
+import com.cortes.combat.CortesCombat;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -8,34 +9,31 @@ import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * Owns the crosshair, replacing the vanilla layer rather than drawing over it.
+ * The crosshair and the charge bar, stacked.
  *
- * <p>{@code RegisterGuiLayersEvent#replaceLayer} hands this class the slot vanilla already
- * occupied, so the two can never both draw. That matters here: the vanilla crosshair also draws
- * the attack cooldown as a shrinking cross around itself, and this mod has its own cooldown bar
- * under the hotbar. Leaving both would be two cooldowns on screen saying different things.</p>
+ * <p>Replaces the vanilla layer rather than drawing over it. Vanilla's crosshair also draws the
+ * attack cooldown as a shrinking cross around itself, and this mod has its own cooldown readout
+ * on the brackets; leaving both would put two cooldowns on screen disagreeing with each other.</p>
  *
- * <p>The crosshair itself is still the vanilla sprite, on purpose. Replacing the crosshair is a
- * design decision that has not been made yet, and until it is, the honest thing is to own the
- * layer and keep drawing what the player is used to, so nothing about the current playtest
- * changes. Swapping the art is then one call, not a change of architecture.</p>
+ * <p><b>The charge lives under the crosshair, not in it.</b> The old version grew four bars out of
+ * the cross, which put a second indicator inside the one thing the player aims with: the exact
+ * centre of the screen got busier the more important it was. Below it, with real clearance, the
+ * cross stays clean and the charge is still in the eye's natural sweep.</p>
  *
- * <p>The charge indicator is the four bars growing outward from the cross. Same idea as the
- * vanilla cooldown cross, deliberately: it is a shape players already read without being taught,
- * and it reuses no texture at all, so the prototype assets stay a smaller liability.</p>
+ * <p>The gap is not a magic number, it is the crosshair's own half-height plus a margin, so the
+ * two never touch no matter how far the crosshair grows. That coupling is the point: a constant
+ * gap looks fine at 1x and collides the moment a hit makes the crosshair jump.</p>
  */
 public class CombatCrosshairLayer implements LayeredDraw.Layer {
 
-    private static final ResourceLocation CROSSHAIR =
-            ResourceLocation.fromNamespaceAndPath("hud", "crosshair");
-    private static final int SPRITE = 15;
+    private static final ResourceLocation CHARGE = sprite("charge_bar");
+    private static final ResourceLocation CHARGE_EMPTY = sprite("charge_bar_emtpy");
 
-    private static final int BAR_LENGTH = 4;
-    private static final int BAR_THICKNESS = 2;
-    private static final int BAR_GAP = 3;
+    private static final int CHARGE_WIDTH = 30;
+    private static final int CHARGE_HEIGHT = 15;
 
-    private static final int COLOUR_CHARGING = 0xFFFFD24A;
-    private static final int COLOUR_FULL = 0xFFFF5A3C;
+    /** Clearance between the bottom of the crosshair and the top of the charge bar. */
+    private static final int CHARGE_GAP = 9;
 
     @Override
     public void render(GuiGraphics graphics, DeltaTracker delta) {
@@ -44,45 +42,47 @@ public class CombatCrosshairLayer implements LayeredDraw.Layer {
             return;
         }
 
-        int centerX = graphics.guiWidth() / 2;
-        int centerY = graphics.guiHeight() / 2;
+        int centreX = graphics.guiWidth() / 2;
+        int centreY = graphics.guiHeight() / 2;
+        float growth = CrosshairFeedback.growth();
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
+        CrosshairSprites.render(graphics, centreX, centreY, growth,
+                CrosshairFeedback.shakeX(), CrosshairFeedback.shakeY(), CrosshairFeedback.rgb());
 
-        graphics.blitSprite(CROSSHAIR,
-                centerX - SPRITE / 2, centerY - SPRITE / 2, SPRITE, SPRITE);
-
-        renderCharge(graphics, centerX, centerY);
-
-        RenderSystem.disableBlend();
+        renderCharge(graphics, centreX, centreY, growth);
     }
 
     /**
-     * The four bars, one per direction, growing outward with the charge.
+     * The charge bar, below the crosshair.
      *
-     * <p>Length is driven by the server value, not the client prediction, for the same reason the
-     * cooldown bar is: an indicator that shows a hit you cannot land is worse than a laggy one.</p>
+     * <p>Two sprites rather than a fill rectangle: the empty one is the socket and the full one
+     * carries the splatter at the end of the stroke, so drawing a scaled fill would have had to
+     * invent that detail. Scaling the full sprite by charge and drawing the empty one underneath
+     * gives the splatter for free, and it only appears when the charge is actually full.</p>
+     *
+     * <p>Positioned off the crosshair's <em>grown</em> half-height. On a hit the crosshair is
+     * 38% bigger and would otherwise be sitting on the bar for the six ticks of the flash.</p>
      */
-    private static void renderCharge(GuiGraphics graphics, int centerX, int centerY) {
+    private static void renderCharge(GuiGraphics graphics, int centreX, int centreY, float growth) {
         float charge = ClientCombatState.chargeRatio();
         if (charge <= 0.0F) {
             return;
         }
-        int length = Math.max(1, Math.round(BAR_LENGTH * charge));
-        int start = BAR_GAP;
-        int end = start + length;
-        int colour = charge >= 1.0F ? COLOUR_FULL : COLOUR_CHARGING;
+        int x = centreX - CHARGE_WIDTH / 2;
+        int y = centreY + Math.round(CrosshairSprites.SIZE * growth / 2.0F) + CHARGE_GAP;
 
-        // North and south.
-        graphics.fill(centerX - BAR_THICKNESS / 2, centerY - end, centerX + (BAR_THICKNESS + 1) / 2,
-                centerY - start, colour);
-        graphics.fill(centerX - BAR_THICKNESS / 2, centerY + start,
-                centerX + (BAR_THICKNESS + 1) / 2, centerY + end, colour);
-        // East and west.
-        graphics.fill(centerX + start, centerY - BAR_THICKNESS / 2, centerX + end,
-                centerY + (BAR_THICKNESS + 1) / 2, colour);
-        graphics.fill(centerX - end, centerY - BAR_THICKNESS / 2, centerX - start,
-                centerY + (BAR_THICKNESS + 1) / 2, colour);
+        RenderSystem.enableBlend();
+        graphics.blit(CHARGE_EMPTY, x, y, CHARGE_WIDTH, CHARGE_HEIGHT,
+                0.0F, 0.0F, CHARGE_WIDTH, CHARGE_HEIGHT, CHARGE_WIDTH, CHARGE_HEIGHT);
+
+        int filled = Math.max(1, Math.round(CHARGE_WIDTH * Math.min(1.0F, charge)));
+        graphics.blit(CHARGE, x, y, filled, CHARGE_HEIGHT,
+                0.0F, 0.0F, filled, CHARGE_HEIGHT, CHARGE_WIDTH, CHARGE_HEIGHT);
+        RenderSystem.disableBlend();
+    }
+
+    private static ResourceLocation sprite(String name) {
+        return ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID,
+                "textures/gui/sprites/hud/" + name + ".png");
     }
 }

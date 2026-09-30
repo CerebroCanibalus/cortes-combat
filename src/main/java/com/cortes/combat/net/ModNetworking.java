@@ -2,6 +2,7 @@ package com.cortes.combat.net;
 
 import com.cortes.combat.attack.AttackCooldown;
 import com.cortes.combat.attack.WeaponStats;
+import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
@@ -34,6 +35,25 @@ public final class ModNetworking {
                 ModNetworking::handleCombatState);
         registrar.playToClient(DebugTogglePayload.TYPE, DebugTogglePayload.STREAM_CODEC,
                 ModNetworking::handleDebugToggle);
+        registrar.playToClient(CombatFeedbackPayload.TYPE, CombatFeedbackPayload.STREAM_CODEC,
+                ModNetworking::handleCombatFeedback);
+    }
+
+    private static void handleCombatFeedback(CombatFeedbackPayload payload,
+                                             IPayloadContext context) {
+        com.cortes.combat.client.CrosshairFeedback.onEvent(payload.kind());
+    }
+
+    /**
+     * Tell one player that a hit landed, so their crosshair can react.
+     *
+     * <p>Sent from the server rather than predicted on the client. A client that flashed on its
+     * own swing would also flash on a swing into a wall or into a shield, and a crosshair that
+     * cries wolf is worse than one that stays quiet: the player learns to wait for the colour
+     * instead of watching for the hit.</p>
+     */
+    public static void sendFeedback(ServerPlayer player, CombatFeedback kind) {
+        PacketDistributor.sendToPlayer(player, new CombatFeedbackPayload(kind));
     }
 
     private static void handleGuardInput(GuardInputPayload payload, IPayloadContext context) {

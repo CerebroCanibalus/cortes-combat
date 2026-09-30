@@ -1,5 +1,6 @@
 package com.cortes.combat.attack;
 
+import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.reach.Reach;
 import com.cortes.combat.registry.ModAttachments;
@@ -84,6 +85,11 @@ public final class CombatEngine {
 
     private static void apply(Player player, Entity target, WeaponStats stats,
                               AttackResult result, float chargeRatio) {
+        // Read before the hit: afterwards a dead mob reads 0 health and there is no way to tell
+        // "the swing killed it" from "the swing finished it off". Only a living thing has health
+        // to read, and only a living thing can be in the cone to be hit, so the cast is safe
+        // here rather than a branch the caller had to remember.
+        float healthBefore = target instanceof LivingEntity living ? living.getHealth() : 0.0F;
         // Vanilla's invulnerability window is one full second, which was tuned for a weapon
         // that swings twice a second. It would swallow the entire follow-up of any fast
         // weapon and make half the swings feel broken. This system already has its own gate,
@@ -95,7 +101,26 @@ public final class CombatEngine {
         target.invulnerableTime = IFRAME_TICKS;
         if (hurt) {
             onHit(player, target, stats, result, chargeRatio);
+            notifyHit(player, target, healthBefore);
         }
+    }
+
+    /**
+     * Tells the attacker what happened, so the crosshair can react.
+     *
+     * <p>A kill is a different event from a hit and gets a different colour, because the player
+     * needs to tell "I landed it" from "I finished it" without reading a health bar at a
+     * distance. The check is on health dropping to zero rather than on a death event, so a mob
+     * that dies to something else in the same tick is not credited to this swing.</p>
+     */
+    private static void notifyHit(Player player, Entity target, float healthBefore) {
+        if (!(player instanceof net.minecraft.server.level.ServerPlayer server)
+                || !(target instanceof LivingEntity living)) {
+            return;
+        }
+        boolean killed = healthBefore > 0.0F && living.getHealth() <= 0.0F;
+        com.cortes.combat.net.ModNetworking.sendFeedback(server,
+                killed ? CombatFeedback.KILL : CombatFeedback.HIT);
     }
 
     private static void onHit(Player player, Entity target, WeaponStats stats,

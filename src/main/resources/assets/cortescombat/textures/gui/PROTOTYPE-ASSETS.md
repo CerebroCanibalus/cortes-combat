@@ -14,8 +14,13 @@ accident.
 |---|---|---|---|---|
 | `sprites/hud/crosshair_shield_indicator_full.png` | 16x16 | 9x9 | `GuardOrbsLayer` — one guard point still available | **LGPL-2.1** (from `combatify`) |
 | `sprites/hud/crosshair_shield_indicator_disabled.png` | 16x16 | 9x9 | `GuardOrbsLayer` — a guard point already spent | **LGPL-2.1** (from `combatify`) |
-| `sprites/hud/hotbar_attack_indicator_full.png` | 18x18 | 18x18 | `CooldownBarLayer` — the cooldown bar fill | **LGPL-2.1** (from `combatify`) |
 | `damage_overlay.png` | 256x128 | tiled | `DamageOverlayLayer` — low-health vignette and damage flash | **All Rights Reserved** (from `neoforge-damageoverlay`, no `LICENSE`, no grant). **Highest risk.** |
+
+Everything under `sprites/hud/` except those two orb sprites is now **original art** supplied by
+the project author: `crosshair`, `crosshair_aim`, `crosshair_hit`, `cooldown_corchetes`,
+`charge_bar` and `charge_bar_emtpy`. `hotbar_attack_indicator_full.png` (the `combatify` sword
+icon that used to draw the cooldown bar) has been deleted, since the cooldown is now drawn by
+code around the crosshair rather than by a sprite.
 
 ## Replacing them
 

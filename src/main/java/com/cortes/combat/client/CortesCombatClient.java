@@ -41,21 +41,25 @@ public class CortesCombatClient {
      * {@code CAMERA_OVERLAYS -> CROSSHAIR -> HOTBAR -> ... -> PLAYER_HEALTH}.
      *
      * <p>So: the vignette goes <b>below</b> the health bar (it is a screen effect, and
-     * covering the health would hide the thing it is warning about), the cooldown bar sits
-     * <b>above</b> the hotbar, and the guard orbs sit <b>above</b> the crosshair. Using
-     * {@code registerAboveAll} for any of them would be wrong.</p>
+     * covering the health would hide the thing it is warning about), and everything that lives
+     * around the crosshair sits <b>above</b> it. Using {@code registerAboveAll} for any of them
+     * would be wrong.</p>
      *
      * <p>The crosshair is <b>replaced</b>, not joined. The slot already exists, and the vanilla
-     * layer draws the attack cooldown into it, which would put a second cooldown indicator on
-     * screen disagreeing with our bar.</p>
+     * layer draws the attack cooldown into it, which would put a second cooldown readout on
+     * screen next to the brackets.</p>
+     *
+     * <p>Relative order above the crosshair: brackets, then orbs. The brackets are the widest
+     * thing on screen and the orbs are the smallest; drawing the orbs last keeps them readable
+     * in the rare case a 9 orb row and a bracket column overlap, and costs nothing otherwise.</p>
      */
     private static void registerLayers(RegisterGuiLayersEvent event) {
         event.registerBelowAll(ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "damage_overlay"),
                 new DamageOverlayLayer());
         event.replaceLayer(VanillaGuiLayers.CROSSHAIR, new CombatCrosshairLayer());
-        event.registerAbove(VanillaGuiLayers.HOTBAR,
-                ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "cooldown_bar"),
-                new CooldownBarLayer());
+        event.registerAbove(VanillaGuiLayers.CROSSHAIR,
+                ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "cooldown_brackets"),
+                new CooldownBracketLayer());
         event.registerAbove(VanillaGuiLayers.CROSSHAIR,
                 ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "guard_orbs"),
                 new GuardOrbsLayer());

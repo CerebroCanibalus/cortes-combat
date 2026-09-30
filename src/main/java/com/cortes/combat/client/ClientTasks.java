@@ -17,5 +17,10 @@ public final class ClientTasks {
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         ChargeInputHandler.tickPrediction();
+        // Ahead of the feedback tick, so a flash that arrived this tick is already counted as
+        // one tick old and decays on schedule rather than sitting at full strength for an extra
+        // frame.
+        CombatAim.update();
+        CrosshairFeedback.onTick(ClientCombatState.aiming());
     }
 }

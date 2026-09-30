@@ -1,5 +1,6 @@
 package com.cortes.combat.guard;
 
+import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.GuardState;
@@ -103,6 +104,13 @@ public final class GuardHandler {
         // No durability cost either: the shield is not an item that wears out from doing the
         // job it exists for.
         event.setShieldDamage(0.0F);
+
+        // A block is the one event that gets no crosshair growth. The player did not throw
+        // anything, so making their crosshair jump would claim credit for a swing they never
+        // took; the colour carries it on its own.
+        if (player instanceof ServerPlayer server) {
+            com.cortes.combat.net.ModNetworking.sendFeedback(server, CombatFeedback.GUARDED);
+        }
 
         if (after.isExhausted()) {
             stagger(player, guard, guard.profile().stunTicks());

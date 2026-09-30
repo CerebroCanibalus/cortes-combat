@@ -72,7 +72,10 @@ public class GuardOrbsLayer implements LayeredDraw.Layer {
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, alpha / 255.0F);
+        // White with a varying alpha: the orbs have no colour of their own, they only dim. The
+        // crosshair and the brackets are the two things that carry the hit colour, and leaving
+        // these untinted is what keeps a blocked hit from painting three different things red.
+        graphics.setColor(1.0F, 1.0F, 1.0F, alpha / 255.0F);
 
         for (int i = 0; i < max; i++) {
             int x = startX + i * (ORB_SIZE + SPACING);
@@ -81,7 +84,7 @@ public class GuardOrbsLayer implements LayeredDraw.Layer {
                     0.0F, 0.0F, ORB_SIZE, ORB_SIZE, ORB_SIZE, ORB_SIZE);
         }
 
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        graphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.disableBlend();
     }
 }
