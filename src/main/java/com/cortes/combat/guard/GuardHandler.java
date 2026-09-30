@@ -42,9 +42,20 @@ public final class GuardHandler {
     private GuardHandler() {
     }
 
-    /** Server side of the guard input. Called by the payload handler. */
+    /**
+     * Server side of the guard input.
+     *
+     * <p>A raise is refused while the guard has no points. That is not a special case for the
+     * exhausted case: it is the same rule as the one that stops an empty guard from blocking,
+     * applied one step earlier. It is also what stops a deadlock, because otherwise a player
+     * who held the button down on a fresh shield would be holding an empty guard, would not be
+     * regenerating (holding costs the regen) and would never become ready.</p>
+     */
     public static void setGuard(ServerPlayer player, boolean raising) {
         GuardState current = player.getData(ModAttachments.GUARD_STAMINA.get());
+        if (raising && current.isExhausted()) {
+            return;
+        }
         GuardState next = raising ? current.raise() : current.lower();
         if (next != current) {
             player.setData(ModAttachments.GUARD_STAMINA.get(), next);

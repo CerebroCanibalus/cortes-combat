@@ -41,6 +41,44 @@ class GuardStateTest {
     }
 
     @Test
+    @DisplayName("a fresh guard item starts with nothing charged")
+    void freshItemIsEmpty() {
+        // Picking a shield up must not be worth three free blocks. The cost of a new item is
+        // a few seconds of not being ready, and the orbs show that countdown.
+        assertEquals(0, GuardState.EMPTY.stamina());
+        assertFalse(GuardState.EMPTY.isActive());
+        // And it is not stuck there: it refills on the normal interval, not the stagger's.
+        GuardState ticked = GuardState.EMPTY.withMax(3);
+        for (int i = 0; i < REGEN * 3; i++) {
+            ticked = ticked.tick(REGEN, false, STAGGER);
+        }
+        assertEquals(3, ticked.stamina());
+    }
+
+    @Test
+    @DisplayName("a fresh item refills at the normal rate, not the stagger's")
+    void freshItemUsesNormalRate() {
+        GuardState ticked = GuardState.EMPTY.withMax(3);
+        for (int i = 0; i < REGEN - 1; i++) {
+            ticked = ticked.tick(REGEN, false, STAGGER);
+        }
+        assertEquals(0, ticked.stamina(), "a fresh shield is not a staggered one");
+    }
+
+    @Test
+    @DisplayName("a fresh item refills on the normal clock, not the stagger's")
+    void freshItemIsNotStaggered() {
+        // The distinguishing number. Over a 100 tick window the stagger pace would hand out
+        // three points on a 3 point guard; the normal pace hands out two. Getting two here is
+        // what proves an item that was never staggered is not being paid as if it had.
+        GuardState ticked = GuardState.EMPTY.withMax(3);
+        for (int i = 0; i < STAGGER; i++) {
+            ticked = ticked.tick(REGEN, false, STAGGER);
+        }
+        assertEquals(2, ticked.stamina());
+    }
+
+    @Test
     @DisplayName("blocking spends exactly one point and keeps the guard up")
     void blockSpendsOne() {
         GuardState after = raised(3).block(REGEN);

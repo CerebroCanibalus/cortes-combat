@@ -61,16 +61,41 @@ public final class GuardInputHandler {
         }
     }
 
-    /** The server owns the truth; this only decides when the client draws. */
-    public static void acceptServerState(boolean holding) {
-        predictedHolding = holding;
+    /**
+     * The server owns the truth; this only decides when the client draws.
+     *
+     * <p>When the server says the guard is down, the client drops the item use as well. The item
+     * use animation is predicted on the client and the server cannot take it back:
+     * {@code ServerPlayer} does not override {@code stopUsingItem}, so nothing goes over the
+     * wire. Without this the shield stayed visibly raised for as long as the button was held,
+     * which is exactly "you can keep covering and take the hit looking like an idiot".</p>
+     */
+    public static void acceptServerState(boolean active) {
+        predictedHolding = active;
+        if (active) {
+            return;
+        }
+        LocalPlayer player = Minecraft.getInstance().player;
+        // Scoped to guard items on purpose. A player eating bread is also "using an item" and
+        // the state sync runs every tick, so an unscoped stop would cancel their dinner.
+        if (player != null && player.isUsingItem() && GuardHandler.bestFor(player).canGuard()) {
+            player.stopUsingItem();
+        }
     }
 
     public static boolean predictedHolding() {
         return predictedHolding;
     }
 
+    /**
+     * Whether the guard can go up at all right now.
+     *
+     * <p>Checks the synced points as well as the item, so the client does not predict a guard
+     * the server is going to refuse in the same tick. That refusal is instant rather than a
+     * flicker, because the two sides agree on the rule and only the timing is different.</p>
+     */
     private static boolean canGuard(LocalPlayer player) {
-        return GuardHandler.bestFor(player).canGuard();
+        return GuardHandler.bestFor(player).canGuard()
+                && ClientCombatState.guardStamina() > 0;
     }
 }

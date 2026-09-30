@@ -23,8 +23,16 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  */
 public record GuardState(boolean held, int max, int stamina, int regenTicks) {
 
-    /** A valid state with nothing raised, so the attachment's first read is never null. */
-    public static final GuardState EMPTY = new GuardState(false, 3, 3, 40);
+    /**
+     * A valid state with nothing raised and <em>nothing charged</em>, so the attachment's first
+     * read is never null.
+     *
+     * <p>Starting at zero is a rule, not a default nobody thought about: picking a shield up
+     * must not be worth three free blocks. The guard then refills on the normal regen, so the
+     * cost of a fresh item is a few seconds of not being ready, which is a cost the player can
+     * see counting down in the orbs.</p>
+     */
+    public static final GuardState EMPTY = new GuardState(false, 0, 0, 40);
 
     public static final Codec<GuardState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.BOOL.optionalFieldOf("held", false).forGetter(GuardState::held),
