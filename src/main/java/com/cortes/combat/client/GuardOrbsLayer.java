@@ -46,7 +46,7 @@ public class GuardOrbsLayer implements LayeredDraw.Layer {
         if (player == null || Minecraft.getInstance().options.hideGui) {
             return;
         }
-        if (!GuardHandler.canGuard(player)) {
+        if (!GuardHandler.bestFor(player).canGuard()) {
             return;
         }
 

@@ -113,9 +113,13 @@ public final class CortesCommand {
         if (player == null) {
             return 0;
         }
+        // Refill against the item's own maximum, not a fixed number: a sword is worth 1, so
+        // "full" means a different thing depending on what is in hand.
+        int max = com.cortes.combat.guard.GuardHandler.bestFor(player).safePoints();
         player.setData(com.cortes.combat.registry.ModAttachments.GUARD_STAMINA.get(),
-                com.cortes.combat.state.GuardState.FULL);
-        ctx.getSource().sendSuccess(() -> Component.literal("Aguante restaurada."), false);
+                new com.cortes.combat.state.GuardState(false, max, max, 0, 40));
+        ctx.getSource().sendSuccess(() -> Component.literal("Aguante restaurada (" + max + ")."),
+                false);
         return 1;
     }
 

@@ -71,7 +71,6 @@ public final class GuardInputHandler {
     }
 
     private static boolean canGuard(LocalPlayer player) {
-        return GuardHandler.canGuardItem(player.getMainHandItem())
-                || GuardHandler.canGuardItem(player.getOffhandItem());
+        return GuardHandler.bestFor(player).canGuard();
     }
 }

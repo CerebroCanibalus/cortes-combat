@@ -2,6 +2,7 @@ package com.cortes.combat.registry;
 
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.weapon.ChargeProfile;
+import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.core.weapon.ReachProfile;
 import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.core.weapon.WeaponProfile;
@@ -34,6 +35,9 @@ public final class ModComponents {
 
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<SpecialType>> SPECIAL =
             component("special", SpecialType.TYPE);
+
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<GuardProfile>> GUARD_PROFILE =
+            component("guard_profile", GuardProfile.CODEC);
 
     private ModComponents() {
     }

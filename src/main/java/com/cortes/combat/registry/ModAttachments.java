@@ -35,9 +35,9 @@ public final class ModAttachments {
                     .copyOnDeath()
                     .build());
 
-    /** Remaining guard hits, shared by shield and sword. */
+    /** Remaining guard hits. The maximum comes from the item, not from here. */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<GuardState>> GUARD_STAMINA =
-            ATTACHMENT_TYPES.register("guard_stamina", () -> AttachmentType.builder(() -> GuardState.FULL)
+            ATTACHMENT_TYPES.register("guard_stamina", () -> AttachmentType.builder(() -> GuardState.EMPTY)
                     .serialize(GuardState.CODEC)
                     .copyOnDeath()
                     .build());

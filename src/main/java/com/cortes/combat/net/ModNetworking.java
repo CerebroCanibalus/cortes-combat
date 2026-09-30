@@ -66,7 +66,7 @@ public final class ModNetworking {
         com.cortes.combat.client.ClientCombatState.set(payload.chargeRatio(), payload.cooldownRatio());
         com.cortes.combat.client.ClientCombatState.setGuard(
                 payload.guardStamina(),
-                com.cortes.combat.state.GuardState.MAX_STAMINA,
+                payload.guardMax(),
                 payload.guardHeld());
         com.cortes.combat.client.GuardInputHandler.acceptServerState(payload.guardHeld());
         com.cortes.combat.client.ChargeInputHandler.acceptServerState(
@@ -100,16 +100,17 @@ public final class ModNetworking {
         com.cortes.combat.state.GuardState guard =
                 player.getData(ModAttachments.GUARD_STAMINA.get());
         int stamina = guard.stamina();
+        int max = guard.max();
         boolean held = guard.isActive();
 
         SyncState last = player.getData(ModAttachments.LAST_SYNCED.get());
-        if (!last.isDirty(charge, cooldown, stamina, held, SYNC_EPSILON)) {
+        if (!last.isDirty(charge, cooldown, stamina, max, held, SYNC_EPSILON)) {
             return;
         }
         player.setData(ModAttachments.LAST_SYNCED.get(),
-                new SyncState(charge, cooldown, stamina, held));
+                new SyncState(charge, cooldown, stamina, max, held));
         PacketDistributor.sendToPlayer(player,
-                new CombatStatePayload(charge, cooldown, stamina, held));
+                new CombatStatePayload(charge, cooldown, stamina, max, held));
     }
 
 }

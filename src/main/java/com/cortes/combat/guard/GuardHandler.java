@@ -1,16 +1,16 @@
 package com.cortes.combat.guard;
 
+import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.GuardState;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.living.LivingShieldBlockEvent;
@@ -20,13 +20,18 @@ import net.neoforged.neoforge.event.entity.living.LivingShieldBlockEvent;
  *
  * <p>It hooks {@link LivingShieldBlockEvent} rather than adding a mixin, because that event
  * already is the decision point. NeoForge hands it over with a yes or no that vanilla computed,
- * and {@code getBlocked()} is what the game then obeys. Replacing that boolean is the whole
- * job, and it is also why the sword works: the event fires whether or not a shield is up, so
- * one code path covers both items.</p>
+ * and {@code getBlocked()} is what the game then obeys.</p>
  *
- * <p>Every vanilla block is always turned off first. This system is not a layer on top of the
+ * <p><b>The one thing to get right here:</b> the event does not reduce anything. It only
+ * reports how much <em>was</em> prevented, and the actual subtraction happens afterwards in
+ * {@code DamageContainer#setBlockedDamage}, which does {@code newDamage -= blockedDamage}.
+ * Writing zero into it therefore means "nothing was blocked" and lets the whole hit through.
+ * The default value is already the full damage, which is what a full block is, so the correct
+ * move is to leave it alone.</p>
+ *
+ * <p>Every vanilla block is turned off first, always. This system is not a layer on top of the
  * shield, it <em>is</em> the shield, and leaving the original running would mean a hit got
- * blocked for free without spending a point of stamina.</p>
+ * blocked for free without spending a point.</p>
  */
 public final class GuardHandler {
 
@@ -34,28 +39,17 @@ public final class GuardHandler {
     }
 
     /** Server side of the guard input. Called by the payload handler. */
-    public static void setGuard(ServerPlayer player, boolean holding) {
+    public static void setGuard(ServerPlayer player, boolean raising) {
         GuardState current = player.getData(ModAttachments.GUARD_STAMINA.get());
-        if (holding == current.held()) {
-            return;
+        GuardState next = raising ? current.raise() : current.lower();
+        if (next != current) {
+            player.setData(ModAttachments.GUARD_STAMINA.get(), next);
         }
-        player.setData(ModAttachments.GUARD_STAMINA.get(),
-                holding ? current.raise() : current.lower());
     }
 
-    /**
-     * Whether an item can be held up as a guard.
-     *
-     * <p>Shield or sword, in either hand. That is the design's unified stamina: one pool, one
-     * cost, and covering with the sword costs nothing extra. It also falls out of the rule
-     * rather than being a case, because stamina is only ever spent on a blocked hit.</p>
-     */
-    public static boolean canGuard(LivingEntity entity) {
-        return canGuardItem(entity.getMainHandItem()) || canGuardItem(entity.getOffhandItem());
-    }
-
-    public static boolean canGuardItem(ItemStack stack) {
-        return stack.is(Items.SHIELD) || stack.getItem() instanceof SwordItem;
+    /** The guard the player's items are currently worth. Zero means neither hand can guard. */
+    public static GuardProfile bestFor(LivingEntity entity) {
+        return GuardStats.ofBest(GuardStats.LivingItems.of(entity));
     }
 
     @SubscribeEvent
@@ -66,38 +60,44 @@ public final class GuardHandler {
             return;
         }
 
-        // Kill the vanilla block first, always. Whatever vanilla thought, this system is the
-        // one that answers, and a leftover vanilla block would be a free hit.
+        // Kill the vanilla block first, always. Whatever vanilla thought, this system answers.
         event.setBlocked(false);
 
+        GuardProfile profile = bestFor(player);
+        if (!profile.canGuard()) {
+            return;
+        }
+
         GuardState guard = player.getData(ModAttachments.GUARD_STAMINA.get());
-        if (!guard.isActive() || !canGuard(player)) {
+        if (!guard.isActive() || !blocks(event.getDamageSource(), player, profile)) {
             return;
         }
 
-        DamageSource source = event.getDamageSource();
-        if (!blocks(source, player)) {
-            return;
-        }
-
-        GuardState after = guard.block();
+        GuardState after = guard.block(profile.stunTicks());
         player.setData(ModAttachments.GUARD_STAMINA.get(), after);
 
-        // Full reduction, and no durability cost: the shield is not an item that wears out from
-        // doing the job it exists for.
         event.setBlocked(true);
-        event.setBlockedDamage(0.0F);
+        // Deliberately NOT setBlockedDamage(0). Zero is the full incoming damage in the
+        // container's eyes, and writing it there is what made the first version block nothing.
+        // No durability cost either: the shield is not an item that wears out from doing the
+        // job it exists for.
         event.setShieldDamage(0.0F);
+
+        if (after.isStunned()) {
+            // The guard just broke. Silence here reads as the game ignoring the click, so the
+            // player has to be told by something other than the number going down.
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                    SoundEvents.SHIELD_BREAK, SoundSource.PLAYERS, 1.0F, 0.7F);
+        }
     }
 
     /**
      * Whether this particular damage source is blockable at all, and from the front.
      *
-     * <p>Explanations and falls are refused on purpose, and the reason is the same as the
-     * design's own reason for not letting a shield cover from behind: a guard is a decision
-     * about a fight, and environmental damage is not a fight.</p>
+     * <p>Explanations and falls are refused on purpose, and for the design's own reason: a
+     * guard is a decision about a fight, and environmental damage is not a fight.</p>
      */
-    private static boolean blocks(DamageSource source, Player player) {
+    private static boolean blocks(DamageSource source, Player player, GuardProfile profile) {
         // The design's one exception. An explosion is not something you can face.
         if (source.is(DamageTypeTags.IS_EXPLOSION)) {
             return false;
@@ -121,6 +121,6 @@ public final class GuardHandler {
                 self.x, self.y, self.z,
                 look.x, look.y, look.z,
                 position.x, position.y, position.z,
-                GuardRules.GUARD_ARC_DEGREES);
+                profile.safeArc());
     }
 }

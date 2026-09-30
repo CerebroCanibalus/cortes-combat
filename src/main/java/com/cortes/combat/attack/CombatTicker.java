@@ -1,5 +1,7 @@
 package com.cortes.combat.attack;
 
+import com.cortes.combat.core.weapon.GuardProfile;
+import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
@@ -63,8 +65,12 @@ public final class CombatTicker {
     /** Guard recovers on its own and never touches food. */
     private static void tickGuard(ServerPlayer player) {
         GuardState guard = player.getData(ModAttachments.GUARD_STAMINA.get());
-        GuardState ticked = guard.tick();
-        if (ticked != guard) {
+        // The item decides the timings, read fresh every tick so a hotbar swap cannot leave a
+        // stale regen rate running.
+        GuardProfile profile = GuardHandler.bestFor(player);
+        GuardState resized = guard.withMax(profile.safePoints());
+        GuardState ticked = resized.tick(profile.regenTicks());
+        if (ticked != resized) {
             player.setData(ModAttachments.GUARD_STAMINA.get(), ticked);
         }
     }
