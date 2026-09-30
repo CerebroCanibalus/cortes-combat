@@ -7,109 +7,185 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * How far the cooldown brackets sit for a given cone.
+ * The cooldown brackets: how far out they sit, and how the bar between them looks.
  *
- * <p>Pure arithmetic over a cone angle, so it runs without the game even though the widget that
- * uses it is a GUI layer. The failure this guards against is not a crash: it is a widget that
- * quietly stops telling the player anything, which is exactly the kind of bug a test has to be
- * told about by a human looking at the screen.</p>
+ * <p>Both halves of the widget are here, and both are pure arithmetic over a cone angle, so they
+ * run without the game. That matters more than usual for this class: every number in it has to
+ * be right on a screen the author does not own, at a GUI scale the author does not use, with a
+ * field of view the player chose. Those are exactly the conditions under which looking at it
+ * once proves nothing.</p>
+ *
+ * <p>The geometry lives in {@link ConeGauge}, not in the layer, because the layer implements
+ * {@code LayeredDraw.Layer} and a test that touches it dies with a class loading error before
+ * a single assertion runs.</p>
  */
 class CooldownBracketLayerTest {
 
-    private static final float SWORD = 35.0F;
-    private static final float DAGGER = 45.0F;
-    private static final float AXE = 45.0F;
-    private static final float SABRE = 75.0F;
-    private static final float RAPIER = 12.0F;
+    /** The reference screen the one-argument calls stand in for: 1080p at GUI scale two. */
+    private static final int REF_HEIGHT = 540;
+    private static final int REF_WIDTH = 960;
+    private static final double REF_FOV = 90.0;
 
     @Test
-    @DisplayName("a wider cone always draws wider")
-    void monotonic() {
-        // The one invariant the whole widget rests on. If this ever inverts, the indicator is
-        // actively lying: a sabre would look tighter than a dagger.
-        int previous = 0;
-        for (float angle = 0.0F; angle <= 90.0F; angle += 0.5F) {
-            int span = ConeGauge.halfSpan(angle);
-            assertTrue(span >= previous,
-                    "span shrank going from " + (angle - 0.5F) + " to " + angle
-                            + " degrees: " + previous + " -> " + span);
-            previous = span;
+    @DisplayName("the widget covers the same fraction of the screen at any resolution")
+    void resolutionIndependent() {
+        // The bug the whole sizing rule was rewritten for. A fixed pixel span is unreadably
+        // small on a big screen, because the player is looking at a bigger picture and the
+        // widget does not grow with it. Same GUI scale, same FOV, a taller screen, and the
+        // widget has to grow by exactly the same ratio or the same weapon reads two ways.
+        int guiScale = 2;
+        int smallHeight = 1080 / guiScale;
+        int largeHeight = 1440 / guiScale;
+        double ratio = (double) largeHeight / smallHeight;
+        for (float angle : new float[] {12, 35, 55, 75}) {
+            int small = ConeGauge.halfSpan(angle, smallHeight, REF_FOV, 1920 / guiScale);
+            int large = ConeGauge.halfSpan(angle, largeHeight, REF_FOV, 2560 / guiScale);
+            assertEquals(small * ratio, large, 2,
+                    "a " + angle + " degree cone must grow with the screen, was "
+                            + small + " scaled pixels at 1080p and " + large + " at 1440p");
         }
     }
 
     @Test
-    @DisplayName("angles outside the window are clamped, not extrapolated")
-    void clamped() {
-        assertEquals(ConeGauge.halfSpan(0.0F), ConeGauge.halfSpan(-40.0F),
-                "a negative angle must clamp to the floor, not draw off the bracket");
-        assertEquals(ConeGauge.halfSpan(180.0F), ConeGauge.halfSpan(200.0F),
-                "an absurd angle must clamp to the ceiling rather than leaving the screen");
+    @DisplayName("the widget covers the same physical size at every GUI scale")
+    void guiScaleIndependent() {
+        // The other half of the same requirement. A GUI pixel is a different number of screen
+        // pixels at each scale, so the span in GUI pixels has to shrink as the scale rises for
+        // the widget to stay put.
+        int reference = ConeGauge.halfSpan(35.0F, 1080, REF_FOV, 1920);
+        for (int guiScale : new int[] {1, 2, 3, 4}) {
+            int span = ConeGauge.halfSpan(35.0F, 1080 / guiScale, REF_FOV, 1920 / guiScale);
+            assertEquals(reference, span * guiScale, 2,
+                    "at GUI scale " + guiScale + " a 35 degree cone covers "
+                            + (span * guiScale) + " screen pixels, expected " + reference);
+        }
+    }
+
+    @Test
+    @DisplayName("the widget shrinks when the player zooms out, because the cone really does")
+    void followsTheFov() {
+        // Not a preference. At a wider FOV the same cone covers fewer pixels, and an indicator
+        // that ignored that would be claiming the weapon reaches further than the view shows.
+        int at70 = ConeGauge.halfSpan(35.0F, REF_HEIGHT, 70.0, REF_WIDTH);
+        int at90 = ConeGauge.halfSpan(35.0F, REF_HEIGHT, 90.0, REF_WIDTH);
+        int at110 = ConeGauge.halfSpan(35.0F, REF_HEIGHT, 110.0, REF_WIDTH);
+        assertTrue(at70 > at90, "at 70 FOV the indicator should be wider than at 90, was "
+                + at70 + " and " + at90);
+        assertTrue(at90 > at110, "at 110 FOV the indicator should be narrower than at 90, was "
+                + at90 + " and " + at110);
+    }
+
+    @Test
+    @DisplayName("a wider cone always draws wider, at every screen and FOV")
+    void monotonic() {
+        // The one invariant the widget rests on. If it ever inverts the indicator is lying: a
+        // sabre would draw tighter than a dagger.
+        for (int height : new int[] {360, 540, 720}) {
+            for (double fov : new double[] {60, 90, 120}) {
+                int previous = 0;
+                for (float angle = 0.0F; angle <= 140.0F; angle += 1.0F) {
+                    int span = ConeGauge.halfSpan(angle, height, fov, height * 2);
+                    assertTrue(span >= previous,
+                            "at height " + height + " and " + fov + " FOV, " + angle
+                                    + " degrees drew tighter than a narrower cone: "
+                                    + previous + " -> " + span);
+                    previous = span;
+                }
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("the tightest and widest cones in the design are told apart")
+    void designExtremes() {
+        // The twelve degree rapier, the thirty five degree sword, the fifty five degree halberd
+        // and the seventy five degree sabre, at the reference screen.
+        int rapier = ConeGauge.halfSpan(12.0F);
+        int sword = ConeGauge.halfSpan(35.0F);
+        int halberd = ConeGauge.halfSpan(55.0F);
+        int sabre = ConeGauge.halfSpan(75.0F);
+        assertTrue(rapier < sword && sword < halberd && halberd < sabre,
+                "the four must rank in order, was " + rapier + ", " + sword + ", "
+                        + halberd + ", " + sabre);
+        assertTrue(sabre > rapier * 2,
+                "the widest cone should be clearly wider than the tightest, was "
+                        + rapier + " and " + sabre);
     }
 
     @Test
     @DisplayName("the common weapons are told apart from each other")
     void commonWeaponsAreDistinct() {
-        // The band that matters. Sword, axe and pickaxe live within a few degrees of each
-        // other, and a linear spread put all of them on the same span, so the four weapons a
-        // player actually carries drew identically.
-        int sword = ConeGauge.halfSpan(SWORD);
-        int dagger = ConeGauge.halfSpan(DAGGER);
+        // The band that matters. Sword, axe and pickaxe live within a few degrees of each other,
+        // and a linear spread put all of them on the same span, so the four weapons a player
+        // actually carries drew identically.
+        int sword = ConeGauge.halfSpan(35.0F);
+        int dagger = ConeGauge.halfSpan(45.0F);
         assertTrue(dagger - sword >= 4,
                 "a 45 degree cone must be visibly wider than a 35 degree one, was "
                         + sword + " vs " + dagger);
     }
 
     @Test
-    @DisplayName("the extremes use the full range")
-    void usesTheRange() {
-        assertEquals(46, ConeGauge.halfSpan(10.0F), "narrowest cone, floor");
-        assertEquals(150, ConeGauge.halfSpan(100.0F), "widest cone, ceiling");
+    @DisplayName("a very wide cone still fits on the screen")
+    void screenCap() {
+        // The backstop. A wide cone on a narrow window would otherwise run the brackets off the
+        // edge, and a bracket drawn off the screen is worse than one at the margin.
+        for (int guiWidth : new int[] {320, 480, 640, 960, 1920}) {
+            int span = ConeGauge.halfSpan(89.0F, guiWidth / 2, REF_FOV, guiWidth);
+            int cap = Math.round(guiWidth * ConeGauge.MAX_SCREEN_FRACTION);
+            assertTrue(span <= cap,
+                    "span " + span + " exceeds the cap of " + cap + " on a " + guiWidth
+                            + " wide GUI");
+            assertTrue(span * 2 < guiWidth, "the brackets must not meet across the screen");
+        }
     }
 
     @Test
-    @DisplayName("an enormous cone still gets a large radius rather than clamping to the top")
-    void enormousConesGetRoom() {
-        // The design has weapons coming that are wider than anything in the table now. A cone
-        // of 120 degrees has to be visibly wider than one of 100, or those weapons all draw the
-        // same frame and the indicator stops describing them.
-        int at100 = ConeGauge.halfSpan(100.0F);
-        int at120 = ConeGauge.halfSpan(120.0F);
-        int at60 = ConeGauge.halfSpan(60.0F);
-        assertTrue(at120 >= at100, "120 degrees drew tighter than 100");
-        assertTrue(at100 > at60, "100 degrees drew tighter than 60");
-    }
-
-    @Test
-    @DisplayName("the rapier is the tightest and the sabre the widest, as designed")
-    void extremesMatchTheDesign() {
-        int rapier = ConeGauge.halfSpan(RAPIER);
-        int sabre = ConeGauge.halfSpan(SABRE);
-        assertTrue(rapier < ConeGauge.halfSpan(SWORD),
-                "the rapier has a 12 degree cone and must draw tighter than a 35 degree sword");
-        assertTrue(sabre > ConeGauge.halfSpan(AXE),
-                "the sabre has a 75 degree cone and must draw wider than a 45 degree axe");
+    @DisplayName("the screen cap never makes a wide cone tighter than a narrow one")
+    void capPreservesOrder() {
+        // A cap that reordered the weapons would be worse than no cap: the indicator would show
+        // a halberd tighter than a sword, which is a straight lie.
+        for (int guiWidth : new int[] {200, 320, 480, 960, 1920}) {
+            int previous = 0;
+            for (float angle = 0.0F; angle <= 140.0F; angle += 1.0F) {
+                int span = ConeGauge.halfSpan(angle, guiWidth / 2, REF_FOV, guiWidth);
+                assertTrue(span >= previous,
+                        "on a " + guiWidth + " wide GUI, " + angle
+                                + " degrees drew tighter than a narrower cone: "
+                                + previous + " -> " + span);
+                previous = span;
+            }
+        }
     }
 
     @Test
     @DisplayName("the brackets never sit on top of the crosshair")
     void clearsTheCrosshair() {
-        // The crosshair is 15px and grows on a hit. A bracket that can land inside its silhouette
-        // makes the two merge into one blob at exactly the moment the player is trying to aim.
-        // Three times its width, because the bar between them starts invisible and the eye
-        // needs room before it finds anything at all.
+        // The crosshair is 15 pixels and grows on a hit. A bracket inside its silhouette makes
+        // the two merge into one blob at exactly the moment the player is trying to aim.
         for (float angle = 0.0F; angle <= 90.0F; angle += 1.0F) {
             int span = ConeGauge.halfSpan(angle);
-            assertTrue(span > 45,
+            assertTrue(span > 30,
                     "a bracket at " + span + "px is too close to the 15px crosshair, cone " + angle);
         }
     }
 
     @Test
+    @DisplayName("a degenerate screen or FOV falls back instead of dividing by zero")
+    void degenerateInputs() {
+        assertEquals(ConeGauge.MIN_HALF_SPAN, ConeGauge.halfSpan(35.0F, 0, REF_FOV, REF_WIDTH));
+        assertEquals(ConeGauge.MIN_HALF_SPAN, ConeGauge.halfSpan(35.0F, 540, 0.0, REF_WIDTH));
+        assertEquals(ConeGauge.MIN_HALF_SPAN, ConeGauge.halfSpan(35.0F, 540, 180.0, REF_WIDTH));
+        assertTrue(ConeGauge.halfSpan(0.0F) >= ConeGauge.MIN_HALF_SPAN,
+                "a zero angle cone must not collapse into the crosshair");
+    }
+
+    @Test
     @DisplayName("the bar is fully transparent at the crosshair and brightest at the bracket")
     void gradientRunsFromNothingToFull() {
-        // The requirement as stated: the end nearest the aim point must be invisible, so the line
-        // has no visible start and the widget reads as a frame rather than as part of the
-        // crosshair. The separation is bought here rather than with a bigger span.
+        // The end nearest the aim point must be invisible, so the line has no visible start and
+        // the widget reads as a frame rather than as part of the crosshair. The separation is
+        // bought here rather than with a bigger span.
         int length = 60;
         assertEquals(0, ConeGauge.barAlpha(0, length, length),
                 "the bar must begin fully transparent at the crosshair");
@@ -122,7 +198,7 @@ class CooldownBracketLayerTest {
     @DisplayName("the bar brightens monotonically the whole way")
     void barIsMonotonic() {
         // A gradient that dips anywhere stops reading as a fade and starts reading as texture.
-        for (int length = 30; length <= 140; length += 5) {
+        for (int length = 30; length <= 150; length += 5) {
             int previous = -1;
             for (int i = 0; i < length; i++) {
                 int alpha = ConeGauge.barAlpha(i, length, length);
@@ -138,18 +214,18 @@ class CooldownBracketLayerTest {
     @DisplayName("the bar never steps: no column is more than a soft gradient from the next")
     void noSteps() {
         // A gradient in even a handful of bands reads as bands. Checked across the range of
-        // lengths the widget can actually produce, which is about 30 to 140 pixels: the narrowest
-        // cone with the crosshair and its bracket subtracted, through to the widest.
-        for (int length = 30; length <= 140; length += 5) {
+        // lengths the widget can produce, from the tightest cone with the crosshair and its
+        // bracket subtracted, through to the widest.
+        for (int length = 25; length <= 150; length += 5) {
             int biggest = 0;
             for (int i = 0; i < length - 1; i++) {
                 biggest = Math.max(biggest,
                         Math.abs(ConeGauge.barAlpha(i + 1, length, length)
                                 - ConeGauge.barAlpha(i, length, length)));
             }
-            // A smoothstep over this range peaks at about 210 * 1.5 / (length - 1), so the
-            // bound is set just above the worst case rather than at an arbitrary round number.
-            assertTrue(biggest <= 12,
+            // A smoothstep peaks at about ALPHA * 1.5 / (length - 1), so the bound sits just
+            // above the worst case rather than at an arbitrary round number.
+            assertTrue(biggest <= 14,
                     "a " + length + " long bar bands instead of fading, biggest jump was "
                             + biggest);
         }
@@ -158,9 +234,8 @@ class CooldownBracketLayerTest {
     @Test
     @DisplayName("the bar's first visible pixel is a real distance from the crosshair")
     void firstVisiblePixelIsAwayFromTheCrosshair() {
-        // The point of starting at zero: on a long bar, nothing at all shows for the first
-        // stretch, so the widget cannot be mistaken for part of the crosshair. On the shortest
-        // bar the effect is weaker, which is the honest trade for a tight cone.
+        // The point of starting at zero: on a long bar nothing shows for the first stretch, so
+        // the widget cannot be mistaken for part of the crosshair.
         int length = 150;
         int firstVisible = -1;
         for (int i = 0; i < length; i++) {
@@ -169,7 +244,7 @@ class CooldownBracketLayerTest {
                 break;
             }
         }
-        assertTrue(firstVisible >= 20,
+        assertTrue(firstVisible >= 15,
                 "the bar should not be visible until well away from the crosshair, was column "
                         + firstVisible);
     }
@@ -184,13 +259,9 @@ class CooldownBracketLayerTest {
     @Test
     @DisplayName("the bar only ever grows: drawn columns keep their brightness and gain one more")
     void fillOnlyGrows() {
-        // The bar has to get better, not worse, as the weapon gets ready. "Better" here is
-        // strictly one more column: no column that was already lit may change brightness, or the
-        // player watches the line they are tracking shift under them.
-        //
-        // The new column is allowed to be invisible, because the crosshair end of the bar is
-        // fully transparent by design. What must hold is the extent: the bar stops growing the
-        // moment it reaches the front, and not before.
+        // The bar has to get better, not worse, as the weapon gets ready. "Better" is strictly
+        // one more column: no column that was already lit may change brightness, or the player
+        // watches the line they are tracking shift under them.
         int length = 40;
         for (int filled = 1; filled <= length; filled++) {
             for (int i = 0; i < filled - 1; i++) {
@@ -209,36 +280,5 @@ class CooldownBracketLayerTest {
         assertEquals(0, ConeGauge.barAlpha(0, 0, 0));
         assertEquals(0, ConeGauge.barAlpha(5, -3, 2));
         assertEquals(0, ConeGauge.barAlpha(0, 10, 0));
-    }
-
-    @Test
-    @DisplayName("a very wide cone still fits on the screen")
-    void screenCap() {
-        // The reason the cap exists. At GUI scale four on a small window, an uncapped 150 pixels
-        // is most of the screen and the brackets would leave it.
-        for (int guiWidth : new int[] {320, 480, 640, 960, 1920}) {
-            int span = ConeGauge.halfSpan(100.0F, guiWidth);
-            assertTrue(span <= guiWidth * ConeGauge.MAX_SCREEN_FRACTION,
-                    "span " + span + " exceeds the cap on a " + guiWidth + " wide GUI");
-            assertTrue(span * 2 < guiWidth, "the brackets must not meet across the screen");
-        }
-    }
-
-    @Test
-    @DisplayName("the screen cap never makes a wide cone tighter than a narrow one")
-    void capPreservesOrder() {
-        // A cap that reorders the weapons would be worse than no cap: the indicator would show a
-        // halberd tighter than a sword, which is a straight lie.
-        for (int guiWidth : new int[] {200, 320, 480, 960, 1920}) {
-            int previous = 0;
-            for (float angle = 0.0F; angle <= 120.0F; angle += 1.0F) {
-                int span = ConeGauge.halfSpan(angle, guiWidth);
-                assertTrue(span >= previous,
-                        "on a " + guiWidth + " wide GUI, " + angle
-                                + " degrees drew tighter than a narrower cone: "
-                                + previous + " -> " + span);
-                previous = span;
-            }
-        }
     }
 }

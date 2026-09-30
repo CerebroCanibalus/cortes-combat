@@ -14,30 +14,47 @@ package com.cortes.combat.client;
 public final class ConeGauge {
 
     /**
-     * Where the brackets sit at the narrowest cone, and how much further out the widest goes.
+     * Overall size of the widget, as a fraction of the cone's true projected width.
      *
-     * <p>This went 12-34, then 22-62, then 36-86, and every one of those was too tight: at any
-     * of them the widget read as part of the crosshair rather than as a frame around it. The
-     * range is now wide enough to hold a weapon with a genuinely enormous cone without clamping
-     * it against the top of the scale, because the design has weapons coming that are wider
-     * than anything currently in the table.</p>
+     * <p>One, because the projection already lands in a sensible range once the angle is
+     * compressed below. Anything else is a fudge factor on top of real geometry, and it is the
+     * fudge factors that have to be re-tuned every time a screen resolution shows up.</p>
      */
-    static final int MIN_HALF_SPAN = 46;
-    static final int MAX_HALF_SPAN = 150;
+    static final double SCALE = 1.0;
+
+    /**
+     * Where the angle response flattens out.
+     *
+     * <p>The true projection is {@code tan(angle)}, and between the tightest and widest cone in
+     * the design that spans seventeen to one: a widget with a seventeen to one range cannot be
+     * read, because the tight end collapses into the crosshair and the wide end leaves the
+     * screen. Dividing the tangent by {@code 1 + tangent / SATURATION} keeps the ordering and
+     * the smoothness and brings it to about seven to one.</p>
+     *
+     * <p><b>It has to be applied to the angle, not to the projected pixels.</b> A power of the
+     * pixel count looks equivalent and is not: the square root of a doubled projection is only
+     * one and a half times bigger, so the widget would stop growing with the screen. Compressing
+     * the angle instead keeps {@code span} exactly proportional to the screen height, which is
+     * the property the whole class exists to guarantee.</p>
+     */
+    static final double SATURATION = 2.0;
 
     /**
      * The widest fraction of the screen the brackets may reach.
      *
-     * <p>A hard cap, and the reason the span cannot be a pure pixel number: at GUI scale 4 on a
-     * small window, 150 pixels is most of the screen and the brackets would leave it. Capping
-     * against the actual width means a wide cone always stays visible, and the cost is that the
-     * widget is proportionally smaller on a small screen, which is better than being cut off.</p>
+     * <p>A backstop, not the sizing rule. On a narrow window with a very wide cone the brackets
+     * would otherwise run off the edge, and a bracket drawn off the screen is worse than one
+     * drawn at the margin.</p>
      */
     static final float MAX_SCREEN_FRACTION = 0.42F;
 
-    /** Cone half-angle window the span is stretched across, in degrees. */
-    static final float ANGLE_FLOOR = 10.0F;
-    static final float ANGLE_CEILING = 100.0F;
+    /**
+     * Below this, the widget would sit inside the crosshair's own silhouette.
+     *
+     * <p>The crosshair is 15 pixels and grows on a hit, so a bracket has to clear about twice
+     * that even before the bar, which starts fully transparent, becomes visible at all.</p>
+     */
+    static final int MIN_HALF_SPAN = 42;
 
     /**
      * Alpha at the bracket end of the bar, and the value it fades from at the crosshair end.
@@ -53,7 +70,7 @@ public final class ConeGauge {
      * the second brightness level, the unfilled socket, which has since been deleted. With one
      * gradient there is nothing to break up, so the floor can go to zero.</p>
      */
-    public static final int ALPHA_NEAR_BRACKET = 210;
+    public static final int ALPHA_NEAR_BRACKET = 175;
     public static final int ALPHA_NEAR_CROSSHAIR = 0;
 
     private ConeGauge() {
@@ -107,34 +124,60 @@ public final class ConeGauge {
     /**
      * How far the brackets sit from the centre, for a cone of the given half-angle.
      *
-     * <p>A cone angle, not a weapon. Anything between {@link #ANGLE_FLOOR} and
-     * {@link #ANGLE_CEILING} degrees gets a proportional span and anything outside is clamped,
-     * so a modded weapon with a wider profile is drawn as "wider" rather than as "wrong".</p>
+     * <p><b>The size is the cone's projected width on screen.</b> A cone of half-angle
+     * {@code a}, seen with a vertical field of view {@code f}, subtends
+     * {@code (height / 2) * tan(a) / tan(f / 2)} pixels from the centre line, and that
+     * expression is what makes the widget correct on a 1080p screen and on a 2K one, at any GUI
+     * scale, at any FOV the player chose, with no magic number per resolution.</p>
      *
-     * <p>The curve is not linear, and that is the whole point. Linear spread made the common
-     * weapons — the 30 to 45 degree band where sword, axe, dagger and pickaxe all live — land
-     * within a few pixels of each other, so the four weapons a player actually carries all drew
-     * identically. Squaring the parameter spends the range on the band where the weapons differ
-     * instead of on the extremes.</p>
+     * <p>Note that the screen <em>width</em> does not appear in it, and that is not an
+     * oversight. Pixels per radian of horizontal angle is set by the vertical FOV and the
+     * height, so a wider window at the same FOV shows more world to the sides without
+     * stretching the indicator. The width is used only for the backstop.</p>
      *
-     * <p>Capped against the screen so a very wide cone cannot push the brackets off the edge at
-     * a high GUI scale. Only the cap depends on the screen; the mapping is the same everywhere,
-     * so two players on different scales see the same weapon ranked against the same neighbours.</p>
+     * <p>The tangent is then saturated, because a literal 75 degree cone really does fill the
+     * screen and a widget that fills the screen is not a reading of anything. The saturation
+     * divides the tangent rather than the result, which is what keeps the span exactly
+     * proportional to the screen height.</p>
      *
-     * @param guiWidth the GUI width in pixels, used only for the cap
+     * @param horizontalAngle the cone's half-angle, in degrees
+     * @param guiHeight       the scaled screen height in pixels
+     * @param fovDegrees      the player's vertical field of view, in degrees
+     * @param guiWidth        the scaled screen width, used only for the backstop
      */
-    public static int halfSpan(float horizontalAngle, int guiWidth) {
-        float t = (horizontalAngle - ANGLE_FLOOR) / (ANGLE_CEILING - ANGLE_FLOOR);
-        t = Math.max(0.0F, Math.min(1.0F, t));
-        int span = MIN_HALF_SPAN + Math.round(t * t * (MAX_HALF_SPAN - MIN_HALF_SPAN));
-        if (guiWidth <= 0) {
-            return span;
+    public static int halfSpan(float horizontalAngle, int guiHeight, double fovDegrees, int guiWidth) {
+        if (guiHeight <= 0 || fovDegrees <= 0.0 || fovDegrees >= 180.0) {
+            return MIN_HALF_SPAN;
         }
-        return Math.min(span, Math.round(guiWidth * MAX_SCREEN_FRACTION));
+        double fovHalf = Math.toRadians(fovDegrees) / 2.0;
+        // Pixels per radian of horizontal angle. A wider FOV means more world in view, so fewer
+        // pixels for any given angle, which is exactly right: zoom out and the cone really does
+        // get smaller on screen.
+        double pixelsPerRadian = (guiHeight / 2.0) / Math.tan(fovHalf);
+        // Clamped below a right angle: a half-angle past 90 degrees has a negative tangent and
+        // would draw the brackets inwards. No cone in the design is that wide, but a config
+        // override is not obliged to be sensible.
+        double angle = Math.min(Math.max(horizontalAngle, 0.0F), 89.0F);
+        double tangent = Math.tan(Math.toRadians(angle));
+        double compressed = tangent / (1.0 + tangent / SATURATION);
+        double span = pixelsPerRadian * compressed * SCALE;
+        if (!Double.isFinite(span) || span <= 0.0) {
+            return MIN_HALF_SPAN;
+        }
+        int result = (int) Math.round(span);
+        if (guiWidth > 0) {
+            result = Math.min(result, Math.round(guiWidth * MAX_SCREEN_FRACTION));
+        }
+        return Math.max(MIN_HALF_SPAN, result);
     }
 
-    /** As above, for callers that do not care about the screen cap. */
+    /**
+     * A default 1080p-at-scale-2 call, for tests and for anywhere the window is not available.
+     *
+     * <p>Every one of these numbers is only a stand-in. The real widget always passes the live
+     * screen and FOV, which is the entire point of the formula.</p>
+     */
     public static int halfSpan(float horizontalAngle) {
-        return halfSpan(horizontalAngle, 0);
+        return halfSpan(horizontalAngle, 540, 90.0, 960);
     }
 }

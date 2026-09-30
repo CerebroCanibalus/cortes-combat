@@ -82,7 +82,8 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
 
         // One geometry, computed once. The bar and the brackets both measure from this number,
         // and a second copy of it is a second chance to have them disagree by a pixel.
-        int halfSpan = halfSpanFor(reach.horizontalAngle(), graphics.guiWidth());
+        int halfSpan = halfSpanFor(reach.horizontalAngle(), graphics.guiHeight(),
+                Minecraft.getInstance().options.fov().get(), graphics.guiWidth());
         // The bar runs from the crosshair's edge to the bracket's inner edge, so the two never
         // overlap even when the crosshair jumps on a hit.
         int inner = halfSpan - LEFT_ANCHOR - 1;
@@ -105,11 +106,13 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
     /**
      * How far the brackets sit from the centre, for a cone of the given half-angle.
      *
-     * <p>Thin alias kept so the widget reads as one thing. The arithmetic, the curve and the
-     * screen cap live in {@link ConeGauge}, where they can be tested without a game.</p>
+     * <p>Thin alias kept so the widget reads as one thing. The projection, the compression and
+     * the backstop live in {@link ConeGauge}, where they can be tested without a game — which
+     * matters, because every one of them is a number that has to be right on a screen the author
+     * does not own.</p>
      */
-    private static int halfSpanFor(float horizontalAngle, int guiWidth) {
-        return ConeGauge.halfSpan(horizontalAngle, guiWidth);
+    private static int halfSpanFor(float horizontalAngle, int guiHeight, double fov, int guiWidth) {
+        return ConeGauge.halfSpan(horizontalAngle, guiHeight, fov, guiWidth);
     }
 
     /**
