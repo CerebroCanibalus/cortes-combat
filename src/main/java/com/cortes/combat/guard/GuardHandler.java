@@ -11,6 +11,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.living.LivingShieldBlockEvent;
@@ -29,9 +30,12 @@ import net.neoforged.neoforge.event.entity.living.LivingShieldBlockEvent;
  * The default value is already the full damage, which is what a full block is, so the correct
  * move is to leave it alone.</p>
  *
- * <p>Every vanilla block is turned off first, always. This system is not a layer on top of the
- * shield, it <em>is</em> the shield, and leaving the original running would mean a hit got
- * blocked for free without spending a point.</p>
+ * <p><b>The stagger is vanilla's, not ours.</b> Minecraft already has exactly this: an axe
+ * striking a raised shield puts the shield on a five second item cooldown, and the vanilla HUD
+ * already draws that cooldown. So there is no stun counter in {@link GuardState} and nothing to
+ * draw ourselves. Exhaustion adds a cooldown, an axe hit adds a cooldown, and both are read
+ * back through {@code isOnCooldown}. {@code ServerItemCooldowns} sends the packet, so this
+ * arrives at the client already synced and already rendered.</p>
  */
 public final class GuardHandler {
 
@@ -47,9 +51,9 @@ public final class GuardHandler {
         }
     }
 
-    /** The guard the player's items are currently worth. Zero means neither hand can guard. */
-    public static GuardProfile bestFor(LivingEntity entity) {
-        return GuardStats.ofBest(GuardStats.LivingItems.of(entity));
+    /** The guard the player's items are currently worth, and which item is providing it. */
+    public static GuardStats.Resolved bestFor(LivingEntity entity) {
+        return GuardStats.best(entity);
     }
 
     @SubscribeEvent
@@ -63,17 +67,23 @@ public final class GuardHandler {
         // Kill the vanilla block first, always. Whatever vanilla thought, this system answers.
         event.setBlocked(false);
 
-        GuardProfile profile = bestFor(player);
-        if (!profile.canGuard()) {
+        GuardStats.Resolved guard = bestFor(player);
+        if (!guard.canGuard()) {
             return;
         }
 
-        GuardState guard = player.getData(ModAttachments.GUARD_STAMINA.get());
-        if (!guard.isActive() || !blocks(event.getDamageSource(), player, profile)) {
+        // A staggered guard. Vanilla's own axe stagger lands here for the shield, and ours
+        // lands here for the sword, through the same check and the same cooldown.
+        if (player.getCooldowns().isOnCooldown(guard.item().getItem())) {
             return;
         }
 
-        GuardState after = guard.block(profile.stunTicks());
+        GuardState state = player.getData(ModAttachments.GUARD_STAMINA.get());
+        if (!state.isActive() || !blocks(event.getDamageSource(), player, guard.profile())) {
+            return;
+        }
+
+        GuardState after = state.block();
         player.setData(ModAttachments.GUARD_STAMINA.get(), after);
 
         event.setBlocked(true);
@@ -83,11 +93,42 @@ public final class GuardHandler {
         // job it exists for.
         event.setShieldDamage(0.0F);
 
-        if (after.isStunned()) {
-            // The guard just broke. Silence here reads as the game ignoring the click, so the
-            // player has to be told by something other than the number going down.
-            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                    SoundEvents.SHIELD_BREAK, SoundSource.PLAYERS, 1.0F, 0.7F);
+        if (after.isExhausted()) {
+            stagger(player, guard, guard.profile().stunTicks());
+        }
+        applyAxeStagger(player, guard, event.getDamageSource());
+    }
+
+    /**
+     * Puts the guard item on cooldown and says so out loud.
+     *
+     * <p>The sound is not decoration. Without it the only feedback is a number going to zero,
+     * which reads as the game ignoring the click, and the player has no way of knowing that the
+     * two seconds they are now helpless is a rule and not a bug.</p>
+     */
+    private static void stagger(Player player, GuardStats.Resolved guard, int ticks) {
+        player.getCooldowns().addCooldown(guard.item().getItem(), Math.max(1, ticks));
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.SHIELD_BREAK, SoundSource.PLAYERS, 1.0F, 0.7F);
+    }
+
+    /**
+     * The design's "an axe stuns in one hit", for the sword.
+     *
+     * <p>It reuses vanilla's own predicate, {@code canDisableShield}, so the list of weapons
+     * that do this is whatever the game says it is and not a second list here that drifts. For
+     * the shield vanilla has already done this by the time we are called, and adding the
+     * cooldown again is idempotent, so the same call is correct for both.</p>
+     */
+    private static void applyAxeStagger(Player player, GuardStats.Resolved guard,
+                                        DamageSource source) {
+        Entity origin = source.getEntity();
+        if (!(origin instanceof LivingEntity attacker)) {
+            return;
+        }
+        ItemStack weapon = attacker.getMainHandItem();
+        if (weapon.canDisableShield(guard.item(), attacker, player)) {
+            stagger(player, guard, guard.profile().stunTicks());
         }
     }
 

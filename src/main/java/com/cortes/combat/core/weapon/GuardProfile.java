@@ -17,7 +17,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  * @param points how many blocked hits the item can absorb before it is exhausted
  * @param arcDegrees total width of the frontal block; 120 means 60 degrees either side
  * @param regenTicks ticks between one point coming back
- * @param stunTicks ticks of helplessness after the last point is spent
+ * @param stunTicks length of the stagger that follows the last point, and that follows an
+ *                  axe hit. It is a vanilla item cooldown, not a counter of ours, so it
+ *                  arrives already synced and already drawn by the vanilla HUD.
  */
 public record GuardProfile(int points, float arcDegrees, int regenTicks, int stunTicks) {
 
@@ -25,15 +27,19 @@ public record GuardProfile(int points, float arcDegrees, int regenTicks, int stu
     public static final GuardProfile NONE = new GuardProfile(0, 0.0F, 0, 0);
 
     /** The vanilla shield: the design's three hits. */
-    public static final GuardProfile SHIELD = new GuardProfile(3, 120.0F, 40, 40);
+    public static final GuardProfile SHIELD = new GuardProfile(3, 120.0F, 40, 100);
 
     /**
      * A sword used to cover: one hit.
      *
      * <p>Not because the sword is weak, but because holding a sword up should be a last resort
      * rather than a free alternative to carrying a shield. One point, and it is gone.</p>
+     *
+     * <p>The 100 ticks of stagger are vanilla's own shield number on purpose. The player
+     * already knows what five seconds of holding a useless shield feels like, and a sword that
+     * punished them for a different length would be a second thing to learn for no gain.</p>
      */
-    public static final GuardProfile SWORD = new GuardProfile(1, 90.0F, 40, 40);
+    public static final GuardProfile SWORD = new GuardProfile(1, 90.0F, 40, 100);
 
     public static final Codec<GuardProfile> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.INT.fieldOf("points").forGetter(GuardProfile::points),

@@ -13,18 +13,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>Two of these exist because the playtest caught the bug they describe. A fixed maximum made
  * every weapon worth three points, which turned a sword into a shield. And the regen counter was
  * missing entirely, so a point came back every single tick.</p>
+ *
+ * <p>There is deliberately no stun test here. The stagger is a vanilla item cooldown now, so
+ * testing it would be testing Minecraft.</p>
  */
 class GuardStateTest {
 
     private static final int REGEN = 40;
-    private static final int STUN = 40;
 
     private static GuardState state(int max) {
-        return new GuardState(false, max, max, 0, REGEN);
+        return new GuardState(false, max, max, REGEN);
     }
 
     private static GuardState raised(int max) {
-        return new GuardState(true, max, max, 0, REGEN);
+        return new GuardState(true, max, max, REGEN);
     }
 
     @Test
@@ -36,45 +38,44 @@ class GuardStateTest {
     }
 
     @Test
-    @DisplayName("blocking spends exactly one point")
+    @DisplayName("blocking spends exactly one point and keeps the guard up")
     void blockSpendsOne() {
-        GuardState after = raised(3).block(STUN);
+        GuardState after = raised(3).block();
         assertEquals(2, after.stamina());
         assertTrue(after.held(), "two points left means the guard is still up");
-        assertFalse(after.isStunned());
+        assertTrue(after.isActive());
     }
 
     @Test
-    @DisplayName("the sword's single point breaks the guard outright")
+    @DisplayName("the sword's single point drops the guard outright")
     void swordExhaustsImmediately() {
-        GuardState after = raised(1).block(STUN);
+        GuardState after = raised(1).block();
         assertEquals(0, after.stamina());
         assertTrue(after.isExhausted());
-        assertTrue(after.isStunned());
         assertFalse(after.held(), "spending the last point has to drop the guard, or exhaustion is invisible");
         assertFalse(after.isActive());
     }
 
     @Test
-    @DisplayName("an exhausted guard does not block, even if the input still says it is raised")
-    void exhaustedCannotBlock() {
-        GuardState empty = new GuardState(true, 3, 0, 0, REGEN);
-        assertFalse(empty.isActive());
+    @DisplayName("blocking restarts the regen countdown")
+    void blockResetsTheCounter() {
+        // The counter restarts on every block, so a player under pressure cannot be chipped
+        // down one point at a time while never quite getting back a full one.
+        GuardState partly = new GuardState(true, 3, 2, 39);
+        assertEquals(0, partly.block().regenTicks());
     }
 
     @Test
-    @DisplayName("the stun runs down before anything comes back")
-    void stunBlocksRegen() {
-        GuardState stunned = new GuardState(false, 3, 0, STUN, REGEN);
-        GuardState ticked = stunned.tick(REGEN);
-        assertEquals(STUN - 1, ticked.stunTicks());
-        assertEquals(0, ticked.stamina(), "no point may come back while stunned");
+    @DisplayName("an exhausted guard does not block, even if the input still says it is raised")
+    void exhaustedCannotBlock() {
+        GuardState empty = new GuardState(true, 3, 0, REGEN);
+        assertFalse(empty.isActive());
     }
 
     @Test
     @DisplayName("holding the guard up recovers nothing")
     void noRegenWhileHeld() {
-        GuardState partiallySpent = new GuardState(true, 3, 1, 0, REGEN);
+        GuardState partiallySpent = new GuardState(true, 3, 1, REGEN);
         GuardState ticked = partiallySpent;
         for (int i = 0; i < REGEN * 3; i++) {
             ticked = ticked.tick(REGEN);
@@ -85,7 +86,7 @@ class GuardStateTest {
     @Test
     @DisplayName("one point comes back every interval, not every tick")
     void regenRate() {
-        GuardState spent = new GuardState(false, 3, 0, 0, REGEN);
+        GuardState spent = new GuardState(false, 3, 0, REGEN);
         GuardState ticked = spent;
         for (int i = 0; i < REGEN - 1; i++) {
             ticked = ticked.tick(REGEN);
@@ -99,7 +100,7 @@ class GuardStateTest {
     @DisplayName("swapping to a bigger item does not bank the difference")
     void raisingTheMaximumDoesNotGiftPoints() {
         // Sword with 1 point of 1, then pick up a shield.
-        GuardState fromSword = state(1).block(STUN);
+        GuardState fromSword = state(1).block();
         assertEquals(0, fromSword.stamina());
         GuardState asShield = fromSword.withMax(3);
         assertEquals(3, asShield.max());
@@ -118,9 +119,20 @@ class GuardStateTest {
     @Test
     @DisplayName("a zero-point item cannot guard at all")
     void zeroPoints() {
-        GuardState nothing = new GuardState(true, 0, 0, 0, REGEN);
+        GuardState nothing = new GuardState(true, 0, 0, REGEN);
         assertFalse(nothing.isActive());
         // And it must not tick itself into existence either.
         assertEquals(0, nothing.tick(REGEN).stamina());
+    }
+
+    @Test
+    @DisplayName("a guard with points left recovers even if it was never raised this fight")
+    void regenWorksAfterLowering() {
+        GuardState lowered = new GuardState(false, 3, 1, 0);
+        GuardState ticked = lowered;
+        for (int i = 0; i < REGEN; i++) {
+            ticked = ticked.tick(REGEN);
+        }
+        assertEquals(2, ticked.stamina());
     }
 }

@@ -15,42 +15,39 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  * quietly turns every weapon in the game into a shield, and it did exactly that until the
  * playtest caught it.</p>
  *
- * <p>The timings are deliberately <em>not</em> stored. They come from the item's guard profile
- * and a player can swap items mid-fight, so anything cached here would go stale the moment the
- * hotbar changes. They are passed in at the moment they are needed instead.</p>
+ * <p><b>There is no stun counter here on purpose.</b> Minecraft already has one: a staggered
+ * item is a vanilla item cooldown, synced by {@code ServerItemCooldowns} and already drawn by
+ * the vanilla HUD. Keeping our own countdown would be a second machine tracking a fact the
+ * game is already keeping correctly, and the two would disagree the first time someone tuned
+ * the vanilla duration.</p>
  */
-public record GuardState(boolean held, int max, int stamina, int stunTicks, int regenTicks) {
+public record GuardState(boolean held, int max, int stamina, int regenTicks) {
 
     /** A valid state with nothing raised, so the attachment's first read is never null. */
-    public static final GuardState EMPTY = new GuardState(false, 3, 3, 0, 40);
+    public static final GuardState EMPTY = new GuardState(false, 3, 3, 40);
 
     public static final Codec<GuardState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.BOOL.optionalFieldOf("held", false).forGetter(GuardState::held),
             Codec.INT.optionalFieldOf("max", 3).forGetter(GuardState::max),
             Codec.INT.fieldOf("stamina").forGetter(GuardState::stamina),
-            Codec.INT.fieldOf("stun_ticks").forGetter(GuardState::stunTicks),
             Codec.INT.optionalFieldOf("regen_ticks", 40).forGetter(GuardState::regenTicks)
     ).apply(instance, GuardState::new));
-
-    public boolean isStunned() {
-        return stunTicks > 0;
-    }
 
     public boolean isExhausted() {
         return stamina <= 0;
     }
 
-    /** Whether the guard is actually up: raised, not stunned, and with something to spend. */
+    /** Whether the guard is actually up: raised, with points left, and the item usable. */
     public boolean isActive() {
-        return held && !isStunned() && !isExhausted();
+        return held && !isExhausted();
     }
 
     public GuardState raise() {
-        return held ? this : new GuardState(true, max, stamina, stunTicks, regenTicks);
+        return held ? this : new GuardState(true, max, stamina, regenTicks);
     }
 
     public GuardState lower() {
-        return held ? new GuardState(false, max, stamina, stunTicks, regenTicks) : this;
+        return held ? new GuardState(false, max, stamina, regenTicks) : this;
     }
 
     /**
@@ -65,48 +62,35 @@ public record GuardState(boolean held, int max, int stamina, int stunTicks, int 
         if (clamped == max) {
             return this;
         }
-        return new GuardState(held, clamped, Math.min(stamina, clamped), stunTicks, regenTicks);
+        return new GuardState(held, clamped, Math.min(stamina, clamped), regenTicks);
     }
 
     /**
      * Spend one point for a blocked hit.
      *
-     * <p>Spending the last one drops the guard and stuns. That is the real answer to "why does a
-     * sword only have one point": the number is not the cost, the two seconds of helplessness
-     * afterwards and having to re-raise the guard by hand are the cost.</p>
+     * <p>Spending the last one drops the guard. What follows is not decided here: the handler
+     * puts the item on a vanilla cooldown, so the stagger belongs to the item rather than to a
+     * second state machine that would have to be kept in step with this one.</p>
      */
-    public GuardState block(int stunTicks) {
+    public GuardState block() {
         int left = stamina - 1;
-        boolean spent = left <= 0;
-        return new GuardState(
-                held && !spent,
-                max,
-                Math.max(0, left),
-                // Only the last point stuns. Writing the parameter in unconditionally made
-                // every single block stun the player, which quietly turned the shield into
-                // one-and-done regardless of its three points.
-                spent ? Math.max(0, stunTicks) : this.stunTicks,
-                0);
+        return new GuardState(held && left > 0, max, Math.max(0, left), 0);
     }
 
     /**
-     * Stun down, then regen.
+     * Regen, one point per interval, and never while the guard is raised.
      *
-     * <p>Regen only runs while the guard is <em>not</em> raised. A player holding guard up
-     * recovers nothing, which is the cost of holding it: not points, but the ability to block a
-     * second thing in a row.</p>
+     * <p>Holding the guard up recovering nothing is the cost of holding it: not points, but
+     * the ability to block a second thing in a row.</p>
      */
     public GuardState tick(int regenInterval) {
-        if (stunTicks > 0) {
-            return new GuardState(held, max, stamina, stunTicks - 1, regenTicks);
-        }
         if (held || stamina >= max || max <= 0) {
-            return new GuardState(held, max, stamina, 0, regenTicks);
+            return new GuardState(held, max, stamina, regenTicks);
         }
         int counter = regenTicks - 1;
         if (counter > 0) {
-            return new GuardState(held, max, stamina, 0, counter);
+            return new GuardState(held, max, stamina, counter);
         }
-        return new GuardState(held, max, stamina + 1, 0, Math.max(1, regenInterval));
+        return new GuardState(held, max, stamina + 1, Math.max(1, regenInterval));
     }
 }

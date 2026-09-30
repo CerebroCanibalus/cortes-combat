@@ -67,7 +67,7 @@ public final class CombatTicker {
         GuardState guard = player.getData(ModAttachments.GUARD_STAMINA.get());
         // The item decides the timings, read fresh every tick so a hotbar swap cannot leave a
         // stale regen rate running.
-        GuardProfile profile = GuardHandler.bestFor(player);
+        GuardProfile profile = GuardHandler.bestFor(player).profile();
         GuardState resized = guard.withMax(profile.safePoints());
         GuardState ticked = resized.tick(profile.regenTicks());
         if (ticked != resized) {
