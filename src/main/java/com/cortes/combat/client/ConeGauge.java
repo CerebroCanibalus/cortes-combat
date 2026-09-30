@@ -20,15 +20,76 @@ public final class ConeGauge {
      * size and crowds the crosshair at another, and the crosshair is the one thing on screen
      * that must never be crowded. Pixels keep a fixed relationship to the crosshair's own 15,
      * which is the reference the player's eye is already calibrated on.</p>
+     *
+     * <p>These went 12-34, then 22-62, then here. Both earlier ranges put the brackets close
+     * enough to the crosshair that the two merged into one glyph, and the widget read as a
+     * smudge on the aim point rather than as a frame around it. The narrowest cone now clears
+     * the crosshair by more than twice its width.</p>
      */
-    static final int MIN_HALF_SPAN = 22;
-    static final int MAX_HALF_SPAN = 62;
+    static final int MIN_HALF_SPAN = 36;
+    static final int MAX_HALF_SPAN = 86;
 
     /** Cone half-angle window the span is stretched across, in degrees. */
     static final float ANGLE_FLOOR = 10.0F;
     static final float ANGLE_CEILING = 80.0F;
 
+    /**
+     * Alpha at the bracket end of the bar, and the floor it fades to at the crosshair end.
+     *
+     * <p>The floor was 30, then 90, and both were too low. The soft end sits directly against
+     * the crosshair, which is the brightest part of any sky, and below about a hundred and sixty
+     * it stopped reading as a faded line and started reading as scattered dots. That was the
+     * "the bar breaks up near the crosshair" report, and it was an alpha floor, not geometry.</p>
+     */
+    public static final int ALPHA_NEAR_BRACKET = 255;
+    public static final int ALPHA_NEAR_CROSSHAIR = 165;
+
     private ConeGauge() {
+    }
+
+    /**
+     * The alpha of one pixel column of the bar, from the crosshair side outward.
+     *
+     * <p>One effect: a gradient along the bar, bright at the bracket and soft at the crosshair,
+     * eased rather than linear. A linear ramp reads as a ramp with visible steps; an eased one
+     * reads as a fade. The bar is drawn from the crosshair out to the moving front, so the
+     * player watches one continuous line grow, and it is brightest exactly where the eye goes
+     * to check whether the weapon is ready.</p>
+     *
+     * <p><b>There is no unfilled socket, and there is no soft leading edge.</b> Both were
+     * tried, and each broke exactly what the other fixed. A dim socket plus a soft front either
+     * put a full-brightness pixel next to the crosshair on an unready weapon, or dimmed the last
+     * columns of a fully charged bar down to about fourteen, which is the precise opposite of
+     * what the transparency is for. The bar is one line, its transparency is the gradient, and
+     * the only thing the cooldown changes is where the line stops.</p>
+     *
+     * <p>The reach is not lost by dropping the socket: the brackets sit at the reach-scaled
+     * distance on every frame, cooldown or not, so how far the weapon reaches is always on
+     * screen. The bar is left with one job, which is how far along the cooldown is.</p>
+     *
+     * @param i      pixel column, 0 at the crosshair and {@code length - 1} at the bracket
+     * @param length total length in columns
+     * @param filled how many columns are charged
+     * @return 0 for a column past the moving front, which is not drawn
+     */
+    public static int barAlpha(int i, int length, int filled) {
+        if (length <= 0 || i < 0 || i >= filled) {
+            return 0;
+        }
+        // 0 at the crosshair, 1 at the bracket.
+        float t = length <= 1 ? 1.0F : (float) i / (length - 1);
+        return Math.round(ALPHA_NEAR_CROSSHAIR
+                + (ALPHA_NEAR_BRACKET - ALPHA_NEAR_CROSSHAIR) * smoothstep(t));
+    }
+
+    /** The classic ease. Linear ramps look like steps; this one looks like a fade. */
+    private static float smoothstep(float t) {
+        t = clamp01(t);
+        return t * t * (3.0F - 2.0F * t);
+    }
+
+    private static float clamp01(float value) {
+        return Math.max(0.0F, Math.min(1.0F, value));
     }
 
     /**

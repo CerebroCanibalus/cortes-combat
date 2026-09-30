@@ -62,8 +62,8 @@ class CooldownBracketLayerTest {
     @Test
     @DisplayName("the extremes use the full range")
     void usesTheRange() {
-        assertEquals(22, ConeGauge.halfSpan(10.0F), "narrowest cone, floor");
-        assertEquals(62, ConeGauge.halfSpan(80.0F), "widest cone, ceiling");
+        assertEquals(36, ConeGauge.halfSpan(10.0F), "narrowest cone, floor");
+        assertEquals(86, ConeGauge.halfSpan(80.0F), "widest cone, ceiling");
     }
 
     @Test
@@ -82,11 +82,119 @@ class CooldownBracketLayerTest {
     void clearsTheCrosshair() {
         // The crosshair is 15px and grows on a hit. If a bracket can land inside the crosshair's
         // own silhouette the two merge into an unreadable blob at exactly the moment the player
-        // is trying to aim.
+        // is trying to aim. Twice its width, so they read as two things and not as one.
         for (float angle = 0.0F; angle <= 90.0F; angle += 1.0F) {
             int span = ConeGauge.halfSpan(angle);
-            assertTrue(span > 15,
-                    "a bracket at " + span + "px is inside the 15px crosshair, cone " + angle);
+            assertTrue(span > 30,
+                    "a bracket at " + span + "px is too close to the 15px crosshair, cone " + angle);
         }
+    }
+
+    @Test
+    @DisplayName("the drawn part of the bar is one continuous line, never a gap")
+    void barIsContinuous() {
+        // The symptom the player reported: the bar broke up into scattered dots near the
+        // crosshair. There is no unfilled socket any more, so every column that is drawn has to
+        // be solidly drawn, with nothing between two drawn columns that could look like a break.
+        for (int length = 8; length <= 60; length++) {
+            for (float ratio : new float[] {0.25F, 0.5F, 0.75F, 1.0F}) {
+                int filled = Math.round(length * ratio);
+                int drawn = 0;
+                for (int i = 0; i < length; i++) {
+                    int alpha = ConeGauge.barAlpha(i, length, filled);
+                    if (alpha == 0) {
+                        continue;
+                    }
+                    drawn++;
+                    assertTrue(alpha >= 160,
+                            "column " + i + " of " + length + " at " + ratio
+                                    + " is " + alpha + ", which reads as a gap");
+                }
+                assertTrue(drawn > 0, "a " + ratio + " charged bar drew nothing at all");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("the bar never steps: no column is more than a soft gradient from the next")
+    void noSteps() {
+        // A gradient in even a handful of bands reads as bands. This is the smoothness the
+        // player asked for, checked as a bound on the largest single-column jump.
+        int length = 40;
+        int biggest = 0;
+        for (int i = 0; i < length - 1; i++) {
+            biggest = Math.max(biggest,
+                    Math.abs(ConeGauge.barAlpha(i + 1, length, length)
+                            - ConeGauge.barAlpha(i, length, length)));
+        }
+        assertTrue(biggest <= 14,
+                "the gradient bands instead of fading, biggest single-column jump was " + biggest);
+    }
+
+    @Test
+    @DisplayName("the bar gets monotonically brighter from the crosshair to the bracket")
+    void barIsMonotonic() {
+        // A gradient that dips anywhere stops reading as a fade and starts reading as texture.
+        int length = 40;
+        int previous = -1;
+        for (int i = 0; i < length; i++) {
+            int alpha = ConeGauge.barAlpha(i, length, length);
+            assertTrue(alpha >= previous,
+                    "a full bar dipped at column " + i + ": " + previous + " -> " + alpha);
+            previous = alpha;
+        }
+    }
+
+    @Test
+    @DisplayName("the bar is brightest at the bracket, not at the crosshair")
+    void brightEndIsTheBracket() {
+        // The whole point of the gradient. An earlier version with a soft leading edge dropped
+        // the last columns to about fourteen, which is the exact inverse of this and made a
+        // ready weapon look like the one that had just been swung.
+        int length = 40;
+        int atBracket = ConeGauge.barAlpha(length - 1, length, length);
+        int atCrosshair = ConeGauge.barAlpha(0, length, length);
+        assertTrue(atBracket > atCrosshair,
+                "the bracket end must be brighter, was " + atBracket + " and " + atCrosshair);
+        assertEquals(ConeGauge.ALPHA_NEAR_BRACKET, atBracket, 1,
+                "the bracket end must reach full brightness");
+    }
+
+    @Test
+    @DisplayName("an unready weapon draws nothing next to the crosshair")
+    void unreadyDrawsNothing() {
+        // The bug a socket always risked: with nothing charged, a full-brightness pixel next to
+        // the crosshair reads as ready. With no socket there is nothing to be bright.
+        assertEquals(0, ConeGauge.barAlpha(0, 30, 0), "an empty bar must draw no column at all");
+        assertEquals(0, ConeGauge.barAlpha(15, 30, 0));
+    }
+
+    @Test
+    @DisplayName("the bar only ever grows: drawn columns keep their brightness and gain one more")
+    void fillOnlyGrows() {
+        // The bar has to get better, not worse, as the weapon gets ready. "Better" here is
+        // strictly one more column: no column that was already lit may change brightness, or the
+        // player watches the line they are tracking shift under them.
+        int length = 30;
+        for (int filled = 1; filled <= length; filled++) {
+            for (int i = 0; i < filled - 1; i++) {
+                assertEquals(ConeGauge.barAlpha(i, length, filled - 1),
+                        ConeGauge.barAlpha(i, length, filled),
+                        "lit column " + i + " changed brightness when the fill grew to " + filled);
+            }
+            // The newly drawn one, and nothing past it.
+            assertTrue(ConeGauge.barAlpha(filled - 1, length, filled) > 0,
+                    "the new column at " + (filled - 1) + " must actually be drawn");
+            assertEquals(0, ConeGauge.barAlpha(filled, length, filled),
+                    "the bar must stop at the front, not run past it");
+        }
+    }
+
+    @Test
+    @DisplayName("a zero length or empty bar draws nothing instead of crashing")
+    void degenerateBars() {
+        assertEquals(0, ConeGauge.barAlpha(0, 0, 0));
+        assertEquals(0, ConeGauge.barAlpha(5, -3, 2));
+        assertEquals(0, ConeGauge.barAlpha(0, 10, 0));
     }
 }

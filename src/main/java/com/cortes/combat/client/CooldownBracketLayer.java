@@ -57,16 +57,6 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
     private static final int RIGHT_ANCHOR = 6;
 
     /**
-     * Where the brackets sit for a given cone, and every other dimension of the widget.
-     *
-     * <p>The span itself is {@link ConeGauge#halfSpan} rather than a number here, so it can be
-     * unit tested: this class implements {@code LayeredDraw.Layer}, which does not exist without
-     * the game on the classpath.</p>
-     */
-    private static final int MIN_HALF_SPAN = ConeGauge.MIN_HALF_SPAN;
-    private static final int MAX_HALF_SPAN = ConeGauge.MAX_HALF_SPAN;
-
-    /**
      * Bar thickness. Three pixels, not one.
      *
      * <p>One was legible in the source art and illegible on screen: a single GUI pixel is one
@@ -75,22 +65,6 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
      * GUI scale and still reads as a hairline rather than as a second bar.</p>
      */
     private static final int BAR_THICKNESS = 3;
-
-    /**
-     * Alpha at the crosshair end of the fill, and at the bracket end.
-     *
-     * <p>The near end used to fade to 30, which is effectively invisible: the part of the bar
-     * closest to the aim point was the part the player most needed to read. The fade now starts
-     * at 90, which still softens the tip without hiding it.</p>
-     */
-    private static final int ALPHA_NEAR_CROSSHAIR = 90;
-    private static final int ALPHA_NEAR_BRACKET = 245;
-
-    /**
-     * The empty part of the bar. Low on purpose: it has to be readable as "not ready yet"
-     * without competing with the fill, and the fill's own fade already softens its far end.
-     */
-    private static final int ALPHA_SOCKET = 60;
 
     @Override
     public void render(GuiGraphics graphics, DeltaTracker delta) {
@@ -139,15 +113,16 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
     }
 
     /**
-     * One side's bar, drawn one pixel column at a time so the alpha can ramp along it.
+     * One side's bar, drawn one pixel column at a time.
      *
-     * <p>Per column rather than in segments because a ramp in a few steps over thirty pixels is
-     * visibly a ramp in a few steps. It is a couple of dozen quads a side, and the alternative
-     * is a gradient texture that would have to be authored for every possible length.</p>
+     * <p>Per column so the alpha can ramp and crossfade along it, which no texture can do
+     * without a separate asset per possible length. It is a couple of dozen quads a side and
+     * they all land in one draw call.</p>
      *
-     * <p>Two passes over the same loop: the socket for the whole length, then the fill over the
-     * filled prefix. The fill starts at the crosshair and grows toward the bracket, and the
-     * fade is brightest at the bracket end, so the moving edge is always the visible one.</p>
+     * <p>It is one continuous line, not a socket and a fill drawn over each other: the whole
+     * length gets one alpha per column from {@link ConeGauge#barAlpha}, which folds the
+     * gradient and the fill level together. Drawing two passes produced a visible step at the
+     * moving edge and made the unfilled half look like a separate, broken object.</p>
      *
      * @param side -1 for the left bar, 1 for the right
      */
@@ -159,20 +134,18 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
         int filled = Math.round(length * ratio);
         int y = centreY - BAR_THICKNESS / 2;
         // The pixel column the bar starts at, next to the crosshair. Going outward from here
-        // means moving in the direction of this side's bracket, which is +x on the right and -x
-        // on the left. Getting this sign backwards draws the whole bar outside the bracket,
-        // which is invisible and which this exact layer shipped once.
+        // means moving toward this side's bracket, which is +x on the right and -x on the left.
+        // Getting this sign backwards draws the whole bar outside the bracket, which is
+        // invisible, and which this exact layer shipped once.
         int originX = centreX + side * (HudAnchor.crosshairReach() + 1);
 
         for (int i = 0; i < length; i++) {
-            // i is the distance from the crosshair. 0 at the crosshair, length-1 at the bracket.
-            float t = length <= 1 ? 0.0F : (float) i / (length - 1);
-            int socket = ALPHA_SOCKET;
-            int fill = Math.round(ALPHA_NEAR_CROSSHAIR
-                    + (ALPHA_NEAR_BRACKET - ALPHA_NEAR_CROSSHAIR) * t);
-            int alpha = i < filled ? fill : socket;
-            graphics.fill(originX + side * i, y, originX + side * i + 1, y + BAR_THICKNESS,
-                    (alpha << 24) | rgb);
+            int alpha = ConeGauge.barAlpha(i, length, filled);
+            if (alpha <= 0) {
+                continue;
+            }
+            int x = originX + side * i;
+            graphics.fill(x, y, x + 1, y + BAR_THICKNESS, (alpha << 24) | rgb);
         }
     }
 
