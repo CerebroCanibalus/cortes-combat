@@ -82,6 +82,13 @@ Verificado que el esqueleto compila (`gradlew build`) y que el mod **carga en un
 Ninguna de estas se adivina, y varias están en versión **distinta** a 1.21.2+:
 
 - **Data components:** el registro es `DeferredRegister.create(Registries.DATA_COMPONENT_TYPE, MODID)`. **No** existe `Registry.DATA_COMPONENT_REGISTRY`.
+- **`Vec3` no tiene constructor de 2 componentes en 1.21.1.** `new Vec3(x, y)` no compila; usá un `double[]` para pares o `Vec3.atCenterOf(AABB)`.
+- **`Player#attack` desreferencia el target de una** (offset 9 del bytecode, sin null-check). No hay forma de mandar un ataque al aire por esa vía: por eso existe `WhiffPayload`.
+- **`ServerPlayer` NO overridea `stopUsingItem`.** El servidor no puede obligar al cliente a soltar un item: la animación de uso se predice del lado cliente y no viaja por la red. Hay que hacerlo en el cliente.
+- **`ByteBufCodecs.VOID` no existe.** Para un payload sin campos: `StreamCodec.unit(instancia)`, que no escribe nada.
+- **`ATTACK_SPEED` base de un jugador es 4.0**, no 0. `AttackTiming.UNARMED_INTERVAL` es un fallback para entidades sin atributo, no el caso de las manos desnudas.
+- **Aritmética del HUD: las clases que implementan `LayeredDraw.Layer` no se pueden testear en JVM pelada.** Fallan al cargar, antes de la primera aserción. `ConeGauge` existe separada del layer por eso.
+- **`StreamCodec.composite` arranca en 1 componente** (aridades 1 a 6, verificado). Para un payload de 0 campos: `StreamCodec.unit(instancia)`. Para enums: `ByteBufCodecs.idMapper(IntFunction, ToIntFunction)`.
 - **`StreamCodec.fromCodec(codec)` NO existe en 1.21.1.** El que existe es **`ByteBufCodecs.fromCodec(codec)`**. `StreamCodec.fromCodec` llegó después.
 - **`Mth.clamp` siempre toma 3 argumentos** `(valor, min, max)`. No hay versión de un solo argumento.
 - **Enum que implementa `StringRepresentable` tiene que implementar `getSerializedName()`**, no alcanza con tener un `id()`.
@@ -96,7 +103,27 @@ Ninguna de estas se adivina, y varias están en versión **distinta** a 1.21.2+:
 
 ## Fase activa: 3 — Vertical slice
 
-Estado: diseño cerrado, arquitectura aprobada, esqueleto compilando y verificado en servidor. Siguiente: paso 2 del plan (registros) y paso 3 (`reach/` con tests).
+Estado: diseño cerrado, arquitectura aprobada, pasos 1 a 8 del plan hechos y verificados en
+cliente real, más un reworks completo del HUD hecho sobre playtest del usuario. **124 tests
+verdes.** Siguiente: paso 9 (las 30 armas + datagen + recetas).
+
+Lo que queda del vertical slice y en qué orden:
+
+| # | Paso | Estado |
+|---|---|---|
+| 1-8 | esqueleto, registros, `reach/`, cooldown duro, flujo de ataque, carga, HUD, aguante | HECHOS |
+| 9 | las 30 armas + datagen + recetas + set de cobre | **SIGUIENTE** |
+| 10 | especiales: multi-hit de alabarda, parry de sable, damage type de ignore-armadura | pendiente |
+| 11 | supervivencia (`FoodData`): quitar exhaustion, curación de ciclo cerrado | pendiente |
+| 14 | framework de viewmodel (capas aditivas, easing, shake por golpe) | pendiente |
+| 15 | compat / conversión de armas de otros mods | pendiente |
+
+Pendiente de una sesión y **sin hacer desde hace varias rondas**, con diagnóstico ya hecho:
+optimización del cono del cliente (bajar la frecuencia de `CombatAim.update()` y cachear el
+objetivo revalidándolo, en vez de re-escanear entidades cada tick). El cono en sí no es el
+problema: es geometría pura. Lo caro es el `getEntitiesOfClass` que lo rodea. El orden que se
+acordó es primero bajar la frecuencia, después cachear; el reuso de la lista solo si el perfil
+sigue mostrando que domina.
 
 ## Decisiones tomadas
 
@@ -268,24 +295,47 @@ La barra de cooldown usa **exponential approach contra `getRealtimeDeltaTicks()`
 
 **Trampa de verificación que casi me hace reportar un bug falso:** leí un `server-out.log` que parecía limpio, pero el build **había fallado** y no arrancó servidor. Un log vacío de errores no prueba que todo ande — hay que mirar que el build pasó Y que hay `Done (Xs)`. Verificar en el orden correcto.
 
-## Texturas: PROTOTIPO, HAY QUE REEMPLAZARLAS
+## Texturas: DOS SON PROTOTIPO, EL RESTO YA ES ARTE PROPIO
 
-**Las texturas en `assets/cortescombat/textures/gui/` son copiadas de los mods de `refs/` y son de prueba. Ninguna puede ir en una publicación.**
+Las de `assets/cortescombat/textures/gui/sprites/hud/` son **arte original del usuario**, ya
+subido: `crosshair`, `crosshair_aim`, `crosshair_hit`, `cooldown_corchetes`, `charge_bar`,
+`charge_bar_emtpy`. `hotbar_attack_indicator_full.png` (el icono de espada de `combatify`) se
+borró: el cooldown ya no se dibuja con un sprite sino con código alrededor de la crosshair.
 
-| Origen | Licencia | Riesgo |
-|---|---|---|
-| `neoforge-damageoverlay` (la viñeta) | **All Rights Reserved** | **Alto.** No hay `LICENSE` y el autor no concedió permiso. |
-| `combatify` (los sprites de indicador) | LGPL-2.1 | Medio: o se reemplazan, o el mod queda atado a LGPL. |
-| `rafts_combat` | MIT | Bajo: se puede copiar con atribución. |
+**Las dos que quedan y siguen siendo de `refs/`:**
 
-El detalle está en `textures/gui/PROTOTYPE-ASSETS.md`, archivo por archivo. El plan es que el usuario reemplace cada PNG con su propio dibujo manteniendo **las mismas rutas y dimensiones**, así que ningún código de render cambia.
+| Archivo | Origen | Licencia | Riesgo |
+|---|---|---|---|
+| `sprites/hud/crosshair_shield_indicator_{full,disabled}.png` | `combatify` | LGPL-2.1 | Medio: o se reemplazan, o el mod queda atado a LGPL |
+| `damage_overlay.png` | `neoforge-damageoverlay` | **All Rights Reserved** | **Alto.** No hay `LICENSE` y el autor no concedió permiso |
+
+El detalle está en `textures/gui/PROTOTYPE-ASSETS.md`. Para reemplazarlas: **misma ruta y mismo
+tamaño en píxeles**, así que no cambia código de render.
+
+## Reworks del HUD (todo sobre playtest del usuario)
+
+Ocho commits, `2c2814e` a `632cf5a`. Lo que se cambió y **por qué**, porque las razones son lo
+que evita volver a cometer los errores:
+
+- **Crosshair de tres estados** con los sprites del usuario, crecimiento en código y **shake sembrado por evento** (ciclo fijo de 8 pasos rotado por un contador, no aleatorio por frame: el mismo golpe tiene que verse igual cada vez).
+- **La carga bajó debajo de la crosshair**, con hueco calculado desde el tamaño *ya agrandado* del crosshair, no desde una constante.
+- **`HudAnchor`**: un único punto canónico del que todo lo demás es offset. Antes cada layer calculaba `guiWidth()/2` y ajustaba a ojo, y el crosshair —que es de tamaño impar— se corría medio píxel al crecer.
+- **Los corchetes muestran el ÁNGULO del cono, no la distancia.** Son preguntas distintas y mezclar las dos hacía que espada, hacha, pico y pala dibujaran lo mismo.
+- **El tamaño sale de la proyección angular del cono:** `(altura/2)·tan(a)/tan(fov/2)`. Con eso el widget es idéntico en 1080p y 2K, en cualquier GUI scale, y se achica cuando el jugador zoomea — que es lo que el cono hace de verdad. Verificado con tests.
+- **Sin socket y sin frente suave en la barra.** Los dos fallaron: un frente suave hacia adelante pone un pixel a brillo completo junto a la crosshair con el arma sin lista (un "listo" falso), y hacia atrás apaga las últimas columnas de la barra llena (justo donde se mira si podés pegar). La barra es **una línea, un gradiente, y el cooldown solo decide dónde termina.** El alcance lo siguen mostrando los corchetes, que no se mueven.
+- **El cono ahora sigue la mirada** (marco ortonormal anclado a la mirada, no al suelo). Antes un punto a 20° de una mirada elevada a 60° salía a 36° y una espada de 35° lo rechazaba.
+- **`/cc cone` pide el marco a `ConeMath.frame()`** en vez de reescribir la matemática. Y dibuja dos curvas de límite, no un elipse: la región golpeable es la intersección de dos semi-espacios (una pirámide rectangular), no un cono de revolución.
+- **Un swing al aire cuesta cooldown** (`WhiffPayload`, 0 bytes). Antes el click no mandaba nada al servidor, y swing-miss-swing daba dos swings por un solo cooldown.
+- **El flash de daño no strobea** y no grita al revivir: la salud recordada está keyeada al objeto `LocalPlayer` que describe, y un flash ya encendido no se rearma con golpes chicos.
+
+Ver `PROTOTYPE-ASSETS.md` y la tabla de arriba para lo que falta de assets.
 
 ## Próximos pasos
 
-1. Paso 8: aguante escudo/espada (la lógica está en `GuardState`, falta input de bloqueo + damage reduction real).
-2. Paso 9: las 30 armas + datagen + recetas.
-3. Paso 10: especiales (alabarda multi-hit, parry de la sable) + damage type de ignore de armadura.
-4. Paso 11: supervivencia (`FoodData`) — el cambio más caro, en commit propio.
+1. **Paso 9: las 30 armas + datagen + recetas + set de cobre.** Es el paso grande que falta.
+2. Paso 10: especiales (alabarda multi-hit, parry de la sable) + damage type de ignore de armadura. El flag `ignoredArmour` ya se calcula y se testea, pero la fuente de daño sigue siendo la normal.
+3. Paso 11: supervivencia (`FoodData`) — el cambio más caro, en commit propio.
+4. Optimización del cono del cliente (ver la nota en "Fase activa").
 5. Números: definir el escalado del martillo en playtest (`WARHAMMER_STEP` está en 0.15 como punto de partida).
 6. Verificar contra las fuentes de 1.21.1 los umbrales internos de `FoodData` antes de escribir el mixin.
 
@@ -296,6 +346,9 @@ El detalle está en `textures/gui/PROTOTYPE-ASSETS.md`, archivo por archivo. El 
 - Cubrirse no tiene coste. Si el escudo termina siendo inútil porque todos cubren gratis con la espada, el problema es la densidad de aguante, no el click derecho.
 - **`foodRegenInterval` es el número más importante del proyecto.** Rápido → la comida es decorativa. Lento → pelear es un callejón sin salida, que es justo lo que el mod viene a arreglar. Solo playtest lo resuelve.
 - **`FoodData` es vanilla puro, sin patch de NeoForge** (verificado). Los umbrales internos hay que leerlos de las fuentes de 1.21.1, no de memoria.
+- **La espada (3.6) ahora alcanza más que el hacha, el pico y la pala (3.0).** Invierte la relación de vanilla y es a propósito: la espada es el arma que se supone que tenés. Si en el playtest hace que el hacha parezca inútil en vez de "para algo más corto", se ajusta el dato.
+- **Las manos desnudas son el menor alcance del juego (1.9) y lo más rápido (4 ticks).** Cortas, veloces y casi inofensivas: la velocidad es lo único que las hace una opción real cuando no tenés nada. El `ATTACK_SPEED` base de un jugador es 4.0 (verificado con `javap`), o sea 5 ticks sin tocar nada, así que "lo más rápido" requería subir el tempo por encima de 1.0.
+- **El `verticalAngle` de cada perfil importa mucho más que antes.** Con el cono siguiendo la mirada, ese número decide si un swing conecta con algo overhead o underfoot. Va a necesitar playtest cuando entren las armas nuevas.
 
 ## Changelog
 
@@ -317,4 +370,11 @@ El detalle está en `textures/gui/PROTOTYPE-ASSETS.md`, archivo por archivo. El 
 - **Fase 5 (reemplazo del flujo de ataque) completa**: 52 tests verdes, mixin aplica limpio contra `Player`. **El vanilla ya no corre en el ataque.** Tercer bug: los enums implementaban `StringRepresentable` (clase de Minecraft) y rompían los tests con `NoClassDefFoundError`; ahora usan un `Codec` propio y siguen siendo Java puro.
 - **Fase 6 (carga cableada al input) completa**: es jugable — click = swing, mantener = carga. Un payload C2S con un bool (no un stream), el cliente predice y el servidor valida, clase `@Mod` client-only separada porque `InputEvent` no existe en servidor.
 - **Fase 7 (HUD + harness) completa**: 3 capas GUI registradas en el orden correcto, y comando `/cc` para testear armas sin correr a un cofre. `/cc stats` imprime las stats resueltas del arma en mano.
-- **⚠️ DEUDA LEGAL: las texturas del HUD son de prototipo, copiadas de `refs/`.** La viñeta viene de `neoforge-damageoverlay`, que es **All Rights Reserved**. Los sprites de indicador vienen de `combatify` (LGPL-2.1). **Ninguna puede ir en una publicación.** Ver `textures/gui/PROTOTYPE-ASSETS.md` para el detalle archivo por archivo. El usuario va a reemplazarlas con su propio arte manteniendo rutas y dimensiones.
+- **Fase 8 (aguante escudo/espada) completa**: perfil de aguante por item (`guard_profile`), decision en `LivingShieldBlockEvent`, stagger reusando el cooldown de item de vanilla, y la regen atada al reloj del cooldown. `GuardState` quedó en 4 campos.
+- **Reworks de HUD sobre playtest, 8 commits** (`2c2814e` a `632cf5a`): ver la sección "Reworks del HUD" de arriba. **124 tests verdes.** Cinco bugs reales encontrados por tests en el camino: el signo de la barra la dibujaba por fuera del corchete (invisible), el `rimPoint` del debug dibujaba una elipse a 90° del eje, el cono anclado al suelo rechazaba lo que estabas mirando, el socket de la barra producía un "listo" falso, y el frente suave apagaba la barra llena justo en el corchete.
+- **Dos lessons que valieron cada una más que el código que escribieron:**
+  - **Una clase que implementa `LayeredDraw.Layer` no se puede testear en JVM pelada** — falla al cargar, antes de la primera aserción. La matemática del widget vive en `ConeGauge` por eso, no por gusto.
+  - **Un test que falla puede tener razón el código.** Me pasó dos veces: una aserción sobre el eje `up` que era imposible (es perpendicular a la mirada por definición, así que a 60° da 0.5 y no 0.9), y otra sobre el relleno de la barra. Reconocer cuándo el test está mal es parte del trabajo.
+  - **`refs/rafts_combat` tiene un `RangeIndicatorHud` que resuelve mal lo mismo.** Usa `191.5 * 0.33` y un `widthRatio` que es una tabla de números mágicos por arma en su config. Copiar su enfoque era copiar el bug; la proyección angular lo resuelve sin un número por resolución.
+- **Balance:** espada 3.2 → 3.6, manos desnudas 3.0 → 1.9 de alcance y tempo 1.25 (lo más rápido del juego), daga tempo 0.7, espada 0.85.
+- **⚠️ DEUDA LEGAL: quedan DOS texturas de `refs/`.** La viñeta viene de `neoforge-damageoverlay`, que es **All Rights Reserved**. Las dos esferitas de aguante vienen de `combatify` (LGPL-2.1). El resto del HUD ya es arte original del usuario. Ver `textures/gui/PROTOTYPE-ASSETS.md`.
