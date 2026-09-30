@@ -16,42 +16,56 @@ class AttackTimingTest {
         @Test
         @DisplayName("a tap gets nothing at all, not a fraction")
         void tapIsFlat() {
-            // The whole point of the hard cut. A swing under the threshold is exactly a normal
-            // hit: there is no band where a two tick click does "a bit more", because a band
-            // nobody can see is a band nobody can learn.
-            assertEquals(0.0F, AttackTiming.chargeRatioFor(0, 0.0F), 0.0F);
-            assertEquals(0.0F, AttackTiming.chargeRatioFor(1, 0.04F), 0.0F);
-            assertEquals(0.0F, AttackTiming.chargeRatioFor(3, 0.12F), 0.0F);
+            // The whole point of the hard cut, and the reason the charge bar does not fill on a
+            // normal click. Below the threshold the bar, the wind-up and the FOV are all exactly
+            // zero: nothing happens and nothing is shown. A bar that shows a sliver for a swing
+            // that lands flat is the game telling the player it charged them when it did not.
+            assertEquals(0.0F, AttackTiming.chargeRatioFor(0, 25), 0.0F);
+            assertEquals(0.0F, AttackTiming.chargeRatioFor(1, 25), 0.0F);
+            assertEquals(0.0F, AttackTiming.chargeRatioFor(3, 25), 0.0F);
         }
 
         @Test
-        @DisplayName("the threshold itself counts, and gives everything")
-        void thresholdCounts() {
-            assertEquals(0.0F, AttackTiming.chargeRatioFor(AttackTiming.MIN_CHARGE_HOLD_TICKS, 0.0F));
-            assertEquals(0.16F,
-                    AttackTiming.chargeRatioFor(AttackTiming.MIN_CHARGE_HOLD_TICKS, 0.16F), 0.0F);
-            assertEquals(1.0F, AttackTiming.chargeRatioFor(AttackTiming.MIN_CHARGE_HOLD_TICKS, 1.0F));
+        @DisplayName("the threshold is the bottom of the scale, not the top of a sliver")
+        void thresholdIsZero() {
+            // Remapped rather than clamped. Taking the raw ratio gives 0.16 here, and a bar that
+            // visibly moves at the instant the swing becomes a charge reads as the player having
+            // charged further than they had.
+            assertEquals(0.0F,
+                    AttackTiming.chargeRatioFor(AttackTiming.MIN_CHARGE_HOLD_TICKS, 25), 0.0F);
         }
 
         @Test
-        @DisplayName("a hold past the threshold passes the charge through untouched")
-        void pastThresholdPassesThrough() {
-            for (int ticks = AttackTiming.MIN_CHARGE_HOLD_TICKS; ticks <= 60; ticks++) {
-                float ratio = Math.min(1.0F, ticks / 25.0F);
-                assertEquals(ratio, AttackTiming.chargeRatioFor(ticks, ratio), 0.0F,
-                        "tick " + ticks + " should pass its charge through unchanged");
-            }
+        @DisplayName("the charge then crosses the whole range, so the bar fills to the end")
+        void crossesTheWholeRange() {
+            // A window of twenty-four leaves twenty ticks of ramp after the threshold, so the
+            // quarters land on whole ticks. A first attempt used twenty-five and asserted 0.25 at
+            // nine ticks, which is 5/21 and not a quarter: the test was wrong, not the code.
+            assertEquals(0.25F, AttackTiming.chargeRatioFor(9, 24), 0.0F);
+            assertEquals(0.5F, AttackTiming.chargeRatioFor(14, 24), 0.0F);
+            assertEquals(0.75F, AttackTiming.chargeRatioFor(19, 24), 0.0F);
+            assertEquals(1.0F, AttackTiming.chargeRatioFor(24, 24), 0.0F);
+            assertEquals(1.0F, AttackTiming.chargeRatioFor(500, 24), 0.0F);
         }
 
         @Test
-        @DisplayName("there is no in-between: one tick either side of the threshold and nothing else")
+        @DisplayName("there is no in-between: one tick either side of the threshold")
         void noGradientEitherSide() {
             int justUnder = AttackTiming.MIN_CHARGE_HOLD_TICKS - 1;
-            assertEquals(0.0F, AttackTiming.chargeRatioFor(justUnder, 0.99F), 0.0F,
-                    "a hold of " + justUnder + " ticks at 99% charge is still nothing");
-            assertEquals(0.99F,
-                    AttackTiming.chargeRatioFor(AttackTiming.MIN_CHARGE_HOLD_TICKS, 0.99F), 0.0F,
-                    "and " + AttackTiming.MIN_CHARGE_HOLD_TICKS + " ticks at 99% is all of it");
+            assertEquals(0.0F, AttackTiming.chargeRatioFor(justUnder, 25), 0.0F,
+                    "a hold of " + justUnder + " ticks is still nothing");
+            assertEquals(0.0F, AttackTiming.chargeRatioFor(AttackTiming.MIN_CHARGE_HOLD_TICKS, 25), 0.0F,
+                    "and the threshold itself starts at the bottom of the scale");
+        }
+
+        @Test
+        @DisplayName("a charge window no longer than the threshold is all or nothing")
+        void shortChargeWindow() {
+            // A weapon that charges in exactly the threshold has no room to ramp. Dividing by
+            // the remainder would be a division by zero.
+            assertEquals(1.0F, AttackTiming.chargeRatioFor(4, 4), 0.0F);
+            assertEquals(0.0F, AttackTiming.chargeRatioFor(3, 4), 0.0F);
+            assertEquals(1.0F, AttackTiming.chargeRatioFor(9, 2), 0.0F);
         }
 
         @Test

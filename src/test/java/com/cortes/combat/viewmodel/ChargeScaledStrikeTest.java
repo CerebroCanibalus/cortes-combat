@@ -15,9 +15,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * differed only in how long it lasted. A shorter version of the wrong motion is still the wrong
  * motion.</p>
  *
- * <p>The floor is the other half. A tap with a literal zero strike pops the item from wherever it
- * is to rest in one frame, which is a visible jump on every ordinary click, so an uncharged swing
- * gets a small real follow-through.</p>
+ * <p>There is no floor and that is the second half of the fix. A tap used to arrive at the
+ * viewmodel as a fifth of a charged animation, which the playtest described twice and in the
+ * same breath: it "looks like a charge done badly" and it "should look like the vanilla swing
+ * animation". A tap is not a small charge. It is the vanilla arm swing, and the input code plays
+ * that instead of a viewmodel strike.</p>
  */
 class ChargeScaledStrikeTest {
 
@@ -41,19 +43,15 @@ class ChargeScaledStrikeTest {
     }
 
     @Test
-    @DisplayName("a tap gets a small strike, not a full one")
-    void tapIsSmall() {
-        float tap = peakStrikeFor(0.0F);
-        float charged = peakStrikeFor(1.0F);
-        assertTrue(tap < charged * 0.35F,
-                "a tap peaked at " + tap + " against a full charge's " + charged);
-    }
-
-    @Test
-    @DisplayName("a tap still moves, because a strike of exactly zero pops the item to rest")
-    void tapIsNotZero() {
-        assertTrue(peakStrikeFor(0.0F) >= ViewModelMotion.TAP_FLOOR - EXACT,
-                "a tap must still have a follow-through, peaked at " + peakStrikeFor(0.0F));
+    @DisplayName("a tap gets no strike at all: it is the vanilla arm swing and nothing else")
+    void tapIsNothing() {
+        // There was a floor here once, so a click arrived at the viewmodel as a fifth of a
+        // charged animation, and the playtest said both of the things that means: it looked
+        // "like a charge done badly" and it "should look like the vanilla swing animation".
+        // Those are the same complaint, and no amount of tuning answers it. A tap is not a small
+        // charge, it is not a charge at all.
+        assertEquals(0.0F, peakStrikeFor(0.0F), 0.0F,
+                "a tap must contribute nothing, or it is a small charge wearing a disguise");
     }
 
     @Test
@@ -102,6 +100,39 @@ class ChargeScaledStrikeTest {
         motion.onStrike(5.0F);
         assertEquals(1.0F, motion.released(), EXACT);
         motion.onStrike(-3.0F);
-        assertEquals(ViewModelMotion.TAP_FLOOR, motion.released(), EXACT);
+        assertEquals(0.0F, motion.released(), EXACT);
+    }
+
+    @Test
+    @DisplayName("the charge dies with the follow-through, or the FOV stays closed forever")
+    void chargeEndsWithTheStrike() {
+        // The bug this catches: `released` was set once on the release and never cleared, and
+        // everything that read a charge after the fact went on reading it. The field of view
+        // stayed narrowed for the rest of the session, and only grabbing a different item cleared
+        // it. A follow-through that has ended is the end of everything the charge was driving.
+        ViewModelMotion motion = new ViewModelMotion();
+        for (int i = 0; i < 30; i++) {
+            motion.tick(true, 1.0F);
+        }
+        motion.onStrike(1.0F);
+        motion.tick(false, 0.0F);
+        assertTrue(motion.currentCharge() > 0.0F, "the charge should still be live mid-strike");
+
+        for (int i = 0; i <= ViewModelMotion.STRIKE_TICKS; i++) {
+            motion.tick(false, 0.0F);
+        }
+        assertEquals(0.0F, motion.currentCharge(), 0.0F,
+                "once the strike is over the charge must be zero, or the FOV never reopens");
+        assertEquals(0.0F, motion.released(), 0.0F);
+    }
+
+    @Test
+    @DisplayName("a new press drops the previous swing's charge before the new one starts")
+    void pressClearsThePreviousCharge() {
+        ViewModelMotion motion = new ViewModelMotion();
+        motion.onStrike(1.0F);
+        motion.tick(false, 0.0F);
+        motion.tick(true, 0.0F);
+        assertEquals(0.0F, motion.currentCharge(), EXACT);
     }
 }

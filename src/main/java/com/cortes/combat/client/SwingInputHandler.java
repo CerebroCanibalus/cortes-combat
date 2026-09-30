@@ -197,6 +197,10 @@ public final class SwingInputHandler {
             return;
         }
 
+        // Read before anything is reset: this is the classification the damage is about to get,
+        // and it decides whether the swing is vanilla's or ours.
+        float charge = chargedRatio(player);
+
         // The client's own gate, tightened before anything is sent. See readyAtTick.
         readyAtTick = tick + WeaponStats.attackInterval(player);
 
@@ -206,15 +210,17 @@ public final class SwingInputHandler {
         // Local prediction of the two things the player sees immediately. Neither is the damage:
         // that is the server's, and predicting it would double-apply it, because this mod
         // deliberately clears the target's invulnerability window before hitting.
+        ItemViewModel.onStrike(charge);
+
+        // A tap is not a small charged swing, it is the vanilla arm swing and nothing else.
         //
-        // The charge passed to the viewmodel goes through the *same* threshold the server
-        // applies, so a tap is a tap on screen as well as in the damage. Passing the raw
-        // predicted ratio instead is what made a two tick click draw the whole wind-up briefly
-        // and read as a charge that had gone wrong.
-        ItemViewModel.onStrike(chargedRatio());
-        if (!ItemViewModel.ownsSwing(player.getMainHandItem())) {
-            // A weapon whose viewmodel draws its own strike must not also play the vanilla arm
-            // animation, or the item moves twice and the two motions land out of step.
+        // There was a floor here, so an ordinary click arrived at the viewmodel as a fifth of a
+        // charged animation, and the playtest said both of the things that means: it "looks like a
+        // charge done badly" and it "should look like the vanilla swing animation". They are the
+        // same complaint. So a tap releases zero, the profile contributes nothing, and vanilla's
+        // own swing plays — which makes the charged swing the thing that is different, and
+        // therefore the thing that is legible.
+        if (charge <= 0.0F || !ItemViewModel.ownsSwing(player.getMainHandItem())) {
             player.swing(InteractionHand.MAIN_HAND);
         }
         predictedTicks = 0;
@@ -300,13 +306,21 @@ public final class SwingInputHandler {
         if (holding) {
             predictedTicks++;
         }
-        ItemViewModel.tick(holding, predictedRatio(player));
+        ItemViewModel.tick(holding, chargedRatio(player));
     }
 
-    /** The local charge as a ratio, which is what the viewmodel and the meter read. */
+    /**
+     * The charge as the player sees it.
+     *
+     * <p>Thresholded, and that is the fix for "a normal click shows a charge bar". The bar used
+     * to draw the raw ratio, so every click flashed a two hundred millisecond sliver and the
+     * player read that as the game charging them when the swing was going to land flat. Below the
+     * threshold the bar, the wind-up and the FOV are now all exactly zero: <b>nothing happens and
+     * nothing is shown</b>, and at the threshold everything starts.</p>
+     */
     public static float predictedRatio() {
         LocalPlayer player = Minecraft.getInstance().player;
-        return player == null ? 0.0F : predictedRatio(player);
+        return chargedRatio(player);
     }
 
     /**
@@ -318,7 +332,16 @@ public final class SwingInputHandler {
      * a click under four ticks is a tap on both sides no matter whose count is off by one.</p>
      */
     public static float chargedRatio() {
-        return AttackTiming.chargeRatioFor(predictedTicks, predictedRatio());
+        LocalPlayer player = Minecraft.getInstance().player;
+        return chargedRatio(player);
+    }
+
+    private static float chargedRatio(LocalPlayer player) {
+        if (!holding || player == null) {
+            return 0.0F;
+        }
+        return AttackTiming.chargeRatioFor(
+                predictedTicks, WeaponStats.of(player.getMainHandItem()).charge().fullChargeTicks());
     }
 
     private static float predictedRatio(LocalPlayer player) {
@@ -330,6 +353,11 @@ public final class SwingInputHandler {
             return 0.0F;
         }
         return Math.min(1.0F, (float) predictedTicks / (float) full);
+    }
+
+    /** The raw count, for the debug readout. Unthresholded on purpose. */
+    public static int heldTicks() {
+        return predictedTicks;
     }
 
     /** Called when the server tells us the real value, so lag does not leave the bar lying. */

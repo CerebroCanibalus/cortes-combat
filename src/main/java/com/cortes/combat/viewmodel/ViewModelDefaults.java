@@ -23,6 +23,7 @@ public final class ViewModelDefaults {
 
     static {
         TABLE.put(WeaponProfile.SWORD, chargedSword());
+        TABLE.put(WeaponProfile.UNARMED, chargingFist());
         // Everything else is deliberately absent for now. A weapon with no entry gets the exact
         // vanilla pose, which is the correct default: a viewmodel that is subtly wrong is worse
         // than no viewmodel, and a player who has not noticed a missing one has lost nothing.
@@ -32,20 +33,18 @@ public final class ViewModelDefaults {
     }
 
     /**
-     * The sword: drawn back in proportion to the charge, trembling harder the fuller it gets, and
-     * thrown forward on release.
+     * The sword: drawn back in proportion to the charge, trembling harder the fuller it gets, cut
+     * forward on release and falling back under its own weight.
      *
-     * <p>Three tracks, and each one is a different question. The first is "how far back am I",
-     * which has to be proportional or the player cannot see how much charge they have through
-     * the item as well as through the meter. The second is "how much is this shaking", which
-     * needs to be invisible at the start of the wind-up: a tremble that runs from the first tick
-     * reads as the viewmodel being broken rather than as effort. The third is the strike, and it
-     * is on its own channel precisely so that it can be fast and hard while the wind-up is still
-     * unwinding underneath it.</p>
+     * <p>Four tracks and each is a different question. "How far back am I" has to be proportional
+     * or the player cannot read the charge off the item. "How much is this shaking" has to be
+     * invisible at the start: a tremble running from the first tick reads as a broken viewmodel
+     * rather than as effort. "The cut" is on its own channel so it can be hard and fast while the
+     * wind-up is still unwinding underneath. "The fall" is on a channel that starts where the cut
+     * finishes, because a cut that goes out and comes back is two displacements with a peak
+     * between them and one bump averages them into a single shove.</p>
      *
-     * <p>Positions are item units, where a held item is about one across. The backward pull is
-     * modest on purpose: the sword is a one hand weapon held near the camera, and half a unit of
-     * travel puts the blade outside the frame at some fields of view.</p>
+     * <p>Positions are item units, where a held item is about one across.</p>
      */
     private static ViewModelProfile chargedSword() {
         return ViewModelProfile.owningSwing(
@@ -56,10 +55,10 @@ public final class ViewModelDefaults {
                 // makes +Y up in this frame beyond argument, and vanilla's bow pulls back along
                 // negative Z. The pitch is the one axis whose sign has to be read off the screen,
                 // and a first attempt that led with -35 degrees of it read as the sword going
-                // *down*. So the lift is now mostly translation, which is verifiable, and the
-                // pitch is a small lean that cannot invert the read even if its sign is wrong.
+                // *down*.
                 //
-                // If the lean turns out to be backwards it is one number: the 18.0 below.
+                // The playtest confirmed the lift: "el arma sí se levanta perfecto". The lean is
+                // still 18 degrees and is still the one number here that is a guess.
                 Track.of(Channel.WINDUP, Curve.SMOOTH,
                         new Offset(-0.02, 0.22, -0.10, 18.0, 6.0, 0.0)),
                 // The tremble. Weighted on the wind-up so it is a suggestion at a quarter charge
@@ -68,14 +67,39 @@ public final class ViewModelDefaults {
                 Track.shaking(Channel.WINDUP, Curve.LINEAR, Offset.ZERO,
                         new Offset(0.0, 0.0, 0.014, 1.8, 0.6, 0.9),
                         14.0F, Curve.SMOOTH),
-                // The strike. Snaps forward and past rest, then comes back as the channel does.
-                //
-                // Scaled by the charge at the moment of release, so a tap gets a small jab and a
-                // full charge gets the whole thing. Before that it did not, and a click was the
-                // same 42 degree swing as a held charge, which is what made an ordinary attack
-                // look like a bad charge.
+                // The cut. "A cut forward, then falling with weight back towards the player",
+                // and the first version was neither: 0.30 units of Z on a fast curve is a nudge,
+                // and the playtest called it pathetic. It is a lunge now, twice the travel, and
+                // mostly translation for the same reason the wind-up is.
                 Track.of(Channel.STRIKE, Curve.EXPO,
-                        new Offset(0.03, -0.12, 0.30, 34.0, -5.0, 0.0)));
+                        new Offset(0.04, -0.06, 0.62, -22.0, -8.0, 0.0)),
+                // The fall back. Down and towards the player, which is what recovering under
+                // weight means: the arm comes back to where it was rather than springing to a
+                // pose, and the negative Z is what makes it read as coming back rather than
+                // simply dropping.
+                Track.of(Channel.RECOVER, Curve.SMOOTH,
+                        new Offset(-0.04, -0.30, -0.26, 26.0, 6.0, 0.0)));
+    }
+
+    /**
+     * The bare hand, which the design makes chargeable.
+     *
+     * <p>Same three beats as the sword and about half the travel, because a fist is not a blade.
+     * It charges because in the design the fists are the fastest thing in the game and that speed
+     * is the only thing that makes them worth having with nothing equipped.</p>
+     *
+     * <p>No tremble track, and that is a judgement rather than an omission: a fist shaking is a
+     * different and much sillier read than a sword shaking, and it would be the first thing a
+     * player noticed and the last thing they would want.</p>
+     */
+    private static ViewModelProfile chargingFist() {
+        return ViewModelProfile.owningSwing(
+                Track.of(Channel.WINDUP, Curve.SMOOTH,
+                        new Offset(-0.01, 0.13, -0.07, 11.0, 4.0, 0.0)),
+                Track.of(Channel.STRIKE, Curve.EXPO,
+                        new Offset(0.02, -0.04, 0.30, -14.0, -5.0, 0.0)),
+                Track.of(Channel.RECOVER, Curve.SMOOTH,
+                        new Offset(-0.02, -0.16, -0.13, 16.0, 4.0, 0.0)));
     }
 
     /** The viewmodel for a weapon profile, or {@link ViewModelProfile#NONE} if it has none yet. */

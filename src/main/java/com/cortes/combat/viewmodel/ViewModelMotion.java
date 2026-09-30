@@ -49,15 +49,19 @@ public final class ViewModelMotion {
     public static final int STRIKE_TICKS = 6;
 
     /**
-     * The smallest follow-through an uncharged tap gets, as a fraction of the full one.
+     * A tap is not a small charged swing. It is the vanilla arm swing and nothing else.
      *
-     * <p>Not zero. A tap has no charge in it and its wind-up is correctly nothing, but the strike
-     * is what makes the arm move at all, so a literal zero leaves an ordinary attack with no
-     * motion and the item snapping to rest in one frame, which is a visible pop on every single
-     * click. A fifth of the full swing is enough to read as a swing and small enough that it
-     * cannot be mistaken for the charged one.</p>
+     * <p>There used to be a floor here, so an uncharged release still got a fifth of the strike,
+     * and the report was that an ordinary attack "looks like a charge done badly" and "should
+     * look like the vanilla swing animation". Both halves of that are the same thing: a tap
+     * arriving at a fifth of a charged animation <em>is</em> a bad charge, and no amount of
+     * tuning makes it read as vanilla.</p>
+     *
+     * <p>So a tap releases zero here, the profile contributes nothing, and the input code lets
+     * vanilla's own arm swing play. The charged swing is then the thing that is different, which
+     * is what makes the difference legible.</p>
      */
-    public static final float TAP_FLOOR = 0.2F;
+    public static final float TAP_FLOOR = 0.0F;
 
     /** Ticks since the last strike, or -1 when no strike is playing. */
     private int strikeAge = -1;
@@ -115,7 +119,9 @@ public final class ViewModelMotion {
      * @param charge 0 for a tap, up to 1 for a full charge
      */
     public void onStrike(float charge) {
-        released = Math.max(TAP_FLOOR, clamp01(charge));
+        // A tap releases zero and gets nothing: it is the vanilla arm swing and nothing else.
+        // See TAP_FLOOR's replacement, below.
+        released = clamp01(charge);
         pendingStrike = true;
         // An integer LCG rather than Random: one multiply and one add, no shared global state,
         // and the only thing asked of it is that consecutive swings differ while the same swing
@@ -150,7 +156,15 @@ public final class ViewModelMotion {
             strikeAge = 0;
             pendingStrike = false;
         } else if (strikeAge >= 0 && ++strikeAge >= STRIKE_TICKS) {
+            // The strike is over, so the charge it carried is over with it.
+            //
+            // Not zeroing this is what left the FOV narrowed forever: `currentCharge` falls back
+            // to the released charge when the button is up, so a value that was set once and
+            // never cleared kept the world zoomed in for the rest of the session, and only
+            // grabbing a different item cleared it. A follow-through that ends is the end of
+            // everything the charge was driving, including the field of view.
             strikeAge = -1;
+            released = 0.0F;
         }
         windup = targetWindup(holding, charge);
     }
@@ -177,16 +191,58 @@ public final class ViewModelMotion {
      *
      * @param partialTick 0 at the start of the tick, approaching 1 at the end
      */
+    /**
+     * One client tick of the clock only.
+     *
+     * <p>Separate from {@link #tick} because the item renderer reads this on every frame and
+     * the swing state only advances on ticks. A reader that advanced the clock would make the
+     * tremble run at the frame rate.</p>
+     */
+    public void advanceClock() {
+        ticks++;
+    }
+
     public ViewModelInput snapshot(float partialTick, float cooldownRunning, boolean guarding) {
         float offset = clamp01(partialTick);
         return new ViewModelInput(
                 windupAt(offset),
                 strikeAt(offset),
+                recoverAt(offset),
                 cooldownRunning,
                 guarding,
                 (ticks + offset) / 20.0F,
                 seed);
     }
+
+    /**
+     * Where the recovery is at, peaking in the second half of the strike.
+     *
+     * <p>Zero for the first {@link #RECOVER_AT} of the motion, so a track on it contributes
+     * nothing while the cut is still travelling outward. That is the whole point of the channel:
+     * the forward thrust and the fall back are two displacements with a peak between them, and a
+     * single bump averages them into one shove that leaves and returns along the same line.</p>
+     */
+    private float recoverAt(float offset) {
+        if (strikeAge < 0 || released <= 0.0F) {
+            return 0.0F;
+        }
+        float phase = (strikeAge + offset) / (float) STRIKE_TICKS;
+        if (phase <= RECOVER_AT) {
+            return 0.0F;
+        }
+        float local = (phase - RECOVER_AT) / (1.0F - RECOVER_AT);
+        // A bump over the tail: zero at the hand-off, one at the end of the fall, back to zero.
+        return released * (1.0F - Math.abs(2.0F * local - 1.0F));
+    }
+
+    /**
+     * Where in the strike the recovery starts, as a fraction.
+     *
+     * <p>Just past the middle. Any earlier and the two motions overlap into one shove; any later
+     * and the follow-through has already finished by the time the fall begins, which is what made
+     * a strike read as "a little push" instead of a cut.</p>
+     */
+    public static final float RECOVER_AT = 0.55F;
 
     /**
      * The wind-up halfway between two ticks.
@@ -242,6 +298,27 @@ public final class ViewModelMotion {
      */
     public float strike() {
         return strikeAt(0.0F);
+    }
+
+    /** The recovery bump, 0..1. See {@link Channel#RECOVER}. */
+    public float recover() {
+        return recoverAt(0.0F);
+    }
+
+    /**
+     * The charge driving everything right now, 0..1, or 0 when nothing is happening.
+     *
+     * <p>While the button is down this is the wind-up. Once the swing resolves it is the released
+     * charge, and the instant the follow-through ends it is zero again. That last part is not
+     * bookkeeping: everything that reads a charge after the fact, the field of view in
+     * particular, used to keep reading the charge of a swing that had already resolved, and left
+     * the world closed for the rest of the session.</p>
+     */
+    public float currentCharge() {
+        if (holding) {
+            return windup;
+        }
+        return strikeAge < 0 ? 0.0F : released;
     }
 
     /** The tremble pattern for the swing in progress. Advances per strike, never per frame. */

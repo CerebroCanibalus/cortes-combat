@@ -48,10 +48,27 @@ class SwordViewModelTest {
     }
 
     @Test
+    @DisplayName("the bare fist has a charge animation, and it is not the sword's")
+    void theFistHasItsOwnAnimation() {
+        ViewModelProfile fist = ViewModelDefaults.of(WeaponProfile.UNARMED);
+        assertFalse(fist.isEmpty(), "the playtest asked for a charge animation on the fist");
+        assertTrue(fist.ownsSwing(), "a charged fist owns its strike, like any charged weapon");
+
+        Offset fistBack = fist.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1));
+        Offset swordBack = sword.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1));
+        assertTrue(fistBack.y() > 0.0, "the fist lifts too");
+        assertTrue(fistBack.y() < swordBack.y(),
+                "but less than a sword: it lifted to " + fistBack.y()
+                        + " against the sword's " + swordBack.y());
+    }
+
+    @Test
     @DisplayName("every other weapon still gets the exact vanilla pose")
     void otherWeaponsAreUntouched() {
         for (WeaponProfile profile : WeaponProfile.values()) {
-            if (profile == WeaponProfile.SWORD) {
+            // The two with a profile so far. Everything else is deliberately absent, because a
+            // viewmodel that is subtly wrong is worse than no viewmodel.
+            if (profile == WeaponProfile.SWORD || profile == WeaponProfile.UNARMED) {
                 continue;
             }
             ViewModelProfile viewModel = ViewModelDefaults.of(profile);
@@ -71,7 +88,7 @@ class SwordViewModelTest {
     @Test
     @DisplayName("a full charge draws the item back and lifts it")
     void fullChargeDrawsBack() {
-        ViewModelInput charged = new ViewModelInput(1.0F, 0.0F, 0.0F, true, 0.0F, 1);
+        ViewModelInput charged = new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1);
         Offset offset = sword.evaluate(charged);
         // The lift is carried by Y and the pull by Z, because those are the two axes whose sign
         // is not a guess: vanilla's own arm constants put the hand at ARM_POS_Y = -0.75, which
@@ -85,7 +102,7 @@ class SwordViewModelTest {
     @Test
     @DisplayName("the wind-up leans as well as lifts, but modestly")
     void fullChargeLeans() {
-        Offset offset = sword.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, true, 0.0F, 1));
+        Offset offset = sword.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1));
         // The pitch sign is the one number in this profile that has to be read off a screen
         // rather than off a constant, so the test pins its magnitude and leaves its direction
         // to the next playtest. What it does enforce is that the lean stays small enough that
@@ -100,7 +117,7 @@ class SwordViewModelTest {
     @Test
     @DisplayName("the strike sends the item forward past the resting pose")
     void strikeGoesForward() {
-        ViewModelInput striking = new ViewModelInput(0.0F, 1.0F, 1.0F, false, 0.0F, 1);
+        ViewModelInput striking = new ViewModelInput(0.0F, 1.0F, 0.0F, 1.0F, false, 0.0F, 1);
         Offset offset = sword.evaluate(striking);
         assertTrue(offset.z() > 0.1,
                 "the strike should be well in front of the resting pose, was z=" + offset.z());
@@ -176,7 +193,7 @@ class SwordViewModelTest {
     @Test
     @DisplayName("the tremble is not there at rest and is unmistakable at full charge")
     void theTrembleIsAChargeTremble() {
-        ViewModelInput atRest = new ViewModelInput(0.0F, 0.0F, 0.0F, false, 0.0F, 1);
+        ViewModelInput atRest = new ViewModelInput(0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1);
         assertTrue(sword.evaluate(atRest).isZero(), "a sheathed sword does not shake");
 
         // Sweep a second of shaking at render rate and measure how far the pitch wanders. The
@@ -186,7 +203,7 @@ class SwordViewModelTest {
         float max = -Float.MAX_VALUE;
         for (int frame = 0; frame < 60; frame++) {
             Offset offset = sword.evaluate(
-                    new ViewModelInput(1.0F, 0.0F, 0.0F, true, frame * RENDER_STEP, 3));
+                    new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, true, frame * RENDER_STEP, 3));
             min = Math.min(min, (float) offset.pitch());
             max = Math.max(max, (float) offset.pitch());
         }

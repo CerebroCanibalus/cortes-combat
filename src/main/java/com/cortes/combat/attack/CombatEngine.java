@@ -98,8 +98,7 @@ public final class CombatEngine {
         if (!profile.canCharge()) {
             return 0.0F;
         }
-        return AttackTiming.chargeRatioFor(
-                charge.ticks(), charge.ratio(profile.fullChargeTicks()));
+        return AttackTiming.chargeRatioFor(charge.ticks(), profile.fullChargeTicks());
     }
 
     private static void resolveTarget(Player player, int targetId, WeaponStats stats,

@@ -103,6 +103,11 @@ public final class ItemViewModel {
         return MOTION.released();
     }
 
+    /** One client tick of the swing clock. */
+    public static void tickClock() {
+        MOTION.advanceClock();
+    }
+
     @SubscribeEvent
     public static void onRenderHand(RenderHandEvent event) {
         // Main hand only, and not because the event cannot fire for the off hand. The channels
@@ -145,9 +150,14 @@ public final class ItemViewModel {
      * <p>One value for the FOV and one for the viewmodel, because they have to agree: a FOV that
      * closes for a charge the item did not show, or an item that winds up for a charge the FOV
      * ignored, is worse than having neither.</p>
+     *
+     * <p>Zero the moment the follow-through ends, which is the fix for the field of view staying
+     * closed for the rest of the session. The released charge used to be a value that was set
+     * once on the release and never cleared, so everything reading it afterwards read a charge
+     * that had already resolved.</p>
      */
     public static float currentCharge() {
-        return SwingInputHandler.holding() ? SwingInputHandler.chargedRatio() : MOTION.released();
+        return MOTION.currentCharge();
     }
 
     /**
@@ -177,6 +187,7 @@ public final class ItemViewModel {
         return new ViewModelInput(
                 MOTION.windup(),
                 MOTION.strike(),
+                MOTION.recover(),
                 cooldownRunning(),
                 SwingInputHandler.holding(),
                 0.0F,

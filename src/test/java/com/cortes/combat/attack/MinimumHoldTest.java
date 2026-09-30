@@ -22,40 +22,42 @@ class MinimumHoldTest {
     private static final int FULL = 25;
 
     @Test
-    @DisplayName("one tick under the threshold is a tap, whatever the charge says")
+    @DisplayName("one tick under the threshold is a tap, however long the count")
     void justUnderIsATap() {
         int justUnder = AttackTiming.MIN_CHARGE_HOLD_TICKS - 1;
-        assertEquals(0.0F, AttackTiming.chargeRatioFor(justUnder, 0.9F), 0.0F);
+        assertEquals(0.0F, AttackTiming.chargeRatioFor(justUnder, FULL), 0.0F);
     }
 
     @Test
-    @DisplayName("exactly the threshold is charged")
+    @DisplayName("exactly the threshold is the bottom of the scale")
     void exactlyTheThresholdIsCharged() {
-        assertEquals(0.16F, AttackTiming.chargeRatioFor(
-                AttackTiming.MIN_CHARGE_HOLD_TICKS, 0.16F), 0.0F);
+        assertEquals(0.0F, AttackTiming.chargeRatioFor(
+                AttackTiming.MIN_CHARGE_HOLD_TICKS, FULL), 0.0F);
     }
 
     @Test
-    @DisplayName("the raw count rounds the same way, so the server and the viewmodel agree")
-    void rawCountAgreesWithTheRatio() {
-        // The two entry points see the same gesture described two ways: a client that already
-        // has a ratio, and a server that counted ticks. If they classified the same swing
-        // differently then the item would wind up for a swing that lands flat, which is a
-        // promise the game does not keep.
-        int threshold = AttackTiming.MIN_CHARGE_HOLD_TICKS;
-        for (int ticks = 0; ticks <= 40; ticks++) {
-            float ratio = (float) ticks / (float) FULL;
-            boolean fromRatio = AttackTiming.chargeRatioFor(ticks, ratio) == 0.0F;
-            boolean fromCount = AttackTiming.chargeRatioFrom(ticks, FULL) == 0.0F;
-            assertEquals(fromRatio, fromCount,
-                    "ticks=" + ticks + ": the two entry points classified the swing differently");
+    @DisplayName("there is one rule, and the server and the viewmodel both call it")
+    void oneRuleForBothSides() {
+        // This used to be two entry points that took different descriptions of the same
+        // gesture, one a ratio and one a tick count, and they were asserted to agree. There is
+        // now one method that takes the count, so there is nothing left to disagree about: a
+        // client whose count is a tick behind the server's still classifies the swing the same
+        // way, because the threshold is the only thing deciding it.
+        for (int ticks = 0; ticks <= 60; ticks++) {
+            float value = AttackTiming.chargeRatioFor(ticks, FULL);
+            // Zero up to and including the threshold, because the threshold is where the ramp
+            // starts rather than where it is already part way up. An earlier version of this
+            // asserted the boundary was exclusive and failed on exactly that tick.
+            assertEquals(ticks <= AttackTiming.MIN_CHARGE_HOLD_TICKS, value == 0.0F,
+                    "ticks=" + ticks + " gave " + value + " against a threshold of "
+                            + AttackTiming.MIN_CHARGE_HOLD_TICKS);
         }
     }
 
     @Test
     @DisplayName("a count past the full charge still caps at one")
     void capsAtFull() {
-        assertEquals(1.0F, AttackTiming.chargeRatioFrom(500, FULL), 0.0F);
+        assertEquals(1.0F, AttackTiming.chargeRatioFor(500, FULL), 0.0F);
     }
 
     @Test
@@ -68,9 +70,12 @@ class MinimumHoldTest {
     }
 
     @Test
-    @DisplayName("a zero full-charge scale means no charge rather than a divide by zero")
+    @DisplayName("a weapon with no charge window is never charged, and never divides by zero")
     void zeroScaleIsSafe() {
-        assertEquals(0.0F, AttackTiming.chargeRatioFrom(100, 0), 0.0F);
+        // The remap divides by the remainder of the window. A weapon whose window is zero, which
+        // is what a non-charging profile carries, reaches the guard before the division.
+        assertEquals(1.0F, AttackTiming.chargeRatioFor(100, 0), 0.0F);
+        assertEquals(0.0F, AttackTiming.chargeRatioFor(3, 0), 0.0F);
     }
 
     @Test

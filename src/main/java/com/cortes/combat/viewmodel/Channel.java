@@ -56,6 +56,20 @@ public enum Channel {
     COOLDOWN,
 
     /**
+     * The recovery, one-shot, peaking in the second half of the strike.
+     *
+     * <p>This channel exists because a single bump cannot express a slash. The cut has to go
+     * forward hard and then come back down and towards the player, and those are two motions
+     * with a peak between them, so putting both on {@link #STRIKE} would average them into one
+     * shove that goes out and comes straight back.</p>
+     *
+     * <p>It is zero for the first half of the strike and ramps after it, so a track on it
+     * contributes nothing while the cut is still travelling. A track that starts where another
+     * one stops is how a follow-through is written without a timeline.</p>
+     */
+    RECOVER,
+
+    /**
      * Whether the guard is up, 0 or 1.
      *
      * <p>Not strictly 0..1 in the general case, but it only ever holds 0 or 1 here, and
@@ -70,6 +84,7 @@ public enum Channel {
         return switch (this) {
             case WINDUP -> in.windup();
             case STRIKE -> in.strike();
+            case RECOVER -> in.recover();
             case COOLDOWN -> in.cooldown();
             case HOLD -> in.holding() ? 1.0F : 0.0F;
         };

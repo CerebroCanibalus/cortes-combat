@@ -40,6 +40,13 @@ public final class AttackTiming {
      * <p>And a swing under the threshold is exactly flat rather than proportionally charged. A
      * hidden band where a three tick click does "a bit more" cannot be learned by watching, and
      * a player only discovers it by having hit for less than they expected.</p>
+     *
+     * <p>What the threshold is also for is what the player <em>sees</em>. The charge bar, the
+     * wind-up and the FOV all read the same remapped value this produces, and all three are zero
+     * below the threshold. A bar that fills for two hundred milliseconds on every ordinary click
+     * is a bar that says "charging" about a swing that lands flat, and the player reads that as
+     * the game charging them when it is not. **Below the threshold nothing happens and nothing
+     * is shown; at the threshold everything starts.**</p>
      */
     public static final int MIN_CHARGE_HOLD_TICKS = 4;
 
@@ -49,47 +56,41 @@ public final class AttackTiming {
      * <p>A hard cut, and that is the whole decision. A swing under the threshold gets exactly
      * nothing: there is no band where a three tick click does "a little bit more", because a
      * band nobody can see is a band nobody can learn, and the only way a player would find out
-     * about it is by having hit for less than they expected. Four ticks of commitment buy all of
-     * the bonus, and under four ticks buy none of it.</p>
+     * about it is by having hit for less than they expected.</p>
+     *
+     * <p><b>Remapped, not clamped, and that is a change with a reason.</b> Taking the raw ratio
+     * means a swing one tick past the threshold reads as sixteen percent charged, and a charge
+     * bar that moves at the instant the swing becomes a charge reads as the player having charged
+     * further than they had. The playtest reported exactly that: a normal click showing a charge
+     * bar. So below the threshold this is exactly zero, and above it the remaining window is the
+     * full range.</p>
+     *
+     * <p>It also means there is <em>one</em> of these rather than two. It used to be a method
+     * taking a ratio and another taking a count, described as "the same rule twice, because the
+     * client has a ratio and the server has a count", with a test asserting they agreed. They
+     * can no longer disagree, because there is one thing to call.</p>
      *
      * <p>Lives here rather than inside {@code CombatEngine} so that the cut is a unit test. The
      * alternative, leaving the comparison in the one class that cannot be class-loaded in a bare
      * JVM, is a rule that can only be checked by playing.</p>
      *
      * @param heldTicks how long the button was down, as the server counted it
-     * @param ratio     the raw charge ratio, 0..1
-     * @return {@code ratio} if the hold counted, otherwise exactly 0
+     * @param fullChargeTicks the weapon's own charge window
+     * @return 0 below the threshold, then 0..1 across the rest of the window
      */
-    public static float chargeRatioFor(int heldTicks, float ratio) {
-        return heldTicks < MIN_CHARGE_HOLD_TICKS ? 0.0F : ratio;
-    }
-
-    /**
-     * How many ticks of a swing actually count, from a raw number of server ticks.
-     *
-     * <p>Every swing in the game is over by the time the player sees it, so the only way to tell
-     * a tap from a charge afterwards is the count. This is the number behind the decision, and
-     * it is exposed rather than kept private so that a swing's classification can be printed
-     * and checked instead of inferred from a damage number.</p>
-     *
-     * <p>The clamp is on the way out as well as on the way in. A swing that is only resolved when
-     * the release arrives, and the release arrives a round trip later, can read a count that
-     * includes ticks the player was not holding for; clamping to the threshold turns that from
-     * "every click is a full charge under lag" into "every click is a tap under lag", which is
-     * the safe direction to be wrong in. A swing that was genuinely held stays charged, because
-     * a real hold is far longer than the threshold.</p>
-     *
-     * @param serverTicks the count the server accumulated
-     * @return 0, or the charge ratio scaled by how far past the threshold the hold went
-     */
-    public static float chargeRatioFrom(int serverTicks, float fullChargeTicks) {
-        if (fullChargeTicks <= 0 || serverTicks < MIN_CHARGE_HOLD_TICKS) {
+    public static float chargeRatioFor(int heldTicks, int fullChargeTicks) {
+        if (heldTicks < MIN_CHARGE_HOLD_TICKS) {
             return 0.0F;
         }
-        return Math.min(1.0F, (float) serverTicks / (float) fullChargeTicks);
-    }
-
-    private AttackTiming() {
+        if (fullChargeTicks <= MIN_CHARGE_HOLD_TICKS) {
+            return 1.0F;
+        }
+        // Remapped rather than clamped. The bar and the item start moving at the threshold and
+        // then cross the whole range, instead of showing a sliver that says "charging" for a
+        // click the game is about to call a tap. See the class comment on MIN_CHARGE_HOLD_TICKS.
+        return Math.min(1.0F,
+                (float) (heldTicks - MIN_CHARGE_HOLD_TICKS)
+                        / (float) (fullChargeTicks - MIN_CHARGE_HOLD_TICKS));
     }
 
     /**
