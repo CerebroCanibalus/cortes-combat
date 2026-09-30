@@ -95,10 +95,11 @@ public final class CombatEngine {
      * watching, and the only way they would find out is by having hit for less than expected.</p>
      */
     private static float chargedRatio(ChargeState charge, ChargeProfile profile) {
-        if (!profile.canCharge() || charge.ticks() < AttackTiming.MIN_CHARGE_HOLD_TICKS) {
+        if (!profile.canCharge()) {
             return 0.0F;
         }
-        return charge.ratio(profile.fullChargeTicks());
+        return AttackTiming.chargeRatioFor(
+                charge.ticks(), charge.ratio(profile.fullChargeTicks()));
     }
 
     private static void resolveTarget(Player player, int targetId, WeaponStats stats,

@@ -15,6 +15,13 @@ import com.mojang.serialization.Codec;
  * ever negative. A track multiplies its amplitude by its curve of that number, so {@code 0}
  * always means "this track contributes nothing" and the resting pose is reachable from every
  * channel without a special case.</p>
+ *
+ * <p>That uniformity is the invariant the whole composition model rests on, and it is why
+ * {@link #COOLDOWN} counts the cooldown that is <em>running</em> rather than the one that has
+ * finished. A weapon at rest has a ready cooldown, so "ready" would have to be the resting
+ * value of a channel, and a channel whose resting value is one is a channel whose tracks need a
+ * special case. A profile that moves the item when the player is standing still is a bug that
+ * only shows up as a weapon that slowly drifts off the vanilla pose.</p>
  */
 public enum Channel {
 
@@ -39,7 +46,13 @@ public enum Channel {
      */
     STRIKE,
 
-    /** How much of the hard cooldown has elapsed, 0..1, where 1 is ready to swing. */
+    /**
+     * How much of the hard cooldown is still running, 0..1, where 0 is ready to swing.
+     *
+     * <p>Counting the cooldown rather than the readiness, so that zero is the resting value like
+     * every other channel. See the class comment: a channel that rests at one is a channel that
+     * needs a special case, and the whole point of a sum of tracks is that it does not.</p>
+     */
     COOLDOWN,
 
     /**

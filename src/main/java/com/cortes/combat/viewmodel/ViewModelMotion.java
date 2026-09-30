@@ -1,7 +1,7 @@
 package com.cortes.combat.viewmodel;
 
 /**
- * The client's view of how far through a swing the item is, as two ratios.
+ * The client's view of how far through a swing the item is.
  *
  * <p>Nothing here reads the game. It is handed a charge ratio and a pair of booleans and turns
  * them into the {@link Channel#WINDUP} and {@link Channel#STRIKE} values, which keeps the
@@ -26,6 +26,14 @@ package com.cortes.combat.viewmodel;
  * continuous move and the peak of the follow-through happens while the wind-up is already
  * halfway gone. Both channels are then at rest, so the item returns to the vanilla pose without
  * anybody writing an undo track.</p>
+ *
+ * <h2>Ticks advance the state, the render reads it interpolated</h2>
+ *
+ * <p>{@link #tick} moves the clock one game tick. {@link #snapshot} takes a partial tick and
+ * produces the frame. Those are two different jobs and separating them is not bookkeeping: a
+ * viewmodel evaluated only once per tick is a twenty hertz animation, which at sixty frames a
+ * second repeats each position three times and reads as a machine stepping rather than as an
+ * arm moving. Vanilla interpolates its own swing with the partial tick for exactly this reason.
  */
 public final class ViewModelMotion {
 
@@ -43,6 +51,16 @@ public final class ViewModelMotion {
     /** Ticks since the last strike, or -1 when no strike is playing. */
     private int strikeAge = -1;
 
+    /**
+     * A strike that has been announced but has not been shown yet.
+     *
+     * <p>Without this the release frame is missed. The tick after the release is where the naive
+     * version's teleport happens, because by then the age has already been stepped forward and the
+     * wind-up has already dropped a sixth of the way. The frame the player let go on has to still
+     * show the item drawn all the way back.</p>
+     */
+    private boolean pendingStrike;
+
     private int seed = 1;
 
     /**
@@ -55,9 +73,15 @@ public final class ViewModelMotion {
      */
     private float windup;
 
+    /** Client ticks elapsed. The only clock, so the tremble and the swing cannot disagree. */
+    private int ticks;
+
+    /** Whether the button was down as of the last tick. Decides which of the two wind-ups applies. */
+    private boolean holding;
+
     /** The strike just resolved. Starts the follow-through and re-rolls the tremble pattern. */
     public void onStrike() {
-        strikeAge = 0;
+        pendingStrike = true;
         // An integer LCG rather than Random: one multiply and one add, no shared global state,
         // and the only thing asked of it is that consecutive swings differ while the same swing
         // stays reproducible, which any advancing integer gives.
@@ -67,17 +91,24 @@ public final class ViewModelMotion {
     /** Whatever was held is no longer held, and there is no strike to play. */
     public void onCancel() {
         strikeAge = -1;
+        pendingStrike = false;
     }
 
     /**
-     * One client tick.
+     * One client tick of state.
      *
      * @param holding whether the attack button is down
      * @param charge  the predicted charge ratio, 0..1
      */
     public void tick(boolean holding, float charge) {
+        ticks++;
+        this.holding = holding;
         if (holding) {
             strikeAge = -1;
+            pendingStrike = false;
+        } else if (pendingStrike) {
+            strikeAge = 0;
+            pendingStrike = false;
         } else if (strikeAge >= 0 && ++strikeAge >= STRIKE_TICKS) {
             strikeAge = -1;
         }
@@ -88,15 +119,65 @@ public final class ViewModelMotion {
         if (holding) {
             return charge;
         }
-        // Unwinding across the strike. On the frame of the release this is still 1, so the item
-        // is still drawn back and the forward push starts from the wound-back position.
         if (strikeAge < 0) {
             return 0.0F;
         }
         return 1.0F - (float) strikeAge / (float) STRIKE_TICKS;
     }
 
-    /** How far back the item is drawn, 0..1. */
+    /**
+     * The frame to evaluate, between two ticks.
+     *
+     * <p>The state is advanced once per tick and read many times per frame, with the partial tick
+     * in between. Evaluating only at whole ticks would make every motion in the game a twenty
+     * hertz step, which is the difference between an arm moving and a machine stuttering.</p>
+     *
+     * <p>The charge and the guard are left for the caller to fill in: they are already tracked
+     * for the HUD and duplicating them here would be two copies of one value.</p>
+     *
+     * @param partialTick 0 at the start of the tick, approaching 1 at the end
+     */
+    public ViewModelInput snapshot(float partialTick, float cooldownRunning, boolean guarding) {
+        float offset = clamp01(partialTick);
+        return new ViewModelInput(
+                windupAt(offset),
+                strikeAt(offset),
+                cooldownRunning,
+                guarding,
+                (ticks + offset) / 20.0F,
+                seed);
+    }
+
+    /**
+     * The wind-up halfway between two ticks.
+     *
+     * <p>While the button is down this is the charge, which the tick already has. Once the swing
+     * has resolved it is the unwind, and the phase is taken from the strike's age so the two move
+     * as one number rather than as two that have to be kept in step by hand.</p>
+     */
+    private float windupAt(float offset) {
+        if (holding) {
+            return windup;
+        }
+        if (strikeAge < 0) {
+            return 0.0F;
+        }
+        return clamp01(1.0F - (strikeAge + offset) / (float) STRIKE_TICKS);
+    }
+
+    private float strikeAt(float offset) {
+        if (strikeAge < 0) {
+            return 0.0F;
+        }
+        float phase = clamp01((strikeAge + offset) / (float) STRIKE_TICKS);
+        return 1.0F - Math.abs(2.0F * phase - 1.0F);
+    }
+
+    private static float clamp01(float t) {
+        return t < 0.0F ? 0.0F : (t > 1.0F ? 1.0F : t);
+    }
+
+    /** How far back the item is drawn, 0..1, at the current tick. */
     public float windup() {
         return windup;
     }
@@ -109,11 +190,7 @@ public final class ViewModelMotion {
      * second track to undo its own first one, and the two would have to stay in agreement.</p>
      */
     public float strike() {
-        if (strikeAge < 0) {
-            return 0.0F;
-        }
-        float phase = (float) strikeAge / (float) STRIKE_TICKS;
-        return 1.0F - Math.abs(2.0F * phase - 1.0F);
+        return strikeAt(0.0F);
     }
 
     /** The tremble pattern for the swing in progress. Advances per strike, never per frame. */
@@ -124,7 +201,10 @@ public final class ViewModelMotion {
     /** Test hook: back to a clean rest. */
     public void reset() {
         strikeAge = -1;
+        pendingStrike = false;
         windup = 0.0F;
         seed = 1;
+        ticks = 0;
+        holding = false;
     }
 }

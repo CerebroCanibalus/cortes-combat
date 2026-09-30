@@ -113,7 +113,7 @@ Ninguna de estas se adivina, y varias están en versión **distinta** a 1.21.2+:
 
 Estado: diseño cerrado, arquitectura aprobada, pasos 1 a 8 del plan hechos y verificados en
 cliente real, un reworks completo del HUD, el click unificado (que destapó que el golpe
-cargado no existía) y la librería de viewmodel con el primer perfil real. **124 tests
+cargado no existía) y la librería de viewmodel con el primer perfil real. **201 tests
 verdes.** Siguiente: ajustar el viewmodel de la espada en playtest y después el paso 9
 (las 30 armas + datagen + recetas).
 
@@ -561,6 +561,56 @@ se desfasan). El servidor igual balancea, así que **en tercera persona se sigue
 brazo de vanilla**: first person tiene el viewmodel real, third person tiene vanilla hasta que
 el framework tenga historia de tercera persona.
 
+## Dos bugs reales que encontraron los tests del viewmodel
+
+**201 tests verdes** (124 previos + 77 nuevos). Los tests no encontraron bugs "de lógica" sino
+dos cosas que cambian cómo se ve el mod, y las dos son las que un playtest delata tarde:
+
+1. **Todo se movía a 20 Hz, no por frame.** `ViewModelMotion` solo se evaluaba una vez por tick,
+   así que el item repetía cada posición tres veces a 60 fps. Eso no es una animación, es una
+   máquina dando pasos, y el temblor se convertía en zumbido. El arreglo fue separar las dos
+   responsabilidades que había mezclado: **`tick()` avanza el estado, `snapshot(partialTick)`
+   produce el frame.** Vanilla interpola su propio swing por el mismo motivo. El partial tick
+   viene de `RenderHandEvent.getPartialTick()`.
+   - De paso, el mismo bug escondía un **off-by-one en el frame del release**: el primer tick
+     después del release ya había avanzado un tick, así que el wind-up había bajado un sexto
+     antes de dibujarse nunca. Se resolvió con `pendingStrike`: el release *anuncia* el strike y
+     el primer tick lo arranca en edad 0. **El frame en el que soltás tiene que mostrar el item
+     todavía atrás.**
+
+2. **`Curve.LINEAR` no clampeaba.** Las otras cinco curvas arrancan de `clamp01`; esa no. Un
+   canal que se pase un pelo de cero — por aritmética de float, o por un valor que nunca debió
+   ser negativo — movía el item un pelo de la pose de vanilla. "Cero significa que este track no
+   aporta nada" tiene que ser cierto de **todas** o no es una regla.
+
+Y una decisión de API que los tests impusieron: **`Channel.COOLDOWN` cuenta el cooldown que *se
+está gastando*, no el que ya se gastó.** Con "listo = 1" el canal descansa en uno, y un canal
+que descansa en uno necesita un caso especial — y un perfil que mueve el item con el jugador
+parado es un arma que se va de la pose de vanilla a la deriva. Los cuatro canales descansan en
+cero, sin excepción, y `ViewModelInput.RESTING` lo dice.
+
+### La lección: tests acoplados a datos provisorios
+
+El primer intento de testear el hand-off fue una aserción de continuidad sobre el **offset
+compuesto**, con un límite en unidades de item. Falló, y el test estaba mal dos veces:
+
+- **Plegar grados en unidades de item necesita una equivalencia arbitraria.** La que elegí
+  terminó tan ajustada que rechazaba los propios frames rápidos del strike, que son
+  exactamente lo que tiene que ser rápido.
+- Peor: **el límite tenía que derivarse de los números actuales de la espada**, y esos números
+  están escritos, no jugados. El test iba a fallar en cada retune. **Un test acoplado a datos
+  provisorios es peor que no tener test: te entrena a cambiar el test.**
+
+El invariante va en el **canal**, no en el offset compuesto: *"el wind-up no pierde más que un
+tick de valor en un frame"*. Es exacto, independiente del perfil, y la versión ingenua del
+hand-off lo viola tirando el wind-up entero de golpe.
+
+**El mismo patrón apareció en `ViewModelNoiseTest`.** En vez de un número mágico, el límite es
+ahora **la garantía que la interpolación da por construcción** — la señal no puede moverse más
+que `fase × rango` — más una aserción de que la *media* por frame está muy por debajo de lo que
+daría una señal escalonada. Esa segunda es la que distingue un temblor de un zumbido, y no se
+rompe al cambiar la frecuencia.
+
 ## Próximos pasos
 
 1. **Paso 9: las 30 armas + datagen + recetas + set de cobre.** Es el paso grande que falta.
@@ -614,4 +664,6 @@ el framework tenga historia de tercera persona.
 - **Tres huecos del mismo tipo, la familia "un estado que dura más que el botón":** doble click en un tick (se arregla con un cerrojo local `readyAtTick`; **el gate del cliente tiene que ser más estricto que el valor que tiene**), cambio de item a mitad de carga (40 ticks de maza se convertían en carga completa de espada), y loguearse apretando (el attachment persistente dejaba `holding` en true y el ticker seguía contando una carga inexistente). Los tres se buscaron juntos por eso, no por casualidad.
 - **La librería de viewmodel, adelantada antes de las 30 armas por decisión del usuario** (con una sola se debuggea fácil; con 30 es un desastre). 8 clases puras + **una sola** que toca Minecraft. `Curve` con 6 curvas normalizadas, `Offset` aditivo, 4 canales, `Track` = `amplitude × curve(channel)`, `ViewModelProfile` = una lista de tracks. **Sin timeline, y es un límite deliberado.** El punto difícil es el hand-off del release: el wind-up se desenrolla mientras el strike empuja atravesándolo, así que el item sale de la posición cargada en un movimiento continuo. Rendimiento: un record por frame, sin alocación, sin lookup, un `Quaternionf` scratch. El perfil de la espada tiene **los números escritos, no ajustados**.
 - **API verificada que costó encontrar:** el viewmodel se engancha con `RenderHandEvent` (o sea `ClientHooks.renderSpecificFirstPersonHand`), llamado desde `renderHandsWithItems` **antes** de `renderArmWithItem`, así que nuestro transform envuelve todo lo de vanilla. **Ninguna mixin hizo falta para el viewmodel.**
+- **77 tests nuevos del viewmodel, y dos bugs reales.** **Todo se evaluaba a 20 Hz en vez de por frame** (el item repetía cada posición tres veces a 60 fps: no es una animación, es una máquina dando pasos). Separado en `tick()` = avanza estado y `snapshot(partialTick)` = produce el frame, con el partial tick de `RenderHandEvent`. De paso apareció un **off-by-one en el frame del release**: el wind-up ya había bajado un sexto antes de dibujarse nunca, resuelto con `pendingStrike`. Y **`Curve.LINEAR` no clampeaba**, sola entre las seis, así que un canal un pelo negativo movía el item de la pose de vanilla. Los tests también impusieron que **`Channel.COOLDOWN` cuente el cooldown gastándose**: los cuatro canales descansan en cero, sin excepción, porque un canal que descansa en uno necesita un caso especial y un perfil que mueve el item con el jugador parado es un arma a la deriva.
+- **La lección que más vale: un test acoplado a datos provisorios es peor que no tener test.** El primer test del hand-off medía la continuidad del offset *compuesto* con un límite en unidades de item, y estaba mal dos veces — la equivalencia grados↔unidades es arbitraria, y el límite tenía que derivarse de los números de la espada, que están escritos y no jugados, así que iba a fallar en cada retune. **El invariante va en el canal**, no en el offset compuesto. Lo mismo pasó con el bound del temblor: ahora es la garantía que la interpolación da por construcción (`fase × rango`) más una aserción de la media por frame, que es la que distingue un temblor de un zumbido.
 - **⚠️ DEUDA LEGAL: quedan DOS texturas de `refs/`.** La viñeta viene de `neoforge-damageoverlay`, que es **All Rights Reserved**. Las dos esferitas de aguante vienen de `combatify` (LGPL-2.1). El resto del HUD ya es arte original del usuario. Ver `textures/gui/PROTOTYPE-ASSETS.md`.

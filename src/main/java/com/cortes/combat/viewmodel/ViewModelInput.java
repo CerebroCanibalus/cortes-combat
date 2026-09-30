@@ -17,9 +17,9 @@ package com.cortes.combat.viewmodel;
 public record ViewModelInput(float windup, float strike, float cooldown, boolean holding,
                              float time, int seed) {
 
-    /** At rest: no charge, no swing, cooldown complete, guard down. */
+    /** At rest: no charge, no swing, no cooldown running, guard down. */
     public static final ViewModelInput RESTING =
-            new ViewModelInput(0.0F, 0.0F, 1.0F, false, 0.0F, 0);
+            new ViewModelInput(0.0F, 0.0F, 0.0F, false, 0.0F, 0);
 
     public float read(Channel channel) {
         return channel.read(this);

@@ -10,6 +10,60 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AttackTimingTest {
 
     @Nested
+    @DisplayName("the minimum hold that counts as a charge")
+    class MinimumHold {
+
+        @Test
+        @DisplayName("a tap gets nothing at all, not a fraction")
+        void tapIsFlat() {
+            // The whole point of the hard cut. A swing under the threshold is exactly a normal
+            // hit: there is no band where a two tick click does "a bit more", because a band
+            // nobody can see is a band nobody can learn.
+            assertEquals(0.0F, AttackTiming.chargeRatioFor(0, 0.0F), 0.0F);
+            assertEquals(0.0F, AttackTiming.chargeRatioFor(1, 0.04F), 0.0F);
+            assertEquals(0.0F, AttackTiming.chargeRatioFor(3, 0.12F), 0.0F);
+        }
+
+        @Test
+        @DisplayName("the threshold itself counts, and gives everything")
+        void thresholdCounts() {
+            assertEquals(0.0F, AttackTiming.chargeRatioFor(AttackTiming.MIN_CHARGE_HOLD_TICKS, 0.0F));
+            assertEquals(0.16F,
+                    AttackTiming.chargeRatioFor(AttackTiming.MIN_CHARGE_HOLD_TICKS, 0.16F), 0.0F);
+            assertEquals(1.0F, AttackTiming.chargeRatioFor(AttackTiming.MIN_CHARGE_HOLD_TICKS, 1.0F));
+        }
+
+        @Test
+        @DisplayName("a hold past the threshold passes the charge through untouched")
+        void pastThresholdPassesThrough() {
+            for (int ticks = AttackTiming.MIN_CHARGE_HOLD_TICKS; ticks <= 60; ticks++) {
+                float ratio = Math.min(1.0F, ticks / 25.0F);
+                assertEquals(ratio, AttackTiming.chargeRatioFor(ticks, ratio), 0.0F,
+                        "tick " + ticks + " should pass its charge through unchanged");
+            }
+        }
+
+        @Test
+        @DisplayName("there is no in-between: one tick either side of the threshold and nothing else")
+        void noGradientEitherSide() {
+            int justUnder = AttackTiming.MIN_CHARGE_HOLD_TICKS - 1;
+            assertEquals(0.0F, AttackTiming.chargeRatioFor(justUnder, 0.99F), 0.0F,
+                    "a hold of " + justUnder + " ticks at 99% charge is still nothing");
+            assertEquals(0.99F,
+                    AttackTiming.chargeRatioFor(AttackTiming.MIN_CHARGE_HOLD_TICKS, 0.99F), 0.0F,
+                    "and " + AttackTiming.MIN_CHARGE_HOLD_TICKS + " ticks at 99% is all of it");
+        }
+
+        @Test
+        @DisplayName("the threshold is a couple of hundred milliseconds, not half a second")
+        void thresholdIsAFastDecision() {
+            // Four ticks. A longer one would make the fast click feel like the game ignored it,
+            // because the swing resolves on the release and a longer hold is a longer wait.
+            assertEquals(4, AttackTiming.MIN_CHARGE_HOLD_TICKS);
+        }
+    }
+
+    @Nested
     @DisplayName("attack interval")
     class Interval {
 

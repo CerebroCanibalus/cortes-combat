@@ -22,11 +22,19 @@ import com.mojang.serialization.Codec;
  */
 public enum Curve {
 
-    /** No shaping. The raw channel value. */
+    /**
+     * No shaping. The raw channel value, clamped.
+     *
+     * <p>Clamped like the rest, and that is not a formality. Every other curve starts from
+     * {@code clamp01}, so if this one did not, a channel that drifted a hair below zero, from
+     * float arithmetic or from a value that was never meant to be negative, would move the item
+     * a hair off the vanilla pose. "Zero means this track contributes nothing" has to be true of
+     * all of them or it is not a rule.</p>
+     */
     LINEAR {
         @Override
         public float apply(float t) {
-            return t;
+            return clamp01(t);
         }
     },
 

@@ -43,6 +43,27 @@ public final class AttackTiming {
      */
     public static final int MIN_CHARGE_HOLD_TICKS = 4;
 
+    /**
+     * The charge a swing is allowed to use, given how long the button was actually held.
+     *
+     * <p>A hard cut, and that is the whole decision. A swing under the threshold gets exactly
+     * nothing: there is no band where a three tick click does "a little bit more", because a
+     * band nobody can see is a band nobody can learn, and the only way a player would find out
+     * about it is by having hit for less than they expected. Four ticks of commitment buy all of
+     * the bonus, and under four ticks buy none of it.</p>
+     *
+     * <p>Lives here rather than inside {@code CombatEngine} so that the cut is a unit test. The
+     * alternative, leaving the comparison in the one class that cannot be class-loaded in a bare
+     * JVM, is a rule that can only be checked by playing.</p>
+     *
+     * @param heldTicks how long the button was down, as the server counted it
+     * @param ratio     the raw charge ratio, 0..1
+     * @return {@code ratio} if the hold counted, otherwise exactly 0
+     */
+    public static float chargeRatioFor(int heldTicks, float ratio) {
+        return heldTicks < MIN_CHARGE_HOLD_TICKS ? 0.0F : ratio;
+    }
+
     private AttackTiming() {
     }
 

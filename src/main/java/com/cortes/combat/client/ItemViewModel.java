@@ -7,7 +7,7 @@ import com.cortes.combat.viewmodel.ViewModelDefaults;
 import com.cortes.combat.viewmodel.ViewModelInput;
 import com.cortes.combat.viewmodel.ViewModelMotion;
 import com.cortes.combat.viewmodel.ViewModelProfile;
-import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -66,9 +66,6 @@ public final class ItemViewModel {
      */
     private static final ViewModelMotion MOTION = new ViewModelMotion();
 
-    /** Seconds since the client started, so tremble frequency does not depend on frame rate. */
-    private static float seconds;
-
     // Resolution is cached on two reference compares rather than read per frame. The item
     // reference catches a swap, and the component reference catches a mod rewriting the profile
     // on the same item, which is rare enough that it should not happen and cheap enough that it
@@ -80,9 +77,8 @@ public final class ItemViewModel {
     private ItemViewModel() {
     }
 
-    /** One client tick. Advances the swing clock and the tremble clock. */
+    /** One client tick. Advances the swing state. */
     public static void tick(boolean holding, float chargeRatio) {
-        seconds += 1.0F / 20.0F;
         MOTION.tick(holding, chargeRatio);
     }
 
@@ -105,19 +101,42 @@ public final class ItemViewModel {
         if (event.getHand() != InteractionHand.MAIN_HAND) {
             return;
         }
-        LocalPlayer player = net.minecraft.client.Minecraft.getInstance().player;
-        if (player == null) {
+        if (Minecraft.getInstance().player == null) {
             return;
         }
         ViewModelProfile profile = resolve(event.getItemStack());
         if (profile.isEmpty()) {
             return;
         }
-        Offset offset = profile.evaluate(input());
+        Offset offset = profile.evaluate(input(event.getPartialTick()));
         if (offset.isZero()) {
             return;
         }
         apply(event.getPoseStack(), offset);
+    }
+
+    /**
+     * The frame to evaluate, interpolated between the last tick and the next one.
+     *
+     * <p>This is the difference between a viewmodel and a twenty hertz animation played at sixty
+     * frames a second. Without the partial tick the item holds each position for three frames,
+     * which the eye reads as a stutter rather than as motion, and the tremble turns into a buzz
+     * because its clock only moves twenty times a second. Vanilla interpolates its own swing for
+     * the same reason.</p>
+     */
+    private static ViewModelInput input(float partialTick) {
+        return MOTION.snapshot(partialTick, cooldownRunning(), ClientCombatState.guardHeld());
+    }
+
+    /**
+     * How much of the hard cooldown is still running.
+     *
+     * <p>Counting the cooldown rather than the readiness, because a channel whose resting value
+     * is one is a channel whose tracks need a special case, and a profile that shifts the item
+     * while the player stands still is a weapon slowly drifting off the vanilla pose.</p>
+     */
+    private static float cooldownRunning() {
+        return 1.0F - ClientCombatState.cooldownRatio();
     }
 
     /**
@@ -136,9 +155,9 @@ public final class ItemViewModel {
         return new ViewModelInput(
                 MOTION.windup(),
                 MOTION.strike(),
-                ClientCombatState.cooldownRatio(),
+                cooldownRunning(),
                 SwingInputHandler.holding(),
-                seconds,
+                0.0F,
                 MOTION.seed());
     }
 
