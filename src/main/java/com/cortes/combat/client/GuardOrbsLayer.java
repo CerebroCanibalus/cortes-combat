@@ -63,8 +63,8 @@ public class GuardOrbsLayer implements LayeredDraw.Layer {
                 .isOnCooldown(GuardHandler.bestFor(player).item().getItem());
 
         int totalWidth = max * ORB_SIZE + (max - 1) * SPACING;
-        int startX = (graphics.guiWidth() - totalWidth) / 2;
-        int y = graphics.guiHeight() / 2 - VERTICAL_OFFSET;
+        int startX = HudAnchor.centreX(graphics) - totalWidth / 2;
+        int y = HudAnchor.centreY(graphics) - VERTICAL_OFFSET;
         // Staggered is not the same as down. Dimming the orbs while they are visibly refilling
         // says the opposite of what the player is watching, so they stay at full brightness and
         // the vanilla item cooldown carries the "you cannot block yet" part.

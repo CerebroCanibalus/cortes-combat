@@ -170,6 +170,104 @@ class ConeMathTest {
     }
 
     @Nested
+    @DisplayName("the cone follows the gaze, not the ground")
+    class GazeAligned {
+
+        /**
+         * A helper that looks along an arbitrary direction and asks about a world point.
+         * Every test in here would fail on the previous ground-anchored frame, which is the
+         * whole point: a test that passes on both versions is not testing the change.
+         */
+        private static boolean lookAndHit(double lx, double ly, double lz,
+                                          double tx, double ty, double tz) {
+            return ConeMath.inCone(0, 0, 0, lx, ly, lz, tx, ty, tz, 10, 35, 30);
+        }
+
+        @Test
+        @DisplayName("a target 20 degrees off a raised gaze is inside, 36 on the ground frame")
+        void raisedGazeWidensTheSidewaysCone() {
+            // Looking 60 degrees up. A point 20 degrees to the side of that gaze line is the
+            // thing the player is obviously aiming at.
+            //
+            // The old frame measured "horizontal" against the ground projection, so the same
+            // point came out at 36 degrees and was rejected by a 35 degree limit. That is the
+            // bug: the player is looking at it, and the cone was arguing.
+            double g = Math.toRadians(60.0);
+            double fx = 0.0, fy = Math.sin(g), fz = Math.cos(g);
+            double s = Math.sin(Math.toRadians(20.0));
+            double c = Math.cos(Math.toRadians(20.0));
+            // 20 degrees to the side of the gaze, in the horizontal-ish right direction.
+            double tx = -s * 2.0;
+            double ty = fy * c * 2.0;
+            double tz = fz * c * 2.0;
+            assertTrue(lookAndHit(fx, fy, fz, tx, ty, tz),
+                    "a point beside a raised gaze must be inside the cone");
+        }
+
+        @Test
+        @DisplayName("a target beside a raised gaze is still rejected when it is truly too far")
+        void raisedGazeStillHasALimit() {
+            // The fix must not have turned the cone into "anything near me counts". 70 degrees
+            // off a 60 degree raised gaze is way outside a 35 degree half-angle.
+            double g = Math.toRadians(60.0);
+            double fy = Math.sin(g), fz = Math.cos(g);
+            double s = Math.sin(Math.toRadians(70.0));
+            double c = Math.cos(Math.toRadians(70.0));
+            assertFalse(lookAndHit(0.0, fy, fz, -s * 2.0, fy * c * 2.0, fz * c * 2.0),
+                    "the sideways limit must survive the reorientation");
+        }
+
+        @Test
+        @DisplayName("looking down, a target below and ahead is inside")
+        void lookingDownReachesTheGround() {
+            // The mirror of the overhead case, and the one that matters for a zombie at your
+            // feet while you are looking down at it.
+            double g = Math.toRadians(-50.0);
+            double fy = Math.sin(g), fz = Math.cos(g);
+            assertTrue(lookAndHit(0.0, fy, fz, 0.0, fy * 2.0, fz * 2.0));
+        }
+
+        @Test
+        @DisplayName("looking straight up, a target tilted off vertical is still inside")
+        void straightUpIsNotADegenerateCone() {
+            // The degenerate frame. With the old code the horizontal axis was undefined here
+            // and fell back to a fixed direction, so the cone was a flat fan that ignored where
+            // the player was looking.
+            assertTrue(lookAndHit(0.0, 1.0, 0.0, 0.0, 2.0, 0.0));
+            // 20 degrees off vertical, still within the 35 degree sideways limit.
+            double s = Math.sin(Math.toRadians(20.0));
+            double c = Math.cos(Math.toRadians(20.0));
+            assertTrue(lookAndHit(0.0, 1.0, 0.0, s * 2.0, c * 2.0, 0.0),
+                    "a bat a bit to the side of straight up is still what the player aimed at");
+        }
+
+        @Test
+        @DisplayName("looking straight up still rejects something level with the player")
+        void straightUpStillRejectsTheGround() {
+            assertFalse(lookAndHit(0.0, 1.0, 0.0, 3.0, 0.0, 0.0),
+                    "90 degrees off the gaze is outside any sane vertical limit");
+        }
+
+        @Test
+        @DisplayName("the cone is symmetric about the gaze when raised")
+        void raisedGazeIsSymmetric() {
+            double g = Math.toRadians(45.0);
+            double fy = Math.sin(g), fz = Math.cos(g);
+            double c = Math.cos(Math.toRadians(20.0));
+            assertTrue(lookAndHit(0.0, fy, fz, -0.7, fy * c * 2.0, fz * c * 2.0));
+            assertTrue(lookAndHit(0.0, fy, fz, 0.7, fy * c * 2.0, fz * c * 2.0));
+        }
+
+        @Test
+        @DisplayName("a target behind the player stays behind, whatever the pitch")
+        void behindIsAlwaysBehind() {
+            // A 90 degree vertical allowance must not become a loophole that lets a swing land
+            // on whatever happens to be nearby, in any direction.
+            assertFalse(ConeMath.inCone(0, 0, 0, 0, 0.5, 0.866, 0, -2, 0, 10, 35, 90));
+        }
+    }
+
+    @Nested
     @DisplayName("degenerate input")
     class Degenerate {
 

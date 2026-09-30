@@ -184,9 +184,33 @@ public final class WeaponStats {
      * Ticks between attacks for whoever is holding this, straight from the attack speed
      * attribute. Reading it off the entity rather than the stack means equipment, potions and
      * other attribute sources are accounted for automatically.
+     *
+     * <p>The vanilla sword lands on 12 or 13 ticks, which is a hair over half a second and
+     * reads as sluggish the moment a fight has more than one enemy in it. The per-profile
+     * multiplier is how that gets tuned: a data row, not a branch, so the next weapon that
+     * needs a different tempo is a number here instead of code.</p>
      */
     public static int attackInterval(LivingEntity holder) {
-        return AttackTiming.ticksFor(holder.getAttributeValue(Attributes.ATTACK_SPEED));
+        return attackInterval(holder, WeaponStats.of(holder.getMainHandItem()).profile());
+    }
+
+    /** As above, for a profile whose tempo is already known. */
+    public static int attackInterval(LivingEntity holder, WeaponProfile profile) {
+        double base = holder.getAttributeValue(Attributes.ATTACK_SPEED);
+        return AttackTiming.scaleFor(base, TEMPO.getOrDefault(profile, 1.0F));
+    }
+
+    /** Per-profile interval multiplier. 1.0 is vanilla's own tempo, unmodified. */
+    private static final Map<WeaponProfile, Float> TEMPO = new HashMap<>();
+
+    static {
+        // Vanilla's sword is 12-13 ticks. 0.85 puts it at 10, which is the fastest anything in
+        // the game gets without also being a dagger, and it is what a sword should feel like
+        // when it is the weapon in your hand and the thing in front of you needs two hits.
+        TEMPO.put(WeaponProfile.SWORD, 0.85F);
+        // The dagger buys its speed back with a 2.4 block reach and a 45 degree cone, so it is
+        // the fastest melee in the game and that is the trade the design is making.
+        TEMPO.put(WeaponProfile.DAGGER, 0.7F);
     }
 
     public static CooldownState cooldownOf(Player player) {

@@ -42,14 +42,14 @@ public class CombatCrosshairLayer implements LayeredDraw.Layer {
             return;
         }
 
-        int centreX = graphics.guiWidth() / 2;
-        int centreY = graphics.guiHeight() / 2;
+        int centreX = HudAnchor.centreX(graphics);
+        int centreY = HudAnchor.centreY(graphics);
         float growth = CrosshairFeedback.growth();
 
         CrosshairSprites.render(graphics, centreX, centreY, growth,
                 CrosshairFeedback.shakeX(), CrosshairFeedback.shakeY(), CrosshairFeedback.rgb());
 
-        renderCharge(graphics, centreX, centreY, growth);
+        renderCharge(graphics, centreX, centreY);
     }
 
     /**
@@ -60,16 +60,18 @@ public class CombatCrosshairLayer implements LayeredDraw.Layer {
      * invent that detail. Scaling the full sprite by charge and drawing the empty one underneath
      * gives the splatter for free, and it only appears when the charge is actually full.</p>
      *
-     * <p>Positioned off the crosshair's <em>grown</em> half-height. On a hit the crosshair is
-     * 38% bigger and would otherwise be sitting on the bar for the six ticks of the flash.</p>
+     * <p>Positioned off the crosshair's <em>grown</em> half-height, from {@link HudAnchor}. On a
+     * hit the crosshair is 38% bigger and would otherwise be sitting on the bar for the six
+     * ticks of the flash. Measuring from the anchor rather than from a literal is what keeps
+     * the two from drifting apart when the crosshair art changes size.</p>
      */
-    private static void renderCharge(GuiGraphics graphics, int centreX, int centreY, float growth) {
+    private static void renderCharge(GuiGraphics graphics, int centreX, int centreY) {
         float charge = ClientCombatState.chargeRatio();
         if (charge <= 0.0F) {
             return;
         }
         int x = centreX - CHARGE_WIDTH / 2;
-        int y = centreY + Math.round(CrosshairSprites.SIZE * growth / 2.0F) + CHARGE_GAP;
+        int y = centreY + HudAnchor.crosshairReach() + CHARGE_GAP;
 
         RenderSystem.enableBlend();
         graphics.blit(CHARGE_EMPTY, x, y, CHARGE_WIDTH, CHARGE_HEIGHT,

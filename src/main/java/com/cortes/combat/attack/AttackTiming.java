@@ -38,6 +38,23 @@ public final class AttackTiming {
     }
 
     /**
+     * Apply a per-weapon tempo to an attack speed, in attacks per second.
+     *
+     * <p>Expressed as a multiplier on the speed rather than as a subtraction on the ticks,
+     * because a multiplier composes with attack speed potions the obvious way: halving the
+     * interval and doubling the speed are the same thing, and one of those two is what a
+     * player actually holds.</p>
+     *
+     * @param tempo 1.0 for vanilla's own tempo, below 1.0 for faster
+     */
+    public static int scaleFor(double attackSpeed, float tempo) {
+        if (Double.isNaN(tempo) || tempo <= 0.0F) {
+            tempo = 1.0F;
+        }
+        return ticksFor(attackSpeed * tempo);
+    }
+
+    /**
      * Damage multiplier from a charge ratio. Always at least 1.0: charging only ever adds,
      * it never subtracts, so holding the button is always safe and never a gamble.
      *

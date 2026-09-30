@@ -12,25 +12,26 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * The cooldown brackets: how ready the swing is, and how far it reaches, in one object.
+ * The cooldown brackets: how ready the swing is, and how wide the cone is, in one object.
  *
- * <p>It replaces the bar under the hotbar rather than joining it. That bar answered one question
- * ("may I swing yet?") with a hundred and eighty two pixels of screen for an answer the player
- * already reads in a glance. The brackets answer the same question and one more, which is the
- * one that actually changes how you fight: <em>how far does this reach</em>. A player holding a
- * halberd and a player holding a dagger need to know their spacing differs, and a bar under the
+ * <p>It replaces the bar under the hotbar. That bar answered one question ("may I swing yet?")
+ * with 182 pixels of screen for an answer the player reads in a glance. The brackets answer
+ * that and one more, which is the one that changes how you fight: <em>how wide is my cone</em>.
+ * A halberd player and a dagger player need to know their spacing differs, and a bar under the
  * hotbar cannot say that at any width.</p>
  *
- * <p><b>Position and length are both read off the weapon's own reach profile.</b> That is the
- * whole point of the widget: the brackets sit further out for a longer weapon, and the bar grows
- * proportionally between them, so the shape of the indicator <em>is</em> the shape of the cone.
- * Nothing here is a per-weapon lookup table, so a foreign weapon with a sane reach profile draws
- * a sane indicator without this project knowing the weapon exists.</p>
+ * <p><b>Size comes from the cone's margins, not its reach.</b> The widget answers "how wide",
+ * so it is driven by {@link ReachProfile#horizontalAngle()}: a sabre at 75 degrees is visibly
+ * the widest thing on screen and a rapier at 12 is visibly the tightest, which is exactly the
+ * difference the player needs to feel in their spacing. Distance is a different question and
+ * the widget does not try to answer it — a long thin cone and a short wide one are both
+ * plausible, and a widget that mixed the two numbers would be describing neither.</p>
  *
- * <p>The bar fades to nothing at the crosshair end. A hard line pointing at the crosshair reads
- * as a crosshair arm, and a player aiming between two enemies has to decide which of the three
- * bright things is the one they are aiming with. The fade keeps the bar attached to its bracket
- * and out of the centre.</p>
+ * <p>The fill grows from the crosshair outward and the fade runs the other way, so the two
+ * together say one thing: the bar reaches out from where you aim, and it is reaching further
+ * the closer you are to being able to swing. Fading <em>toward</em> the crosshair keeps the
+ * moving edge out of the middle of the screen, where it would compete with the thing the
+ * player is actually aiming.</p>
  */
 public class CooldownBracketLayer implements LayeredDraw.Layer {
 
@@ -51,29 +52,34 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
     private static final int RIGHT_CROP_X = 10;
     private static final int RIGHT_CROP_W = 11;
 
-    /** Column of the left crop that the bracket is centred on, and of the right crop. */
+    /** Column of each crop that the bracket is centred on. */
     private static final int LEFT_ANCHOR = 4;
     private static final int RIGHT_ANCHOR = 6;
 
-    /** How far the brackets sit from the centre, at the shortest reach in the game. */
-    private static final int BRACKET_DISTANCE = 30;
+    /**
+     * Where the brackets sit at the narrowest cone in the game, and how much further out the
+     * widest one goes. Both numbers are about the <em>width</em> of the cone, so a weapon with a
+     * tight cone keeps the brackets in close where they belong.
+     */
+    private static final int MIN_HALF_SPAN = 12;
+    private static final int MAX_HALF_SPAN = 34;
 
-    /** Extra pixels the brackets move out at full reach, on top of the base distance. */
-    private static final int REACH_SPREAD = 6;
-
-    /** Reach window the indicator is stretched across, in blocks. */
-    private static final float REACH_FLOOR = 2.0F;
-    private static final float REACH_CEILING = 4.5F;
+    /** Cone half-angle window the span is stretched across, in degrees. */
+    private static final float ANGLE_FLOOR = 10.0F;
+    private static final float ANGLE_CEILING = 80.0F;
 
     /** Bar thickness. One pixel: this is a line between two brackets, not a second bar. */
     private static final int BAR_THICKNESS = 1;
 
-    /** Alpha at the bracket end and at the crosshair end of the bar. */
-    private static final int ALPHA_AT_BRACKET = 235;
-    private static final int ALPHA_AT_CROSSHAIR = 8;
+    /** Alpha at the crosshair end of the fill, and at the bracket end. */
+    private static final int ALPHA_NEAR_CROSSHAIR = 30;
+    private static final int ALPHA_NEAR_BRACKET = 240;
 
-    /** The unfilled part of the bar, so the weapon's reach is readable while on cooldown. */
-    private static final int ALPHA_SOCKET = 70;
+    /**
+     * The empty part of the bar. Low on purpose: it has to be readable as "not ready yet"
+     * without competing with the fill, and the fill's own fade already makes its far end dim.
+     */
+    private static final int ALPHA_SOCKET = 45;
 
     @Override
     public void render(GuiGraphics graphics, DeltaTracker delta) {
@@ -85,24 +91,25 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
             return;
         }
 
-        int centreX = graphics.guiWidth() / 2;
-        int centreY = graphics.guiHeight() / 2;
+        int centreX = HudAnchor.centreX(graphics);
+        int centreY = HudAnchor.centreY(graphics);
         ReachProfile reach = WeaponStats.of(player.getMainHandItem()).reach();
 
-        // One geometry, computed once, and passed down. The three pieces below all measure from
-        // the same bracket position, and a second copy of that number is a second chance to have
-        // the bar and the bracket disagree by a pixel.
-        int distance = distanceFor(reach.distance());
-        // The crosshair's own grown size, so the bar never runs underneath it on a hit.
-        int crosshairHalf = Math.round(CrosshairSprites.SIZE * CrosshairFeedback.growth() / 2.0F);
-        int barLength = Math.max(0, distance - LEFT_ANCHOR - crosshairHalf - 1);
+        // One geometry, computed once. The bar and the brackets both measure from this number,
+        // and a second copy of it is a second chance to have them disagree by a pixel.
+        int halfSpan = halfSpanFor(reach.horizontalAngle());
+        // The bar runs from the crosshair's edge to the bracket's inner edge, so the two never
+        // overlap even when the crosshair jumps on a hit.
+        int inner = halfSpan - LEFT_ANCHOR - 1;
+        int outer = HudAnchor.crosshairReach();
+        int barLength = Math.max(0, inner - outer);
         float ratio = clamp01(ClientCombatState.cooldownRatio());
         int rgb = CrosshairFeedback.rgb();
 
         RenderSystem.enableBlend();
-        drawBar(graphics, centreX, centreY, distance, barLength, ratio, rgb, -1);
-        drawBar(graphics, centreX, centreY, distance, barLength, ratio, rgb, 1);
-        drawBrackets(graphics, centreX, centreY, distance, rgb);
+        drawBar(graphics, centreX, centreY, halfSpan, barLength, ratio, rgb, -1);
+        drawBar(graphics, centreX, centreY, halfSpan, barLength, ratio, rgb, 1);
+        drawBrackets(graphics, centreX, centreY, halfSpan, rgb);
         RenderSystem.disableBlend();
     }
 
@@ -111,83 +118,75 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
     }
 
     /**
+     * How far the brackets sit from the centre, for a cone of the given half-angle.
+     *
+     * <p>A cone angle, not a weapon. Anything between {@link #ANGLE_FLOOR} and
+     * {@link #ANGLE_CEILING} degrees gets a proportional span, and anything outside is clamped,
+     * so a modded weapon with a wider profile is drawn as "wider" rather than as "wrong".</p>
+     */
+    static int halfSpanFor(float horizontalAngle) {
+        float t = clamp01((horizontalAngle - ANGLE_FLOOR) / (ANGLE_CEILING - ANGLE_FLOOR));
+        return MIN_HALF_SPAN + Math.round(t * (MAX_HALF_SPAN - MIN_HALF_SPAN));
+    }
+
+    /**
      * One side's bar, drawn one pixel column at a time so the alpha can ramp along it.
      *
-     * <p>Per column rather than as a few segments because a ramp in eight steps over fifteen
-     * pixels is visibly a ramp in eight steps. It is fifteen quads a side, which is nothing, and
-     * the alternative is a gradient texture that would have to be authored per bar length.</p>
+     * <p>Per column rather than in segments because a ramp in a few steps over thirty pixels is
+     * visibly a ramp in a few steps. It is a couple of dozen quads a side, and the alternative
+     * is a gradient texture that would have to be authored for every possible length.</p>
      *
-     * <p>The fade is measured from <em>this side's</em> bracket outward in both cases. Measuring
-     * it from the centre instead would mirror the left bar's ramp on the right one, and the two
-     * halves would meet brightest in the middle, which is the opposite of what the fade is
-     * for.</p>
-     *
-     * <p>Two passes in one loop: the whole length at socket alpha so the reach is readable even
-     * mid cooldown, then the filled prefix at full alpha. The fill grows from the bracket inward,
-     * which puts the moving edge next to the thing that grows and away from the crosshair.</p>
+     * <p>Two passes over the same loop: the socket for the whole length, then the fill over the
+     * filled prefix. The fill starts at the crosshair and grows toward the bracket, and the
+     * fade is brightest at the bracket end, so the moving edge is always the visible one.</p>
      *
      * @param side -1 for the left bar, 1 for the right
      */
-    private static void drawBar(GuiGraphics graphics, int centreX, int centreY, int distance,
+    private static void drawBar(GuiGraphics graphics, int centreX, int centreY, int halfSpan,
                                 int length, float ratio, int rgb, int side) {
         if (length <= 0) {
             return;
         }
         int filled = Math.round(length * ratio);
         int y = centreY - BAR_THICKNESS / 2;
+        // The pixel column the bar starts at, next to the crosshair. Going outward from here
+        // means moving in the direction of this side's bracket, which is +x on the right and -x
+        // on the left. Getting this sign backwards draws the whole bar outside the bracket,
+        // which is invisible and which this exact layer shipped once.
+        int originX = centreX + side * (HudAnchor.crosshairReach() + 1);
 
         for (int i = 0; i < length; i++) {
-            // i is the distance from this side's bracket. Bracket is 0, crosshair end is length-1.
+            // i is the distance from the crosshair. 0 at the crosshair, length-1 at the bracket.
             float t = length <= 1 ? 0.0F : (float) i / (length - 1);
-            int alpha = Math.round(ALPHA_AT_BRACKET
-                    + (ALPHA_AT_CROSSHAIR - ALPHA_AT_BRACKET) * t);
-            if (i >= filled) {
-                alpha = Math.min(alpha, ALPHA_SOCKET);
-            }
-            int bracketX = side < 0
-                    ? centreX - distance + LEFT_ANCHOR + 1
-                    : centreX + distance - RIGHT_ANCHOR - 1;
-            int x = bracketX + side * i;
-            graphics.fill(x, y, x + 1, y + BAR_THICKNESS, (alpha << 24) | rgb);
+            int socket = ALPHA_SOCKET;
+            int fill = Math.round(ALPHA_NEAR_CROSSHAIR
+                    + (ALPHA_NEAR_BRACKET - ALPHA_NEAR_CROSSHAIR) * t);
+            int alpha = i < filled ? fill : socket;
+            graphics.fill(originX + side * i, y, originX + side * i + 1, y + BAR_THICKNESS,
+                    (alpha << 24) | rgb);
         }
     }
 
     /**
-     * The brackets, cropped and placed at the reach-scaled distance.
+     * The brackets, cropped and placed at the cone-width-scaled span.
      *
      * <p>They never scale with the crosshair. The crosshair growing on a hit is feedback about
      * one swing; the brackets growing with the same number would make a landed hit look like
      * the weapon changed.</p>
      */
     private static void drawBrackets(GuiGraphics graphics, int centreX, int centreY,
-                                     int distance, int rgb) {
+                                     int halfSpan, int rgb) {
         graphics.setColor(((rgb >> 16) & 0xFF) / 255.0F, ((rgb >> 8) & 0xFF) / 255.0F,
                 (rgb & 0xFF) / 255.0F, 1.0F);
 
         int y = centreY - TEX_HEIGHT / 2;
         graphics.blit(BRACKETS,
-                centreX - distance - LEFT_ANCHOR, y, LEFT_CROP_W, TEX_HEIGHT,
+                centreX - halfSpan - LEFT_ANCHOR, y, LEFT_CROP_W, TEX_HEIGHT,
                 (float) LEFT_CROP_X, 0.0F, LEFT_CROP_W, TEX_HEIGHT, TEX_WIDTH, TEX_HEIGHT);
         graphics.blit(BRACKETS,
-                centreX + distance - RIGHT_ANCHOR, y, RIGHT_CROP_W, TEX_HEIGHT,
+                centreX + halfSpan - RIGHT_ANCHOR, y, RIGHT_CROP_W, TEX_HEIGHT,
                 (float) RIGHT_CROP_X, 0.0F, RIGHT_CROP_W, TEX_HEIGHT, TEX_WIDTH, TEX_HEIGHT);
 
         graphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
-    }
-
-    /**
-     * How far the brackets sit from the centre for a given reach.
-     *
-     * <p>A reach, not a weapon. Anything between {@link #REACH_FLOOR} and {@link #REACH_CEILING}
-     * blocks gets a proportional distance, and anything outside is clamped, so a modded weapon
-     * with a longer profile is drawn as "further out" rather than as "wrong".</p>
-     */
-    static int distanceFor(float reachDistance) {
-        float t = clamp01((reachDistance - REACH_FLOOR) / (REACH_CEILING - REACH_FLOOR));
-        // The bar between the brackets carries most of the reading; the brackets spread a little
-        // too, so the overall width of the indicator also grows with the weapon. Six pixels of
-        // spread, which is enough to see and small enough that the brackets never crowd the
-        // crosshair's own grown silhouette.
-        return BRACKET_DISTANCE + Math.round(t * REACH_SPREAD);
     }
 }

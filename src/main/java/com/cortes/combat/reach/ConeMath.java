@@ -8,19 +8,20 @@ package com.cortes.combat.reach;
  * no entities, no game bootstrap. If you add a {@code Vec3} parameter here the unit tests
  * stop working, so keep the adapter in {@link Reach} instead.</p>
  *
- * <p>The two limits are measured in different frames, on purpose:
- * <ul>
- *   <li><b>Horizontal</b> is measured in the attacker's horizontal frame: the angle off the
- *       ground projection of the look direction. Something directly behind is 180 degrees and
- *       fails without needing a special case.</li>
- *   <li><b>Vertical</b> is the difference between the target's world elevation and the look's
- *       world elevation. This stays well defined at the poles, which is the whole point: when
- *       the player looks straight up, both elevations are 90 and a target straight up is dead
- *       ahead rather than 90 degrees off.</li>
- * </ul>
- * Checking them separately is the point of the whole class: a tight vertical limit is what
- * stops a swing from connecting with something at the attacker's feet or something sailing
- * overhead.</p>
+ * <p><b>The frame follows the gaze.</b> The look vector is the cone's forward axis, and the
+ * other two axes are built perpendicular to it. That is the whole reason a bat directly
+ * overhead is hittable while looking up, and a zombie at your feet is hittable while looking
+ * down: the cone is bolted to the camera, not to the ground.
+ *
+ * <p>An earlier version built the frame on the world up vector, which made the horizontal
+ * spread a ground-level fan that stayed a ground-level fan no matter where the player looked.
+ * The two limits are still checked separately, and separately is the point: a tight vertical
+ * limit is what stops a swing connecting with something at the attacker's feet or something
+ * sailing overhead, <em>relative to where the player is actually aiming</em>.</p>
+ *
+ * <p>Looking straight up is the degenerate case and it is handled rather than ignored: the
+ * "right" axis falls back to north, so the frame stays finite and the cone keeps pointing the
+ * way it was instead of spinning to an arbitrary orientation.</p>
  */
 public final class ConeMath {
 
@@ -63,40 +64,51 @@ public final class ConeMath {
         double ly = lookY / lookLen;
         double lz = lookZ / lookLen;
 
-        // Horizontal forward, with the vertical part removed.
-        double fwdLen = Math.sqrt(lx * lx + lz * lz);
-        double fx;
-        double fz;
-        if (fwdLen < EPSILON) {
-            // Looking straight up or down: the horizontal axis is undefined. Fall back to an
-            // arbitrary one so the math stays finite. The vertical limit still does the work.
-            fx = 1.0;
-            fz = 0.0;
+        // --- The frame, built around the look direction so the cone follows the gaze ---
+        //
+        // The frame is orthonormal and anchored to the look vector: forward is where the player
+        // is looking, right is perpendicular to it in the horizontal-ish plane, and up completes
+        // the basis. Building it on the world up instead (the obvious shortcut) makes the cone
+        // a fan that stays bolted to the ground no matter where you look, which is why hitting
+        // a bat directly overhead or a zombie at your feet used to mean fighting the camera.
+        //
+        // Degenerate case: looking straight up or down, "right" from a cross product with world
+        // up is undefined. Any unit vector perpendicular to the look works there, and the one
+        // picked below is the compass direction the player is most likely facing, so the cone
+        // keeps pointing where it was instead of spinning.
+        double rx;
+        double ry;
+        double rz;
+        double horizLen = Math.sqrt(lx * lx + lz * lz);
+        if (horizLen < EPSILON) {
+            // Vertical gaze. North as right.
+            rx = 1.0;
+            ry = 0.0;
+            rz = 0.0;
         } else {
-            fx = lx / fwdLen;
-            fz = lz / fwdLen;
+            // right = normalize(worldUp x forward), the horizontal perpendicular.
+            rx = -lz / horizLen;
+            ry = 0.0;
+            rz = lx / horizLen;
         }
 
-        // right = forward x worldUp, i.e. perpendicular to forward in the horizontal plane.
-        double rx = -fz;
-        double rz = fx;
+        // up = right x forward. Completes a right-handed orthonormal basis, so the three
+        // components below are exact and no re-normalisation is needed.
+        double ux = ry * lz - rz * ly;
+        double uy = rz * lx - rx * lz;
+        double uz = rx * ly - ry * lx;
 
-        // Decompose the target vector in the horizontal (forward / right) frame.
-        double along = dx * fx + dz * fz;
-        double lateral = dx * rx + dz * rz;
+        double along = dx * lx + dy * ly + dz * lz;
+        double lateral = dx * rx + dy * ry + dz * rz;
+        double vertical = dx * ux + dy * uy + dz * uz;
 
         // Atan2 of the absolute lateral offset: a target behind the attacker yields an angle
         // above 90 degrees, so it fails any sane limit without a special case.
         double horizontal = Math.toDegrees(Math.atan2(Math.abs(lateral), along));
-
-        // The vertical limit is the target's world elevation minus the look's world elevation.
-        // Measuring it as an offset from the gaze line (rather than from the upLocal axis) is
-        // what keeps it well defined when the player looks straight up: at the pole both
-        // elevations are 90 and the offset is 0, i.e. dead ahead. Deriving the angle from
-        // upLocal instead degenerates there and rejects a target the player is staring at.
-        double targetElevation = Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
-        double lookElevation = Math.toDegrees(Math.atan2(ly, Math.sqrt(lx * lx + lz * lz)));
-        double verticalOffset = Math.abs(targetElevation - lookElevation);
+        // The vertical limit is measured in the same plane as the horizontal one, against the
+        // gaze line. This is what makes the cone reorient: look up and the vertical axis comes
+        // with you, instead of staying vertical in the world and rejecting whatever is above.
+        double verticalOffset = Math.toDegrees(Math.atan2(Math.abs(vertical), along));
 
         return horizontal <= horizontalAngle && verticalOffset <= verticalAngle;
     }

@@ -1,5 +1,6 @@
 package com.cortes.combat.mixin;
 
+import com.cortes.combat.client.ClientCombatState;
 import com.cortes.combat.client.ConeTargeting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -41,6 +42,20 @@ public abstract class MinecraftAttackMixin {
             return;
         }
         if (player.isSpectator() || player.isUsingItem()) {
+            return;
+        }
+        // The hard cooldown, refused here rather than on the server.
+        //
+        // Letting the click through and having the server reject it was worse than useless: the
+        // arm swung, the cooldown bar stayed empty, and nothing happened. A swing that visibly
+        // happens and does nothing reads as the game dropping input, and the player's response
+        // is to click harder. Refusing means the click does not visibly do anything either, and
+        // the one thing that <em>does</em> move is the bracket bar filling up.
+        //
+        // This is a prediction, not the rule. The server still checks in handleAttack, and a
+        // client that lied about being ready would gain nothing except a rejected packet.
+        if (ClientCombatState.cooldownRatio() < 1.0F) {
+            cir.setReturnValue(false);
             return;
         }
 

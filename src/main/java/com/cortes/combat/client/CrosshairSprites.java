@@ -73,8 +73,12 @@ public final class CrosshairSprites {
         ResourceLocation texture = forState(ClientCombatState.aiming());
 
         int size = Math.max(1, Math.round(SIZE * growth));
-        int x = centreX - size / 2 + shakeX;
-        int y = centreY - size / 2 + shakeY;
+        // Anchored, not just centred: the sprite is an odd number of pixels, so dividing the
+        // grown size by two shifts it by half a pixel as it scales. Growing from the resting
+        // position instead keeps the centre pixel on the canonical point at every size, which is
+        // what makes the crosshair and the brackets stay aligned through a hit.
+        int x = centreX - HudAnchor.crosshairHalf() + shakeX;
+        int y = centreY - HudAnchor.crosshairHalf() + shakeY;
 
         RenderSystem.enableBlend();
         graphics.setColor(((rgb >> 16) & 0xFF) / 255.0F, ((rgb >> 8) & 0xFF) / 255.0F,
