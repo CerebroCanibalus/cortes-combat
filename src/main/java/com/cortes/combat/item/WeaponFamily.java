@@ -38,7 +38,7 @@ public enum WeaponFamily {
      * a second thing to manage, and the design says no.</p>
      */
     ROPERA("ropera", "Ropera", WeaponProfile.ROPERA, WeaponShape.ROPERA,
-            4.0F, 2.0F, SpecialType.NONE),
+            4.0F, 2.0F),
 
     /**
      * The halberd: the longest reach and the widest cone of the four that are not the sabre.
@@ -47,18 +47,25 @@ public enum WeaponFamily {
      * purpose -- four material pieces and three sticks for the weapon that covers a crowd.</p>
      */
     ALABARDA("alabarda", "Alabarda", WeaponProfile.HALBERD, WeaponShape.ALABARDA,
-            4.0F, 1.1F, SpecialType.MULTI_HIT),
+            4.0F, 1.1F),
 
     /**
-     * The warhammer: the slowest thing in the game and the lowest base damage, and the only weapon
-     * that escalates.
+     * The warhammer: still the second slowest thing in the game and the lowest base damage, and
+     * the only weapon that escalates.
      *
-     * <p>Slow on purpose. The escalation pays out over a four second window of consecutive hits,
-     * and a weapon fast enough to leave that window is a weapon that never escalates. Its ceiling
-     * is the highest in the set and its floor is the lowest, which is the whole trade.</p>
+     * <p>0.9 was twenty two ticks between swings, and the playtest called the weapon unusable
+     * rather than heavy, which is a distinction worth keeping: "slow" is a cost the player chose,
+     * "unusable" is one they work around. At 1.05 it is nineteen, still slower than the halberd's
+     * eighteen and still the heaviest thing that moves.</p>
+     *
+     * <p>But it cannot go further, and the escalation is the reason. The streak pays out over a
+     * four second window of consecutive hits, and a weapon that swings much faster than that is
+     * a weapon whose ceiling it never actually reaches -- the speed would spend the window the
+     * escalation was saving up for. This is the one number in the catalogue that is bounded by
+     * another system rather than by feel.</p>
      */
     MARTILLO("martillo", "Martillo de Guerra", WeaponProfile.WARHAMMER, WeaponShape.MARTILLO,
-            3.0F, 0.9F, SpecialType.NONE),
+            3.0F, 1.05F),
 
     /**
      * The dagger: the fastest thing in the game and the widest cone on a short weapon.
@@ -67,7 +74,7 @@ public enum WeaponFamily {
      * made from a tree on the first day.</p>
      */
     DAGA("daga", "Daga", WeaponProfile.DAGGER, WeaponShape.DAGA,
-            2.0F, 2.6F, SpecialType.NONE),
+            2.0F, 2.6F),
 
     /**
      * The shotel: the widest cone in the game, the shortest reach that is not the warhammer's,
@@ -77,7 +84,7 @@ public enum WeaponFamily {
      * window is the shortest in the set: a bigger number needs less time to be a decision.</p>
      */
     SHOTEL("shotel", "Shotel", WeaponProfile.SABRE, WeaponShape.SHOTEL,
-            3.0F, 2.0F, SpecialType.PARRY);
+            3.0F, 2.0F);
 
     /**
      * Every player starts with this much ATTACK_SPEED, and a weapon's attribute is an offset from
@@ -98,19 +105,17 @@ public enum WeaponFamily {
     private final WeaponShape shape;
     private final float attackDamage;
     private final float attackSpeed;
-    private final SpecialType special;
 
     private final Set<WeaponMaterial> materials;
 
     WeaponFamily(String id, String displayName, WeaponProfile profile, WeaponShape shape,
-                 float attackDamage, float attackSpeed, SpecialType special) {
+                 float attackDamage, float attackSpeed) {
         this.id = id;
         this.displayName = displayName;
         this.profile = profile;
         this.shape = shape;
         this.attackDamage = attackDamage;
         this.attackSpeed = attackSpeed;
-        this.special = special;
         this.materials = materialsFor(profile);
     }
 
@@ -232,12 +237,25 @@ public enum WeaponFamily {
         return attackSpeed;
     }
 
+    /**
+     * What this family answers the right button with.
+     *
+     * <p><b>Delegated to {@link WeaponTables}, and that is the point of the method.</b> It used to
+     * be a field on the family, one of two copies: the game read a table in {@code WeaponStats}
+     * keyed by profile, and this field was the copy nobody read. The ropera's right button was
+     * silently dead for the entire life of both, because the copy the game reads had no row for
+     * it and a {@code putIfAbsent} loop filled the gap with {@code NONE}.</p>
+     *
+     * <p>So the family no longer stores a special. It asks the one table, by its profile, which
+     * is what the game asks. A test that reads {@code ROPERA.special()} now reads the live value
+     * instead of a field agreeing with itself.</p>
+     */
     public SpecialType special() {
-        return special;
+        return WeaponTables.special(profile);
     }
 
     public boolean hasSpecial() {
-        return special.isPresent();
+        return special().isPresent();
     }
 
     /** Which materials this family exists in. Uneven, and that is the design. */

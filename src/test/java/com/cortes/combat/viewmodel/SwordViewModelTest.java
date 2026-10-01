@@ -56,8 +56,8 @@ class SwordViewModelTest {
         assertFalse(fist.isEmpty(), "the playtest asked for a charge animation on the fist");
         assertTrue(fist.ownsSwing(), "a charged fist owns its strike, like any charged weapon");
 
-        Offset fistBack = fist.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1));
-        Offset swordBack = sword.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1));
+        Offset fistBack = fist.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1));
+        Offset swordBack = sword.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1));
         assertTrue(fistBack.y() > 0.0, "the fist lifts too");
         assertTrue(fistBack.y() < swordBack.y(),
                 "but less than a sword: it lifted to " + fistBack.y()
@@ -98,18 +98,51 @@ class SwordViewModelTest {
      * one is missing: "5 profiles" passes with the ropera absent and the daga listed twice.</p>
      */
     @Test
-    @DisplayName("all five new families have a viewmodel, and all five rest at the vanilla pose")
+    @DisplayName("all five new families have a viewmodel, and four of them rest at the vanilla pose")
     void everyNewFamilyHasAViewModel() {
         for (WeaponProfile profile : List.of(WeaponProfile.ROPERA, WeaponProfile.DAGGER,
                 WeaponProfile.SABRE, WeaponProfile.HALBERD, WeaponProfile.WARHAMMER)) {
             ViewModelProfile viewModel = ViewModelDefaults.of(profile);
             assertFalse(viewModel.isEmpty(), profile + " should have a viewmodel");
-            // The invariant every profile stands on, and the reason one missing from the table is
-            // a correct outcome rather than a gap: at rest it must contribute exactly nothing.
-            assertTrue(viewModel.evaluate(ViewModelInput.RESTING).isZero(),
-                    profile + " moves the item while the player stands still");
-            assertTrue(viewModel.idleFor(ViewModelInput.RESTING),
-                    profile + " is not idle at rest");
+
+            // Four of the five contribute exactly nothing at rest, and that is the reason one
+            // missing from the table is a correct outcome rather than a gap.
+            //
+            // The ropera is the exception and it is not one: its art is drawn with the blade
+            // pointing up, so the vanilla grip is a lowered guard and every thrust had to spend
+            // ninety degrees to become level, which the playtest called a dash. It is held level
+            // at rest instead, which is a constant on the profile rather than a channel -- a
+            // channel resting at one would have needed a special case in every track that reads
+            // it. So "rests at the vanilla pose" is now a claim about four weapons, not five, and
+            // saying so here is what stops somebody reading this and "fixing" the ropera.
+            if (profile == WeaponProfile.ROPERA) {
+                assertFalse(viewModel.evaluate(ViewModelInput.RESTING).isZero(),
+                        "the ropera is held level at rest, so it is NOT at the vanilla pose. If "
+                                + "this fails, something changed its resting pose and the thrust's "
+                                + "rotation has to be re-derived with it");
+                assertFalse(viewModel.idleFor(ViewModelInput.RESTING),
+                        "a resting pose is a pose: skipping it puts the weapon back in the "
+                                + "vanilla grip, which is the subtly-wrong viewmodel case");
+            } else {
+                assertTrue(viewModel.evaluate(ViewModelInput.RESTING).isZero(),
+                        profile + " moves the item while the player stands still");
+                assertTrue(viewModel.idleFor(ViewModelInput.RESTING),
+                        profile + " is not idle at rest");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("and the vanilla weapons are untouched by the resting pose")
+    void vanillaWeaponsStillRestAtVanilla() {
+        // The ropera's resting pose is a field on ITS profile. A weapon that did not ask for one
+        // has to get none, or the exception above would quietly become the rule.
+        for (WeaponProfile profile : List.of(WeaponProfile.SWORD, WeaponProfile.UNARMED,
+                WeaponProfile.AXE, WeaponProfile.PICKAXE, WeaponProfile.SHOVEL,
+                WeaponProfile.MACE, WeaponProfile.TRIDENT, WeaponProfile.NONE)) {
+            assertTrue(ViewModelDefaults.of(profile).evaluate(ViewModelInput.RESTING).isZero(),
+                    profile + " moved at rest, and only the ropera is supposed to be held "
+                            + "differently");
         }
     }
 
@@ -123,7 +156,7 @@ class SwordViewModelTest {
     @Test
     @DisplayName("a full charge draws the item back and lifts it")
     void fullChargeDrawsBack() {
-        ViewModelInput charged = new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1);
+        ViewModelInput charged = new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1);
         Offset offset = sword.evaluate(charged);
         // The lift stays because the playtest confirmed it: "el arma sÃ­ se levanta perfecto". The
         // draw-back is negative Z because the profile is now applied in the item's own frame, at
@@ -139,7 +172,7 @@ class SwordViewModelTest {
     @Test
     @DisplayName("the wind-up leans as well as lifts, but modestly")
     void fullChargeLeans() {
-        Offset offset = sword.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1));
+        Offset offset = sword.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1));
         // The pitch sign is the one number in this profile that has to be read off a screen
         // rather than off a constant, so the test pins its magnitude and leaves its direction
         // to the next playtest. What it does enforce is that the lean stays small enough that
@@ -163,7 +196,7 @@ class SwordViewModelTest {
         // so zero is not the resting value; and a bound tied to a number in a profile is a test
         // that fails on every retune. The thing that must hold is that the two weapons read as
         // different motions, and that one is a fraction of the other.
-        ViewModelInput charged = new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1);
+        ViewModelInput charged = new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1);
         double swordSway = Math.abs(sword.evaluate(charged).yaw());
         double fistSway = Math.abs(
                 ViewModelDefaults.of(WeaponProfile.UNARMED).evaluate(charged).yaw());
@@ -180,7 +213,7 @@ class SwordViewModelTest {
     void cutArcsTheBlade() {
         // Rotation led, because a translation moves a rigid item as one block and a bigger one is
         // a bigger shove. See CutIsARotationTest for the whole account of three rounds of this.
-        ViewModelInput striking = new ViewModelInput(0.0F, 1.0F, 0.0F, 1.0F, 0.0F, 0.0F, false, 0.0F, 1);
+        ViewModelInput striking = new ViewModelInput(0.0F, 1.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1);
         Offset offset = sword.evaluate(striking);
         assertTrue(Math.abs(offset.pitch()) > 60.0,
                 "the blade should travel most of vanilla's 80 degree arc, was pitch=" + offset.pitch());
@@ -206,12 +239,12 @@ class SwordViewModelTest {
         // violates it by dropping the whole wind-up at once.
         float worst = 0.0F;
         for (int tick = 0; tick <= CHARGE_TICKS; tick++) {
-            motion.tick(true, Math.min(1.0F, (tick + 1) / (float) (CHARGE_TICKS + 1)), Math.min(1.0F, (tick + 1) / (float) (CHARGE_TICKS + 1)), false, 1.0F);
+            motion.tick(true, Math.min(1.0F, (tick + 1) / (float) (CHARGE_TICKS + 1)), Math.min(1.0F, (tick + 1) / (float) (CHARGE_TICKS + 1)), false, 1.0F, false, false);
         }
         motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
         float previous = motion.windup();
         for (int tick = 0; tick < ViewModelMotion.STRIKE_TICKS + 1; tick++) {
-            motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+            motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
             for (int sub = 0; sub < 4; sub++) {
                 float value = motion.snapshot(sub / 4.0F, 0.0F).windup();
                 worst = Math.max(worst, Math.abs(previous - value));
@@ -228,11 +261,11 @@ class SwordViewModelTest {
     @DisplayName("the swing ends back at the vanilla pose")
     void theSwingEndsAtRest() {
         for (int i = 0; i < CHARGE_TICKS + 1; i++) {
-            motion.tick(true, Math.min(1.0F, (i + 1) / (float) (CHARGE_TICKS + 1)), Math.min(1.0F, (i + 1) / (float) (CHARGE_TICKS + 1)), false, 1.0F);
+            motion.tick(true, Math.min(1.0F, (i + 1) / (float) (CHARGE_TICKS + 1)), Math.min(1.0F, (i + 1) / (float) (CHARGE_TICKS + 1)), false, 1.0F, false, false);
         }
         motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
         for (int i = 0; i < ViewModelMotion.STRIKE_TICKS + 2; i++) {
-            motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+            motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         }
         assertTrue(sword.evaluate(motion.snapshot(0.0F, 0.0F)).isZero(),
                 "after the follow-through the item must be exactly where vanilla put it");
@@ -244,10 +277,10 @@ class SwordViewModelTest {
         // The design ask was "it hits hard". A strike that eases in reads as a slow camera move,
         // so most of the travel has to happen in the first couple of frames of the release.
         for (int i = 0; i < CHARGE_TICKS + 1; i++) {
-            motion.tick(true, Math.min(1.0F, (i + 1) / (float) (CHARGE_TICKS + 1)), Math.min(1.0F, (i + 1) / (float) (CHARGE_TICKS + 1)), false, 1.0F);
+            motion.tick(true, Math.min(1.0F, (i + 1) / (float) (CHARGE_TICKS + 1)), Math.min(1.0F, (i + 1) / (float) (CHARGE_TICKS + 1)), false, 1.0F, false, false);
         }
         motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
-        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         double atStart = depth(sword.evaluate(motion.snapshot(0.0F, 0.0F)));
         double afterTwo = depth(sword.evaluate(motion.snapshot(0.5F, 0.0F)));
         assertTrue(afterTwo > atStart * 2.0,
@@ -258,7 +291,7 @@ class SwordViewModelTest {
     @Test
     @DisplayName("the tremble is not there at rest and is unmistakable at full charge")
     void theTrembleIsAChargeTremble() {
-        ViewModelInput atRest = new ViewModelInput(0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1);
+        ViewModelInput atRest = new ViewModelInput(0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1);
         assertTrue(sword.evaluate(atRest).isZero(), "a sheathed sword does not shake");
 
         // Sweep a second of shaking at render rate and measure how far the pitch wanders. The
@@ -268,7 +301,7 @@ class SwordViewModelTest {
         float max = -Float.MAX_VALUE;
         for (int frame = 0; frame < 60; frame++) {
             Offset offset = sword.evaluate(
-                    new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, frame * RENDER_STEP, 3));
+                    new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, frame * RENDER_STEP, 3));
             min = Math.min(min, (float) offset.pitch());
             max = Math.max(max, (float) offset.pitch());
         }

@@ -190,7 +190,8 @@ public final class GuardHandler {
         }
 
         GuardState state = player.getData(ModAttachments.GUARD_STAMINA.get());
-        if (!state.isActive() || !blocks(event.getDamageSource(), player, guard.profile())) {
+        float blocked = blockedFraction(event.getDamageSource(), player, guard.profile());
+        if (!state.isActive() || blocked <= 0.0F) {
             return;
         }
 
@@ -198,10 +199,13 @@ public final class GuardHandler {
         player.setData(ModAttachments.GUARD_STAMINA.get(), after);
 
         event.setBlocked(true);
-        // Deliberately NOT setBlockedDamage(0). Zero is the full incoming damage in the
-        // container's eyes, and writing it there is what made the first version block nothing.
-        // No durability cost either: the shield is not an item that wears out from doing the
-        // job it exists for.
+        // The fraction, not a flag. The event starts with `dmgBlocked` at the FULL incoming
+        // damage, which is why the first version's `setBlockedDamage(0)` blocked nothing -- zero
+        // means "stop nothing", not "stop all of it". An explosion writes half of the original,
+        // and the other half is what keeps a creeper worth walking away from.
+        event.setBlockedDamage(event.getOriginalBlockedDamage() * (1.0F - blocked));
+        // No durability cost: the shield is not an item that wears out from doing the job it
+        // exists for.
         event.setShieldDamage(0.0F);
 
         // A block is the one event that gets no crosshair growth. The player did not throw
@@ -267,36 +271,73 @@ public final class GuardHandler {
         }
     }
 
+    /** An explosion takes half its damage through the guard, and still costs a point of stamina. */
+    public static final float EXPLOSION_BLOCKED = 0.5F;
+
+    private static final float FULL_BLOCK = 1.0F;
+
     /**
-     * Whether this particular damage source is blockable at all, and from the front.
+     * How much of a hit this guard stops: {@code 0} nothing, {@code 0.5} half, {@code 1} all.
      *
-     * <p>Explanations and falls are refused on purpose, and for the design's own reason: a
+     * <p>A fraction and not a boolean because the answer is genuinely two-valued, and the second
+     * value is the one the design changed. "An explosion is not something you can face" made the
+     * guard worthless against the one thing a player cannot choose to be standing next to, and
+     * half is what makes positioning still matter: the guard eats the bigger half and the
+     * player eats the rest, and the point of stamina it costs is the same as any other block.</p>
+     *
+     * <p>Falls, fire, drowning and starvation stay at nothing, and for the design's own reason: a
      * guard is a decision about a fight, and environmental damage is not a fight.</p>
      */
-    private static boolean blocks(DamageSource source, Player player, GuardProfile profile) {
-        // The design's one exception. An explosion is not something you can face.
-        if (source.is(DamageTypeTags.IS_EXPLOSION)) {
-            return false;
+    private static float blockedFraction(DamageSource source, Player player, GuardProfile profile) {
+        boolean explosion = source.is(DamageTypeTags.IS_EXPLOSION);
+        float fraction = explosion ? EXPLOSION_BLOCKED : FULL_BLOCK;
+
+        // Whatever vanilla already considers unshieldable stays that way. The explosion is exempt
+        // because vanilla puts several damage types in both tags and we want the blast judged on
+        // our rule, not skipped by one of them.
+        if (source.is(DamageTypeTags.BYPASSES_SHIELD) && !explosion) {
+            return 0.0F;
         }
-        // Whatever vanilla already considers unshieldable stays that way.
-        if (source.is(DamageTypeTags.BYPASSES_SHIELD)) {
-            return false;
-        }
+
         Entity origin = source.getEntity();
-        if (origin == null || origin == player) {
-            // Fall damage, fire, drowning, starvation: the "source" is the victim, or nobody.
-            return false;
+        if (origin == player) {
+            // The "source" is the victim. Nobody threw this.
+            return 0.0F;
         }
+        if (origin == null && !explosion) {
+            // Fall damage, fire, drowning, starvation. No attacker, and judging the arc on the
+            // victim's own position would read as "straight ahead" and block all of it.
+            return 0.0F;
+        }
+
+        // **Where the threat came from, which is not the same question for a projectile.**
+        //
+        // A projectile's `getSourcePosition()` is the projectile's own centre at the moment of
+        // impact, which is *inside the player it hit*. The arc rule gets a zero length vector,
+        // and it accepts those on purpose, so a shot in the back read exactly like a shot in the
+        // face. The shooter is the direction that means something, and judging the arc on the
+        // shooter is what makes a shield worth holding up against arrows at all.
+        if (source.getDirectEntity() instanceof net.minecraft.world.entity.projectile.Projectile
+                && origin != null) {
+            return inFront(player, origin.position(), profile) ? fraction : 0.0F;
+        }
+
+        // An explosion is judged on where the blast is, because nothing threw it and the blast is
+        // the only thing that has a direction at all.
         Vec3 position = source.getSourcePosition();
         if (position == null) {
-            return false;
+            return 0.0F;
         }
+        return inFront(player, position, profile) ? fraction : 0.0F;
+    }
+
+    private static boolean inFront(Player player, Vec3 from, GuardProfile profile) {
         Vec3 look = player.getLookAngle();
         Vec3 self = player.position();
         return GuardRules.isFromFront(
                 self.x, self.y, self.z,
                 look.x, look.y, look.z,
-                position.x, position.y, position.z,
+                from.x, from.y, from.z,
                 profile.safeArc());
     }
 }

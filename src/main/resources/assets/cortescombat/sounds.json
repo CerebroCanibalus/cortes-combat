@@ -1,11 +1,9 @@
 {
   "charge_generic": {
-    "replace": true,
     "sounds": [ { "name": "cortescombat:weapons/charge_generic" } ]
   },
 
   "sword_hit": {
-    "replace": true,
     "sounds": [
       { "name": "cortescombat:weapons/sword_hit", "weight": 1 },
       { "name": "cortescombat:weapons/sword_hit2", "weight": 1 },
@@ -13,38 +11,34 @@
     ]
   },
   "sword_miss": {
-    "replace": true,
     "sounds": [
       { "name": "cortescombat:weapons/sword_miss1", "weight": 1 },
       { "name": "cortescombat:weapons/sword_miss2", "weight": 1 },
       { "name": "cortescombat:weapons/sword_miss3", "weight": 1 }
     ]
   },
-  "sword_charge_hit": { "replace": true, "sounds": [ { "name": "cortescombat:weapons/sword_charge_hit" } ] },
-  "sword_guardia_rota": { "replace": true, "sounds": [ { "name": "cortescombat:weapons/sword_guardia_rota" } ] },
+  "sword_charge_hit": { "sounds": [ { "name": "cortescombat:weapons/sword_charge_hit" } ] },
+  "sword_guardia_rota": { "sounds": [ { "name": "cortescombat:weapons/sword_guardia_rota" } ] },
 
   "axe_hit": {
-    "replace": true,
     "sounds": [
       { "name": "cortescombat:weapons/axe_hit", "weight": 1 },
       { "name": "cortescombat:weapons/axe_hit2", "weight": 1 }
     ]
   },
-  "axe_miss": { "replace": true, "sounds": [ { "name": "cortescombat:weapons/axe_miss" } ] },
-  "axe_charge_hit": { "replace": true, "sounds": [ { "name": "cortescombat:weapons/axe_charge_hit" } ] },
+  "axe_miss": { "sounds": [ { "name": "cortescombat:weapons/axe_miss" } ] },
+  "axe_charge_hit": { "sounds": [ { "name": "cortescombat:weapons/axe_charge_hit" } ] },
 
   "daga_hit": {
-    "replace": true,
     "sounds": [
       { "name": "cortescombat:weapons/daga_hit1", "weight": 1 },
       { "name": "cortescombat:weapons/daga_hit2", "weight": 1 },
       { "name": "cortescombat:weapons/daga_hit3", "weight": 1 }
     ]
   },
-  "daga_miss": { "replace": true, "sounds": [ { "name": "cortescombat:weapons/daga_miss" } ] },
+  "daga_miss": { "sounds": [ { "name": "cortescombat:weapons/daga_miss" } ] },
 
   "ropera_hit": {
-    "replace": true,
     "sounds": [
       { "name": "cortescombat:weapons/ropera_hit", "weight": 1 },
       { "name": "cortescombat:weapons/ropera_hit2", "weight": 1 },
@@ -52,7 +46,6 @@
     ]
   },
   "ropera_miss": {
-    "replace": true,
     "sounds": [
       { "name": "cortescombat:weapons/ropera_miss", "weight": 1 },
       { "name": "cortescombat:weapons/ropera_miss2", "weight": 1 }
@@ -60,19 +53,17 @@
   },
 
   "alabarda_hit": {
-    "replace": true,
     "sounds": [
       { "name": "cortescombat:weapons/alabarda_hit1", "weight": 1 },
       { "name": "cortescombat:weapons/alabarda_hit2", "weight": 1 },
       { "name": "cortescombat:weapons/alabarda_hit3", "weight": 1 }
     ]
   },
-  "alabarda_miss": { "replace": true, "sounds": [ { "name": "cortescombat:weapons/alabarda_miss" } ] },
-  "alabarda_charged_hit": { "replace": true, "sounds": [ { "name": "cortescombat:weapons/alabarda_charged_hit" } ] },
-  "alabarda_wide_swing": { "replace": true, "sounds": [ { "name": "cortescombat:weapons/alabarda_wide_swing" } ] },
+  "alabarda_miss": { "sounds": [ { "name": "cortescombat:weapons/alabarda_miss" } ] },
+  "alabarda_charged_hit": { "sounds": [ { "name": "cortescombat:weapons/alabarda_charged_hit" } ] },
+  "alabarda_wide_swing": { "sounds": [ { "name": "cortescombat:weapons/alabarda_wide_swing" } ] },
 
   "martillo_hit": {
-    "replace": true,
     "sounds": [
       { "name": "cortescombat:weapons/martillo_hit", "weight": 1 },
       { "name": "cortescombat:weapons/martillo_hit2", "weight": 1 },
@@ -80,13 +71,12 @@
     ]
   },
   "martillo_miss": {
-    "replace": true,
     "sounds": [
       { "name": "cortescombat:weapons/martillo_miss", "weight": 1 },
       { "name": "cortescombat:weapons/martillo_miss2", "weight": 1 }
     ]
   },
-  "martillo_charged_hit": { "replace": true, "sounds": [ { "name": "cortescombat:weapons/martillo_charged_hit" } ] },
+  "martillo_charged_hit": { "sounds": [ { "name": "cortescombat:weapons/martillo_charged_hit" } ] },
 
-  "shotel_parry": { "replace": true, "sounds": [ { "name": "cortescombat:weapons/shotel_parry" } ] }
+  "shotel_parry": { "sounds": [ { "name": "cortescombat:weapons/shotel_parry" } ] }
 }

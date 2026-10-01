@@ -31,3 +31,16 @@ refs/
 # User working material - sources for assets, not game resources
 art-reference/
 sound-src/
+
+# The ffmpeg build used to re-encode the sound banks. Six hundred megabytes of a
+# redistributable nobody needs in order to rebuild the mod; the script that uses it is
+# the one file worth keeping and it is two directories down.
+tools/ffmpeg/
+
+# The arcabuz was an experiment that never became a weapon. The files stay on disk in
+# case the idea comes back, but they are not part of the mod and they were sitting in
+# the resources tree where the jar would have shipped them.
+src/main/resources/assets/cortescombat/models/item/arcabuz.json
+src/main/resources/assets/cortescombat/textures/models/arcabuz.png
+src/main/resources/assets/cortescombat/textures/models/arcabuz.png.mcmeta
+src/main/resources/assets/cortescombat/textures/particle/arcabuz_shot.png

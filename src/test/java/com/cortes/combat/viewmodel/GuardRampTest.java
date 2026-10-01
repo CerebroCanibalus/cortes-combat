@@ -26,7 +26,7 @@ class GuardRampTest {
     private static ViewModelMotion held(boolean guarding, int ticks) {
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < ticks; i++) {
-            motion.tick(false, 0.0F, 0.0F, guarding, READY);
+            motion.tick(false, 0.0F, 0.0F, guarding, READY, false, false);
         }
         return motion;
     }
@@ -58,7 +58,7 @@ class GuardRampTest {
     @DisplayName("the stance comes up over several ticks and does not jump")
     void raisingIsARampNotAFlag() {
         ViewModelMotion motion = new ViewModelMotion();
-        motion.tick(false, 0.0F, 0.0F, true, READY);
+        motion.tick(false, 0.0F, 0.0F, true, READY, false, false);
         // The press frame is a discontinuity and deliberately does not interpolate: there is no
         // ramp to draw across it, and smearing one there would leave the weapon a third of a
         // stance behind on the exact frame the player pressed.
@@ -66,7 +66,7 @@ class GuardRampTest {
                 "the press frame is a step, not a ramp");
 
         // The tick after it is a ramp, and that is where a twenty-hertz value would show.
-        motion.tick(false, 0.0F, 0.0F, true, READY);
+        motion.tick(false, 0.0F, 0.0F, true, READY, false, false);
         Set<Float> oneTick = new HashSet<>();
         for (int sub = 0; sub < 4; sub++) {
             oneTick.add(motion.snapshot(sub / 4.0F, 0.0F).guard());
@@ -126,9 +126,9 @@ class GuardRampTest {
         // because the fall takes six.
         ViewModelMotion dropping = new ViewModelMotion();
         for (int i = 0; i < ViewModelMotion.GUARD_RISE_TICKS; i++) {
-            dropping.tick(false, 0.0F, 0.0F, true, READY);
+            dropping.tick(false, 0.0F, 0.0F, true, READY, false, false);
         }
-        dropping.tick(false, 0.0F, 0.0F, false, READY);
+        dropping.tick(false, 0.0F, 0.0F, false, READY, false, false);
         float afterOneTickOfFalling = now(dropping);
         float ifSymmetric = now(held(true, 1));
         assertTrue(afterOneTickOfFalling > ifSymmetric,
@@ -145,12 +145,12 @@ class GuardRampTest {
         // literal because the constant is now two: a hardcoded four would sail past the top of
         // the ramp and the assertion below would be about nothing.
         for (int i = 0; i < ViewModelMotion.GUARD_RISE_TICKS - 1; i++) {
-            motion.tick(false, 0.0F, 0.0F, true, READY);
+            motion.tick(false, 0.0F, 0.0F, true, READY, false, false);
         }
         float partWayUp = now(motion);
         assertTrue(partWayUp > 0.0F && partWayUp < 1.0F, "sanity: the stance is still on its way up");
 
-        motion.tick(false, 0.0F, 0.0F, false, READY);
+        motion.tick(false, 0.0F, 0.0F, false, READY, false, false);
         float onRelease = now(motion);
 
         assertTrue(onRelease > partWayUp - 1.0F / ViewModelMotion.GUARD_RISE_TICKS,
@@ -164,7 +164,7 @@ class GuardRampTest {
     void itFinishes() {
         ViewModelMotion motion = held(true, ViewModelMotion.GUARD_RISE_TICKS);
         for (int i = 0; i < ViewModelMotion.GUARD_FALL_TICKS; i++) {
-            motion.tick(false, 0.0F, 0.0F, false, READY);
+            motion.tick(false, 0.0F, 0.0F, false, READY, false, false);
         }
         assertEquals(0.0F, now(motion), 0.0F,
                 "the channel rests at zero, so the stance has to come all the way back");
@@ -185,7 +185,7 @@ class GuardRampTest {
         // need to be told about it -- it has its own HUD element and its own sound.
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < ViewModelMotion.GUARD_RISE_TICKS; i++) {
-            motion.tick(false, 0.0F, 0.0F, true, READY);
+            motion.tick(false, 0.0F, 0.0F, true, READY, false, false);
         }
         assertTrue(now(motion) > 0.9F, "sanity: the stance is up before it breaks");
 
@@ -193,7 +193,7 @@ class GuardRampTest {
         float peak = 0.0F;
         for (int tick = 0; tick <= ViewModelMotion.BREAK_TICKS; tick++) {
             // The item is staggered the whole time. The collapse must not care.
-            motion.tick(false, 0.0F, 0.0F, false, 0.5F);
+            motion.tick(false, 0.0F, 0.0F, false, 0.5F, false, false);
             peak = Math.max(peak, motion.guardBreak());
         }
 
@@ -227,7 +227,7 @@ class GuardRampTest {
         for (int tick = 1; tick <= 100; tick++) {
             float remaining = 1.0F - tick / 100.0F;
             motion.observeStagger(remaining);
-            motion.tick(false, 0.0F, 0.0F, false, remaining);
+            motion.tick(false, 0.0F, 0.0F, false, remaining, false, false);
 
             if (motion.guardBreak() > 0.0F) {
                 live++;
@@ -261,7 +261,7 @@ class GuardRampTest {
             }
             previous = remaining;
             motion.observeStagger(remaining);
-            motion.tick(false, 0.0F, 0.0F, tick < 150, remaining);
+            motion.tick(false, 0.0F, 0.0F, tick < 150, remaining, false, false);
         }
         assertEquals(2, collapses,
                 "the edge is a transition, so a guard that came back and broke again is two "
@@ -281,7 +281,7 @@ class GuardRampTest {
         boolean everLive = false;
         for (int tick = 0; tick < 60; tick++) {
             boolean wasLive = motion.guardBreak() > 0.0F;
-            motion.tick(false, 0.0F, 0.0F, false, 0.5F);
+            motion.tick(false, 0.0F, 0.0F, false, 0.5F, false, false);
             boolean nowLive = motion.guardBreak() > 0.0F;
             // The first time it goes live is the punch itself, not a restart. Counting that one
             // would make this test fail on a correct implementation, which is the other way a
@@ -312,16 +312,16 @@ class GuardRampTest {
         // readable off the method name, which is exactly why they were got wrong.
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < ViewModelMotion.GUARD_RISE_TICKS; i++) {
-            motion.tick(false, 0.0F, 0.0F, true, 0.0F);
+            motion.tick(false, 0.0F, 0.0F, true, 0.0F, false, false);
         }
         assertTrue(now(motion) > 0.9F,
                 "no cooldown at all is a ready item, so the stance has to be able to come up");
 
         ViewModelMotion staggered = new ViewModelMotion();
         for (int i = 0; i < ViewModelMotion.GUARD_RISE_TICKS; i++) {
-            staggered.tick(false, 0.0F, 0.0F, true, 0.0F);
+            staggered.tick(false, 0.0F, 0.0F, true, 0.0F, false, false);
         }
-        staggered.tick(false, 0.0F, 0.0F, true, 0.5F);
+        staggered.tick(false, 0.0F, 0.0F, true, 0.5F, false, false);
         assertEquals(0.0F, now(staggered), 0.0F,
                 "and a running cooldown drops the stance on the same tick, because a knock that "
                         + "takes a third of a second to land is not a knock");
@@ -332,10 +332,10 @@ class GuardRampTest {
     void theCollapseReplacesTheStance() {
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < ViewModelMotion.GUARD_RISE_TICKS; i++) {
-            motion.tick(false, 0.0F, 0.0F, true, READY);
+            motion.tick(false, 0.0F, 0.0F, true, READY, false, false);
         }
         motion.onGuardBreak();
-        motion.tick(false, 0.0F, 0.0F, false, 0.5F);
+        motion.tick(false, 0.0F, 0.0F, false, 0.5F, false, false);
 
         Offset duringBreak = ViewModelDefaults.of(WeaponProfile.SWORD)
                 .evaluate(motion.snapshot(1.0F, 0.0F));
@@ -351,10 +351,10 @@ class GuardRampTest {
     void theBreakDoesNotTouchTheSwing() {
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, 1.0F, 1.0F, false, READY);
+            motion.tick(true, 1.0F, 1.0F, false, READY, false, false);
         }
         motion.onStrike(1.0F, 12);
-        motion.tick(false, 0.0F, 0.0F, false, READY);
+        motion.tick(false, 0.0F, 0.0F, false, READY, false, false);
 
         assertTrue(motion.snapshot(1.0F, 0.0F).strike() > 0.0F,
                 "a swing plays on its own clock and a guard break is not part of it");

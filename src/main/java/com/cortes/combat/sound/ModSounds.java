@@ -35,8 +35,19 @@ public final class ModSounds {
         CHARGE,
         /** The guard broke. */
         GUARD_BROKEN,
+        LUNGE,
+
         /** A right button special went off. */
         SPECIAL,
+        /**
+         * The sabre's parry connected.
+         *
+         * <p>Its own kind and not a reuse of {@link #SPECIAL}, even though both are right button
+         * specials, because they are the two halves of the same press at different moments: one
+         * is the blade going out and the other is the blade having done something. Reusing one
+         * would have meant the parry sounding like a halberd sweep.</p>
+         */
+        PARRY,
         /** The charge went all the way up. Not used yet: no sound is bound to it. */
         CHARGE_FULL
     }
@@ -47,6 +58,9 @@ public final class ModSounds {
 
     /** The pitch the shotel adds to everything it borrows from the sword. */
     public static final float SHOTEL_PITCH = 1.2F;
+
+    /** The lunge plays far outside the range everything else does. */
+    public static final float LUNGE_PITCH = 2.0F;
 
     /**
      * How much lower the vanilla charged hit is played for a weapon with no art of its own.
@@ -116,6 +130,8 @@ public final class ModSounds {
             case CHARGE -> CHARGE;
             case GUARD_BROKEN -> "cortescombat:sword_guardia_rota";
             case SPECIAL -> "cortescombat:alabarda_wide_swing";
+            case LUNGE -> "cortescombat:alabarda_wide_swing";
+            case PARRY -> "cortescombat:shotel_parry";
             case CHARGE_FULL -> CHARGE;
         };
     }
@@ -133,6 +149,9 @@ public final class ModSounds {
         if (resolved == WeaponProfile.SABRE
                 && (kind == Kind.HIT || kind == Kind.MISS || kind == Kind.CHARGED_HIT)) {
             return SHOTEL_PITCH;
+        }
+        if (kind == Kind.LUNGE) {
+            return LUNGE_PITCH;
         }
         if (kind == Kind.CHARGED_HIT
                 && !CHARGED_HIT.containsKey(resolved)) {

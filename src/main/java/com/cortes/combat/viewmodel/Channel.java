@@ -106,7 +106,34 @@ public enum Channel {
      * outlast-not the stagger it is animating. It rests at zero when there is no break, like every
      * channel here, so a weapon with no break track contributes nothing at rest.</p>
      */
-    BREAK;
+    BREAK,
+
+    /**
+     * How far the parry has come up, 0..1.
+     *
+     * <p>Its own channel rather than a second reader of {@link #GUARD}, and the reason is that the
+     * two are not the same motion. The guard is a stance: it goes up because the player is holding
+     * something up and it comes down when they let go. The parry is a commitment: the blade goes
+     * out on its own, the player is slowed to a crawl while it is there, and it comes back when
+     * the half second is over whether or not anything hit it. Sharing a channel would have meant
+     * the sabre's blade rising at guard speed and sitting there like a shield.</p>
+     *
+     * <p>The sabre is the only weapon that reads it, and the only one that can.</p>
+     */
+    PARRY,
+
+    /**
+     * How far the ropera's lunge has gone, 0..1.
+     *
+     * <p>Its own channel and not a bigger strike, because the two are not the same motion wearing
+     * different numbers. The strike is the wrist; the lunge is the body going forward, and it
+     * finishes with the point <em>above</em> where the strike finishes level. Reusing
+     * {@link #STRIKE} would have meant one number deciding both how far the blade goes and where
+     * it points, and those two are exactly what makes a lunge read as a lunge.</p>
+     *
+     * <p>The ropera is the only weapon that reads it, and the only one that can.</p>
+     */
+    LUNGE;
 
     public static final Codec<Channel> CODEC = Codec.STRING.xmap(Channel::valueOf, Enum::name);
 
@@ -120,6 +147,8 @@ public enum Channel {
             case HOLD -> in.holding() ? 1.0F : 0.0F;
             case GUARD -> in.guard();
             case BREAK -> in.guardBreak();
+            case PARRY -> in.parry();
+            case LUNGE -> in.lunge();
         };
     }
 }

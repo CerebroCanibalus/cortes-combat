@@ -81,12 +81,12 @@ class ChargeIsReadBeforeTheResetTest {
     private static double deepestPitch(int heldTicks) {
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, 1.0F, 1.0F, false, 1.0F);
+            motion.tick(true, 1.0F, 1.0F, false, 1.0F, false, false);
         }
         motion.onStrike(classify(heldTicks), ViewModelMotion.STRIKE_TICKS);
         double deepest = 0.0;
         for (int tick = 0; tick <= motion.strikeTicks(); tick++) {
-            motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+            motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
             for (int sub = 0; sub < 4; sub++) {
                 deepest = Math.min(deepest, ViewModelDefaults.of(WeaponProfile.SWORD)
                         .evaluate(motion.snapshot(sub / 4.0F, 0.0F)).pitch());

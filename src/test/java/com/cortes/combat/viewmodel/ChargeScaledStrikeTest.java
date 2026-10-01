@@ -30,12 +30,12 @@ class ChargeScaledStrikeTest {
     private static float peakStrikeFor(float released) {
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, Math.min(1.0F, (i + 1) / 25.0F), Math.min(1.0F, (i + 1) / 25.0F), false, 1.0F);
+            motion.tick(true, Math.min(1.0F, (i + 1) / 25.0F), Math.min(1.0F, (i + 1) / 25.0F), false, 1.0F, false, false);
         }
         motion.onStrike(released, ViewModelMotion.STRIKE_TICKS);
         float peak = 0.0F;
         for (int tick = 0; tick <= ViewModelMotion.STRIKE_TICKS; tick++) {
-            motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+            motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
             for (int sub = 0; sub < 4; sub++) {
                 peak = Math.max(peak, motion.snapshot(sub / 4.0F, 0.0F).strike());
             }
@@ -87,12 +87,12 @@ class ChargeScaledStrikeTest {
     void pressResetsTheCharge() {
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, 1.0F, 1.0F, false, 1.0F);
+            motion.tick(true, 1.0F, 1.0F, false, 1.0F, false, false);
         }
         motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
-        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         // Tap straight away, without waiting for the follow-through to finish.
-        motion.tick(true, 0.0F, 0.0F, false, 1.0F);
+        motion.tick(true, 0.0F, 0.0F, false, 1.0F, false, false);
         assertEquals(0.0F, motion.released(), EXACT,
                 "a new press must zero the previous swing's charge");
     }
@@ -102,9 +102,9 @@ class ChargeScaledStrikeTest {
     void cancelClearsTheCharge() {
         ViewModelMotion motion = new ViewModelMotion();
         motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
-        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         motion.onCancel();
-        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         assertEquals(0.0F, motion.released(), 0.0F);
     }
 
@@ -129,14 +129,14 @@ class ChargeScaledStrikeTest {
         // it. A follow-through that has ended is the end of everything the charge was driving.
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, 1.0F, 1.0F, false, 1.0F);
+            motion.tick(true, 1.0F, 1.0F, false, 1.0F, false, false);
         }
         motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
-        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         assertTrue(motion.currentCharge() > 0.0F, "the charge should still be live mid-strike");
 
         for (int i = 0; i <= ViewModelMotion.STRIKE_TICKS; i++) {
-            motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+            motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         }
         assertEquals(0.0F, motion.currentCharge(), 0.0F,
                 "once the strike is over the charge must be zero, or the FOV never reopens");
@@ -148,8 +148,8 @@ class ChargeScaledStrikeTest {
     void pressClearsThePreviousCharge() {
         ViewModelMotion motion = new ViewModelMotion();
         motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
-        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
-        motion.tick(true, 0.0F, 0.0F, false, 1.0F);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
+        motion.tick(true, 0.0F, 0.0F, false, 1.0F, false, false);
         assertEquals(0.0F, motion.currentCharge(), EXACT);
     }
 }

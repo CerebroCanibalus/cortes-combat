@@ -36,8 +36,9 @@ class FamilyTempoTest {
                 "the ropera: ten ticks, a deliberate twenty ticks per second");
         assertEquals(8, WeaponFamily.DAGA.swingInterval(),
                 "the dagger is the fastest weapon in the game");
-        assertEquals(22, WeaponFamily.MARTILLO.swingInterval(),
-                "the warhammer is the slowest thing in the game");
+        assertEquals(19, WeaponFamily.MARTILLO.swingInterval(),
+                "the warhammer was 22 and the playtest called it unusable rather than heavy; "
+                        + "it is now the second slowest thing in the game, behind the halberd's 18");
         assertEquals(18, WeaponFamily.ALABARDA.swingInterval(),
                 "the halberd is slow and long");
         assertEquals(10, WeaponFamily.SHOTEL.swingInterval(),

@@ -25,10 +25,10 @@ class ChargeIsOneValueTest {
     private static ViewModelMotion releasedAt(float charge) {
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, 1.0F, 1.0F, false, 1.0F);
+            motion.tick(true, 1.0F, 1.0F, false, 1.0F, false, false);
         }
         motion.onStrike(charge, TICKS);
-        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         return motion;
     }
 
@@ -77,7 +77,7 @@ class ChargeIsOneValueTest {
         // both questions, and reading the raw one where the thresholded one belongs is exactly
         // the mistake worth pinning down.
         ViewModelMotion motion = new ViewModelMotion();
-        motion.tick(true, 0.08F, 0.0F, false, 1.0F);
+        motion.tick(true, 0.08F, 0.0F, false, 1.0F, false, false);
 
         assertTrue(motion.snapshot(0.0F, 0.0F).windup() > 0.0F,
                 "the wind-up has to move on a hold this short, or the press gets no feedback");
@@ -90,12 +90,12 @@ class ChargeIsOneValueTest {
     @DisplayName("the charge climbs only once the hold passes the threshold")
     void theChargeRampsAfterTheThresholdAndNotBefore() {
         ViewModelMotion below = new ViewModelMotion();
-        below.tick(true, 0.20F, 0.0F, false, 1.0F);
+        below.tick(true, 0.20F, 0.0F, false, 1.0F, false, false);
         assertEquals(0.0F, below.currentCharge(), 0.0F,
                 "below the threshold there is no charge at all");
 
         ViewModelMotion above = new ViewModelMotion();
-        above.tick(true, 0.40F, 0.5F, false, 1.0F);
+        above.tick(true, 0.40F, 0.5F, false, 1.0F, false, false);
         assertTrue(above.currentCharge() > 0.0F, "above it, there is");
     }
 
@@ -107,7 +107,7 @@ class ChargeIsOneValueTest {
         // "does not animate properly until the end of the charge and shakes strangely in between".
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 10; i++) {
-            motion.tick(true, (i + 1) / 24.0F, (i + 1) / 24.0F, false, 1.0F);
+            motion.tick(true, (i + 1) / 24.0F, (i + 1) / 24.0F, false, 1.0F, false, false);
         }
 
         Set<Float> withinOneTick = new HashSet<>();
@@ -130,12 +130,12 @@ class ChargeIsOneValueTest {
         // the direction is enough and no number is needed.
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, 1.0F, 1.0F, false, 1.0F);
+            motion.tick(true, 1.0F, 1.0F, false, 1.0F, false, false);
         }
         float endOfHold = motion.snapshot(0.99F, 0.0F).windup();
 
         motion.onStrike(1.0F, TICKS);
-        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         float startOfStrike = motion.snapshot(0.0F, 0.0F).windup();
 
         assertTrue(startOfStrike <= endOfHold + 1.0E-5F,
@@ -159,7 +159,7 @@ class ChargeIsOneValueTest {
         ViewModelMotion motion = releasedAt(1.0F);
         for (int tick = 0; tick <= motion.strikeTicks(); tick++) {
             assertFalse(motion.currentCharge() < 0.0F, "a charge is never negative");
-            motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+            motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         }
         assertEquals(0.0F, motion.currentCharge(), 0.0F,
                 "once the follow-through ends the charge is over with it, or the field of view "

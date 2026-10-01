@@ -206,32 +206,89 @@ public final class ViewModelDefaults {
      * The ropera: a thrust, not a swing.
      *
      * <p>Every other profile here is a cut, because a sword is a cut and the ropera is the one
-     * weapon in the set that is not. Its design is precision at a twelve degree cone, which means
-     * the motion that sells it is the smallest, straightest and fastest of the five: almost no
-     * travel, almost no arc, and a pull that brings the point back to the crosshair rather than
-     * sweeping across the screen.</p>
+     * weapon in the set that is not.</p>
      *
-     * <p>The yaw is near zero on purpose and it is the third time this number has moved in the
-     * same direction across the project. "Too much to the side" and "the blade faces the wrong
-     * way" are the same complaint about two different axes, and the sword already paid two
-     * playtests for having them confused.</p>
+     * <p><b>Which axis is which, read out of vanilla instead of guessed.</b> The first person
+     * item transform is {@code translate(0.51, -0.08, -0.75)}, so <b>−z is into the screen</b>.
+     * Vanilla's verified blocking pose is {@code translate(-0.4786 * side, -0.0944, +0.0573)},
+     * which moves almost half a unit sideways and a twentieth of one in depth, so <b>x is
+     * lateral</b>. The first version of this profile put the travel on x and the playtest said
+     * so in four words: "se hace de lado". A thrust drawn along the lateral axis is a cut, and no
+     * amount of making it big turns a cut into a thrust.</p>
+     *
+     * <p><b>And the resting blade points UP, which is the half of the motion that was missing.</b>
+     * The ropera's texture is drawn with the blade vertical, so pushing it away from the camera
+     * slides an <em>upward</em> pointing blade into the screen -- a poke at the ceiling. A thrust
+     * is <b>ninety degrees of rotation and then a push</b>, and the rotation is the bigger half:
+     * at the peak of the strike the pitch is <b>−90</b> and the point is level with the crosshair.
+     *
+     * <p>That also explains why the number is not a small one. A rotation pivots on the grip and
+     * a rapier's point is a unit and a half from it, so ninety degrees throws the tip much further
+     * than the distance between the hand and the eye -- and that is not a problem here, because
+     * <em>forward</em> is where the tip is supposed to end up. The warning about big pitches is
+     * about a sword whose tip should stay in the frame; a rapier's tip is meant to leave it.</p>
+     *
+     * <p>The lunge is the same thrust with the pitch stopped short of level. At <b>−70</b> the
+     * point finishes above the crosshair, which is what a real lunge is: the body goes forward and
+     * up at the same time. It is also deeper, because the step already committed the player.</p>
+     *
+     * <p>Yaw stays at zero and it is the third time this number has moved in the same direction
+     * across the project. "Too much to the side" and "the blade faces the wrong way" are the same
+     * complaint about two different axes, and the sword already paid two playtests for having
+     * them confused.</p>
      *
      * <p>No tremble at all, and this is a judgement rather than an omission. A rapier held like
-     * this is aimed, and a shaking point would read as the crosshair being unsteady -- which is
-     * the one thing a twelve degree cone cannot afford to look like.</p>
+     * this is aimed, and a shaking point would read as the crosshair being unsteady.</p>
+     *
+     * <p><b>These numbers are written, not played.</b> The axes are derived from the frame and the
+     * ninety is derived from the art; how hard the push reads on screen is a playtest question.</p>
      */
     private static ViewModelProfile ropera() {
-        return ViewModelProfile.owningSwing(
-                // Drawn back along the line of the aim, no sway.
+        return ViewModelProfile.heldAs(
+                // **The rest pose is the fix, and it is a field rather than a channel.** The art
+                // is drawn with the blade vertical, so the vanilla grip is a lowered guard and
+                // every thrust had to spend ninety degrees to become level -- which the playtest
+                // called "casi como un dash". Fifty-eight degrees holds the line just above
+                // horizontal, which is where a rapier lives, and it takes the strike's rotation
+                // from ninety degrees down to about thirty. That is the whole difference between
+                // a thrust and a movement the arm makes.
+                new Offset(0.0, 0.0, 0.0, -58.0, 0.0, 0.0),
+                true,
+                // Cocked: the point tips up off the line, toward the player. Positive, because up
+                // is less negative in this frame, and it is a wrist and not an arm.
                 Track.of(Channel.WINDUP, Curve.LINEAR,
-                        new Offset(-0.01, 0.06, -0.10, 4.0, 0.0, 0.0)),
-                // The thrust: straight forward, almost no rotation. A rotation here would sweep the
-                // point across the screen and that is the one thing a precision weapon must not do.
-                Track.of(Channel.STRIKE, Curve.LINEAR,
-                        new Offset(0.0, -0.01, -0.16, -18.0, 1.0, -1.0)),
-                // Back to the hand, and no further than the wind-up took it.
+                        new Offset(0.0, 0.03, 0.13, 16.0, 0.0, 0.0)),
+                // The thrust. Sixty degrees and most of a unit into the screen, and EXPO rather
+                // than LINEAR so the blade LEAVES instead of easing out: the playtest called the
+                // thrust "not enough intensity", and a movement that reaches its furthest point
+                // gradually is a swing, because a swing is a movement that takes its time.
+                //
+                // It also rotates past level rather than onto it. The rest is 58 degrees up off
+                // horizontal and the strike adds sixty, so the point ends up eight degrees BELOW
+                // the line -- the blade has gone over the top of its arc and is driving down into
+                // the target, which is where a thrust actually ends. Landing exactly on level
+                // would be a stab that stopped when it arrived.
+                Track.of(Channel.STRIKE, Curve.EXPO,
+                        new Offset(0.0, -0.06, -0.62, -60.0, 0.0, 0.0)),
+                // Back onto the line and well past it, which is what a wrist does after a thrust.
+                // A motion that stops exactly where it started is a machine returning to a
+                // position, and the overshoot is what has to sell the whole thing as a lunge
+                // rather than a poke.
                 Track.of(Channel.RECOVER, Curve.SMOOTH,
-                        new Offset(0.01, -0.10, 0.07, 16.0, -1.0, 1.0)));
+                        new Offset(0.0, 0.02, 0.21, 14.0, 0.0, 0.0)),
+                // The lunge, on its own channel because it finishes at a different angle: the step
+                // is already paid for, so the blade goes further and it goes UP off the line.
+                // EXPO spends most of its range in the first third, which is what makes an
+                // extension read as explosive rather than as a longer version of the same push.
+                Track.of(Channel.LUNGE, Curve.EXPO,
+                        // Further than the thrust and finishing ABOVE it. The thrust now drives the
+                        // point eight degrees below level, because that is where a stab ends; the
+                        // lunge stops short of that by eighteen, so the body is going forward and
+                        // up at the same time and the blade leads it. Deeper than the thrust too,
+                        // by an eighth of a unit -- small, and deliberately so: the step is what
+                        // carries the lunge, and a blade that shoots out a metre further than the
+                        // thrust reads as a different weapon rather than as the same one committed.
+                        new Offset(0.0, -0.09, -0.72, -26.0, 0.0, 4.0)));
     }
 
     /**
@@ -286,8 +343,34 @@ public final class ViewModelDefaults {
                 // Comes back the way it went, from the other side.
                 Track.of(Channel.RECOVER, Curve.SMOOTH,
                         new Offset(-0.05, -0.30, 0.10, 86.0, -22.0, 9.0)),
-                Track.of(Channel.GUARD, Curve.SMOOTH,
-                        new Offset(-0.30, -0.02, 0.02, -12.0, 58.0, -8.0)));
+                // The parry: the blade comes up ACROSS the body, edge out, and the yaw is large
+                // because that is the read. A parry is not a guard pose and it must not look like
+                // one: the sabre cannot block, so the motion that says "I am not protecting
+                // myself, I am waiting for your hit" has to be a different shape from the one that
+                // says "I am protecting myself". The big yaw is the whole difference -- turned to
+                // the side, the flat of the blade faces the attacker, which is what a parry is.
+                //
+                // This replaced a GUARD track that was here and never ran: the sabre's guard
+                // profile is NONE, so the channel was pinned at zero for every frame of every
+                // session. A track on a channel nothing can move is a comment that costs a sum
+                // and reads like a feature.
+                Track.of(Channel.PARRY, Curve.SMOOTH,
+                        new Offset(-0.26, 0.06, -0.14, -22.0, 104.0, -18.0)),
+                // The parry lockout, on the guard's own collapse channel and with the guard's own
+                // numbers. The player has already seen this motion mean "not right now": it is
+                // what a shield does when something knocks it down, and this is the same blade
+                // saying the same thing for a different reason.
+                //
+                // Copied rather than invented, and that is the point -- a second set of numbers
+                // for "you cannot do this yet" would be a second thing to learn, and a player
+                // holding a sabre and a shield should not have to work out that the two
+                // unavailable motions are the same unavailable motion.
+                //
+                // It rides the BREAK channel, whose bump is one hundred ticks long here instead of
+                // seven. The shape carries the reason and the length carries the time, so the
+                // weapon coming back is the recharge indicator and nothing had to be drawn.
+                Track.of(Channel.BREAK, Curve.SMOOTH,
+                        new Offset(0.05, -0.07, 0.06, 16.0, 7.0, 4.0)));
     }
 
     /**

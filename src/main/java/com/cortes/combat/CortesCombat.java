@@ -44,6 +44,7 @@ public class CortesCombat {
         modEventBus.addListener(ModNetworking::register);
         NeoForge.EVENT_BUS.register(CombatTicker.class);
         NeoForge.EVENT_BUS.register(GuardHandler.class);
+        NeoForge.EVENT_BUS.register(com.cortes.combat.special.ParryHandler.class);
         NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class,
                 event -> CortesCommand.register(event.getDispatcher()));
         LOGGER.info("Cortés Combat loading");

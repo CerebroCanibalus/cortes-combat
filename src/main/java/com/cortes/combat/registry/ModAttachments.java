@@ -5,6 +5,7 @@ import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
 import com.cortes.combat.state.GuardState;
 import com.cortes.combat.state.ParryState;
+import com.cortes.combat.state.LungeState;
 import com.cortes.combat.state.StreakState;
 import com.cortes.combat.state.SyncState;
 import net.neoforged.neoforge.attachment.AttachmentType;
@@ -70,6 +71,21 @@ public final class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<ParryState>> PARRY =
             ATTACHMENT_TYPES.register("parry", () -> AttachmentType.builder(() -> ParryState.READY)
                     .serialize(ParryState.CODEC)
+                    .build());
+
+    /**
+     * The ropera's lunge in progress: which way it was committed and how far into it the player is.
+     *
+     * <p>An attachment and not a static, because a static would be one lunge for the whole server:
+     * two players in a world would overwrite each other's direction, and it would survive death and
+     * world change. Both of those are the bug this class's siblings already had once.</p>
+     *
+     * <p>Deliberately not {@code copyOnDeath}. A lunge is a movement in progress and dying ends it;
+     * inheriting a lunge would be the same category of bug as the guard's held button surviving.</p>
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<LungeState>> LUNGE =
+            ATTACHMENT_TYPES.register("lunge", () -> AttachmentType.builder(() -> LungeState.IDLE)
+                    .serialize(LungeState.CODEC)
                     .build());
 
     /**

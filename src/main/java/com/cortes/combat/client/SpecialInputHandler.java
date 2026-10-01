@@ -59,5 +59,34 @@ public final class SpecialInputHandler {
         }
 
         PacketDistributor.sendToServer(new SpecialPayload(player.getMainHandItem()));
+
+        // The lunge's animation is predicted on the press, and the prediction is only ever wrong
+        // in a way that costs a packet.
+        //
+        // Unlike the parry -- where the server owns a five second lockout the client cannot see
+        // into -- the lunge's price is the ordinary attack cooldown, which the client already has
+        // synced. So it can be gated on the same number the server gates on, and if the two ever
+        // disagree the player sees a step that hit nothing rather than a hit with no step. The
+        // first one is recoverable and the second one is a lie about a swing the player took.
+        //
+        // The reason it is the client's own clock and not a packet: the step has to begin on the
+        // frame of the press or the blade is extended while the player is still standing where
+        // they were.
+        // `cooldownRatio` is READINESS, not progress: 1 means the next swing is allowed. Gating on
+        // "ready" as if it were zero is the mirror of the parameter-naming bug this project has
+        // paid for once, and it made the lunge predict itself only while the ropera was on
+        // cooldown -- which is exactly never, at the moment the player would use it.
+        if (stats.special() == SpecialType.LUNGE && ClientCombatState.cooldownRatio() >= 1.0F) {
+            ClientCombatState.startLunge();
+            // **The movement happens here, on the client.** The server cannot do it: a position it
+            // sets is overwritten by the movement report the client sends every tick, and a velocity
+            // it sets is simply ignored for a player. Teleporting around that worked but juddered,
+            // because ten to thirty discrete corrections are ten to thirty jerks. The client's own
+            // physics is smooth and it already knows where the player is.
+            int tier = player.getMainHandItem().getItem()
+                    instanceof com.cortes.combat.item.CortesWeaponItem weapon
+                    ? weapon.material().rank() : 0;
+            LungeMotion.begin(player, tier);
+        }
     }
 }

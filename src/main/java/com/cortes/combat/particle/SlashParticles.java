@@ -31,12 +31,73 @@ public final class SlashParticles {
      *
      * @param charged whether the swing was at full charge, which swaps in vanilla's crit
      */
-    public static void hit(ServerLevel level, WeaponProfile profile, Entity target, boolean charged) {
+    /**
+     * The gap between the two cuts of a doubled strike, in ticks.
+     *
+ * <p>Two, and that number is a decision rather than a default. One tick is under a fifth of a
+ * second and the two cuts overlap into one bright shape; three is far enough that the eye reads
+ * them as separate events but the pair no longer looks like a single committed strike. Two is the
+ * only value that says "twice" while still saying "now", which is the whole claim.</p>
+ *
+ * <p><b>A doubled strike is drawn as two slashes and not as one slash plus the crit burst.</b> The
+ * burst was the original answer for a charged hit and it is right for a single one -- a different
+ * shape, unmistakable. But it has no way to say "twice": there is no second crit. So a sabre that
+ * hits for double used to throw one burst and a doubled number, and the player reported being able
+ * to tell the damage was doubled and unable to see why. A slash already comes in a strip of five
+ * frames, and one of those sprites drawn a beat later is exactly a second cut -- no new art, and
+ * the pair reads as the weapon being fast rather than as an effect being loud.</p>
+ */
+public static final int DOUBLE_GAP_TICKS = SlashTiming.DOUBLE_GAP_TICKS;
+
+public static void hit(ServerLevel level, WeaponProfile profile, Entity target, boolean charged) {
         if (charged) {
             burst(level, target);
             return;
         }
         slash(level, profile, contactPoint(level, target));
+    }
+
+    /**
+     * The sabre's full charge: the same slash, twice, a beat apart.
+     *
+     * <p>Used instead of {@link #hit} for a weapon whose full charge is a <b>double</b> rather
+     * than merely a bigger one. The sabre is the only weapon in the set whose charge multiplies
+     * outright, and it is the only one where one visual event cannot say what happened.</p>
+     *
+     * <p>Both cuts are the weapon's own sprite rather than the crit. Two identical slashes with a
+     * gap is the shape of "twice"; a slash and a burst is the shape of "twice, differently", and
+     * the player has to already know the rule to read it.</p>
+     */
+    public static void doubledHit(ServerLevel level, WeaponProfile profile, Entity target) {
+        double[] point = contactPoint(level, target);
+        slash(level, profile, point);
+
+        // **The second cut goes to the side, not on top of the first.** Two of the same sprite at
+        // the same place are one shape drawn twice however far apart in time -- the eye reads the
+        // silhouette and the silhouette is identical. Half a block across puts the pair over the
+        // body of the thing that was cut, which is a difference the player sees even if they were
+        // looking somewhere else when the second one fired.
+        var eye = target.getEyePosition();
+        var look = new double[]{eye.x - point[0], eye.z - point[2]};
+        double[] offset = SlashTiming.secondCutOffset(look);
+
+        level.sendParticles(
+                new SlashParticleOptions(SlashSprite.of(profile)).delayed(DOUBLE_GAP_TICKS),
+                point[0] + offset[0], point[1], point[2] + offset[1],
+                1, 0.0, 0.0, 0.0, 0.0);
+    }
+
+    /**
+     * Whether this weapon's full charge is a second hit rather than a heavier one.
+     *
+     * <p>Ask the charge profile instead of the weapon's name: the number that doubles is a
+     * property of the charge, so the two things that have to agree -- the damage multiplier and
+     * the way the hit is drawn -- are read from the same place. A weapon whose bonus was retuned
+     * past 1.0 by a data pack would start drawing two cuts without anybody editing a line here.</p>
+     */
+    public static boolean chargesToDouble(WeaponProfile profile,
+                                        com.cortes.combat.core.weapon.ChargeProfile charge) {
+        return SlashTiming.chargesToDouble(profile, charge);
     }
 
     /**

@@ -68,11 +68,58 @@ public class SlashParticle extends TextureSheetParticle {
         this.hasPhysics = false;
         this.quadSize = QUAD_SIZE;
         this.setSize(QUAD_SIZE, QUAD_SIZE);
-        this.setLifetime(LIFETIME);
+        // The lifetime covers the delay, and the animation is measured against what is LEFT of it
+        // rather than against the whole. That is what makes a delayed slash play its five frames
+        // in full instead of starting halfway through and cutting out.
+        this.setLifetime(SlashTiming.totalTicks(options.delayTicks()));
         // Slows to a stop instead of drifting, so the arc stays where the swing connected.
         this.xd *= 0.1F;
         this.yd *= 0.1F;
         this.zd *= 0.1F;
+    }
+
+    /**
+ * Holds the sprite back for the delay, then lets the strip run.
+ *
+ * <p><b>The sprite is restored, and that is the whole bug this method had.</b> It used to set the
+ * sprite to {@code null} for the delay and nothing ever put it back: {@link #bindSprite} runs once,
+ * at spawn, before the first tick. So a delayed slash was invisible for the whole of its life, and
+ * the sabre's second cut was never drawn at all. The playtest could not hear or see it, and the log
+ * said both hits landed -- which is exactly the shape of a visual that is not being drawn rather
+ * than one that is being drawn too quietly.</p>
+ *
+     * <p>So the bound sprite is kept and handed back the moment the delay is over. Nulling it was
+ * never the right tool: it is the same null that a genuinely missing description produces, and the
+ * class already carries a warning for that case, which means a particle holding a null sprite is
+ * ambiguous between "not yet" and "never".</p>
+     *
+     * <p>The position is still integrated throughout, because the engine removes a particle when the
+     * age passes the lifetime whether or not it is drawing, and freezing it would leave the second
+     * cut hanging in the air next to where the first one landed.</p>
+     */
+    @Override
+    public void tick() {
+        super.tick();
+        if (this.age <= options.delayTicks()) {
+            if (this.sprite != null) {
+                this.held = this.sprite;
+                this.setSprite(null);
+            }
+        } else if (this.sprite == null && this.held != null) {
+            // The delay is over. Handing the strip back is all it takes; the animation is measured
+            // against the ticks that remain, so it starts at its first frame rather than wherever
+            // the elapsed time happens to land.
+            this.setSprite(this.held);
+            this.held = null;
+        }
+    }
+
+    /** The sprite while the delay hides it, so the delay does not destroy it. */
+    private net.minecraft.client.renderer.texture.TextureAtlasSprite held;
+
+    /** The animation's own length, which is the strip and not the wait in front of it. */
+    private int animationTicks() {
+        return SlashTiming.STRIP_TICKS;
     }
 
     @Override
@@ -146,11 +193,15 @@ public class SlashParticle extends TextureSheetParticle {
      * exceeded its life would otherwise index past the end.</p>
      */
     private float frameProgress() {
-        int lifetime = this.getLifetime();
-        if (lifetime <= 0) {
+        // Measured from the end of the delay, against the strip's own length. Using the particle's
+        // full lifetime here would make a delayed slash start its animation already a third of the
+        // way through, which is a slash that fades before it is fully drawn.
+        int elapsed = this.age - options.delayTicks();
+        int lifetime = animationTicks();
+        if (lifetime <= 0 || elapsed <= 0) {
             return 0.0F;
         }
-        return Math.min(1.0F, Math.max(0.0F, (float) this.age / (float) lifetime));
+        return Math.min(1.0F, (float) elapsed / (float) lifetime);
     }
 
     private int frame() {

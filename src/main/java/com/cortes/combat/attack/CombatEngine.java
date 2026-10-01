@@ -180,19 +180,74 @@ public final class CombatEngine {
         // to read, and only a living thing can be in the cone to be hit, so the cast is safe
         // here rather than a branch the caller had to remember.
         float healthBefore = target instanceof LivingEntity living ? living.getHealth() : 0.0F;
-        // Vanilla's invulnerability window is one full second, which was tuned for a weapon
-        // that swings twice a second. It would swallow the entire follow-up of any fast
-        // weapon and make half the swings feel broken. This system already has its own gate,
-        // the hard cooldown, so the window is cleared before the hit and re-armed to a short
-        // one after: long enough to reject a same-instant double hit, short enough that a
-        // legitimate next swing is never eaten.
-        target.invulnerableTime = 0;
-        boolean hurt = target.hurt(damageSource(player, result.ignoredArmour()), result.damage());
-        target.invulnerableTime = IFRAME_TICKS;
-        if (hurt) {
-            onHit(player, target, stats, result, chargeRatio);
-            spawnSlash(player, target, stats, chargeRatio);
+
+        // **How many hits this swing lands, asked once and used for both the damage and the
+        // picture.** One for every weapon in the game except the sabre at full charge, which lands
+        // two. It used to be one heavy hit instead, which is the same total damage and a different
+        // event: the playtest read the sabre as "pega doble", counted two charged swings to kill a
+        // zombie, and correctly asked why it was not giving both. Two hits are two chances to
+        // connect, two knockbacks, and two impacts that can be watched.
+        int hits = com.cortes.combat.particle.SlashTiming.hitsAt(stats.profile(), stats.charge(), chargeRatio);
+
+        boolean anyLanded = false;
+        int landed = 0;
+        for (int i = 0; i < hits; i++) {
+            // Vanilla's invulnerability window is one full second, which was tuned for a weapon
+            // that swings twice a second. It would swallow the entire follow-up of any fast
+            // weapon and make half the swings feel broken. This system already has its own gate,
+            // the hard cooldown, so the window is cleared before EACH hit rather than once before
+            // both: re-armed between them it would eat the second cut of the sabre's own charge,
+            // which is the one double hit in this game that is meant to land.
+            target.invulnerableTime = 0;
+            boolean hurt = target.hurt(damageSource(player, result.ignoredArmour()), result.damage());
+            target.invulnerableTime = IFRAME_TICKS;
+            if (hurt) {
+                landed++;
+                anyLanded = true;
+                // The knockback goes on the first cut only. Twice the push would throw a mob
+                // across the room, and a second cut that shoves is not a second cut.
+                if (i == 0) {
+                    onHit(player, target, stats, result, chargeRatio);
+                }
+                spawnSlash(player, target, stats, chargeRatio, i == 0);
+                // **The second cut's sound is DELAYED, and that is the fix.**
+                //
+                // It used to be sent from inside this loop, so both sounds played on the same tick
+                // about a millisecond apart and the ear heard one. The playtest reported the sound
+                // was missing; it was being played twice at once. A different pitch does not help
+                // with two sounds in the same millisecond, which is the whole reason the particle
+                // needed the same treatment.
+                //
+                // 1.21.1 has no way to schedule a sound on the server: no delayed task queue, and
+                // the sound packet carries no delay. So the delay travels to the client, which is
+                // the same trick the slash particle uses.
+                //
+                // A third of a tone up as well, because a sound late AND different is unmistakable
+                // where a sound late and identical is just the first one echoing.
+                if (i > 0 && anyLanded && player instanceof net.minecraft.server.level.ServerPlayer me) {
+                    com.cortes.combat.net.ModNetworking.sendDelayedSound(me,
+                            com.cortes.combat.sound.ModSounds.of(stats.profile(),
+                                    chargedKind(stats, chargeRatio)),
+                            ModSounds.pitch(stats.profile(), chargedKind(stats, chargeRatio)) * 1.35F,
+                            com.cortes.combat.particle.SlashTiming.DOUBLE_GAP_TICKS);
+                }
+            }
+        }
+        if (anyLanded) {
             notifyHit(player, target, healthBefore);
+        }
+        // One line per landed swing, and only when the count is not the ordinary one. The sabre's
+        // doubling has been reported broken twice while this file said it worked, and both times the
+        // disagreement was about a number that only exists here: how many hits ran, how charged the
+        // swing was, and how much each one did. The playtest's arithmetic is as good as mine and it
+        // can only be checked against the game's own.
+        if (hits > 1 || chargeRatio >= 1.0F) {
+            org.slf4j.LoggerFactory.getLogger("cortescombat").info(
+                    "[hit] " + stats.profile() + " cargo=" + chargeRatio
+                            + " golpes=" + hits + " aterrizaron=" + landed
+                            + " dano=" + result.damage()
+                            + " vida=" + healthBefore + " -> "
+                            + (target instanceof LivingEntity l ? l.getHealth() : 0.0F));
         }
     }
 
@@ -204,14 +259,39 @@ public final class CombatEngine {
      * crit instead, which is already a big animated slash: a charged hit is then told apart by
      * its shape rather than by the same one drawn louder.</p>
      */
+    /**
+     * Which sound a hit at this charge makes.
+     *
+     * <p>Asked once and used by both cuts of a doubled swing, so that the second cut can never be
+     * a different event from the first. A charged hit and an ordinary one are different sounds on
+     * purpose, and a doubled swing is both of those things at once.</p>
+     */
+    private static ModSounds.Kind chargedKind(WeaponStats stats, float chargeRatio) {
+        return chargeRatio > 0.0F ? ModSounds.Kind.CHARGED_HIT : ModSounds.Kind.HIT;
+    }
+
     private static void spawnSlash(Player player, Entity target, WeaponStats stats,
-                                   float chargeRatio) {
+                                   float chargeRatio, boolean firstCut) {
+        if (!firstCut) {
+            // The sabre's second cut is drawn by the first call, which sends both at once -- one
+            // now and one a beat later. Drawing it here instead would put three cuts on screen
+            // per swing, because the first call already draws two.
+            return;
+        }
         if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
             return;
         }
         boolean charged = chargeRatio > 0.0F;
-        com.cortes.combat.particle.SlashParticles.hit(
-                level, stats.profile(), target, charged);
+        // A charge that lands TWICE is drawn as two cuts a beat apart, and a charge that is merely
+        // bigger keeps the crit burst. Asked of the charge profile rather than decided here, so the
+        // number that says "twice" about the damage and the one that says it about the picture are
+        // the same number.
+        if (charged && com.cortes.combat.particle.SlashParticles.chargesToDouble(stats.profile(), stats.charge())) {
+            com.cortes.combat.particle.SlashParticles.doubledHit(level, stats.profile(), target);
+        } else {
+            com.cortes.combat.particle.SlashParticles.hit(
+                    level, stats.profile(), target, charged);
+        }
         // Same place, same branch: a charged hit is a different slash AND a different sound, and
         // the two must never disagree about which happened.
         com.cortes.combat.sound.CombatSounds.play(level, player, stats.profile(),

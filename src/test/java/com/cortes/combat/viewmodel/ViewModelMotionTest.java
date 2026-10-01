@@ -28,7 +28,7 @@ class ViewModelMotionTest {
 
     /** Drive the clock the way the client tick does. */
     private void tick(boolean holding, float charge) {
-        motion.tick(holding, charge, charge, false, 1.0F);
+        motion.tick(holding, charge, charge, false, 1.0F, false, false);
     }
 
     @Test

@@ -29,6 +29,25 @@ public final class CombatSounds {
     private static final java.util.Set<String> REPORTED = new java.util.HashSet<>();
 
     public static void play(ServerLevel level, Entity at, WeaponProfile profile, ModSounds.Kind kind) {
+        play(level, at, profile, kind, 1.0F);
+    }
+
+    /**
+     * The same sound, played at a multiple of its own pitch.
+     *
+     * <p>For a sequence where each one has to sound later than the last -- the ropera's lunge
+     * passing through a group, where a rising series says "this went through four things" in a way
+     * that four identical hits do not.</p>
+     *
+     * <p><b>A multiplier of the profile's pitch, not an absolute.</b> The shotel plays its borrowed
+     * recordings at 1.2, and a lunge that overrode that with an absolute number would play the
+     * shotel's hit at 1.0 and quietly un-sharpen it. Asked as "this much lower" instead, the
+     * weapon's own character survives the adjustment.</p>
+     *
+     * @param pitchScale a multiplier on the normal pitch, where 1.0 is unchanged and 0.8 is lower
+     */
+    public static void play(ServerLevel level, Entity at, WeaponProfile profile,
+                            ModSounds.Kind kind, float pitchScale) {
         String name = ModSounds.of(profile, kind);
         SoundEvent event = event(name);
 
@@ -46,7 +65,7 @@ public final class CombatSounds {
         if (event == null) {
             return;
         }
-        float pitch = ModSounds.pitch(profile, kind);
+        float pitch = ModSounds.pitch(profile, kind) * pitchScale;
         level.playSound(null, at.getX(), at.getY(), at.getZ(),
                 event, SoundSource.PLAYERS, 1.0F, pitch);
     }

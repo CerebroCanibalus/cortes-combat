@@ -189,21 +189,31 @@ class WeaponCatalogueTest {
     }
 
     @Test
-    @DisplayName("only two families have a right click, and neither of them is a damage number")
+    @DisplayName("only three families have a right click, and none of them is a damage number")
     void specialsEarnTheirPlace() {
         // The rule from DESIGN.md 4: a right click has to do something the left click cannot. A
         // special that is more damage should not exist.
+        //
+        // The ropera's lunge is the third, and the clearest case of the rule: it deals the
+        // weapon's ordinary flat damage, uncharged, exactly like the halberd's sweep. What it
+        // sells is two more blocks of reach, and it charges for them by putting the player
+        // somewhere they did not choose to be -- inside whatever was already waiting there. A
+        // number is not what that button is for, and a bigger number would have made the left
+        // click a strictly worse version of the right one.
         for (WeaponFamily family : WeaponFamily.values()) {
             SpecialType special = family.special();
             if (family.hasSpecial()) {
-                assertTrue(special == SpecialType.MULTI_HIT || special == SpecialType.PARRY,
+                assertTrue(special == SpecialType.MULTI_HIT
+                                || special == SpecialType.PARRY
+                                || special == SpecialType.LUNGE,
                         family.id() + " has " + special + ", and the only specials in the design "
-                                + "are the halberd's crowd hit and the sabre's parry");
+                                + "are the halberd's crowd hit, the sabre's parry and the ropera's "
+                                + "step");
             }
         }
         assertTrue(WeaponFamily.ALABARDA.special() == SpecialType.MULTI_HIT);
         assertTrue(WeaponFamily.SHOTEL.special() == SpecialType.PARRY);
-        assertFalse(WeaponFamily.ROPERA.hasSpecial(), "the ropera has no right click");
+        assertTrue(WeaponFamily.ROPERA.special() == SpecialType.LUNGE);
         assertFalse(WeaponFamily.MARTILLO.hasSpecial(), "the warhammer has no right click");
         assertFalse(WeaponFamily.DAGA.hasSpecial(), "the dagger has no right click");
     }

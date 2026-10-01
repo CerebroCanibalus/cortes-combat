@@ -34,12 +34,12 @@ class SwingWeightTest {
     private static float[] strikeTrace() {
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, Math.min(1.0F, (i + 1) / 25.0F), Math.min(1.0F, (i + 1) / 25.0F), false, 1.0F);
+            motion.tick(true, Math.min(1.0F, (i + 1) / 25.0F), Math.min(1.0F, (i + 1) / 25.0F), false, 1.0F, false, false);
         }
         motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
         float[] trace = new float[ViewModelMotion.STRIKE_TICKS + 1];
         for (int tick = 0; tick <= ViewModelMotion.STRIKE_TICKS; tick++) {
-            motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+            motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
             trace[tick] = motion.snapshot(0.0F, 0.0F).strike();
         }
         return trace;
@@ -88,14 +88,14 @@ class SwingWeightTest {
     void weightFollowsTheCut() {
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, Math.min(1.0F, (i + 1) / 25.0F), Math.min(1.0F, (i + 1) / 25.0F), false, 1.0F);
+            motion.tick(true, Math.min(1.0F, (i + 1) / 25.0F), Math.min(1.0F, (i + 1) / 25.0F), false, 1.0F, false, false);
         }
         motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
 
         // The recovery must contribute nothing while the cut is still travelling, or the two
         // average into a single shove. That shove was what three rounds called "no weight".
         assertEquals(0.0F, motion.snapshot(0.0F, 0.0F).recover(), 0.0F);
-        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         assertEquals(0.0F, motion.snapshot(0.0F, 0.0F).recover(), 0.0F,
                 "the weight must not start while the cut is still on its way out");
 
@@ -111,7 +111,7 @@ class SwingWeightTest {
             if (cutArrivedAt < 0 && frame.strike() > 0.9F) {
                 cutArrivedAt = tick;
             }
-            motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+            motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         }
         assertTrue(recoveryPeak > 0.7F,
                 "the weight should reach its peak, at " + recoveryPeak
@@ -127,10 +127,10 @@ class SwingWeightTest {
     void tapIsSilent() {
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, 1.0F, 1.0F, false, 1.0F);
+            motion.tick(true, 1.0F, 1.0F, false, 1.0F, false, false);
         }
         motion.onStrike(0.0F, ViewModelMotion.STRIKE_TICKS);
-        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         ViewModelInput frame = motion.snapshot(0.0F, 0.0F);
         assertEquals(0.0F, frame.strike(), 0.0F);
         assertEquals(0.0F, frame.recover(), 0.0F);

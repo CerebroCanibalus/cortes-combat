@@ -1,5 +1,6 @@
 package com.cortes.combat.client;
 
+import net.minecraft.client.Minecraft;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 
@@ -20,6 +21,12 @@ public final class ClientTasks {
         // one tick old and decays on schedule rather than sitting at full strength for an extra
         // frame.
         CombatAim.update();
+        // The sabre's second cut is heard eight ticks after the first, and 1.21.1 cannot schedule a
+        // sound, so the delay is held here.
+        DelayedSounds.tick();
+        // The lunge's movement. Client side, on the game's own physics -- the server cannot move a
+        // player, and teleporting around that juddered at every step distance.
+        LungeMotion.tick(Minecraft.getInstance().player);
         CrosshairFeedback.onTick(ClientCombatState.aiming());
         // Advances the local charge, which the meter and the viewmodel both read.
         //
@@ -27,6 +34,10 @@ public final class ClientTasks {
         // is the one that has to read `holding` before anything else does. The guard's flag has no
         // such ordering constraint, so it is reconciled here instead of inside its own tick.
         GuardInputHandler.reconcileWithTheButton();
+        // Before the viewmodel reads it: the lockout bump is edge triggered, so it has to be
+        // counting down and not still holding the number the last packet gave it.
+        ClientCombatState.tickParry();
+        ClientCombatState.tickLunge();
         SwingInputHandler.tick();
         // Last, because it clears the verdict on the press: vanilla can run the attack path more
         // than once in a tick, and every one of those has to see the same verdict. Clearing it

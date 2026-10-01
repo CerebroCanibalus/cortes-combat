@@ -1,0 +1,196 @@
+package com.cortes.combat.sound;
+
+import com.cortes.combat.core.weapon.WeaponProfile;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+
+/**
+ * The pools in {@code sounds.json} have to agree with the files on disk, in both directions.
+ *
+ * <p>Neither failure is loud. A name with no file behind it is the one the game does complain
+ * about -- thirty lines of "does not exist, cannot add it to event", easy to filter out by eye --
+ * and a file with no name in front of it is completely silent, which is the same thing the game
+ * says about a sound that is simply not there. So the check that matters is the second one and
+ * nothing in the game performs it.</p>
+ *
+ * <p>This is the sound twin of the particle test that reads the description JSON against the
+ * sprite list. Both exist because a list in one file and a folder in another can only be checked
+ * by a program.</p>
+ *
+ * <p><b>Parsed with a regex, not with a JSON library.</b> There is no JSON parser on the test
+ * classpath and adding one for a file this shape would be a dependency that exists to serve a
+ * test. The reader below is twelve lines and only understands the two things this file contains:
+ * an event key and a list of names.</p>
+ */
+class SoundPoolTest {
+
+    private static final Path SOUNDS_JSON =
+            Path.of("src/main/resources/assets/cortescombat/sounds.json");
+    private static final Path SOUND_DIR =
+            Path.of("src/main/resources/assets/cortescombat/sounds");
+
+    private static final Pattern EVENT = Pattern.compile("\"([a-z0-9_]+)\"\\s*:\\s*\\{");
+    private static final Pattern NAME = Pattern.compile("\"name\"\\s*:\\s*\"([^\"]+)\"");
+
+    /** The pools that are supposed to have more than one take, and therefore to sound varied. */
+    private static final Set<String> SHOULD_RANDOMISE = Set.of(
+            "sword_hit", "sword_miss",
+            "axe_hit",
+            "daga_hit",
+            "ropera_hit", "ropera_miss",
+            "alabarda_hit",
+            "martillo_hit", "martillo_miss");
+
+    /** Event key -> the bare file names it points at, in declaration order. */
+    private static Map<String, List<String>> pools() throws IOException {
+        String json = Files.readString(SOUNDS_JSON, StandardCharsets.UTF_8);
+        Map<String, List<String>> pools = new LinkedHashMap<>();
+
+        Matcher matcher = EVENT.matcher(json);
+        while (matcher.find()) {
+            int open = json.indexOf('{', matcher.start());
+            int depth = 0;
+            int close = open;
+            for (int i = open; i < json.length(); i++) {
+                if (json.charAt(i) == '{') {
+                    depth++;
+                } else if (json.charAt(i) == '}') {
+                    depth--;
+                    if (depth == 0) {
+                        close = i;
+                        break;
+                    }
+                }
+            }
+            String body = json.substring(open + 1, close);
+
+            List<String> files = new ArrayList<>();
+            Matcher names = NAME.matcher(body);
+            while (names.find()) {
+                String id = names.group(1);
+                int slash = id.lastIndexOf('/');
+                files.add(id.substring(slash + 1));
+            }
+            pools.put(matcher.group(1), files);
+        }
+        assertTrue(pools.size() > 10, "el parser no leio casi nada: " + pools.size() + " eventos");
+        return pools;
+    }
+
+    private static Set<String> filesOnDisk() throws IOException {
+        Set<String> names = new LinkedHashSet<>();
+        try (Stream<Path> walk = Files.walk(SOUND_DIR)) {
+            walk.filter(Files::isRegularFile)
+                    .map(p -> p.getFileName().toString())
+                    .filter(n -> n.endsWith(".ogg"))
+                    .forEach(n -> names.add(n.substring(0, n.length() - 4)));
+        }
+        return names;
+    }
+
+    @Test
+    @DisplayName("every name in sounds.json has a file behind it")
+    void everyNameResolves() throws IOException {
+        Set<String> onDisk = filesOnDisk();
+        List<String> missing = new ArrayList<>();
+        for (var pool : pools().entrySet()) {
+            for (String file : pool.getValue()) {
+                if (!onDisk.contains(file)) {
+                    missing.add(pool.getKey() + " -> " + file);
+                }
+            }
+        }
+        assertTrue(missing.isEmpty(),
+                "estos nombres no tienen archivo: " + missing
+                        + ". El juego se queja de un archivo que no esta, pero no de un sonido que "
+                        + "no se nombra nunca, y el sintoma de eso es silencio y nada mas");
+    }
+
+    @Test
+    @DisplayName("every file on disk is named by sounds.json, or it is dead weight in the jar")
+    void everyFileIsReachable() throws IOException {
+        Set<String> named = new LinkedHashSet<>();
+        pools().values().forEach(named::addAll);
+        List<String> orphans = filesOnDisk().stream().filter(n -> !named.contains(n)).toList();
+        assertTrue(orphans.isEmpty(),
+                "estos .ogg no los nombra ningun evento, asi que no suenan nunca: " + orphans);
+    }
+
+    @Test
+    @DisplayName("the pools that should sound varied really do have more than one take")
+    void poolsAreActuallyPools() throws IOException {
+        Map<String, List<String>> pools = pools();
+        List<String> thin = new ArrayList<>();
+        for (String key : SHOULD_RANDOMISE) {
+            List<String> takes = pools.get(key);
+            if (takes == null) {
+                fail("sounds.json no tiene el evento " + key);
+            }
+            if (takes.size() < 2) {
+                thin.add(key + " (" + takes.size() + ")");
+            }
+        }
+        assertTrue(thin.isEmpty(),
+                "estos eventos tienen una sola toma, asi que el pool no sortea nada: " + thin);
+    }
+
+    @Test
+    @DisplayName("no mod sound declares replace, which is for overriding another pack")
+    void noReplaceFlag() throws IOException {
+        String json = Files.readString(SOUNDS_JSON, StandardCharsets.UTF_8);
+        assertTrue(!json.contains("\"replace\""),
+                "replace significa 'piso la definicion de otro pack con este nombre'. Estos son "
+                        + "eventos NUEVOS de cortescombat y nadie mas los define, asi que la "
+                        + "bandera no hace nada -- y si algun dia un evento nosso se llamara como "
+                        + "uno de vanilla, esto lo pisaria de verdad");
+    }
+
+    @Test
+    @DisplayName("every event ModSounds can ask for is in sounds.json or is vanilla's")
+    void everyAskResolves() throws IOException {
+        Map<String, List<String>> pools = pools();
+        for (WeaponProfile profile : WeaponProfile.values()) {
+            for (ModSounds.Kind kind : ModSounds.Kind.values()) {
+                String name = ModSounds.of(profile, kind);
+                if (name.startsWith("minecraft:")) {
+                    continue;
+                }
+                String bare = name.substring(name.indexOf(':') + 1);
+                String key = bare.substring(bare.lastIndexOf('/') + 1);
+                assertTrue(pools.containsKey(key),
+                        profile + " pide " + name + " y sounds.json no lo tiene. Seria un "
+                                + "silencio sin error en ninguna parte");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("the parry is its own event, not the halberd's sweep")
+    void parryIsNotTheSweep() {
+        assertEquals("cortescombat:shotel_parry",
+                ModSounds.of(WeaponProfile.SABRE, ModSounds.Kind.PARRY),
+                "el parry necesita su propio Kind: SPECIAL cae en el barrido de la alabarda, y "
+                        + "un parriado que suena como una barrida no se reconoce");
+        assertEquals("cortescombat:alabarda_wide_swing",
+                ModSounds.of(WeaponProfile.SABRE, ModSounds.Kind.SPECIAL),
+                "el sable no tiene barrido, asi que SPECIAL le resuelve al evento de la alabarda");
+    }
+}

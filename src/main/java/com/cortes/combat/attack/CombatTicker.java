@@ -42,6 +42,9 @@ public final class CombatTicker {
         tickGuard(player);
         tickStreak(player);
         tickParry(player);
+        // The lunge's momentum. Six ticks of re-applied velocity, which is the whole difference
+        // between a dash and a teleport -- see Lunge for why one velocity does nothing at all.
+        com.cortes.combat.special.Lunge.tick(player);
         ModNetworking.syncTo(player);
     }
 
@@ -71,6 +74,10 @@ public final class CombatTicker {
             AttackCooldown.endCharge(player);
             AttackCooldown.resetCooldown(player);
             GuardHandler.setGuard(player, false);
+            // A lunge in progress is a movement that was never finished. Logging out in the middle
+            // of one leaves steps owed to a connection that no longer exists, and the player would
+            // be teleported the rest of the way on joining.
+            com.cortes.combat.special.Lunge.clear(player);
         }
     }
 
@@ -145,8 +152,21 @@ public final class CombatTicker {
         }
     }
 
+    /**
+     * The parry runs down, and the client is told when the window closes.
+     *
+     * <p>All of it is in {@link ParryState#step()}, including whether to send. This method writes
+     * the answer and sends the packet; it does not decide anything. It used to decide, and the
+     * decision it made was "if the window is closed, there is nothing to do" -- which is true of
+     * the <em>packet</em> and was silently also taken as true of the <em>countdown</em>, so the
+     * five second lockout never ran down and the sabre could be parried once per session.</p>
+     */
     private static void tickParry(ServerPlayer player) {
-        ParryState parry = player.getData(ModAttachments.PARRY.get());
-        player.setData(ModAttachments.PARRY.get(), parry.tick());
+        ParryState.Step step = player.getData(ModAttachments.PARRY.get()).step();
+        player.setData(ModAttachments.PARRY.get(), step.state());
+        if (step.tellClient()) {
+            com.cortes.combat.net.ModNetworking.sendParryState(
+                    player, false, step.state().cooldownTicks());
+        }
     }
 }

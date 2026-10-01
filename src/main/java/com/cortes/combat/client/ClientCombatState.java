@@ -44,6 +44,18 @@ public final class ClientCombatState {
     private static boolean guardHeld;
     private static boolean aiming;
 
+    /**
+     * Whether the server has the parry window open right now, and how long until the next one.
+     *
+     * <p>Server-owned and never predicted, and the difference from the charge is the point. A
+     * parry costs the player a press, a crawl across three quarters of a second, and five seconds
+     * of lockout, so drawing a parry that the server then refused would be showing the player a
+     * cost they did not pay. The blade coming out one packet late costs nothing visible, because
+     * three of the window's twelve ticks are the rise anyway.</p>
+     */
+    private static boolean parryActive;
+    private static int parryCooldown;
+
     private ClientCombatState() {
     }
 
@@ -84,6 +96,16 @@ public final class ClientCombatState {
         return aiming;
     }
 
+    /** Whether the server currently has the sabre's parry window open. */
+    public static boolean parryActive() {
+        return parryActive;
+    }
+
+    /** Ticks until the sabre can parry again, 0 when it is ready. */
+    public static int parryCooldown() {
+        return parryCooldown;
+    }
+
     public static void set(float charge, float cooldown) {
         chargeRatio = charge;
         cooldownRatio = cooldown;
@@ -98,5 +120,51 @@ public final class ClientCombatState {
 
     public static void setAiming(boolean value) {
         aiming = value;
+    }
+
+    public static void setParry(boolean active, int cooldown) {
+        parryActive = active;
+        parryCooldown = Math.max(0, cooldown);
+    }
+
+    /**
+     * Counts the lockout down on the client, because the server only speaks on transitions.
+     *
+     * <p>The packet arrives twice per parry -- the full length on the press, the remainder when
+     * the window closes -- and then not again for five seconds. A field that only ever holds the
+     * last value it was given therefore reads a stale non-zero number for the rest of the lockout,
+     * and the viewmodel's edge detector sees a "fresh" press on every frame: the collapse would
+     * restart the moment it finished and the weapon would sit off line forever. That is the same
+     * artifact {@code observeStagger} had, and the fix is the same shape -- the caller watches a
+     * counter it advances itself, and a correction that arrives from the server wins.</p>
+     */
+    public static void tickParry() {
+        if (parryCooldown > 0) {
+            parryCooldown--;
+        }
+    }
+
+    private static int lungeTicks;
+
+    /**
+     * The ropera's lunge, predicted on the press and counted down here.
+     *
+     * <p>Client owned, which is the difference from the parry and the reason it can be: the price
+     * is the ordinary attack cooldown, and the client already has that number synced. The server
+     * still runs {@code AttackCooldown.isReady} and still spends the cooldown, so a client that
+     * guesses wrong loses a packet and nothing else -- the same bargain the charge makes.</p>
+     */
+    public static void startLunge() {
+        lungeTicks = 12;
+    }
+
+    public static boolean lungeActive() {
+        return lungeTicks > 0;
+    }
+
+    public static void tickLunge() {
+        if (lungeTicks > 0) {
+            lungeTicks--;
+        }
     }
 }

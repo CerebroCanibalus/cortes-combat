@@ -34,7 +34,7 @@ class CutIsARotationTest {
 
     /** A frame at the peak of a full-charge cut. */
     private static ViewModelInput atTheCut() {
-        return new ViewModelInput(0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1);
+        return new ViewModelInput(0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1);
     }
 
     @Test
@@ -91,7 +91,7 @@ class CutIsARotationTest {
         for (int tick = 0; tick <= ViewModelMotion.STRIKE_TICKS; tick++) {
             deepestPitch = Math.min(deepestPitch,
                     SWORD.evaluate(motion.snapshot(0.0F, 0.0F)).pitch());
-            motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+            motion.tick(false, 0.0F, 0.0F, false, 1.0F, false, false);
         }
         Offset last = SWORD.evaluate(motion.snapshot(0.0F, 0.0F));
         assertTrue(last.isZero(),
@@ -112,7 +112,7 @@ class CutIsARotationTest {
     private static ViewModelMotion chargedAndReleased() {
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, Math.min(1.0F, (i + 1) / 25.0F), Math.min(1.0F, (i + 1) / 25.0F), false, 1.0F);
+            motion.tick(true, Math.min(1.0F, (i + 1) / 25.0F), Math.min(1.0F, (i + 1) / 25.0F), false, 1.0F, false, false);
         }
         motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
         return motion;

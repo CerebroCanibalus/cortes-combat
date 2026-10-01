@@ -42,6 +42,35 @@ public final class ModNetworking {
                 ModNetworking::handleDebugToggle);
         registrar.playToClient(CombatFeedbackPayload.TYPE, CombatFeedbackPayload.STREAM_CODEC,
                 ModNetworking::handleCombatFeedback);
+        registrar.playToClient(ParryStatePayload.TYPE, ParryStatePayload.STREAM_CODEC,
+                ModNetworking::handleParryState);
+        registrar.playToClient(DelayedSoundPayload.TYPE, DelayedSoundPayload.STREAM_CODEC,
+                (payload, context) -> {
+                    if (context.player() instanceof net.minecraft.client.player.LocalPlayer p) {
+                        com.cortes.combat.client.DelayedSounds.queue(
+                                payload.sound(),
+                                net.minecraft.sounds.SoundSource.PLAYERS,
+                                1.0F, payload.pitch(), payload.delayTicks());
+                    }
+                });
+    }
+
+    private static void handleParryState(ParryStatePayload payload, IPayloadContext context) {
+        com.cortes.combat.client.ClientCombatState.setParry(payload.active(), payload.cooldown());
+    }
+
+    /**
+     * Asks one client's game to play a sound a number of ticks from now.
+     *
+     * <p>To the attacker only. It is their own swing being reported back to them, and a sound every
+     * player in the radius heard would be the same hit heard twice from two directions.</p>
+     *
+     * @param pitch the final pitch, already scaled by whatever the weapon's own pitch is
+     */
+    public static void sendDelayedSound(
+            net.minecraft.server.level.ServerPlayer to, String sound, float pitch, int delayTicks) {
+        PacketDistributor.sendToPlayer(to,
+                new DelayedSoundPayload(sound, pitch, delayTicks));
     }
 
     private static void handleCombatFeedback(CombatFeedbackPayload payload,
@@ -59,6 +88,17 @@ public final class ModNetworking {
      */
     public static void sendFeedback(ServerPlayer player, CombatFeedback kind) {
         PacketDistributor.sendToPlayer(player, new CombatFeedbackPayload(kind));
+    }
+
+    /**
+     * Tell one player that the parry window opened or closed.
+     *
+     * <p>Only on the transitions. The client reads this for the sign, not for a progress bar, and
+     * a stream of a number nobody plots is a packet per player per tick for the length of a
+     * press.</p>
+     */
+    public static void sendParryState(ServerPlayer player, boolean active, int cooldown) {
+        PacketDistributor.sendToPlayer(player, new ParryStatePayload(active, cooldown));
     }
 
     private static void handleGuardInput(GuardInputPayload payload, IPayloadContext context) {

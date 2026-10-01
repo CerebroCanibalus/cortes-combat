@@ -3,6 +3,7 @@ package com.cortes.combat.client;
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.registry.ModComponents;
+import com.cortes.combat.viewmodel.Channel;
 import com.cortes.combat.viewmodel.Offset;
 import com.cortes.combat.viewmodel.ViewModelDefaults;
 import com.cortes.combat.viewmodel.ViewModelInput;
@@ -131,6 +132,37 @@ public final class ItemViewModel {
         // timing was correct and bounded the whole time, and the tests were green, because the
         // bug was in the wiring and a component test cannot see wiring.
         MOTION.observeStagger(stagger);
+        // The parry's two channels, gated on the weapon actually reading them.
+        //
+        // Gated HERE and not at the call site, because the call site is where the bug was: the
+        // channels are global and the state that drives them is the player's, not the item's, so
+        // a sabre that had been parried kept animating whatever came next. The lockout rides
+        // BREAK, and the sword reads BREAK for its guard -- so the sword played the sabre's five
+        // seconds of "not right now" and the player read it as a guard stuck down.
+        //
+        // `reads(PARRY)` rather than `isTheSabre`: the question is what the profile can do with
+        // the signal, and it stays true if the sabre ever gets a second item.
+        LocalPlayer held = Minecraft.getInstance().player;
+        ViewModelProfile profile = held == null
+                ? ViewModelDefaults.of(WeaponProfile.UNARMED)
+                : resolve(held.getMainHandItem());
+        boolean parryWeapon = profile.reads(Channel.PARRY);
+        if (parryWeapon) {
+            // The server's answer, the edge derived from it, and the number it sent is the
+            // length the bump lasts. Called from the render-side tick rather than from the packet
+            // handler because the packet arrives once and the bump has to keep running for a
+            // hundred ticks after it.
+            MOTION.observeParry(ClientCombatState.parryActive(), ClientCombatState.parryCooldown());
+        } else {
+            MOTION.clearParry();
+        }
+        // Same gate, same reason: the channels are global and the state driving them is the
+        // player's, so a sabre's parry used to keep drawing whatever came next. `reads` is the
+        // question "can this profile do anything with the signal", not "is this the right item".
+        boolean lungeWeapon = profile.reads(Channel.LUNGE);
+        if (!lungeWeapon) {
+            MOTION.clearLunge();
+        }
         if (guarding != lastGuarding) {
             trace("guardia " + (guarding ? "ARRIBA" : "abajo")
                     + " stamina=" + ClientCombatState.guardStamina()
@@ -142,7 +174,9 @@ public final class ItemViewModel {
         }
         lastGuarding = guarding;
         lastStagger = stagger;
-        MOTION.tick(holding, rawCharge, chargedRatio, guarding, stagger);
+        MOTION.tick(holding, rawCharge, chargedRatio, guarding, stagger,
+                parryWeapon && ClientCombatState.parryActive(),
+                lungeWeapon && ClientCombatState.lungeActive());
     }
 
     /**

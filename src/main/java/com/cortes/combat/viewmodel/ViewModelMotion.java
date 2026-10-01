@@ -195,12 +195,68 @@ public final class ViewModelMotion {
     private float guardPrev;
 
     /**
+     * How far the parry has come up, 0..1, and how far it was a tick ago.
+     *
+     * <p>The same shape as the guard, because both are stances a player turns on and off, and for
+     * the same reason it is interpolated rather than flagged: it changes on the tick and a flag
+     * would put the whole blade on one frame.</p>
+     *
+     * <p>Kept apart from the guard because the two move on different clocks and end differently.
+     * The guard follows a button; the parry follows a twelve tick window that runs out whether or
+     * not anything hit it, and it starts the blade going out on its own rather than on a hold.</p>
+     */
+    private float parry;
+    private float parryPrev;
+
+    /**
+     * How far the lunge has gone, and how far it was a tick ago.
+     *
+     * <p>Interpolated and ramped exactly like the parry, for the same two reasons: the state
+     * changes on the tick and a flag would put the whole step on one frame, and a ramp that can
+     * only fall from up is the one that rests at zero.</p>
+     */
+    private float lunge;
+    private float lungePrev;
+
+    /** Whether the step is happening, which is what the ramp is built from. */
+    private boolean lunging;
+
+    /** Ticks since the step started. */
+    private int lungeAge;
+
+    /** Whether the server has the parry window open, which is what the ramp is built from. */
+    private boolean parrying;
+
+    /** Ticks since the window opened, for the same reason the guard holds an age. */
+    private int parryAge;
+
+    /**
      * Ticks since the guard broke, or -1 when it has not.
      *
      * <p>A one-shot, like {@code strikeAge}, and for the same reason a channel exists instead of
      * a boolean: the break is a motion, and a motion has a shape.</p>
      */
     private int breakAge = -1;
+
+    /**
+     * The parry lockout, as a second collapse on the same channel, and how long it lasts.
+     *
+     * <p><b>The same bump as the guard breaking, stretched to the lockout.</b> The player already
+     * knows what an off-line weapon means -- they watched it happen when a shield came down -- so
+     * the sabre reusing that shape is a word they already speak. The length carries the number: the
+     * blade drops away on the press and comes back as the five seconds run out, and watching it
+     * come back <em>is</em> the recharge readout, without a single pixel of HUD for it.</p>
+     *
+     * <p>A separate clock and not a shared one, so the two cannot fight. They also cannot happen
+     * at once -- the sabre's guard profile is NONE, so it never goes up and never breaks -- but
+     * "cannot happen" is a property of a decision someone can reverse, and a bump that stopped
+     * being drawn because someone re-enabled the guard would be a bug report nobody could
+     * reproduce.</p>
+     */
+    private int parryBreakAge = -1;
+
+    /** How many ticks this lockout bump lasts, which is the server's own cooldown length. */
+    private int parryBreakTicks;
 
     /**
      * The held item's remaining cooldown, 0 when ready.
@@ -254,9 +310,108 @@ public final class ViewModelMotion {
         return (float) Math.sin(Math.sqrt(phase) * Math.PI * 0.5F);
     }
 
+    /**
+     * The parry lockout, as the guard's collapse with the guard's own rise and fall.
+     *
+     * <p><b>Not the collapse curve stretched. The guard's two lengths, verbatim.</b> This was the
+     * first version and it was wrong in a way the numbers hid: {@code sin(sqrt(f) * PI / 2)} is
+     * fast-out-slow-in <em>over its own span</em>, so running it over a hundred ticks made the
+     * departure take fifty of them. The blade drifted off line over half a second, which is not
+     * the motion it is supposed to be borrowing -- the guard leaves in two ticks and anything
+     * slower than that reads as a weapon being carried, not as one being knocked aside.</p>
+     *
+     * <p>So it is a ramp with a hold: out in {@link #GUARD_RISE_TICKS}, off the line for the
+     * middle, back in over {@link #GUARD_FALL_TICKS}. The hold is what the player reads as "not
+     * right now" and the fall is what they read as "soon" -- and the total is the server's own
+     * number, so the weapon is off line for exactly as long as the sabre is locked and not one
+     * tick longer.</p>
+     *
+     * <p>Taken as the <b>further</b> of the two collapses and not their sum. This channel is a
+     * displacement, and two displacements on one axis resolve to the further one -- adding them
+     * would make a guard break during a parry lockout throw the weapon off the screen, which is a
+     * compound of two small things into one large one, and the sum of two reasons to be knocked
+     * off line is not twice as knocked off line.</p>
+     */
+    private float parryBreakAt(float offset) {
+        if (parryBreakAge < 0 || parryBreakTicks <= 0) {
+            return 0.0F;
+        }
+        int fallStart = parryBreakTicks - GUARD_FALL_TICKS;
+        int age = parryBreakAge + (int) clamp01(offset);
+        if (age >= parryBreakTicks) {
+            return 0.0F;
+        }
+        if (age < GUARD_RISE_TICKS) {
+            return age / (float) GUARD_RISE_TICKS;
+        }
+        if (age < fallStart) {
+            return 1.0F;
+        }
+        return Math.max(0.0F, 1.0F - (age - fallStart) / (float) GUARD_FALL_TICKS);
+    }
+
+    /**
+     * The server's parry answer, and the edge off which the lockout bump starts.
+     *
+     * <p><b>Only an opening starts it.</b> The first version inferred a press from the cooldown
+     * going <em>up</em>, and that is wrong twice over. A parry that <em>connects</em> sends the full
+     * length a second time, because {@code consume()} closes the window without touching the
+     * cooldown -- so the bump restarted at the moment of the hit and the weapon came back a
+     * hundred ticks after the parry landed instead of ninety-five. And the client's own countdown
+     * runs against the server's, so ordinary jitter between the two clocks also reads as "the
+     * number went up" on a close that nobody pressed.</p>
+     *
+     * <p>The server is the only thing that knows a press happened, and it says so by opening the
+     * window. A close carries the remainder as information and starts nothing.</p>
+     *
+     * <p>An edge, for the same reason {@link #observeStagger} is one: a bump driven off a
+     * descending counter restarts on every tick of that counter, and a hundred tick bump held at
+     * its first hundredth is a weapon parked off line with no way back.</p>
+     */
+    public void observeParry(boolean active, int cooldown) {
+        if (active && cooldown > 0) {
+            parryBreakAge = 0;
+            parryBreakTicks = cooldown;
+        }
+    }
+
+    /**
+     * The weapon in hand is not the one the parry belongs to, so the lockout stops.
+     *
+     * <p>A separate method and not a zero cooldown, because a zero only stops a <em>new</em> bump
+     * from starting -- a bump already running would sail the rest of its hundred ticks onto a
+     * weapon that has nothing to do with it. Switching from the sabre to a sword half way through
+     * the lockout is exactly the moment that was visible, and the sword's own {@code BREAK} track
+     * is the one that drew it.</p>
+     */
+    public void clearParry() {
+        parryBreakAge = -1;
+        parryBreakTicks = 0;
+    }
+
+    /** The step is over, on the same terms as {@link #clearParry()}. */
+    public void clearLunge() {
+        lunge = 0.0F;
+        lungePrev = 0.0F;
+        lungeAge = 0;
+        lunging = false;
+    }
+
+    /**
+     * The lunge, part way through a frame.
+     *
+     * <p>Not interpolated through a field that holds a value the caller set: the step is four
+     * ticks out of twenty, and a caller that passed a ratio would be reporting a progress bar
+     * nobody asked for.</p>
+     */
+    public float lungeAt(float offset) {
+        float t = clamp01(offset);
+        return lungePrev + (lunge - lungePrev) * t;
+    }
+
     /** Public so a test can pin the shape without reaching into the private field. */
     public float guardBreak() {
-        return breakAt(0.0F);
+        return Math.max(breakAt(0.0F), parryBreakAt(0.0F));
     }
     /**
      * How long the guard takes to come up and to drop, in ticks.
@@ -284,6 +439,41 @@ public final class ViewModelMotion {
      */
     public static final int GUARD_RISE_TICKS = 2;
     public static final int GUARD_FALL_TICKS = 6;
+
+    /**
+     * How fast the blade comes out for a parry, and how fast it comes back, in ticks.
+     *
+     * <p>Three and three, and neither number is the guard's. The guard rose in two because a
+     * stance the player is holding up has to be up by the time they decide to swing. The parry
+     * cannot borrow that argument, because the blade going out is not a consequence of a decision
+     * the player is still making: it is the announcement, and it is three ticks because the window
+     * is twelve and a quarter of the window spent getting there would make the parry feel like it
+     * started late.</p>
+     *
+     * <p>It falls in three as well, which is the asymmetry that matters. The guard's fall is six
+     * because settling under your own weight reads as weight. This one has no weight to settle
+     * under -- the player is being slowed to a crawl the entire time the blade is out, and the
+     * relief of it coming back is the only fast thing about the exchange. A slow return would
+     * leave the player waiting out a wind-down while already being free to move.</p>
+     */
+    public static final int PARRY_RISE_TICKS = 3;
+    public static final int PARRY_FALL_TICKS = 3;
+
+    /**
+     * How long the ropera's lunge takes to go out and to come back, in ticks.
+     *
+     * <p><b>Four and six, and the rise is not the strike's.</b> The strike is a ten tick weapon
+     * and its thrust is already at the limit of what ten ticks can carry, so a lunge ramped at the
+     * same rate as the strike would reach full extension on the same frame and the two would be
+     * one motion. Four puts the point at full depth while the strike is still coming back, which
+     * is the difference between a step and a longer swing.</p>
+     *
+     * <p>The fall is longer than the rise on purpose, and for the same reason the guard's is: a
+     * step that snapped back would read as a teleport that undid itself. The player is somewhere
+     * new and the weapon is catching up.</p>
+     */
+    public static final int LUNGE_RISE_TICKS = 4;
+    public static final int LUNGE_FALL_TICKS = 6;
 
     /**
  * How long the collapse lasts, in ticks.
@@ -408,13 +598,19 @@ public final class ViewModelMotion {
      *                     have to agree about
      */
     public void tick(boolean holding, float rawCharge, float chargedRatio, boolean guarding,
-                     float stagger) {
+                     float stagger, boolean parrying, boolean lunging) {
         ticks++;
         this.stagger = clamp01(stagger);
         // Its own clock, not the item's. See BREAK_TICKS: tying the collapse to the stagger made
         // a five second marker out of a five second stun.
         if (breakAge >= 0 && ++breakAge >= BREAK_TICKS) {
             breakAge = -1;
+        }
+        // The parry lockout bump, on its own clock and its own length. Bounded by the server's
+        // number rather than by a constant here, so the blade is still coming back on the tick
+        // the sabre can parry again and not one tick before or after.
+        if (parryBreakAge >= 0 && ++parryBreakAge >= parryBreakTicks) {
+            parryBreakAge = -1;
         }
         if (holding) {
             // A new press abandons whatever the last one was doing, and zeroes the charge it
@@ -488,17 +684,76 @@ public final class ViewModelMotion {
             guard = up
                     ? Math.min(1.0F, guardAge / (float) GUARD_RISE_TICKS)
                     : before;
-        } else {
+        } else if (up) {
             guardAge++;
-            guard = up
-                    ? Math.min(1.0F, guardAge / (float) GUARD_RISE_TICKS)
-                    : Math.max(0.0F, 1.0F - guardAge / (float) GUARD_FALL_TICKS);
+            guard = Math.min(1.0F, guardAge / (float) GUARD_RISE_TICKS);
+        } else if (guard != 0.0F) {
+            // You can only fall from up. Without this the else branch also caught the case
+            // "the guard has never been up", and a motion sitting at zero computed
+            // `1 - 1/6` on its first tick: the sword was drawn off line for the first six ticks
+            // of every session, which reads as a weapon flying in when you join a world.
+            guardAge++;
+            guard = Math.max(0.0F, 1.0F - guardAge / (float) GUARD_FALL_TICKS);
         }
         // Interpolation is skipped across the frame the stance starts or stops. Interpolating
         // there would leave the weapon a third of a stance behind for one frame, on the exact
         // frame the player pressed or released.
         guardPrev = changed ? guard : before;
         this.guarding = guarding;
+
+        // The parry ramps on the same shape, and reads the SERVER's answer rather than the press.
+        //
+        // That difference is the whole reason this is not just the guard again. The press is not
+        // a prediction here: the server decides whether the five second cooldown is up, and a
+        // blade that came out for a parry that was refused would be the game showing the player a
+        // thing that did not happen. The cost of being right is that the animation starts one
+        // packet late, which at a normal ping is inside the three tick rise anyway.
+        float parryBefore = parry;
+        boolean parryUp = parrying;
+        boolean parryChanged = parryUp != this.parrying;
+        if (parryChanged) {
+            parryAge = 1;
+            parry = parryUp
+                    ? Math.min(1.0F, parryAge / (float) PARRY_RISE_TICKS)
+                    : parryBefore;
+        } else if (parryUp) {
+            parryAge++;
+            parry = Math.min(1.0F, parryAge / (float) PARRY_RISE_TICKS);
+        } else if (parry != 0.0F) {
+            parryAge++;
+            parry = Math.max(0.0F, 1.0F - parryAge / (float) PARRY_FALL_TICKS);
+        } else {
+            // **You can only fall from up.** The last branch is the one that was missing, and
+            // without it a motion that has never parried computes `1 - 1/3` on its very first
+            // tick and starts life two thirds out of line. The guard ramp had the same missing
+            // branch and the same symptom: for the first GUARD_FALL_TICKS of every session the
+            // sword was drawn off line, which is a weapon flying in when you join a world.
+            parry = 0.0F;
+        }
+        parryPrev = parryChanged ? parry : parryBefore;
+        this.parrying = parrying;
+
+        // The lunge ramp, same shape as the parry's, and with the same missing branch filled in:
+        // a ramp that can only fall from up is the one that rests at zero.
+        float lungeBefore = lunge;
+        boolean lungeUp = lunging;
+        boolean lungeChanged = lungeUp != this.lunging;
+        if (lungeChanged) {
+            lungeAge = 1;
+            lunge = lungeUp
+                    ? Math.min(1.0F, lungeAge / (float) LUNGE_RISE_TICKS)
+                    : lungeBefore;
+        } else if (lungeUp) {
+            lungeAge++;
+            lunge = Math.min(1.0F, lungeAge / (float) LUNGE_RISE_TICKS);
+        } else if (lunge != 0.0F) {
+            lungeAge++;
+            lunge = Math.max(0.0F, 1.0F - lungeAge / (float) LUNGE_FALL_TICKS);
+        } else {
+            lunge = 0.0F;
+        }
+        lungePrev = lungeChanged ? lunge : lungeBefore;
+        this.lunging = lungeUp;
     }
 
     private float targetWindup(boolean holding, float charge) {
@@ -542,7 +797,9 @@ public final class ViewModelMotion {
                 recoverAt(offset),
                 cooldownRunning,
                 guardAt(offset),
-                breakAt(offset),
+                Math.max(breakAt(offset), parryBreakAt(offset)),
+                parryAt(offset),
+                lungeAt(offset),
                 holding,
                 (ticks + offset) / 20.0F,
                 seed);
@@ -552,6 +809,12 @@ public final class ViewModelMotion {
     public float guardAt(float offset) {
         float t = clamp01(offset);
         return guardPrev + (guard - guardPrev) * t;
+    }
+
+    /** How far the parry has come up, part way through a frame. */
+    public float parryAt(float offset) {
+        float t = clamp01(offset);
+        return parryPrev + (parry - parryPrev) * t;
     }
 
     /**

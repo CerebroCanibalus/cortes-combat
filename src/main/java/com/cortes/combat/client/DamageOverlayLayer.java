@@ -29,7 +29,36 @@ public class DamageOverlayLayer implements LayeredDraw.Layer {
     private static final float FADE_END_HEALTH = 4.0F;
 
     private static final float FADE_SPEED = 6.0F;
-    private static final float FLASH_SPEED = 5.0F;
+
+    /**
+     * The fade's rate, as a fraction of the remaining distance closed per second.
+     *
+     * <p>Exponential rather than per-frame, so the fade takes the same wall-clock time at thirty
+     * frames a second as at two hundred. See {@link Fade} for why the per-frame version was
+     * replaced: it was not a rate problem.</p>
+     */
+    private static final float FADE_RATE = 6.0F;
+
+    /** The flash's rate, the same shape and the same reason. */
+    private static final float FLASH_RATE = 5.0F;
+
+    /**
+     * The longest frame the fade will believe in, in seconds.
+     *
+     * <p>A sixth of a second, which is ten frames. Beyond that the frame was not a frame -- it was a
+     * stall -- and a fade that honours a whole stall in one step is a fade that jumps.</p>
+     */
+    private static final float MAX_FRAME_SECONDS = 0.1667F;
+
+    /**
+     * Below this the overlay is not drawn at all.
+     *
+     * <p>One part in a thousand. The alpha is a float converging on a target and never reaching it,
+     * so without a floor this layer pays for a full screen blit every single frame to draw a quad
+     * that is indistinguishable from nothing.</p>
+     */
+    private static final float DRAW_THRESHOLD = 0.001F;
+
 
     /**
      * A flash brighter than this is left alone by smaller hits.
@@ -84,7 +113,21 @@ public class DamageOverlayLayer implements LayeredDraw.Layer {
         // Cosine easing so the vignette ramps gently at first and then bites near death,
         // instead of climbing linearly the whole way.
         float eased = (float) (-Math.cos(target * Math.PI) * 0.5 + 0.5);
-        vignetteAlpha = lerp(vignetteAlpha, eased, delta.getRealtimeDeltaTicks() * FADE_SPEED);
+        // **The real time between frames, clamped.** This is what the fade is measured against and it
+        // is the one number that must never be allowed to run away: a hitch delivers a delta of a
+        // third of a second or more, and an unclamped fade factor overshoots its target and comes
+        // back, which is the strobe.
+        float realDt = (float) Math.min(MAX_FRAME_SECONDS, delta.getRealtimeDeltaTicks());
+        vignetteAlpha = Fade.toward(vignetteAlpha, eased, FADE_RATE, realDt);
+
+        // Draw nothing until there is something to draw. Both branches below, so the blend state and
+        // the pose push are skipped entirely for a player at full health -- which is every frame of
+        // every fight except the parts where it matters, and the overlay was paying for a full
+        // screen blit to draw a fully transparent quad.
+        if (!Fade.visible(vignetteAlpha, DRAW_THRESHOLD)
+                && !Fade.visible(flashAlpha, DRAW_THRESHOLD)) {
+            return;
+        }
 
         graphics.pose().pushPose();
         RenderSystem.enableBlend();
@@ -93,14 +136,14 @@ public class DamageOverlayLayer implements LayeredDraw.Layer {
         int w = graphics.guiWidth();
         int h = graphics.guiHeight();
 
-        if (vignetteAlpha > 0.001F) {
+        if (Fade.visible(vignetteAlpha, DRAW_THRESHOLD)) {
             graphics.setColor(BRIGHTNESS, BRIGHTNESS, BRIGHTNESS, vignetteAlpha * OVERLAY_OPACITY);
             graphics.blit(OVERLAY, 0, 0, w, h, 0.0F, 0.0F, w, h, w, h);
             graphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
         }
 
-        flashAlpha = lerp(flashAlpha, 0.0F, delta.getRealtimeDeltaTicks() * FLASH_SPEED);
-        if (flashAlpha > 0.001F) {
+        flashAlpha = Fade.decay(flashAlpha, FLASH_RATE, realDt);
+        if (Fade.visible(flashAlpha, DRAW_THRESHOLD)) {
             graphics.setColor(0.8F * BRIGHTNESS, 0.1F * BRIGHTNESS, 0.1F * BRIGHTNESS,
                     flashAlpha * FLASH_OPACITY);
             graphics.fill(0, 0, w, h, 0xFFFFFFFF);
