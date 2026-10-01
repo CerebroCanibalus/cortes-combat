@@ -360,7 +360,7 @@ Cada una costó un bug. Están juntas porque se repiten: **todas son sobre la di
 | Sonido de carga completa | `DESIGN.md` 524 | El proyecto tiene **un solo sonido**: `SHIELD_BREAK`. Faltan 3 de los 4 eventos que el jugador tiene que reconocer s/ mirar: carga completa, parry, escalado del martillo |
 | Impacto de golpe cargado | `DESIGN.md` 499 | `addParticle` ⊘ aparece en ninguna parte del código |
 | **Tercera persona** | — | Solo 1ª persona. El servidor sigue balanceando → los demás jugadores ven el brazo de vanilla |
-| **Las 29 armas sin perfil** | paso 9 | Solo la espada tiene perfil. El resto usa la pose de vanilla, que es el default correcto: un viewmodel sutilmente mal es peor que ninguno |
+| **Los 5 perfiles de las herramientas de vanilla** (hacha, pico, pala, maza, tridente) | **por decisión, ⊘ deuda | ViewModelDefaults los omite a propósito y con el motivo escrito: son items de vanilla, y un movimiento dibujado a mano sobre una silueta que no dibujamos pelea con el modelo. Sin entrada = pose exacta de vanilla. Los 7 perfiles que sí están son espada, manos, y **las cinco familias nuevas**: ropera, daga, alabarda, martillo y sable. Los 30 items caen sobre 13 WeaponProfile, así que el perfil es por familia y no por item |
 | `ignoredArmour` del martillo | paso 10 | El flag se calcula y se testea, pero la fuente de daño sigue siendo la normal. `DamageSource` pide un `Holder<DamageType>` → exige un damage type registrado por datapack |
 | `/cc weapons` desactualizado | paso 9 | La lista tiene 11 armas vanilla, no las 30 del mod |
 
@@ -409,7 +409,7 @@ Detalle en `textures/gui/PROTOTYPE-ASSETS.md`. Para reemplazar: **misma ruta y m
 1. **Paso 9: las 30 armas + datagen + recetas + set de cobre.** Es el paso grande que falta.
 2. Paso 10: especiales (alabarda multi-hit, parry de la sable) + damage type de ignore de armadura.
 3. Paso 11: supervivencia (`FoodData`) — el cambio más caro, en commit propio. Verificar los umbrales internos en las fuentes de 1.21.1 antes de escribir el mixin.
-4. Paso 14 (lo que falta): sonido de carga completa, el valor `CHARGED` de `CombatFeedback`, impacto de golpe cargado, tercera persona, y los perfiles de las otras 29 armas. **Los números de la espada están escritos, no jugados.**
+4. Paso 14 (lo que falta): sonido de carga completa, el valor CHARGED de CombatFeedback, **el golpe cargado** (la partícula ya está), tercera persona, y **afinar a playtest los números de los perfiles de viewmodel de las cinco familias nuevas**, que están escritos pero no jugados.
 5. Números: definir el escalado del martillo en playtest (`WARHAMMER_STEP` está en 0.15 como punto de partida).
 6. Pendiente de decidir: extraer las tablas de `WeaponStats` a una clase pura, para que el orden de los alcances sea un test y ⊘ una acordada. Hoy ⊘ se puede testear porque el `<clinit>` de `WeaponStats` usa `Registries` y `TagKey`, que son de Minecraft.
 
