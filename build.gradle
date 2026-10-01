@@ -79,7 +79,20 @@ neoForge {
             // gameDirectory = project.file('run-data')
 
             // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
-            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+            //
+            // No '--all'. It asks the generator to run vanilla's own providers alongside ours in the
+            // same DataGenerator, and they register under bare names: RecipeProvider.getName() is
+            // final and returns "Recipes", so our recipe provider collided with Mojang's and
+            // runData died with
+            //
+            //     IllegalStateException: Duplicate provider: Recipes
+            //
+            // naming neither this mod nor this class. It reads like a broken generator, and the fix
+            // is a missing flag rather than a wrong provider.
+            //
+            // Its only other effect was regenerating vanilla's data into our output folder, which
+            // is thousands of files we do not ship and do not want to review.
+            programArguments.addAll '--mod', project.mod_id, '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
         }
 
         // applies to all the run configs above

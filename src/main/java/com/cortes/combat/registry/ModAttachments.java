@@ -35,11 +35,23 @@ public final class ModAttachments {
                     .copyOnDeath()
                     .build());
 
-    /** Remaining guard hits. The maximum comes from the item, not from here. */
+    /**
+     * Remaining guard hits. The maximum comes from the item, not from here.
+     *
+     * <p><b>No {@code copyOnDeath}, and that is the rule, not an omission.</b> The playtest asked
+     * what happens on respawn and the answer was: you came back with a full guard and a raised
+     * one, because {@code held} is a <em>button</em> and it rode through death the same way it
+     * rode through a respawn. Input state that survives something the player did not do is a bug
+     * that only shows up on a fresh session, which is exactly the shape of the report.</p>
+     *
+     * <p>So dying costs the guard, points and all, and it comes back on the normal regen like a
+     * freshly picked up shield. That also happens to be the honest reading of the design: a
+     * player who just lost the fight should not walk out of the respawn screen with the resource
+     * the fight was about.</p>
+     */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<GuardState>> GUARD_STAMINA =
             ATTACHMENT_TYPES.register("guard_stamina", () -> AttachmentType.builder(() -> GuardState.EMPTY)
                     .serialize(GuardState.CODEC)
-                    .copyOnDeath()
                     .build());
 
     /** Server-authoritative attack cooldown. The permission to attack. */

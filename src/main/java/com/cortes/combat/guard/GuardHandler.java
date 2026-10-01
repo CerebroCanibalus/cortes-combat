@@ -1,5 +1,6 @@
 package com.cortes.combat.guard;
 
+import com.cortes.combat.attack.AttackCooldown;
 import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.registry.ModAttachments;
@@ -13,9 +14,11 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.living.LivingShieldBlockEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 /**
  * The guard: what blocks, what it costs, and when it refuses.
@@ -54,18 +57,114 @@ public final class GuardHandler {
      */
     public static void setGuard(ServerPlayer player, boolean raising) {
         GuardState current = player.getData(ModAttachments.GUARD_STAMINA.get());
-        if (raising && current.isExhausted()) {
+        // The playtest's order rule: you cover first, you eat after. A raise that arrives while
+        // the player is already chewing is refused, which is what makes the order a fact instead
+        // of something that happens to fall out of which hand holds what. The guard and the meal
+        // can still run at the same time -- they start on the same press and the guard resolves
+        // instantly while the food takes 32 ticks -- and this only refuses the second press.
+        //
+        // One predicate, shared with the item-use refusal below, because "may the guard go up" has
+        // to have exactly one answer on the server.
+        if (raising && !guardIsUsable(player)) {
             return;
         }
         GuardState next = raising ? current.raise() : current.lower();
         if (next != current) {
             player.setData(ModAttachments.GUARD_STAMINA.get(), next);
         }
+        if (raising && next.held() && !current.held()) {
+            // Covering abandons a swing that was already open. Same shape as the menu case and
+            // the same reason: the player pressed attack, then chose to cover, and the release
+            // would land a hit against whatever happened to be in the cone in between. Clearing
+            // the charge is enough -- CombatEngine#resolveSwing stops when nothing is open, so
+            // this costs no cooldown and the abandoned swing simply never was.
+            AttackCooldown.endCharge(player);
+        }
+    }
+
+    /**
+     * Whether the guard is up, which is what stops an attack.
+     *
+     * <p>The playtest called attacking while covered "un gravísimo error", and the reason it
+     * matters is not that it looks wrong. It removes the only cost the guard has. A guard that
+     * lets you swing is not a stance, it is a passive buff you hold with a button, and every
+     * other decision in the design -- points that are only spent by a blocked hit, a stagger
+     * that costs you two seconds -- is priced against a player who has to choose between covering
+     * and hitting.</p>
+     *
+     * <p>It is deliberately the strongest guard in the hands, not a per-item case. A shield in
+     * the off hand with a sword in the main one would otherwise block and swing for free, which
+     * makes the off hand strictly better than the sword and quietly dissolves the unified guard
+     * the design is built on.</p>
+     */
+    public static boolean isGuarding(Player player) {
+        return player.getData(ModAttachments.GUARD_STAMINA.get()).isActive();
     }
 
     /** The guard the player's items are currently worth, and which item is providing it. */
     public static GuardStats.Resolved bestFor(LivingEntity entity) {
         return GuardStats.best(entity);
+    }
+
+    /**
+     * Whether the guard is up right now, from the server's own numbers and nothing else.
+     *
+     * <p>Shared by the two things that have to agree on it: refusing the raise in
+     * {@link #setGuard} and refusing the item use below. Two copies of this question is how a
+     * client and a server end up with two different opinions about the same tick.</p>
+     */
+    public static boolean guardIsUsable(Player player) {
+        GuardState state = player.getData(ModAttachments.GUARD_STAMINA.get());
+        return !state.isExhausted() && !isEating(player);
+    }
+
+    /**
+     * The server's half of "the shield does not go up without points".
+     *
+     * <p>Fires on both sides in NeoForge, and only the server branch is here: the client needs
+     * the synced stamina rather than the live one, and common code cannot reach it. Both sides
+     * run {@link GuardRules#mayStartItemUse}, so the rule is written once and only the number it
+     * reads differs.</p>
+     *
+     * <p>Nothing here is a special case for the empty guard. It is the same refusal as an
+     * exhausted one, arriving through vanilla's item use instead of through our own input.</p>
+     */
+    @SubscribeEvent
+    public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+        Player player = event.getEntity();
+        if (player.level().isClientSide) {
+            return;
+        }
+        ItemStack stack = player.getItemInHand(event.getHand());
+        if (!GuardRules.mayStartItemUse(GuardStats.of(stack).canGuard(), guardIsUsable(player))) {
+            event.setCanceled(true);
+        }
+    }
+
+    /**
+     * Whether the player is halfway through eating or drinking.
+     *
+     * <p>Ask the item's <em>use animation</em> rather than whether the player is using an item at
+     * all. "Using an item" is true for a shield that is blocking, and gating the guard on that
+     * would deadlock: a shield would prevent its own guard, and the player could never raise it.
+     * The three cases the game itself distinguishes are exactly the three this needs -- {@code
+     * BLOCK} is the shield, {@code EAT} and {@code DRINK} are the meal -- so the distinction is
+     * read off the game rather than reinvented here.</p>
+     *
+     * <p>There is no {@code Item#isEdible} in 1.21.1 to ask instead. Verified with {@code javap}
+     * against the compiled jar, like everything else in this comment block.</p>
+     */
+    public static boolean isEating(LivingEntity entity) {
+        if (!entity.isUsingItem()) {
+            return false;
+        }
+        UseAnim anim = entity.getUseItem().getUseAnimation();
+        return anim == UseAnim.EAT || anim == UseAnim.DRINK;
+    }
+
+    /** Whether the item being used is a blocking one, which is the only use a guard cancels. */
+    public static boolean usedItemBlocks(LivingEntity entity) {
+        return entity.isUsingItem() && entity.getUseItem().getUseAnimation() == UseAnim.BLOCK;
     }
 
     @SubscribeEvent
@@ -127,8 +226,25 @@ public final class GuardHandler {
      */
     private static void stagger(Player player, GuardStats.Resolved guard, int ticks) {
         player.getCooldowns().addCooldown(guard.item().getItem(), Math.max(1, ticks));
-        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                SoundEvents.SHIELD_BREAK, SoundSource.PLAYERS, 1.0F, 0.7F);
+        // A broken sword and a broken shield are different noises, and the game's own is a wooden
+        // shield cracking, which is the wrong material for a blade going down.
+        //
+        // The guard is one mechanic covering two items, so the sound is chosen by what was actually
+        // holding, read from the same resolved pair the cooldown went on. One guard with two
+        // sounds, rather than one sound that has to sound right for both.
+        boolean shield = guard.item().is(net.minecraft.world.item.Items.SHIELD);
+        if (shield) {
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                    SoundEvents.SHIELD_BREAK, SoundSource.PLAYERS, 1.0F, 0.7F);
+            return;
+        }
+        var event = com.cortes.combat.sound.CombatSounds.event(
+                com.cortes.combat.sound.ModSounds.of(null,
+                        com.cortes.combat.sound.ModSounds.Kind.GUARD_BROKEN));
+        if (event != null) {
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                    event, SoundSource.PLAYERS, 1.0F, 0.9F);
+        }
     }
 
     /**

@@ -46,7 +46,7 @@ public enum WeaponProfile {
     SHOVEL("shovel"),
     MACE("mace"),
     TRIDENT("trident"),
-    RAPIER("rapier"),
+    ROPERA("ropera"),
     HALBERD("halberd"),
     WARHAMMER("warhammer"),
     DAGGER("dagger"),

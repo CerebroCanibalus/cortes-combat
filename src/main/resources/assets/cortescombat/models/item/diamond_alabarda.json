@@ -1,0 +1,44 @@
+{
+	"credit": "Made with Blockbench",
+	"parent": "minecraft:item/handheld",
+	"textures": {
+		"layer0": "cortescombat:item/diamond_alabarda"
+	},
+	"display": {
+		"thirdperson_righthand": {
+			"rotation": [31.5, -86.5, 41],
+			"translation": [0, 4.75, 4.75],
+			"scale": [2, 2, 1]
+		},
+		"thirdperson_lefthand": {
+			"rotation": [-145.5, -269.75, -225.25],
+			"translation": [0, 4.5, 3.5],
+			"scale": [2, 2, 1]
+		},
+		"firstperson_righthand": {
+			"rotation": [-30, -92.25, 32.25],
+			"translation": [7.25, 3, -5],
+			"scale": [2, 2, 1]
+		},
+		"firstperson_lefthand": {
+			"rotation": [-93.75, 108.75, 32.25],
+			"translation": [7.25, 3, -5],
+			"scale": [2, 2, 1]
+		},
+		"ground": {
+			"translation": [0, 4.75, 0]
+		},
+		"gui": {
+			"scale": [1.5, 1.5, 1]
+		},
+		"head": {
+			"translation": [5.5, -9.25, 5.75],
+			"scale": [3, 3, 1]
+		},
+		"fixed": {
+			"rotation": [0, -180, 0],
+			"translation": [0, 0, -0.75],
+			"scale": [2.5, 2.5, 1]
+		}
+	}
+}

@@ -2,6 +2,7 @@ package com.cortes.combat.attack;
 
 import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.guard.GuardHandler;
+import com.cortes.combat.guard.GuardRules;
 import com.cortes.combat.guard.GuardStats;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.registry.ModAttachments;
@@ -56,12 +57,20 @@ public final class CombatTicker {
      *
      * <p>The cooldown is dropped too, because a session that opens with a partly spent bar is
      * just confusing: nothing about reconnecting should cost a swing.</p>
+     *
+     * <p>The guard is lowered for the same reason the charge is cleared: {@code held} is a button,
+     * and a button that is still set from a connection that no longer exists is a state nothing in
+     * the game is producing. The playtest hit this on joining -- a session that opened with the
+     * guard already up, orbs lit, and no way to block. Attachments are not written to disk so it
+     * should already start clean, and this is the line that makes that true by intent rather than
+     * by a property of the storage nobody chose on purpose.</p>
      */
     @SubscribeEvent
     public static void onLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             AttackCooldown.endCharge(player);
             AttackCooldown.resetCooldown(player);
+            GuardHandler.setGuard(player, false);
         }
     }
 
@@ -92,12 +101,37 @@ public final class CombatTicker {
         // stale regen rate running.
         GuardStats.Resolved resolved = GuardHandler.bestFor(player);
         GuardProfile profile = resolved.profile();
-        // Same cooldown the handler gates blocking on, so the refill and the stagger are one
-        // clock instead of two unrelated timers.
         boolean staggered = player.getCooldowns().isOnCooldown(resolved.item().getItem());
+
+        // A staggered guard is DOWN, not "raised but broken". Lowering it here rather than in the
+        // handler is what makes the orbs dim, what stops the guard coming back up on its own
+        // when the cooldown ends, and what clears a `held` flag that no button is holding.
+        //
+        // That last one is the weird case the playtest hit on joining: `held` is input state,
+        // and input state that survives something the player did not do is the definition of a
+        // bug that only shows up on a fresh session.
         GuardState resized = guard.withMax(profile.safePoints());
-        GuardState ticked = resized.tick(profile.regenTicks(), staggered, profile.stunTicks());
-        if (ticked != resized) {
+        GuardState settled = staggered ? resized.lower() : resized;
+
+        // One flag, and the two halves are an OR because they are two answers to the same
+        // question: can this guard be used right now?
+        //
+        // <b>Raised</b> costs the regen, because holding is the price of holding.
+        //
+        // <b>Staggered</b> also costs it, which the playtest added: a broken guard regenerates
+        // nothing until its cooldown is over. Points arriving during the stun is the one window
+        // where a player who is helpless is also recovering.
+        //
+        // It lives in GuardRules now, with a test for all four cells, because the version that
+        // was here read `isActive() && !staggered` into a parameter that means <em>this stops
+        // the regen</em>. Both of those halves look like a negation, so both of them were
+        // backwards, and the guard refilled while raised while refusing to while broken. The
+        // state class was right the whole time; the caller was where the bug lived, which is
+        // exactly the kind of bug a component test cannot see.
+        boolean regenPaused = GuardRules.regenPaused(settled.held(), staggered);
+
+        GuardState ticked = settled.tick(profile.regenTicks(), regenPaused);
+        if (ticked != settled) {
             player.setData(ModAttachments.GUARD_STAMINA.get(), ticked);
         }
     }

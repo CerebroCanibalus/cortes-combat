@@ -11,6 +11,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -28,11 +29,18 @@ public class CortesCombatClient {
     public CortesCombatClient(IEventBus modEventBus, ModContainer modContainer) {
         modContainer.registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
         NeoForge.EVENT_BUS.register(SwingInputHandler.class);
-        NeoForge.EVENT_BUS.register(ItemViewModel.class);
+        // ItemViewModel is deliberately absent. It used to be registered here, because the
+        // viewmodel was drawn from a RenderHandEvent listener. It is drawn from
+        // ItemInHandRendererMixin now, in the item's own frame, so the class has no event methods
+        // at all and registering it aborts mod construction with "has no @SubscribeEvent
+        // methods, but register was called anyway". The bus is not a place to park a class that
+        // nothing subscribes to.
         NeoForge.EVENT_BUS.register(ChargeFovEffect.class);
         NeoForge.EVENT_BUS.register(GuardInputHandler.class);
+        NeoForge.EVENT_BUS.register(SpecialInputHandler.class);
         NeoForge.EVENT_BUS.register(ClientTasks.class);
         NeoForge.EVENT_BUS.register(ConeDebugRenderer.class);
+        modEventBus.addListener(CortesCombatClient::registerParticles);
         modEventBus.addListener(CortesCombatClient::registerLayers);
         modEventBus.addListener(CortesCombatClient::onClientSetup);
     }
@@ -55,6 +63,35 @@ public class CortesCombatClient {
      * thing on screen and the orbs are the smallest; drawing the orbs last keeps them readable
      * in the rare case a 9 orb row and a bracket column overlap, and costs nothing otherwise.</p>
      */
+    /**
+     * Binds the slash particle to its sprite.
+     *
+     * <p>{@code registerSpriteSet} and not {@code registerSpecial}: the sprite set is where the
+     * particle's textures come from, and the slice out of the vertical strip is done by the
+     * particle itself. One type covers every weapon because the sprite travels in the payload.</p>
+     */
+    private static void registerParticles(RegisterParticleProvidersEvent event) {
+        // The particle binds its own sprite, and the two lines after it are why.
+        //
+        // ParticleEngine calls pickSprite from exactly one place: the deprecated
+        // register(ParticleType, ParticleProvider.Sprite) overload, which binds on the provider's
+        // behalf. registerSpriteSet just stores the provider, so a particle registered that way
+        // arrives with sprite == null and its four UV accessors read a null sprite. The null
+        // guards in SlashParticle keep that from being a crash, which is exactly why it went
+        // unnoticed: the particle rendered nothing and said nothing.
+        event.registerSpriteSet(com.cortes.combat.registry.ModParticleTypes.SLASH.get(),
+                sprites -> (options, level, x, y, z, dx, dy, dz) -> {
+                    if (!level.isClientSide) {
+                        return null;
+                    }
+                    com.cortes.combat.particle.SlashParticle particle =
+                            new com.cortes.combat.particle.SlashParticle(
+                                    level, x, y, z, dx, dy, dz, options);
+                    particle.bindSprite(sprites);
+                    return particle;
+                });
+    }
+
     private static void registerLayers(RegisterGuiLayersEvent event) {
         event.registerBelowAll(ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "damage_overlay"),
                 new DamageOverlayLayer());

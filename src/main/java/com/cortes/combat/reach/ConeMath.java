@@ -27,7 +27,62 @@ public final class ConeMath {
 
     private static final double EPSILON = 1.0E-6;
 
+    /**
+     * How much of the target's own size becomes extra tolerance, as a fraction of its half extent.
+     *
+     * <p>See {@link #leash} for why a fixed angle cannot do this job. The short version is that
+     * the vertical axis was measured from the horizon rather than from what the player was
+     * pointing at, so the only way to look at a mob one block away was to look 43 degrees down,
+     * which no vertical angle any weapon can afford will accept.</p>
+     */
+    public static final double LEASH_FRACTION = 0.65;
+
+    /**
+     * The ceiling on that tolerance, in blocks.
+     *
+     * <p>Without it the rule is "the tolerance is two thirds of the target", which is honest and
+     * completely breaks on an eight block tall dragon: a five metre leash means the narrowest
+     * weapon in the game connects without the player pointing at anything. Capping it means a
+     * huge target is proportionally <em>harder</em> than an ordinary one, which is what size is
+     * supposed to mean.</p>
+     */
+    public static final double LEASH_CAP = 0.8;
+
     private ConeMath() {
+    }
+
+    /**
+     * The extra tolerance a target of this size earns, in blocks.
+     *
+     * <p>A fixed angle is the wrong shape for a held weapon up close, and the way it fails is
+     * worth writing down because it took a playtest to see and no amount of reading to guess.</p>
+     *
+     * <p>The cone's cross-section grows with distance, so a fixed angle is wide far away and a
+     * coin far away from you. At one block the ropera's fifteen degree vertical limit is a
+     * twenty seven centimetre band, and a zombie is a block and a half tall: <b>you cannot look
+     * at one.</b> The measurement is not even in the right frame, because the vertical offset is
+     * taken from the horizon rather than from the target. Concretely, a zombie's nearest point to
+     * the player's eye sits at eye height, because the eye is inside its box, so the whole test
+     * collapses to "how far below the horizon are you looking" -- and looking at a zombie one
+     * block away means looking forty three degrees down.</p>
+     *
+     * <p>Measured, not guessed: the distance from which pointing at a zombie starts to work was
+     * 2.62m for a ropera with 3.4m of reach, 1.77m for the bare hands with 2.5m, against 0.72m
+     * for the warhammer. The ordering is the ordering of the vertical angles, which is why this
+     * read as "the narrower the cone the worse" when it is one specific axis.</p>
+     *
+     * <p>The leash closes the near field and leaves the far one alone, because the two terms are
+     * a maximum: past the crossover the angle is wider and takes over by itself. For a ropera
+     * against a zombie that crossover is at 2.35m of 3.4m, so the last metre of its range is as
+     * precise as it was written to be.</p>
+     *
+     * @param halfExtent half the target's width or height, in blocks
+     */
+    public static double leash(double halfExtent) {
+        if (halfExtent <= 0.0 || Double.isNaN(halfExtent)) {
+            return 0.0;
+        }
+        return Math.min(halfExtent * LEASH_FRACTION, LEASH_CAP);
     }
 
     /**
@@ -41,6 +96,32 @@ public final class ConeMath {
             double lookX, double lookY, double lookZ,
             double targetX, double targetY, double targetZ,
             double maxDistance, double horizontalAngle, double verticalAngle) {
+        // No leash: a target with no size to speak of, which is what the two argument limits
+        // alone have always meant. The overload exists so this one's tests keep describing the
+        // original rule rather than quietly gaining a tolerance nobody asked for.
+        return inCone(originX, originY, originZ,
+                lookX, lookY, lookZ,
+                targetX, targetY, targetZ,
+                maxDistance, horizontalAngle, verticalAngle, 0.0, 0.0);
+    }
+
+    /**
+     * The same test, with the two leashes a target of its size has earned.
+     *
+     * <p>Compared as perpendicular offsets rather than as angles, because a leash <em>is</em> an
+     * offset in blocks and converting it to an angle first would hide what it does. The angle
+     * term becomes {@code along · tan(limit)}, so the maximum of the two is simply the wider of
+     * "how far away and how wide" and "how big it is".</p>
+     *
+     * @param leashLateral blocks of sideways slop the target's width earns
+     * @param leashVertical blocks of up-and-down slop the target's height earns
+     */
+    public static boolean inCone(
+            double originX, double originY, double originZ,
+            double lookX, double lookY, double lookZ,
+            double targetX, double targetY, double targetZ,
+            double maxDistance, double horizontalAngle, double verticalAngle,
+            double leashLateral, double leashVertical) {
 
         double dx = targetX - originX;
         double dy = targetY - originY;
@@ -76,15 +157,36 @@ public final class ConeMath {
         double lateral = dx * frame.rx() + dy * frame.ry() + dz * frame.rz();
         double vertical = dx * frame.ux() + dy * frame.uy() + dz * frame.uz();
 
-        // Atan2 of the absolute lateral offset: a target behind the attacker yields an angle
-        // above 90 degrees, so it fails any sane limit without a special case.
-        double horizontal = Math.toDegrees(Math.atan2(Math.abs(lateral), along));
-        // The vertical limit is measured in the same plane as the horizontal one, against the
-        // gaze line. This is what makes the cone reorient: look up and the vertical axis comes
-        // with you, instead of staying vertical in the world and rejecting whatever is above.
-        double verticalOffset = Math.toDegrees(Math.atan2(Math.abs(vertical), along));
+        // Behind the attacker, and therefore outside a leash that is a forward tolerance.
+        //
+        // This is the one place the rewrite could have gone wrong quietly. The old test measured
+        // atan2(offset, along), which returns more than ninety degrees for anything behind and
+        // so failed every limit without a special case. Comparing raw offsets has no such
+        // property: a target straight behind has a lateral offset of zero, and zero is inside any
+        // leash at all, so without this line the narrowest weapon in the game would hit whatever
+        // is behind the player's head.
+        if (along <= EPSILON) {
+            return false;
+        }
 
-        return horizontal <= horizontalAngle && verticalOffset <= verticalAngle;
+        double allowedLateral = Math.max(along * tangent(horizontalAngle), leashLateral);
+        double allowedVertical = Math.max(along * tangent(verticalAngle), leashVertical);
+
+        return Math.abs(lateral) <= allowedLateral && Math.abs(vertical) <= allowedVertical;
+    }
+
+    /**
+     * Tangent of a limit in degrees, guarded.
+     *
+     * <p>The old code never needed a tangent because it measured angles both sides. It does now,
+     * and a limit of ninety degrees would divide by nothing but a zero or a negative one is
+     * possible from a data override, so it is clamped rather than trusted.</p>
+     */
+    public static double tangent(double degrees) {
+        if (Double.isNaN(degrees) || degrees <= 0.0) {
+            return 0.0;
+        }
+        return Math.tan(Math.toRadians(Math.min(degrees, 89.0)));
     }
 
     /**

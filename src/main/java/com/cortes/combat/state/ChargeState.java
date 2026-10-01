@@ -12,6 +12,20 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  */
 public record ChargeState(int ticks, boolean holding) {
 
+    /**
+     * There is deliberately no {@code ratio(int)} here.
+     *
+     * <p>There was one, and it was {@code ticks / fullChargeTicks} raw, and it was the reason the
+     * playtest kept reporting that an ordinary click counted as a charge: the damage went through
+     * the thresholded {@code AttackTiming.chargeRatioFor}, and the bar and the field of view went
+     * through this one, so a two tick click against a twenty-four tick window showed eight percent
+     * of a charge bar for two hundred milliseconds and told the camera to move slightly.</p>
+     *
+     * <p>Two functions of one quantity is the whole failure mode, so the answer is that there is
+     * one now. This record holds a <b>tick count</b> and nothing else, because a tick count is the
+     * fact; turning it into a ratio is {@code AttackTiming}'s job, and it does it identically for
+     * the damage, the bar and the camera because all three call the same function.</p>
+     */
     public static final ChargeState EMPTY = new ChargeState(0, false);
     public static final Codec<ChargeState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.INT.fieldOf("ticks").forGetter(ChargeState::ticks),
@@ -24,12 +38,5 @@ public record ChargeState(int ticks, boolean holding) {
 
     public ChargeState reset() {
         return EMPTY;
-    }
-
-    public float ratio(int fullChargeTicks) {
-        if (fullChargeTicks <= 0) {
-            return 0.0F;
-        }
-        return Math.min(1.0F, (float) ticks / (float) fullChargeTicks);
     }
 }

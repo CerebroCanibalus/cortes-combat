@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "*": {
+      "item": "minecraft:iron_ingot"
+    },
+    "/": {
+      "item": "minecraft:stick"
+    },
+    "X": {
+      "tag": "minecraft:diamond_tool_materials"
+    }
+  },
+  "pattern": [
+    "X*X",
+    " / ",
+    " / "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cortescombat:diamond_martillo"
+  }
+}

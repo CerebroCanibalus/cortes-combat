@@ -58,14 +58,18 @@ public final class WeaponStats {
         // nothing, because swinging a dirt block is not an attack.
         DEFAULT_KNOCKBACK.put(WeaponProfile.NONE, new KnockbackProfile(0.12F, 0.02F));
         DEFAULT_KNOCKBACK.put(WeaponProfile.UNARMED, new KnockbackProfile(0.10F, 0.02F));
-        DEFAULT_KNOCKBACK.put(WeaponProfile.SWORD, new KnockbackProfile(0.28F, 0.05F));
+        // 0.55 / 0.10, from 0.28 / 0.05. The playtest said the sword's knockback was "too small
+        // for a charge" and it was, by a factor of two. The vertical stays far under the
+        // horizontal on purpose: nothing about hitting someone with a sword should put them in
+        // the air, and MAX_VERTICAL is the guarantee that a small number still means none.
+        DEFAULT_KNOCKBACK.put(WeaponProfile.SWORD, new KnockbackProfile(0.55F, 0.10F));
         DEFAULT_KNOCKBACK.put(WeaponProfile.AXE, new KnockbackProfile(0.34F, 0.08F));
         DEFAULT_KNOCKBACK.put(WeaponProfile.PICKAXE, new KnockbackProfile(0.22F, 0.05F));
         DEFAULT_KNOCKBACK.put(WeaponProfile.SHOVEL, new KnockbackProfile(0.22F, 0.05F));
         DEFAULT_KNOCKBACK.put(WeaponProfile.MACE, new KnockbackProfile(0.30F, 0.10F));
         DEFAULT_KNOCKBACK.put(WeaponProfile.TRIDENT, new KnockbackProfile(0.30F, 0.12F));
-        // The rapier is the narrow one: it moves you out of the way, it does not move them.
-        DEFAULT_KNOCKBACK.put(WeaponProfile.RAPIER, new KnockbackProfile(0.16F, 0.03F));
+        // The ropera is the narrow one: it moves you out of the way, it does not move them.
+        DEFAULT_KNOCKBACK.put(WeaponProfile.ROPERA, new KnockbackProfile(0.16F, 0.03F));
         DEFAULT_KNOCKBACK.put(WeaponProfile.DAGGER, new KnockbackProfile(0.14F, 0.03F));
         // The halberd is the widest and the heaviest at the tip.
         DEFAULT_KNOCKBACK.put(WeaponProfile.HALBERD, new KnockbackProfile(0.45F, 0.14F));
@@ -87,7 +91,13 @@ public final class WeaponStats {
         // would carry a weapon for nothing. Short, fast and nearly harmless is the whole
         // character: the speed is what makes it a real option when you have nothing else, and
         // it is the only thing that makes it one.
-        DEFAULT_REACH.put(WeaponProfile.UNARMED, new ReachProfile(1.9F, 25.0F, 20.0F));
+        // 2.5, from 1.9. The fists are meant to be the shortest reach in the game and the
+        // quickest thing in it, and both of those were true at 1.9, but so was the playtest
+        // report that "the fist is very hard to land on an enemy". Barely more than the arm's own
+        // length means the target has to be inside the player's own space, which is a punching
+        // range nobody expects a punch to have. Still the shortest by a clear margin against the
+        // sword's 3.6, so the relationship the design asked for survives.
+        DEFAULT_REACH.put(WeaponProfile.UNARMED, new ReachProfile(2.5F, 28.0F, 22.0F));
         // 3.0 -> 3.6. The sword was 3.2, a fifth of a block over vanilla, which the player read
         // as "the same reach, shorter animation": the whole point of a hard cooldown is that you
         // commit to a spacing, and committing to vanilla's spacing is not a change. At 3.6 a
@@ -100,23 +110,36 @@ public final class WeaponStats {
         DEFAULT_REACH.put(WeaponProfile.SHOVEL, new ReachProfile(3.0F, 35.0F, 30.0F));
         DEFAULT_REACH.put(WeaponProfile.MACE, new ReachProfile(3.4F, 30.0F, 40.0F));
         DEFAULT_REACH.put(WeaponProfile.TRIDENT, new ReachProfile(4.0F, 15.0F, 20.0F));
-        // Rapier: tiny cone, buys it back with speed. Dagger: tiny range, wide cone.
+        // Ropera: tiny cone, buys it back with speed. Dagger: tiny range, wide cone.
         // Halberd: widest and longest. Sabre: the widest cone in the game, shortest range.
         // Warhammer: deliberately poor range, the escalation is the payoff.
-        DEFAULT_REACH.put(WeaponProfile.RAPIER, new ReachProfile(3.4F, 12.0F, 15.0F));
+        DEFAULT_REACH.put(WeaponProfile.ROPERA, new ReachProfile(3.4F, 12.0F, 15.0F));
         DEFAULT_REACH.put(WeaponProfile.DAGGER, new ReachProfile(2.4F, 45.0F, 30.0F));
         DEFAULT_REACH.put(WeaponProfile.HALBERD, new ReachProfile(4.2F, 55.0F, 35.0F));
         DEFAULT_REACH.put(WeaponProfile.WARHAMMER, new ReachProfile(2.6F, 40.0F, 40.0F));
         DEFAULT_REACH.put(WeaponProfile.SABRE, new ReachProfile(2.5F, 75.0F, 25.0F));
 
-        DEFAULT_CHARGE.put(WeaponProfile.UNARMED, new ChargeProfile(true, 0.3F, 24));
+        // 12 ticks, from 24. The fists are the fastest thing in the game -- four ticks between swings
+        // against a sword's twelve -- and they were taking exactly as long to charge as a sword.
+        // The playtest named both halves: the fist "should charge faster because it is a short
+        // strike", and it still "jerks while charging".
+        //
+        // Those are one bug, and it is not the numbers. A wind-up whose only job is to be watched
+        // needs enough ticks to read as a motion, and 12 is half of 24, so every one of those
+        // motions now happens in half the time and reads as twice as fast. The tempo, the
+        // interval and the charge window are three expressions of the same property -- how big and
+        // how quick this weapon is -- and one weapon having a four tick swing and a twenty-four
+        // tick charge is a table that contradicts itself.
+        //
+        // The capability to vary this per weapon already existed. Nobody had set it.
+        DEFAULT_CHARGE.put(WeaponProfile.UNARMED, new ChargeProfile(true, 0.3F, 12));
         DEFAULT_CHARGE.put(WeaponProfile.SWORD, new ChargeProfile(true, 0.5F, 25));
         DEFAULT_CHARGE.put(WeaponProfile.AXE, new ChargeProfile(true, 0.6F, 40));
         DEFAULT_CHARGE.put(WeaponProfile.PICKAXE, new ChargeProfile(true, 0.4F, 33));
         DEFAULT_CHARGE.put(WeaponProfile.SHOVEL, new ChargeProfile(true, 0.4F, 33));
         DEFAULT_CHARGE.put(WeaponProfile.MACE, new ChargeProfile(true, 0.7F, 40));
         DEFAULT_CHARGE.put(WeaponProfile.TRIDENT, new ChargeProfile(true, 0.5F, 25));
-        DEFAULT_CHARGE.put(WeaponProfile.RAPIER, ChargeProfile.NONE);
+        DEFAULT_CHARGE.put(WeaponProfile.ROPERA, ChargeProfile.NONE);
         DEFAULT_CHARGE.put(WeaponProfile.DAGGER, ChargeProfile.NONE);
         DEFAULT_CHARGE.put(WeaponProfile.HALBERD, new ChargeProfile(true, 0.6F, 36));
         DEFAULT_CHARGE.put(WeaponProfile.WARHAMMER, new ChargeProfile(true, 0.6F, 32));
@@ -273,8 +296,15 @@ public final class WeaponStats {
         // Vanilla's sword is 12-13 ticks. 0.85 puts it at 10, which is what a sword should feel
         // like when it is the weapon in your hand and the thing in front of you needs two hits.
         TEMPO.put(WeaponProfile.SWORD, 0.85F);
-        // The dagger buys its speed back with a 2.4 block reach and a 45 degree cone.
-        TEMPO.put(WeaponProfile.DAGGER, 0.7F);
+        // The dagger is NOT in this table. It was, at 0.7, and the entry was dead: there was no
+        // dagger item for it to apply to, so nothing had ever been measured against it. The
+        // moment the item existed, the entry started doing the opposite of what it looked like:
+        // a dagger declaring 2.6 attacks per second would have been multiplied down to 1.82 and
+        // swung every eleven ticks instead of eight, which is slower than a sword.
+        //
+        // So the tempo for the five new families lives on the item's own ATTACK_SPEED, where the
+        // number a reader finds in WeaponFamily is the number that runs. This table is for
+        // retuning vanilla's weapons, whose attribute Mojang owns and we cannot change.
         // Bare hands are the fastest thing in the game, and the only entry here above 1.0.
         //
         // The player's base attack speed is vanilla's 4.0, which is already five ticks, so
@@ -293,8 +323,18 @@ public final class WeaponStats {
      * the caller has a stack and not a profile and building one to read one boolean would be
      * silly.</p>
      */
+    /**
+     * Whether the held item can charge, resolved the same way every other stat is.
+     *
+     * <p>It read {@code DEFAULT_CHARGE.get(profile)} instead, which skips the component layer and
+     * the override file and asks the profile's default directly. So a mod that puts a real charge
+     * profile on the ropera -- a component, through the compat path this project promises --
+     * got an item the game had already decided cannot charge. The answer that survives a
+     * component is the one that goes through {@link #of(ItemStack)} like every other question
+     * about a weapon.
+     */
     public static boolean canCharge(ItemStack stack) {
-        return DEFAULT_CHARGE.get(WeaponStats.of(stack).profile()).canCharge();
+        return WeaponStats.of(stack).charge().canCharge();
     }
 
     public static CooldownState cooldownOf(Player player) {

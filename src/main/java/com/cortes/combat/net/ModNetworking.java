@@ -31,7 +31,12 @@ public final class ModNetworking {
                 ModNetworking::handleSwing);
         registrar.playToServer(GuardInputPayload.TYPE, GuardInputPayload.STREAM_CODEC,
                 ModNetworking::handleGuardInput);
-        registrar.playToClient(CombatStatePayload.TYPE, CombatStatePayload.STREAM_CODEC,
+        registrar.playToServer(SpecialPayload.TYPE, SpecialPayload.STREAM_CODEC,
+                (payload, context) -> {
+                    if (context.player() instanceof ServerPlayer sp) {
+                        com.cortes.combat.special.SpecialHandler.resolve(sp, payload.stack());
+                    }
+                });        registrar.playToClient(CombatStatePayload.TYPE, CombatStatePayload.STREAM_CODEC,
                 ModNetworking::handleCombatState);
         registrar.playToClient(DebugTogglePayload.TYPE, DebugTogglePayload.STREAM_CODEC,
                 ModNetworking::handleDebugToggle);
@@ -81,8 +86,16 @@ public final class ModNetworking {
         }
         if (payload.pressed()) {
             AttackCooldown.beginCharge(player);
+            org.slf4j.LoggerFactory.getLogger("cortescombat").info(
+                    "[server] press de " + player.getName().getString()
+                            + " item=" + player.getMainHandItem().getItem());
             return;
         }
+        org.slf4j.LoggerFactory.getLogger("cortescombat").info(
+                "[server] release de " + player.getName().getString()
+                        + " objetivo=" + payload.entityId()
+                        + " abierto=" + player.getData(ModAttachments.CHARGE.get()).holding()
+                        + " ticks=" + player.getData(ModAttachments.CHARGE.get()).ticks());
         CombatEngine.resolveSwing(player, payload.entityId());
     }
 
@@ -108,11 +121,36 @@ public final class ModNetworking {
         }
         com.cortes.combat.client.ClientDebugFlags.setConeVisible(payload.cone());
         com.cortes.combat.client.ClientDebugFlags.setHudVisible(payload.hud());
+        com.cortes.combat.CombatTrace.set(payload.trace());
+
+        if (payload.dump()) {
+            com.cortes.combat.client.HudGeometryDump.print();
+        }
+
+        if (payload.input()) {
+            // Both the chat line and the log, on purpose: the log is what gets pasted into a bug
+            // report and the chat line is what gets read first. The report this answers had
+            // neither.
+            String report = com.cortes.combat.client.InputDiagnostic.report();
+            com.cortes.combat.CombatTrace.client(report);
+            if (context.player() instanceof net.minecraft.client.player.LocalPlayer local) {
+                local.displayClientMessage(
+                        net.minecraft.network.chat.Component.literal(report), false);
+            }
+        }
     }
 
-    /** Send a debug flag to one player. Development helper. */
-    public static void sendDebugToggle(ServerPlayer player, boolean cone, boolean hud) {
-        PacketDistributor.sendToPlayer(player, new DebugTogglePayload(cone, hud));
+    /**
+     * Send the debug flags to one player. Development helper.
+     *
+     * <p>All three go in one packet on purpose. The trace is here for the same reason the cone
+     * is: a command cannot reach a client-side static, and the flag that is missing is the one
+     * nobody reads.</p>
+     */
+    public static void sendDebugToggle(ServerPlayer player, boolean cone, boolean hud,
+                                        boolean trace, boolean dump, boolean input) {
+        PacketDistributor.sendToPlayer(player,
+                new DebugTogglePayload(cone, hud, trace, dump, input));
     }
 
     /**

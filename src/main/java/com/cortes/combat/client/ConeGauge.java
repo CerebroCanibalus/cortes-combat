@@ -69,9 +69,79 @@ public final class ConeGauge {
      * floor made the bar look like scattered dots. That was a misdiagnosis: the dots came from
      * the second brightness level, the unfilled socket, which has since been deleted. With one
      * gradient there is nothing to break up, so the floor can go to zero.</p>
+     *
+     * <p>This is the gradient's shape. How loud the whole widget is, is {@link #WIDGET_ALPHA},
+     * and keeping the two apart is the point: the shape answers "where does the line fade" and
+     * the multiplier answers "how present is this thing at all".</p>
      */
     public static final int ALPHA_NEAR_BRACKET = 175;
     public static final int ALPHA_NEAR_CROSSHAIR = 0;
+
+    /**
+     * How present the widget is, and the reason it stopped being annoying.
+     *
+     * <p>The playtest called the brackets and the bar "too intrusive", and the interesting part
+     * is not the brightness. It is that this widget is on screen <b>every frame of every
+     * session</b>, in the same place, and the crosshair is also there. Anything permanent competes
+     * with the thing you aim with, and a competing element does not become familiar, it becomes
+     * noise that you have to consciously ignore.</p>
+     *
+     * <p>So the widget now sits clearly below the crosshair, which is the invariant that
+     * matters: <b>the brightest thing in the middle of the screen is the thing the player is
+     * aiming with</b>. Brackets and bar share this one number because they are one object at one
+     * place, and a widget whose two halves dim by different amounts reads as two unrelated
+     * things.</p>
+     *
+     * <p>It stays above zero on purpose, and it stays above the noise floor of a mid-grey wall at
+     * every GUI scale: these are a spatial reading, and position survives dimming far better
+     * than brightness does. A faint marker in the right place still tells you your spacing.</p>
+     */
+    public static final float WIDGET_ALPHA = 0.55F;
+
+    /**
+     * How present the brackets are, which is lower than the bar's peak and it is not a fudge.
+     *
+     * <p>The playtest called the whole widget "too intrusive" and then, once this landed, said
+     * the bar was exactly right and the brackets still looked solid. That is not a smaller
+     * version of the same problem: it is two shapes with different averages. The bar is a
+     * gradient that reaches zero at the crosshair, so its average presence sits far below its
+     * peak, while a bracket is a flat mark held at one alpha all the way across. One number
+     * cannot serve both without one of them reading wrong, and matching the peaks made the
+     * brackets about three times louder than the bar in perceived terms.</p>
+     *
+     * <p>Two numbers, still one decision. Both sit below the crosshair, which is the invariant
+     * that matters: <b>the brightest thing in the middle of the screen is the thing the player
+     * is aiming with.</b> This widget is on screen every frame of every session in the same
+     * place, and a permanent element that competes with the aim point does not become familiar,
+     * it becomes noise to consciously ignore.</p>
+     *
+     * <p>Well above nothing on purpose, because these are a spatial reading and position
+     * survives dimming far better than brightness does: a faint mark in the right place still
+     * says how far the weapon reaches, which is the only thing in this widget that is not a
+     * moment-to-moment reading.</p>
+     *
+     * <p><b>The number barely moved and the brackets got much more visible, because the bug was
+     * never this constant.</b> It used to be multiplied by the sprite's own alpha, and the art
+     * was redrawn: the old file peaked at 102 of 255, the new one at 38, so a constant that had
+     * been producing 28 of 255 was quietly producing 11. Eleven of 255 is not a bracket, it is a
+     * rumour, and no amount of tuning this number could have found it.
+     * {@link BracketMask} now divides the art's alpha by the art's own peak -- the same split the
+     * bar's gradient already used -- so this is a real opacity and the art decides only shape.</p>
+     *
+     * <p>Thirty percent, which is a little under the bar's peak, and the reason it is not lower
+     * is the art: the old bracket was a ten column solid mark and this one is a thin outline with
+     * gaps in it. A thinner mark needs more alpha to read at the same weight, so restoring the old
+     * 28 would have left the new bracket under-reading rather than matching it. This sits close to
+     * the ceiling the test below sets, and that ceiling is deliberate -- the player called this
+     * widget "perfecto" at a fraction of the bar's brightness, and nothing about the new art is a
+     * reason to start competing with the crosshair.</p>
+     */
+    public static final float BRACKET_ALPHA = 0.30F;
+
+    /** The alpha the brackets are drawn at. One definition, so the layer and the test agree. */
+    public static float bracketAlpha() {
+        return BRACKET_ALPHA;
+    }
 
     private ConeGauge() {
     }
@@ -107,8 +177,23 @@ public final class ConeGauge {
         }
         // 0 at the crosshair, 1 at the bracket.
         float t = length <= 1 ? 1.0F : (float) i / (length - 1);
-        return Math.round(ALPHA_NEAR_CROSSHAIR
+        int shape = Math.round(ALPHA_NEAR_CROSSHAIR
                 + (ALPHA_NEAR_BRACKET - ALPHA_NEAR_CROSSHAIR) * smoothstep(t));
+        // The widget's own presence, applied after the shape so that changing how loud it is
+        // never changes where it fades. See WIDGET_ALPHA.
+        return Math.round(shape * WIDGET_ALPHA);
+    }
+
+    /**
+     * The brightest the bar ever gets, which is the shape's peak scaled by the widget's presence.
+     *
+     * <p>One definition rather than two. The shape constant says where the gradient tops out; this
+     * says what that is worth on screen once the widget has been dialled down, and the layer, the
+     * test and any future tuning all read the same number instead of each re-deriving the
+     * product.</p>
+     */
+    public static int peakBarAlpha() {
+        return Math.round(ALPHA_NEAR_BRACKET * WIDGET_ALPHA);
     }
 
     /** The classic ease. Linear ramps look like steps; this one looks like a fade. */
@@ -179,5 +264,73 @@ public final class ConeGauge {
      */
     public static int halfSpan(float horizontalAngle) {
         return halfSpan(horizontalAngle, 540, 90.0, 960);
+    }
+
+    /**
+     * How far short of the brackets the bar stops, in pixels.
+     *
+     * <p>The gap between the end of the line and the ink. It is a gap and not a measurement of
+     * the art because the art's extent is {@code BracketMask}'s to report, and this class has no
+     * business knowing how wide a bracket is.</p>
+     */
+    public static final int BAR_INSET = 5;
+
+    /**
+     * Where the right bracket's ink sits, given where the left one's does.
+     *
+     * <p><b>This is the whole "descentrados" bug, and it is one pixel.</b> The two anchors were
+     * each measured as the middle column of their own ink, and the ink is four columns wide, so
+     * both rounded down. For a pair to be an exact mirror in an image of {@code width}, the two
+     * anchors have to sum to {@code width - 1}: four and eighteen for a twenty-three wide file.
+     * Measuring them independently gave four and seventeen, and seventeen is <em>not</em> the
+     * mirror of four -- so the right bracket sat one pixel nearer the centre than the left one,
+     * and the bar, which is symmetric, ended up two pixels from one bracket and three from the
+     * other.</p>
+     *
+     * <p>Nothing about that reads as a bug in a screenshot. It reads as "the brackets are not
+     * quite centred on the bars", which is what the playtest said, three rounds running, while
+     * every number in the diagnostic was individually correct.</p>
+     */
+    public static int mirrorAnchor(int leftAnchor, int spriteWidth) {
+        return spriteWidth - 1 - leftAnchor;
+    }
+
+    /**
+     * Every number the widget draws, in one value.
+     *
+     * <p>It exists because of a specific failure: the playtest reported twice that the brackets
+     * were off centre with respect to the bars, and the only way to answer that is to print the
+     * numbers. The first version of the printout recomputed them, which is a second copy of the
+     * arithmetic and therefore a second thing that can be wrong -- and a diagnostic that lies is
+     * worse than none, because it sends the next hour of the search in the wrong direction.</p>
+     *
+     * <p>So the layer draws from this and the diagnostic reads the same one. If they ever
+     * disagree, the disagreement is a bug in one function rather than in two.</p>
+     */
+    public record Geometry(int halfSpan, int barInner, int barOuter, int barLength) {
+
+        /** Where the bar stops on the right, measured from the crosshair. */
+        public int barEnd() {
+            return barOuter + barLength;
+        }
+
+        /** The gap between the end of the line and the bracket's centre, which is what the eye reads. */
+        public int gapToBracket() {
+            return halfSpan - barEnd();
+        }
+    }
+
+    /**
+     * The widget's geometry for a live screen.
+     *
+     * @param horizontalAngle the cone's half-angle, which is what sets {@code halfSpan}
+     * @param crosshairReach  how far the crosshair currently extends; the bar starts outside it
+     */
+    public static Geometry geometry(float horizontalAngle, int guiWidth, int guiHeight,
+                                    double fov, int crosshairReach) {
+        int halfSpan = halfSpan(horizontalAngle, guiHeight, fov, guiWidth);
+        int inner = halfSpan - BAR_INSET;
+        int length = Math.max(0, inner - crosshairReach);
+        return new Geometry(halfSpan, inner, crosshairReach, length);
     }
 }

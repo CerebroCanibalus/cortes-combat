@@ -27,3 +27,7 @@ Thumbs.db
 
 # Upstream reference clones — not part of this mod
 refs/
+
+# User working material - sources for assets, not game resources
+art-reference/
+sound-src/

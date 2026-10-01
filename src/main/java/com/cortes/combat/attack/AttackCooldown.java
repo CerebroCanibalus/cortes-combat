@@ -1,6 +1,7 @@
 package com.cortes.combat.attack;
 
 import com.cortes.combat.core.weapon.ChargeProfile;
+import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
@@ -52,6 +53,15 @@ public final class AttackCooldown {
         if (!isReady(player)) {
             return;
         }
+        // Covering and swinging are mutually exclusive, and the server is where that is decided.
+        //
+        // The client's copy of this gate reads its own prediction, which is at most one round trip
+        // behind, so a player who covers and clicks in the same tick gets through it. Repeating
+        // the check here is the same reason the readiness check is repeated: the repeat is the
+        // rule and the client's copy is only the prediction.
+        if (GuardHandler.isGuarding(player)) {
+            return;
+        }
         ChargeState current = player.getData(ModAttachments.CHARGE.get());
         if (!current.holding()) {
             player.setData(ModAttachments.CHARGE.get(), new ChargeState(0, true));
@@ -68,12 +78,21 @@ public final class AttackCooldown {
         player.setData(ModAttachments.COOLDOWN.get(), CooldownState.READY);
     }
 
-    /** How charged the held weapon currently is, as a 0..1 ratio. */
+    /**
+     * How charged the held weapon is, as a 0..1 ratio, classified.
+     *
+     * <p>The same {@link AttackTiming#chargeRatioFor} the damage is paid with, and deliberately
+     * the only function that turns a tick count into a charge anywhere in the mod. This used to
+     * hand out a raw {@code ticks / window} instead, which is the whole reason a two-tick click
+     * used to draw a sliver of charge bar and twitch the camera: the damage was thresholded and
+     * the readout was not, so the two disagreed about whether a click was a charge, and the
+     * readout is the one a player looks at.</p>
+     */
     public static float chargeRatio(Player player, ChargeProfile profile) {
-        if (!profile.canCharge()) {
-            return 0.0F;
-        }
-        return player.getData(ModAttachments.CHARGE.get()).ratio(profile.fullChargeTicks());
+        return AttackTiming.chargeRatioFor(
+                player.getData(ModAttachments.CHARGE.get()).ticks(),
+                profile.fullChargeTicks(),
+                profile.canCharge());
     }
 
     /**

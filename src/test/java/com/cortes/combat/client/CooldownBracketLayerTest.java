@@ -98,18 +98,18 @@ class CooldownBracketLayerTest {
     @Test
     @DisplayName("the tightest and widest cones in the design are told apart")
     void designExtremes() {
-        // The twelve degree rapier, the thirty five degree sword, the fifty five degree halberd
+        // The twelve degree ropera, the thirty five degree sword, the fifty five degree halberd
         // and the seventy five degree sabre, at the reference screen.
-        int rapier = ConeGauge.halfSpan(12.0F);
+        int ropera = ConeGauge.halfSpan(12.0F);
         int sword = ConeGauge.halfSpan(35.0F);
         int halberd = ConeGauge.halfSpan(55.0F);
         int sabre = ConeGauge.halfSpan(75.0F);
-        assertTrue(rapier < sword && sword < halberd && halberd < sabre,
-                "the four must rank in order, was " + rapier + ", " + sword + ", "
+        assertTrue(ropera < sword && sword < halberd && halberd < sabre,
+                "the four must rank in order, was " + ropera + ", " + sword + ", "
                         + halberd + ", " + sabre);
-        assertTrue(sabre > rapier * 2,
+        assertTrue(sabre > ropera * 2,
                 "the widest cone should be clearly wider than the tightest, was "
-                        + rapier + " and " + sabre);
+                        + ropera + " and " + sabre);
     }
 
     @Test
@@ -186,12 +186,141 @@ class CooldownBracketLayerTest {
         // The end nearest the aim point must be invisible, so the line has no visible start and
         // the widget reads as a frame rather than as part of the crosshair. The separation is
         // bought here rather than with a bigger span.
+        //
+        // The peak is the shape's peak times the widget's presence, not the shape's peak: the
+        // playtest called the whole widget intrusive and the fix was to bring the whole thing
+        // down, so the brightness a player actually sees is the product and that is what this
+        // pins.
         int length = 60;
         assertEquals(0, ConeGauge.barAlpha(0, length, length),
                 "the bar must begin fully transparent at the crosshair");
-        assertEquals(ConeGauge.ALPHA_NEAR_BRACKET,
+        assertEquals(ConeGauge.peakBarAlpha(),
                 ConeGauge.barAlpha(length - 1, length, length), 1,
-                "the bar must reach full strength at the bracket");
+                "the bar must reach its peak at the bracket");
+    }
+
+    @Test
+    @DisplayName("the widget sits below the crosshair, which is the thing being aimed with")
+    void theCrosshairStaysTheBrightestThingInTheMiddleOfTheScreen() {
+        // The invariant behind "too intrusive", and it is not about any particular alpha value.
+        //
+        // This widget is on screen every frame of every session, in the same place, right where
+        // the crosshair is. A permanent element that competes with the aim point does not become
+        // familiar, it becomes noise to consciously ignore, and that is what the playtest was
+        // reporting. So the rule is structural: the crosshair is the brightest thing at the
+        // centre of the screen, and this one is under it.
+        //
+        // The lower bound matters as much as the upper one. Below about a quarter the brackets
+        // stop reading as a position at all, and the cone width is the one thing in this widget
+        // that is not a moment-to-moment reading.
+        float crosshairAlpha = 0.85F;
+        assertTrue(ConeGauge.WIDGET_ALPHA < crosshairAlpha,
+                "the crosshair is " + crosshairAlpha + " and the bar is " + ConeGauge.WIDGET_ALPHA
+                        + "; the aim point has to win");
+        assertTrue(ConeGauge.bracketAlpha() >= 0.2F,
+                "and " + ConeGauge.bracketAlpha() + " is below the point where a bracket still "
+                        + "reads as a position rather than as nothing");
+    }
+
+    @Test
+    @DisplayName("the brackets cannot be louder than the bar that the player called right")
+    void theBracketsAreNotLouderThanTheBar() {
+        // The second playtest round: the bar was "perfect" and the brackets "seem to have no
+        // transparency at all", from the very same build with the very same 0.55 on both.
+        //
+        // Not a bug -- `setColor` does reach the blit -- but two shapes. The bar is a gradient
+        // that fades to nothing at the crosshair, so most of its length sits far below its peak.
+        // A bracket is a flat mark held at one alpha the whole way. Sharing a peak made the
+        // brackets roughly three times louder in perceived terms, which is exactly what the
+        // report described.
+        //
+        // So this is the invariant: the flat mark never outranks the gradient's peak. It is
+        // scale-free, it is about a relationship rather than a value, and it is the reason the
+        // two numbers are separate instead of one number tuned twice.
+        assertTrue(ConeGauge.bracketAlpha() < ConeGauge.peakBarAlpha() / 255.0F,
+                "the brackets are " + ConeGauge.bracketAlpha() + " and the bar's peak is "
+                        + (ConeGauge.peakBarAlpha() / 255.0F)
+                        + "; a flat mark at the same alpha as a gradient's peak reads as solid");
+    }
+
+    @Test
+    @DisplayName("the bar ends the same distance short of the brackets, always")
+    void theBarStopsAtTheBracket() {
+        // "Los corchetes están descentrados de la barra", reported twice. This is the invariant
+        // that report is really about: the line has to stop where the brackets are, by the same
+        // amount, on every weapon and at every screen size.
+        //
+        // It is asserted as a constant rather than as a picture because a constant cannot drift
+        // quietly. The first version of this widget had the gap as an expression over the
+        // sprite's width and an anchor column, so when the art was redrawn the gap changed with
+        // it and nothing said so.
+        for (float angle : new float[] {12.0F, 25.0F, 35.0F, 45.0F, 55.0F, 75.0F}) {
+            for (int height : new int[] {480, 540, 1080}) {
+                for (double fov : new double[] {70.0, 90.0, 110.0}) {
+                    for (int reach : new int[] {7, 9, 15}) {
+                        ConeGauge.Geometry g =
+                                ConeGauge.geometry(angle, height * 2, height, fov, reach);
+                        assertEquals(ConeGauge.BAR_INSET, g.gapToBracket(),
+                                "angulo=" + angle + " alto=" + height + " fov=" + fov
+                                        + " reach=" + reach);
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("the bar can never reach past the brackets")
+    void theBarCannotOverrun() {
+        // The failure mode is a negative length rather than a wrong one: with a very wide cone on
+        // a short screen, the span and the crosshair can cross, and a negative length would walk
+        // the fill backwards from the crosshair instead of stopping.
+        ConeGauge.Geometry g = ConeGauge.geometry(89.0F, 320, 160, 30.0, 40);
+        assertTrue(g.barLength() >= 0, "a bar cannot be drawn inside out");
+        assertTrue(g.gapToBracket() >= 0, "and it cannot end beyond the brackets");
+    }
+
+    @Test
+    @DisplayName("the two brackets are exact mirrors, which is what makes them look centred")
+    void theBracketsAreMirrorsOfEachOther() {
+        // "Sigue descentrado", three rounds running, with every individual number in the
+        // diagnostic correct. The cause: the two anchors were each measured as the middle of
+        // their own ink, the ink is four columns wide, both rounded down, and seventeen is not
+        // the mirror of four in a twenty-three wide file. The right bracket therefore sat one
+        // pixel nearer the centre than the left one, and a bar that IS symmetric ended up two
+        // pixels from one bracket and three from the other.
+        //
+        // A one pixel asymmetry is invisible as a bug and very visible as a shape, which is the
+        // worst ratio there is: nothing in the code reads as wrong and the eye keeps saying it is.
+        for (int width : new int[] {21, 22, 23, 24, 31, 40}) {
+            for (int left = 0; left < width; left++) {
+                int right = ConeGauge.mirrorAnchor(left, width);
+                assertEquals(width - 1, left + right,
+                        "ancho=" + width + " izq=" + left + " der=" + right
+                                + ": los dos anclajes tienen que sumar el ancho menos uno");
+                assertTrue(right >= 0 && right < width,
+                        "and the mirror has to land inside the sprite");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("the gap is the same on both sides, not two pixels and three")
+    void theGapIsSymmetric() {
+        // The consequence of the above, stated as what the player sees. The bar ends at the same
+        // distance from the centre on both sides by construction, so any asymmetry in the gap is
+        // an asymmetry in the brackets and nothing else.
+        for (float angle : new float[] {12.0F, 35.0F, 55.0F, 75.0F}) {
+            ConeGauge.Geometry g = ConeGauge.geometry(angle, 854, 459, 90.0, 8);
+            int halfSpan = g.halfSpan();
+            int leftBracket = 427 - halfSpan;
+            int rightBracket = 427 + halfSpan;
+            int barEnd = 427 + g.barEnd();
+            int leftGap = (427 - g.barEnd()) - (leftBracket + 1);
+            int rightGap = (rightBracket - 1) - barEnd;
+            assertEquals(leftGap, rightGap,
+                    "angulo=" + angle + ": hueco izq=" + leftGap + " der=" + rightGap);
+        }
     }
 
     @Test

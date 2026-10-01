@@ -1,9 +1,11 @@
 package com.cortes.combat.attack;
 
 import com.cortes.combat.core.CombatFeedback;
+import com.cortes.combat.CombatTrace;
 import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.reach.Reach;
+import com.cortes.combat.sound.ModSounds;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.StreakState;
@@ -72,6 +74,7 @@ public final class CombatEngine {
             // No open swing. Either the release arrived twice, or it arrived without a press,
             // or the press was refused client side because the cooldown was not ready. All three
             // mean the same thing: this is not an attack and must not cost anything.
+            debug(player, "release SIN press abierto: no es un ataque");
             return;
         }
 
@@ -95,16 +98,16 @@ public final class CombatEngine {
      * watching, and the only way they would find out is by having hit for less than expected.</p>
      */
     private static float chargedRatio(ChargeState charge, ChargeProfile profile) {
-        if (!profile.canCharge()) {
-            return 0.0F;
-        }
-        return AttackTiming.chargeRatioFor(charge.ticks(), profile.fullChargeTicks());
+        return AttackTiming.chargeRatioFor(
+                charge.ticks(), profile.fullChargeTicks(), profile.canCharge());
     }
 
     private static void resolveTarget(Player player, int targetId, WeaponStats stats,
                                       float chargeRatio) {
         if (targetId == com.cortes.combat.net.SwingPayload.NO_TARGET) {
+            debug(player, "sin objetivo, whiff");
             swingArm(player);
+            playMiss(player, stats);
             return;
         }
         Entity found = player.level().getEntity(targetId);
@@ -113,7 +116,12 @@ public final class CombatEngine {
                 || !target.isAlive()
                 || target.isSpectator()
                 || target.isRemoved()) {
+            debug(player, "objetivo " + targetId + " no valido: "
+                    + (found == null ? "no existe" : found.getClass().getSimpleName()
+                    + " vivo=" + (found instanceof LivingEntity le ? le.isAlive() : "n/a")
+                    + " spectator=" + (found instanceof LivingEntity le2 ? le2.isSpectator() : "n/a")));
             swingArm(player);
+            playMiss(player, stats);
             return;
         }
         // The client picked the target with the same cone the server checks with, and it is
@@ -121,9 +129,14 @@ public final class CombatEngine {
         // reach gets a swing that visibly happens and does nothing, which is worse than a wrong
         // number, because it looks like lag.
         if (!Reach.inCone(player, target, stats.reach())) {
+            debug(player, "objetivo " + targetId + " (" + target.getName().getString()
+                    + ") FUERA del cono, alcance=" + stats.reach().distance());
             swingArm(player);
+            playMiss(player, stats);
             return;
         }
+        debug(player, "objetivo " + targetId + " (" + target.getName().getString()
+                + ") VALIDO, aplicando dano");
         swingArm(player);
 
         AttackResult result = DamageResolver.resolve(
@@ -148,6 +161,18 @@ public final class CombatEngine {
         player.swing(InteractionHand.MAIN_HAND);
     }
 
+    /**
+     * One line per swing decision, server side.
+     *
+     * <p>The pair of these and the ones in {@code SwingInputHandler} exists because "it does not
+     * hit" is a sentence with at least six causes behind it, and only two of them are visible from
+     * the outside: the press was refused by the cooldown, the client sent no target, or the server
+     * rejected the target the client sent. Reading the log afterwards turns all six into one.</p>
+     */
+    private static void debug(Player player, String message) {
+        CombatTrace.server(player.getName().getString(), message);
+    }
+
     private static void apply(Player player, Entity target, WeaponStats stats,
                               AttackResult result, float chargeRatio) {
         // Read before the hit: afterwards a dead mob reads 0 health and there is no way to tell
@@ -166,7 +191,49 @@ public final class CombatEngine {
         target.invulnerableTime = IFRAME_TICKS;
         if (hurt) {
             onHit(player, target, stats, result, chargeRatio);
+            spawnSlash(player, target, stats, chargeRatio);
             notifyHit(player, target, healthBefore);
+        }
+    }
+
+    /**
+     * The slash, where the swing actually connected.
+     *
+     * <p>Server side and only on a confirmed hit, so everyone watching sees the same slash at the
+     * same moment and nobody sees one for a swing that did nothing. A charged hit gets vanilla's
+     * crit instead, which is already a big animated slash: a charged hit is then told apart by
+     * its shape rather than by the same one drawn louder.</p>
+     */
+    private static void spawnSlash(Player player, Entity target, WeaponStats stats,
+                                   float chargeRatio) {
+        if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
+            return;
+        }
+        boolean charged = chargeRatio > 0.0F;
+        com.cortes.combat.particle.SlashParticles.hit(
+                level, stats.profile(), target, charged);
+        // Same place, same branch: a charged hit is a different slash AND a different sound, and
+        // the two must never disagree about which happened.
+        com.cortes.combat.sound.CombatSounds.play(level, player, stats.profile(),
+                charged ? ModSounds.Kind.CHARGED_HIT : ModSounds.Kind.HIT);
+    }
+
+    /**
+     * The swing found nothing, and says so.
+     *
+     * <p>A miss is worth a sound because "it did not hit" and "the game ignored my click" look
+     * identical from the outside. The viewmodel already answers it with an arm that moved; this
+     * is the answer for the half-second when the player is looking at the enemy and not at their
+     * own hand.</p>
+     *
+     * <p>Played for a rejected target too, and for a whiff. Both are a miss from where the player
+     * stands, and treating the server's refusal as silence would leave the one case where the
+     * player is right about aiming and wrong about the outcome with no way to tell it apart.</p>
+     */
+    private static void playMiss(Player player, WeaponStats stats) {
+        if (player.level() instanceof net.minecraft.server.level.ServerLevel level) {
+            com.cortes.combat.sound.CombatSounds.play(
+                    level, player, stats.profile(), ModSounds.Kind.MISS);
         }
     }
 

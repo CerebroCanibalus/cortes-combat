@@ -8,7 +8,7 @@ import net.minecraft.util.Mth;
  * Whether an item can charge, and how much a full charge is worth.
  *
  * <p>{@code canCharge = false} is the whole mechanism behind weapons that skip charging
- * (rapier, dagger). It is a data value, not a code branch: the charge system asks this and
+ * (ropera, dagger). It is a data value, not a code branch: the charge system asks this and
  * does nothing. Adding the next non-charging weapon is an item, not a code change.</p>
  *
  * <p>The bonus only ever adds on top of base damage. Charging never reduces damage, which is

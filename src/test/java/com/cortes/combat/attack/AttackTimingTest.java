@@ -69,6 +69,67 @@ class AttackTimingTest {
         }
 
         @Test
+        @DisplayName("a weapon that cannot charge is never charged, by any hold")
+        void nonChargingIsNeverChargedWhateverTheHold() {
+            // The bug this pins. A ropera or a dagger held for a second reported a FULL charge,
+            // because the client called `chargeRatioFor(ticks, 0)` and a window of zero ticks
+            // reaches the "shorter than the minimum hold, so always full" branch.
+            //
+            // It could not be seen before, because a press on an item that cannot charge was
+            // handed back to vanilla whole and the swing never opened, so there was no ratio to be
+            // wrong. Fixing the click without fixing the ratio is how a fixed bug becomes a
+            // different bug.
+            for (int held : new int[]{0, 1, 3, 4, 20, 100, 500, 20_000}) {
+                assertEquals(0.0F, AttackTiming.chargeRatioFor(held, 0, false),
+                        "a non-charging weapon charged itself at " + held + " ticks");
+                // And not only at a zero window: the flag wins even over a real charge window,
+                // because a profile that says it cannot charge is not to be argued with.
+                assertEquals(0.0F, AttackTiming.chargeRatioFor(held, 25, false),
+                        "a non-charging weapon charged itself at " + held
+                                + " ticks through a charging window");
+            }
+        }
+
+        @Test
+        @DisplayName("a short window and no window are different things, and only the weapon knows")
+        void shortWindowIsNotTheSameAsNoCharge() {
+            // Both readings were real and both fit in one number. A weapon whose whole charge
+            // window fits inside the minimum hold IS at full charge after any deliberate hold;
+            // a weapon that cannot charge carries a zero window and is NEVER charged. Same two
+            // ints, opposite answers, so the weapon has to be asked which one it is.
+            assertEquals(1.0F, AttackTiming.chargeRatioFor(9, 2, true),
+                    "a two tick window held for nine ticks is fully charged");
+            assertEquals(0.0F, AttackTiming.chargeRatioFor(9, 2, false),
+                    "the same two numbers, on a weapon that cannot charge, is not charged at all");
+        }
+
+        @Test
+        @DisplayName("a hold of any length on a non-charging weapon is a flat hit")
+        void nonChargingSwingsAreFlatWhateverTheyCost() {
+            // The whole rule, end to end, in the two pure functions that decide damage. A dagger
+            // held for a second has to land for exactly its base damage: not more, because the
+            // window filled, and never less, because holding long enough should never be a
+            // mistake.
+            for (int held : new int[]{0, 4, 40, 400}) {
+                float ratio = AttackTiming.chargeRatioFor(held, 0, false);
+                assertEquals(1.0F,
+                        AttackTiming.chargeMultiplier(0.0F, ratio),
+                        "holding " + held + " ticks changed the damage of a weapon that cannot charge");
+            }
+        }
+
+        @Test
+        @DisplayName("the two argument form still means a weapon that does charge")
+        void theShortFormStillCharges() {
+            // It exists for the callers that genuinely have a charging weapon, and it must keep
+            // meaning that. Silently defaulting it to false would have quietly flattened every
+            // charge in the game, which is the opposite way round from the mistake it fixed.
+            assertEquals(1.0F, AttackTiming.chargeRatioFor(9, 2),
+                    "the short form has to keep the old meaning");
+            assertEquals(0.5F, AttackTiming.chargeRatioFor(14, 24),
+                    "the short form has to keep the old meaning");
+        }
+        @Test
         @DisplayName("the threshold is a couple of hundred milliseconds, not half a second")
         void thresholdIsAFastDecision() {
             // Four ticks. A longer one would make the fast click feel like the game ignored it,

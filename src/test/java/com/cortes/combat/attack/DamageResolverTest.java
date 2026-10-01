@@ -45,7 +45,7 @@ class DamageResolverTest {
         @Test
         @DisplayName("a weapon that cannot charge always deals base damage")
         void cannotCharge() {
-            AttackResult result = DamageResolver.resolve(6.0, NONE, WeaponProfile.RAPIER, 1.0F, StreakState.EMPTY);
+            AttackResult result = DamageResolver.resolve(6.0, NONE, WeaponProfile.ROPERA, 1.0F, StreakState.EMPTY);
             assertEquals(6.0F, result.damage());
             assertEquals(0.0F, result.chargeRatio());
         }

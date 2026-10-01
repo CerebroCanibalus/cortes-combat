@@ -37,6 +37,21 @@ public final class Knockback {
     }
 
     /**
+     * How much of a weapon's push a plain tap already delivers.
+     *
+     * <p>This scaled from zero, so an ordinary click shoved nothing at all and only a held swing
+     * moved anything. That is a much bigger difference than "charge adds damage": it made the
+     * most common attack in the game leave the target standing perfectly still, which reads as
+     * the hit not having landed even when the numbers say it did. And the playtest, separately,
+     * said the sword's knockback was "too small for a charge", which is the same complaint seen
+     * from the other end: the whole range was too small, and it started at nothing.</p>
+     *
+     * <p>So a tap delivers a real shove and a charge delivers more of it. The charge is a bonus on
+     * top of a hit, never the thing that makes a hit happen.</p>
+     */
+    public static final float TAP_PUSH = 0.55F;
+
+    /**
      * @param source  the attacker
      * @param target  who was hit
      * @param profile the attacker's per-weapon push, already resolved
@@ -47,8 +62,10 @@ public final class Knockback {
         if (profile == null || !(target instanceof LivingEntity living)) {
             return;
         }
-        float horizontal = profile.clampedHorizontal() * Math.max(0.0F, Math.min(1.0F, charge));
-        float vertical = profile.clampedVertical() * Math.max(0.0F, Math.min(1.0F, charge));
+        float scaled = Math.max(0.0F, Math.min(1.0F, charge));
+        float push = TAP_PUSH + (1.0F - TAP_PUSH) * scaled;
+        float horizontal = profile.clampedHorizontal() * push;
+        float vertical = profile.clampedVertical() * push;
         if (horizontal <= 0.0F && vertical <= 0.0F) {
             return;
         }

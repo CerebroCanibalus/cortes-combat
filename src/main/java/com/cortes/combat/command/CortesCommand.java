@@ -1,7 +1,10 @@
 package com.cortes.combat.command;
 
+import com.cortes.combat.CombatTrace;
 import com.cortes.combat.CortesCombat;
-import com.mojang.brigadier.CommandDispatcher;
+import com.cortes.combat.client.ItemViewModel;
+import com.cortes.combat.registry.ModItems;
+import net.neoforged.fml.loading.FMLEnvironment;import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -11,6 +14,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffects;
@@ -61,13 +65,34 @@ public final class CortesCommand {
                                 .executes(CortesCommand::teleportAhead)))
                 .then(Commands.literal("stats")
                         .executes(CortesCommand::showStats))
+                .then(Commands.literal("viewmodel")
+                        .executes(CortesCommand::showViewmodel))
                 .then(Commands.literal("cone")
                         .executes(CortesCommand::toggleCone))
+                .then(Commands.literal("trace")
+                        .executes(CortesCommand::toggleTrace))
                 .then(Commands.literal("gui")
-                        .executes(CortesCommand::toggleGui)));
+                        .executes(CortesCommand::toggleGui))
+                .then(Commands.literal("hud")
+                        .executes(CortesCommand::dumpHud))
+                .then(Commands.literal("input")
+                        .executes(CortesCommand::dumpInput)));
     }
 
-    /** One of every vanilla weapon, so all the derived profiles can be checked at once. */
+    /**
+     * One of every weapon: the eleven vanilla ones and all thirty of ours.
+     *
+     * <p>Ours come from {@link ModItems#weapons()} rather than from a list written here, so the
+     * command cannot fall behind the catalogue. It used to be a literal list of vanilla items and
+     * it was already stale by the time this mod had any weapons of its own: eleven items for a
+     * catalogue of thirty plus eleven, and no way for the mismatch to be noticed except running
+     * the command and counting the hotbar.</p>
+     *
+     * <p>Vanilla first, then ours in catalogue order, because the vanilla set is what the derived
+     * profiles are checked against and ours is what has explicit components. A playtest that wants
+     * to compare a ropera against a sword needs them adjacent, and family order puts every ropera
+     * together instead.</p>
+     */
     private static int giveAllWeapons(CommandContext<CommandSourceStack> ctx) {
         ServerPlayer player = player(ctx);
         if (player == null) {
@@ -79,12 +104,13 @@ public final class CortesCommand {
                 Items.IRON_PICKAXE, Items.DIAMOND_PICKAXE,
                 Items.IRON_SHOVEL, Items.DIAMOND_SHOVEL,
                 Items.MACE, Items.TRIDENT));
+        ModItems.weapons().forEach(ours -> weapons.add(ours.get()));
         int slot = 0;
         for (Item item : weapons) {
             giveAt(player, new ItemStack(item), slot++);
         }
         ctx.getSource().sendSuccess(() -> Component.literal(
-                "Datos " + weapons.size() + " armas en la hotbar. Probá el alcance y la carga de cada una."), false);
+                weapons.size() + " armas en la hotbar. Probá el alcance y la carga de cada una."), false);
         return weapons.size();
     }
 
@@ -130,7 +156,7 @@ public final class CortesCommand {
             return 0;
         }
         player.getFoodData().setFoodLevel(2);
-        ctx.getSource().sendSuccess(() -> Component.literal("Comida a 2. La regen debería frenarse."), false);
+        ctx.getSource().sendSuccess(() -> Component.literal("Comida a 2. La regen deberÃ­a frenarse."), false);
         return 1;
     }
 
@@ -160,6 +186,45 @@ public final class CortesCommand {
         return distance;
     }
 
+    /**
+     * Prints the live viewmodel state, on the client.
+     *
+     * <p>Deliberately a client side question and not a server one: the viewmodel is drawn from
+     * client state the server knows nothing about, so {@code /cc stats} can be answered anywhere
+     * and this one cannot. Run it <b>while charging</b>, not at rest, because at rest every
+     * channel is zero by design and a correct pipeline looks identical to a dead one.</p>
+     *
+     * <p>Every reference to {@code ItemViewModel} sits behind a dist guard, because this class is
+     * common and that one imports {@code Minecraft}. Referenced directly it compiles happily and
+     * then takes a dedicated server down with a {@code NoClassDefFoundError} the first time the
+     * command tree is built, which is the same family of bug as the {@code InputEvent} import
+     * that made the client entry point separate in the first place. The guard is a plain
+     * {@code if} rather than {@code DistExecutor} because that class does not exist in NeoForge
+     * 21.1, verified by listing the loader jar.</p>
+     */
+    private static int showViewmodel(CommandContext<CommandSourceStack> ctx) {
+        ServerPlayer player = player(ctx);
+        if (player == null) {
+            return 0;
+        }
+        if (!FMLEnvironment.dist.isClient()) {
+            ctx.getSource().sendSuccess(() -> Component.literal(
+                    "El viewmodel solo existe en el cliente."), false);
+            return 0;
+        }
+        String line = ItemViewModel.debug();
+        if (line == null) {
+            ctx.getSource().sendSuccess(() -> Component.literal(
+                    "El viewmodel solo existe en el cliente."), false);
+            return 0;
+        }
+        player.connection.send(
+                new ClientboundSetActionBarTextPacket(Component.literal("viewmodel: " + line)));
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "Viewmodel enviado al cliente. Mirmilo con la carga en el aire."), false);
+        return 1;
+    }
+
     /** Print the resolved stats of the held weapon. This is the one that catches surprises. */
     private static int showStats(CommandContext<CommandSourceStack> ctx) {
         ServerPlayer player = player(ctx);
@@ -176,8 +241,8 @@ public final class CortesCommand {
         ctx.getSource().sendSuccess(() -> Component.literal(
                 "perfil=" + stats.profile().id()
                         + " alcance=" + reach.distance()
-                        + " h=" + reach.horizontalAngle() + "°"
-                        + " v=" + reach.verticalAngle() + "°"), false);
+                        + " h=" + reach.horizontalAngle() + "Â°"
+                        + " v=" + reach.verticalAngle() + "Â°"), false);
         ctx.getSource().sendSuccess(() -> Component.literal(
                 "cooldown=" + interval + "t"
                         + " carga=" + (charge.canCharge()
@@ -213,11 +278,33 @@ public final class CortesCommand {
         if (player == null) {
             return 0;
         }
-        boolean now = !get(player).cone();
-        put(player, new DebugFlags(now, get(player).hud()));
-        com.cortes.combat.net.ModNetworking.sendDebugToggle(player, now, get(player).hud());
+        DebugFlags flags = get(player);
+        boolean now = !flags.cone();
+        push(player, now, flags.hud(), flags.trace());
         ctx.getSource().sendSuccess(() -> Component.literal(
                 "Cono de alcance: " + (now ? "VISIBLE" : "oculto") + " (toggle con /cc cone)"), false);
+        return 1;
+    }
+
+    /**
+     * Turn the four-line-per-attack trace on or off.
+     *
+     * <p>Off by default, and that is the fix rather than the setting: it wrote four lines per
+     * click on both sides, which made an hour of playtest into an unreadable log, and an
+     * unreadable log is how a genuine error gets read as a clean one.</p>
+     */
+    private static int toggleTrace(CommandContext<CommandSourceStack> ctx) {
+        ServerPlayer player = player(ctx);
+        if (player == null) {
+            return 0;
+        }
+        DebugFlags flags = get(player);
+        boolean now = CombatTrace.toggle();
+        push(player, flags.cone(), flags.hud(), now);
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "Trazado de combate: " + (now ? "ON" : "OFF")
+                        + (now ? " (unas lineas por golpe, cliente y servidor, en latest.log)" : "")),
+                false);
         return 1;
     }
 
@@ -227,9 +314,9 @@ public final class CortesCommand {
         if (player == null) {
             return 0;
         }
-        boolean now = !get(player).hud();
-        put(player, new DebugFlags(get(player).cone(), now));
-        com.cortes.combat.net.ModNetworking.sendDebugToggle(player, get(player).cone(), now);
+        DebugFlags flags = get(player);
+        boolean now = !flags.hud();
+        push(player, flags.cone(), now, flags.trace());
         ctx.getSource().sendSuccess(() -> Component.literal(
                 "HUD de Cortes Combat: " + (now ? "visible" : "oculto") + " (toggle con /cc gui)"), false);
         return 1;
@@ -238,11 +325,58 @@ public final class CortesCommand {
     /** Server-side mirror of the client's debug flags, one entry per player. */
     private static final Map<java.util.UUID, DebugFlags> DEBUG = new HashMap<>();
 
-    private record DebugFlags(boolean cone, boolean hud) {
+    /**
+     * @param trace kept here rather than in {@code CombatTrace} alone, because that static is
+     *              the server's copy and a command has to be able to say what the player asked
+     *              for without assuming it travelled
+     */
+    private record DebugFlags(boolean cone, boolean hud, boolean trace) {
+    }
+
+    /** One call for all three, so no toggle can ever leave one of them behind. */
+    private static void push(ServerPlayer player, boolean cone, boolean hud, boolean trace) {
+        put(player, new DebugFlags(cone, hud, trace));
+        com.cortes.combat.net.ModNetworking.sendDebugToggle(player, cone, hud, trace, false, false);
+    }
+
+    /**
+     * Ask the client to print its HUD geometry, without changing a single flag.
+     *
+     * <p>A one-shot request rather than a toggle, and it is the fourth thing riding the same
+     * packet because it is the same trip for the same reason: the numbers are the client's, and
+     * a command on the server cannot read them.</p>
+     */
+    private static int dumpHud(CommandContext<CommandSourceStack> ctx) {
+        ServerPlayer player = player(ctx);
+        if (player == null) {
+            return 0;
+        }
+        DebugFlags flags = get(player);
+        com.cortes.combat.net.ModNetworking.sendDebugToggle(player,
+                flags.cone(), flags.hud(), flags.trace(), true, false);
+        return 1;
+    }
+
+    /**
+     * Prints every gate that can refuse an attack press, and which one is refusing right now.
+     *
+     * <p>The command a playtest report of "the click broke" needed and did not have. The server
+     * trace shows the presses arriving and then stopping, and nothing else in the build can tell
+     * eight silent gates apart -- so this reads them, in order, with the value each one consults.</p>
+     */
+    private static int dumpInput(CommandContext<CommandSourceStack> ctx) {
+        ServerPlayer player = player(ctx);
+        if (player == null) {
+            return 0;
+        }
+        DebugFlags flags = get(player);
+        com.cortes.combat.net.ModNetworking.sendDebugToggle(player,
+                flags.cone(), flags.hud(), flags.trace(), false, true);
+        return 1;
     }
 
     private static DebugFlags get(ServerPlayer player) {
-        return DEBUG.getOrDefault(player.getUUID(), new DebugFlags(false, true));
+        return DEBUG.getOrDefault(player.getUUID(), new DebugFlags(false, true, false));
     }
 
     private static void put(ServerPlayer player, DebugFlags flags) {

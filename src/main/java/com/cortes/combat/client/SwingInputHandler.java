@@ -1,7 +1,11 @@
 package com.cortes.combat.client;
 
+import com.cortes.combat.CombatTrace;
+
 import com.cortes.combat.attack.AttackTiming;
+import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.attack.WeaponStats;
+import com.cortes.combat.sound.ModSounds;
 import com.cortes.combat.net.SwingPayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
@@ -62,6 +66,9 @@ public final class SwingInputHandler {
 
     /** Local mirror of the charge, for the meter and the viewmodel. Never the source of truth. */
     private static int predictedTicks;
+
+    /** Latched so the cue is one per hold and not one per tick. */
+    private static boolean chargeSoundPlayed;
 
     private static boolean holding;
 
@@ -132,39 +139,107 @@ public final class SwingInputHandler {
         claim = Claim.NOT_OURS;
         LocalPlayer player = mc.player;
         if (player == null || mc.level == null || player.isSpectator() || player.isUsingItem()) {
+            debug("press RECHAZADO: sin jugador, spectator o usando item");
+            return;
+        }
+        // A screen open means the click belongs to the screen, not to the world.
+        //
+        // This is not vanilla's own check being duplicated, it is vanilla's check being
+        // DELETED. `Minecraft#startAttack` opens with a guard that refuses while a screen is up,
+        // and cancelling at HEAD -- which this mod has to do to replace the whole attack flow --
+        // removes that guard along with everything else in the method. The mixin's continueAttack
+        // seam compounds it: that is the path `handleKeybinds` walks every tick for as long as the
+        // key is held, and the inventory does not pause singleplayer, so holding the button with
+        // a chest open swung at whatever was behind the window.
+        //
+        // Vanilla owns the click while a screen is open, which is exactly what "menus block
+        // attacks completely" means and also what vanilla would have done on its own.
+        if (mc.screen != null) {
+            debug("press NO NUESTRO: pantalla abierta ("
+                    + mc.screen.getClass().getSimpleName() + ")");
             return;
         }
         // A bow, a crossbow and a trident are not ours. Letting vanilla own the whole press is
         // not a fallback: the cone deliberately does not contain projectiles, so there is no
         // target to find and nothing for this system to decide.
         if (CombatAim.isRanged(player.getMainHandItem())) {
+            debug("press NO NUESTRO: ranged");
+            return;
+        }
+        // Covered, so no swing. Read from the local prediction rather than the synced flag,
+        // because this gate exists to catch covering and clicking in the same tick and the
+        // synced value is a round trip too old to do that.
+        if (GuardInputHandler.predictedHolding()) {
+            claim = Claim.REFUSED;
+            debug("press REFUSADO: cubierto");
             return;
         }
         if (!ready()) {
             claim = Claim.REFUSED;
+            debug("press REFUSADO por cooldown: readyAtTick=" + readyAtTick
+                    + " tick=" + tick + " ratio=" + ClientCombatState.cooldownRatio());
             return;
         }
-        // An item that cannot charge does not get a charge bar and does not get a wind-up. This
-        // is asked before the swing is opened rather than at the release, because a block that
-        // fills a charge meter while you hold it is already telling the player it is a weapon.
-        if (!WeaponStats.canCharge(player.getMainHandItem())) {
-            return;
-        }
+        // An item that cannot charge still gets the swing. It just does not get a charge.
+        //
+        // This used to `return` here, which set Claim.NOT_OURS and handed the entire click back to
+        // vanilla, and that was not what the comment above it said it did. It said the item gets
+        // no charge bar and no wind-up, and a return does neither of those things and everything
+        // else: the ropera and the dagger (the only two profiles whose ChargeProfile is NONE) ran
+        // on vanilla's whole attack path. So they had no cone reach, which for the ropera is the
+        // entire identity of the weapon, and vanilla's getAttackStrengthScale applied, which pays
+        // more for spamming faster -- the exact rule this mod exists to delete.
+        //
+        // It was not careless, it was a patch. The client had no equivalent of the
+        // `if (!profile.canCharge()) return 0` that AttackCooldown and CombatEngine both open with,
+        // and this gate is what kept the client from ever seeing a ratio it would get wrong. The
+        // guard now lives in AttackTiming, where all three sites share it, and this returns
+        // nothing.
+        //
+        // What "does not charge" looks like now is not a special case anywhere downstream: the
+        // ratio is zero, so there is no bar, no wind-up, no field of view and a flat hit, and the
+        // swing still opens, so the strike and recover still play. Which is the thing the return
+        // was preventing: the ropera and dagger profiles were written and wired and had never
+        // once rendered, because holding never became true for them.
 
         Optional<LivingEntity> target = ConeTargeting.findTargetForHeldItem(player);
-        if (target.isPresent() ? blockIsNearer(mc, player, target.get()) : isOnBlock(mc)) {
-            // Mining. Deciding this by "the crosshair is on a block" alone is what made a wall
-            // behind the enemy eat the swing, and deciding it by "there is no target" alone is
-            // what makes a zombie behind your back stop you mining. Whichever is in front is
-            // what the player was pointing at.
+        if (target.isEmpty() && isOnBlock(mc)) {
+            // Mining, and only mining when there is nothing to hit.
+            //
+            // This used to weigh the two: a block slightly nearer than the enemy took the swing
+            // away. The playtest killed that, and rightly, on the fists especially: a fist's
+            // reach is barely more than its own arm, so a block in front of the target is the
+            // normal case rather than an edge case, and "swing at the wall" came up over and over.
+            // The playtest asked for it the other way round: be sure to hit first, mine after.
+            //
+            // The cost of this is that a player aiming at a mob standing against a wall punches
+            // the mob, which is the right trade. A swing that does nothing is worse than a swing
+            // that hits the wrong thing, because the first one has no explanation.
+            debug("press NO NUESTRO: minando (sin objetivo)");
             return;
         }
 
         holding = true;
         predictedTicks = 0;
+        chargeSoundPlayed = false;
         openItem = player.getMainHandItem().getItem();
         claim = Claim.OURS;
+        debug("press NUESTRO: objetivo=" + target.map(net.minecraft.world.entity.Entity::getId)
+                .orElse(SwingPayload.NO_TARGET));
         send(new SwingPayload(SwingPayload.NO_TARGET, true));
+    }
+
+    /**
+     * One line per swing decision, client side.
+     *
+     * <p>Temporary instrumentation, and it exists because a playtest report of "it does not hit"
+     * and a playtest report of "it hits" are the same three lines of ambiguity: the press was
+     * refused, the press opened a swing, or the press was never ours. Nothing in the build, the
+     * log or a screenshot can tell those apart, and three rounds of guessing the wrong one is
+     * what this replaces.</p>
+     */
+    private static void debug(String message) {
+        CombatTrace.client(message);
     }
 
     /**
@@ -185,11 +260,39 @@ public final class SwingInputHandler {
     }
 
     private static void release(Minecraft mc) {
+        // Opening a menu in the middle of a charge abandons the swing.
+        //
+        // The press was legitimate and the release would resolve a real, charged, server-paid
+        // hit -- against whatever happened to be behind the window when the key came up. A menu
+        // is a statement that the player is not fighting any more, and having it also land a
+        // swing is the one case where the client's prediction is genuinely correct and the
+        // player is genuinely wrong.
+        if (mc.screen != null && holding) {
+            debug("release ABANDONADO: pantalla abierta");
+            predictedTicks = 0;
+            holding = false;
+            ItemViewModel.onCancel();
+            return;
+        }
         if (!holding) {
             // Nothing was open, so this release is not ours. Vanilla keeps its own handling for
             // bows, for mining, and for a press that died on the cooldown.
             return;
         }
+        // The classification is read HERE, with `holding` still true, and not one line later.
+        //
+        // `chargedRatio` opens with `if (!holding) return 0`, so clearing `holding` before the
+        // read made every release a tap. That one inverted pair of lines is what four rounds of
+        // playtesting called "no weight in the cut", "the fist does not animate" and "nothing
+        // moves": the charge was 0 on the client, so `onStrike(0)` scaled every viewmodel channel
+        // by zero, and `charge <= 0` sent every swing down the vanilla arm path instead of the
+        // viewmodel's. The server kept its own tick count and charged the hit correctly, which
+        // is why the sword still hurt while the client showed nothing at all.
+        //
+        // The comment above this used to say "read before anything is reset" and the code did the
+        // exact opposite. A comment that describes the intended order is worth nothing next to
+        // the order itself, which is why this one now names the bug.
+        float charge = chargedRatio(Minecraft.getInstance().player);
         holding = false;
         LocalPlayer player = mc.player;
         if (player == null) {
@@ -197,30 +300,33 @@ public final class SwingInputHandler {
             return;
         }
 
-        // Read before anything is reset: this is the classification the damage is about to get,
-        // and it decides whether the swing is vanilla's or ours.
-        float charge = chargedRatio(player);
-
         // The client's own gate, tightened before anything is sent. See readyAtTick.
         readyAtTick = tick + WeaponStats.attackInterval(player);
 
         int targetId = resolveTargetId(player);
+        debug("release: objetivo=" + targetId + " carga=" + charge
+                + " ticks=" + predictedTicks + " FULLCHARGE="
+                + WeaponStats.of(player.getMainHandItem()).charge().fullChargeTicks());
         send(new SwingPayload(targetId, false));
 
         // Local prediction of the two things the player sees immediately. Neither is the damage:
         // that is the server's, and predicting it would double-apply it, because this mod
         // deliberately clears the target's invulnerability window before hitting.
-        ItemViewModel.onStrike(charge);
-
-        // A tap is not a small charged swing, it is the vanilla arm swing and nothing else.
         //
-        // There was a floor here, so an ordinary click arrived at the viewmodel as a fifth of a
-        // charged animation, and the playtest said both of the things that means: it "looks like a
-        // charge done badly" and it "should look like the vanilla swing animation". They are the
-        // same complaint. So a tap releases zero, the profile contributes nothing, and vanilla's
-        // own swing plays — which makes the charged swing the thing that is different, and
-        // therefore the thing that is legible.
-        if (charge <= 0.0F || !ItemViewModel.ownsSwing(player.getMainHandItem())) {
+        // The swing's LENGTH comes from this weapon's own attack interval, which is where most
+        // of the weight came from. A sword that may only swing every twelve ticks gets a twelve
+        // tick follow-through, and a fist that may swing every four gets four, so a heavy weapon
+        // looks heavy and a quick one looks quick for the same reason rather than by a number
+        // somebody typed. See ViewModelMotion.strikeTicks.
+        ItemViewModel.onStrike(charge, WeaponStats.attackInterval(player));
+
+        // Vanilla's arm plays only when the profile does not own the swing.
+        //
+        // The charge test used to be here too, `charge <= 0.0F || !ownsSwing`, because a tap used
+        // to contribute nothing to the viewmodel. Now it does, so the test is gone: a profile that
+        // draws its own strike must not also get vanilla's underneath it, or the two play at
+        // different lengths and the item looks like it is being dragged.
+        if (!ItemViewModel.ownsSwing(player.getMainHandItem())) {
             player.swing(InteractionHand.MAIN_HAND);
         }
         predictedTicks = 0;
@@ -243,9 +349,25 @@ public final class SwingInputHandler {
         return mc.hitResult != null && mc.hitResult.getType() == HitResult.Type.BLOCK;
     }
 
-    /** Both gates: the server's own answer, and the local latch that is never behind it. */
+    /**
+     * The client's own gate: the local latch, and the server's answer once we have one.
+     *
+     * <p>The latch is the part that matters and it is deliberately stricter than the server's
+     * value, so it can refuse a swing the server would have allowed and never the other way.</p>
+     *
+     * <p>The replicated ratio is a <b>second</b> opinion and it is only consulted once the server
+     * has actually sent one. Treating "never told" as "not ready" is what left a player unable
+     * to attack for nineteen seconds with no way to tell why: the press was refused here, and a
+     * refused press is swallowed rather than handed to vanilla, so the game looked broken instead
+     * of looking gated. A client that guesses wrong loses a packet; the server is the authority
+     * either way.</p>
+     */
     private static boolean ready() {
-        return tick >= readyAtTick && ClientCombatState.cooldownRatio() >= 1.0F;
+        if (tick < readyAtTick) {
+            return false;
+        }
+        return !ClientCombatState.cooldownKnown()
+                || ClientCombatState.cooldownRatio() >= 1.0F;
     }
 
     private static void send(SwingPayload payload) {
@@ -263,9 +385,144 @@ public final class SwingInputHandler {
         return claim;
     }
 
+    /**
+     * The charge cue, once per hold, and only once it is actually a charge.
+     *
+     * <p>Played on the client and not on the server, because this one is feedback about the
+     * player's own button and a round trip would put it after the hit it is explaining. Nothing
+     * else about a swing is decided here: the sound carries no authority, and the server's charge
+     * is the one that pays.</p>
+     *
+     * <p><b>Past the threshold, not on the press.</b> On the press would mean every ordinary click
+     * makes the charging sound, and then the sound stops saying "you are charging" and starts
+     * saying "you clicked" -- which is the band the design refuses to put in, because a player only
+     * discovers it by having hit for less than they expected. Below the threshold nothing happens
+     * and nothing is shown; at the threshold everything starts, and that includes this.</p>
+     */
+    private static void playChargeSoundOnceItIsACharge(LocalPlayer player) {
+        if (chargeSoundPlayed
+                || predictedTicks < AttackTiming.MIN_CHARGE_HOLD_TICKS
+                || !com.cortes.combat.attack.WeaponStats.canCharge(player.getMainHandItem())) {
+            return;
+        }
+        chargeSoundPlayed = true;
+        var event = com.cortes.combat.sound.CombatSounds.event(
+                ModSounds.of(com.cortes.combat.attack.WeaponStats.of(
+                        player.getMainHandItem()).profile(), ModSounds.Kind.CHARGE));
+        if (event != null) {
+            player.playSound(event, 0.7F, 1.0F);
+        }
+    }
+
     /** Called once per client tick, after the attack path has run. */
     public static void endTick() {
         claim = Claim.NOT_OURS;
+    }
+
+    /**
+     * Whether the attack button is physically down right now, asked of the window.
+     *
+     * <p>This is the fix for the report that stopped a playtest: <b>the click died and nothing
+     * came back.</b> Not "the click felt wrong" -- the player could not attack, could not break
+     * blocks and could not interact, permanently, with no error in the log and no way to get out
+     * of it short of quitting.</p>
+     *
+     * <p>What the friend's log shows is the whole story. Over fifteen minutes every hold was
+     * between one and forty-eight ticks -- taps and normal clicks. The last two were
+     * <b>142 and 84 ticks</b>: seven seconds and four. Those are the only two long holds in the
+     * entire session, and they are the two immediately before the click stopped working.</p>
+     *
+     * <p>Seven seconds of attack button is not a fight. It is a button that was down when the
+     * window lost focus, because <b>GLFW does not deliver a release event when the window is
+     * deactivated with a button held</b>. The press opened a swing, the release never came, and
+     * {@link #holding} stayed true for the rest of the session. That is the same family as the
+     * three bugs this project already fixed in this class -- a state outliving the button that
+     * created it -- but the button here vanished for a reason that produces no event at all, so
+     * nothing that listens for events ever hears about it.</p>
+     *
+     * <p>Why it takes all three symptoms with one cause:</p>
+     * <ul>
+     *   <li>mining dies because {@code MinecraftAttackMixin} cancels {@code continueAttack} --
+     *       the per-tick path -- for as long as {@code holding} is true;</li>
+     *   <li>attacking dies because a press that arrives while the swing is already open is
+     *       refused by the gate that refuses a double click, and nothing tells the player why;</li>
+     *   <li>interacting dies because the right button's own {@code holding} flag got stuck the
+     *       same way, and that flag is what refuses the item use.</li>
+     * </ul>
+     *
+     * <p>So the swing does not trust the event stream to be complete. Every tick it asks the
+     * window whether the button is really down, and if it is not while a swing is open, the
+     * release was lost and the swing is closed as if it had arrived. <b>Self-healing on the
+     * truth rather than on the notification.</b> That also means the fix does not care which of
+     * the several ways a release can go missing was the one that bit.</p>
+     *
+     * <p>Cheap on purpose: one call per open swing, and only while one is open.</p>
+     */
+    private static boolean buttonIsPhysicallyDown() {
+        Minecraft mc = Minecraft.getInstance();
+        var window = mc.getWindow();
+        // A null handle is the safe direction: it answers "not down", so a window that is gone
+        // closes an open swing instead of leaving it latched to nothing.
+        return InputLiveness.buttonIsDown(window != null,
+                window != null && org.lwjgl.glfw.GLFW.glfwGetMouseButton(
+                        window.getWindow(),
+                        org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT)
+                        != org.lwjgl.glfw.GLFW.GLFW_RELEASE);
+    }
+
+    /**
+     * Closes a swing whose button is no longer down, so a lost release cannot outlive the session.
+     *
+     * <p>The decision is {@link InputLiveness#shouldCloseSwing}, which is pure and tested; this
+     * is only the window read and the effect. Called from the tick, before anything reads
+     * {@link #holding}, because that ordering is the mechanism.</p>
+     *
+     * @return whether a swing was open and had to be resolved as a lost release
+     */
+    public static boolean reconcileWithTheButton() {
+        if (!InputLiveness.shouldCloseSwing(holding, buttonIsPhysicallyDown())) {
+            return false;
+        }
+        debug("release PERDIDO (el boton ya no esta apretado): lo resuelve el tick");
+        // Abandoned rather than released: the player let go of the button some time ago and we
+        // only just noticed, so paying a swing against a world they have since walked away from
+        // would be the wrong answer. Nothing is spent, and the swing closes.
+        abandon("release perdido");
+        return true;
+    }
+
+    // --- For /cc input. These read the fields the gates read and recompute nothing. ---
+
+    /** Whether the client's own latch has expired, which is half of the cooldown gate. */
+    public static boolean readyAtTickPassed() {
+        return tick >= readyAtTick;
+    }
+
+    public static int readyAtTickValue() {
+        return readyAtTick;
+    }
+
+    /** Whether the server's cooldown answer permits a swing: the other half of that gate. */
+    public static boolean syncedCooldownReady() {
+        return !ClientCombatState.cooldownKnown()
+                || ClientCombatState.cooldownRatio() >= 1.0F;
+    }
+
+    public static boolean cooldownKnown() {
+        return ClientCombatState.cooldownKnown();
+    }
+
+    public static float syncedCooldownRatio() {
+        return ClientCombatState.cooldownRatio();
+    }
+
+    /** Whether the crosshair rests on a block, which is what makes a swing mean "mining". */
+    public static boolean onBlock() {
+        return isOnBlock(Minecraft.getInstance());
+    }
+
+    public static boolean buttonDownForDebug() {
+        return buttonIsPhysicallyDown();
     }
 
     public static boolean holding() {
@@ -286,6 +543,12 @@ public final class SwingInputHandler {
         tick++;
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
+
+        // First, before anything reads `holding`. The window losing focus with the button down
+        // produces no release event, so the swing can only be found out about by asking whether
+        // the button is still down. See reconcileWithTheButton for the whole story.
+        reconcileWithTheButton();
+
         if (player == null) {
             if (holding) {
                 holding = false;
@@ -305,8 +568,35 @@ public final class SwingInputHandler {
         }
         if (holding) {
             predictedTicks++;
+            playChargeSoundOnceItIsACharge(player);
+        } else {
+            chargeSoundPlayed = false;
         }
-        ItemViewModel.tick(holding, chargedRatio(player));
+        // The wind-up reads the RAW hold progress, and the charge bar reads the thresholded one.
+        //
+        // They are different rules and they were welded together. `chargeRatioFor` is zero for
+        // the first four ticks and then remaps, which is exactly right for damage and exactly
+        // wrong for a wind-up: the playtest said the cocking "starts very late, only in the last
+        // part of the charge", and it did, because a sword spends its first fifth of a second
+        // doing nothing at all and then has to catch up. A weapon should start moving the instant
+        // the button goes down, because that is the feedback that tells the player the press was
+        // heard.
+        // Two readings of one hold, and the split is the whole point.
+        //
+        //  + "chargeRatioFor" +  is zero for the first four ticks and then remaps. For the
+        // WIND-UP that is exactly wrong: the playtest said the cocking "starts very late, only in
+        // the last part of the charge", and it did, because a sword spends its first fifth of a
+        // second doing nothing and then has to catch up. A weapon should start moving the instant
+        // the button goes down, because that is the feedback that says the press was heard. So the
+        // wind-up gets the raw ratio.
+        //
+        // For the CAMERA the raw ratio is exactly wrong too, in the other direction and for the
+        // same reason: a two tick click is one twenty-fourth of a charge and the camera closed on
+        // it. That is what "any attack starts the charge" was, on both sides: the camera was
+        // reading the wind-up's number. The camera wants to know whether the swing IS a charge,
+        // so it gets the thresholded one, and a tap moves nothing at all.
+        ItemViewModel.tick(holding, predictedRatio(player), chargedRatio(player),
+                ClientCombatState.guardHeld());
     }
 
     /**
@@ -340,8 +630,9 @@ public final class SwingInputHandler {
         if (!holding || player == null) {
             return 0.0F;
         }
+        ChargeProfile charge = WeaponStats.of(player.getMainHandItem()).charge();
         return AttackTiming.chargeRatioFor(
-                predictedTicks, WeaponStats.of(player.getMainHandItem()).charge().fullChargeTicks());
+                predictedTicks, charge.fullChargeTicks(), charge.canCharge());
     }
 
     private static float predictedRatio(LocalPlayer player) {
@@ -377,6 +668,26 @@ public final class SwingInputHandler {
 
     /** Test hook and logout path: forget the open swing rather than leaving it dangling. */
     public static void reset() {
+        holding = false;
+        predictedTicks = 0;
+        openItem = null;
+        claim = Claim.NOT_OURS;
+        ItemViewModel.onCancel();
+    }
+
+    /**
+     * Drop an open swing without sending anything, because the player changed their mind about it.
+     *
+     * <p>Same shape as the menu case and the item-change case: the press was legitimate, the
+     * release would land a real charged hit, and what happened in between means it should not.
+     * The difference is that nothing is paid, because a swing that was never released was never
+     * spent -- which is also why this is not a refusal at the press. The press already happened.
+     */
+    public static void abandon(String reason) {
+        if (!holding) {
+            return;
+        }
+        debug("swing ABANDONADO: " + reason);
         holding = false;
         predictedTicks = 0;
         openItem = null;

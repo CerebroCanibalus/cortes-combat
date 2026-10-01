@@ -1,0 +1,12 @@
+{
+  "textures": [
+    "cortescombat:sword_hit",
+    "cortescombat:axe_hit",
+    "cortescombat:daga_hit",
+    "cortescombat:ropera_hit",
+    "cortescombat:martillo_hit",
+    "cortescombat:shotel_hit",
+    "cortescombat:alabarda_hit",
+    "cortescombat:barrido_alabarda"
+  ]
+}

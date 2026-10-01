@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_material": {
+      "conditions": {
+        "items": [
+          {
+            "items": "#minecraft:netherite_tool_materials"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "advancements.cortescombat.weapon"
+    },
+    "hidden": true,
+    "icon": {
+      "count": 1,
+      "id": "cortescombat:netherite_daga"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "item.cortescombat.netherite_daga"
+    }
+  },
+  "requirements": [
+    [
+      "has_material"
+    ]
+  ]
+}

@@ -79,7 +79,37 @@ public final class AttackTiming {
      * @return 0 below the threshold, then 0..1 across the rest of the window
      */
     public static float chargeRatioFor(int heldTicks, int fullChargeTicks) {
-        if (heldTicks < MIN_CHARGE_HOLD_TICKS) {
+        return chargeRatioFor(heldTicks, fullChargeTicks, true);
+    }
+
+    /**
+     * {@link #chargeRatioFor(int, int)}, plus the weapon's own answer to "can this charge at all".
+     *
+     * <p><b>This is the one place that knows a weapon which cannot charge is never charged.</b> It
+     * used to be guarded at each call site instead, which is how the client ended up without one:
+     * {@code AttackCooldown} and {@code CombatEngine} both open with
+     * {@code if (!profile.canCharge()) return 0}, the client had no equivalent, and the reason it
+     * never needed one is that the client never saw a non-charging weapon -- {@code press} handed
+     * the whole click back to vanilla for those, so their swing never opened and there was no
+     * ratio to get wrong.</p>
+     *
+     * <p>Then the click was fixed and the missing guard showed up. A ropera's ratio came out of
+     * {@code chargeRatioFor(ticks, 0)}, and a window of zero ticks reaches the branch below, which
+     * means "shorter than the minimum hold, so always full". A dagger held for a second reported
+     * a full charge to the crosshair and to the field of view.</p>
+     *
+     * <p>The two readings of {@code fullChargeTicks <= 4} collide and both are real: a weapon whose
+     * whole charge window is under four ticks <em>is</em> at full charge after any deliberate hold,
+     * and a weapon that cannot charge carries zero ticks and is <em>never</em> charged. Only the
+     * weapon can tell them apart, so only the weapon is asked.</p>
+     *
+     * @param canCharge the profile's own answer, which the two branches below cannot see
+     */
+    public static float chargeRatioFor(int heldTicks, int fullChargeTicks, boolean canCharge) {
+        // The non-charging case comes first and is not a threshold: a weapon that cannot charge is
+        // not charged by any amount of holding, so this has to hold for every input, including a
+        // hold of five hundred ticks against a window of a hundred.
+        if (!canCharge || heldTicks < MIN_CHARGE_HOLD_TICKS) {
             return 0.0F;
         }
         if (fullChargeTicks <= MIN_CHARGE_HOLD_TICKS) {

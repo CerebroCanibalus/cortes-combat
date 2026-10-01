@@ -50,7 +50,7 @@ class GuardStateTest {
         // And it is not stuck there: it refills on the normal interval, not the stagger's.
         GuardState ticked = GuardState.EMPTY.withMax(3);
         for (int i = 0; i < REGEN * 3; i++) {
-            ticked = ticked.tick(REGEN, false, STAGGER);
+            ticked = ticked.tick(REGEN, false);
         }
         assertEquals(3, ticked.stamina());
     }
@@ -60,7 +60,7 @@ class GuardStateTest {
     void freshItemUsesNormalRate() {
         GuardState ticked = GuardState.EMPTY.withMax(3);
         for (int i = 0; i < REGEN - 1; i++) {
-            ticked = ticked.tick(REGEN, false, STAGGER);
+            ticked = ticked.tick(REGEN, false);
         }
         assertEquals(0, ticked.stamina(), "a fresh shield is not a staggered one");
     }
@@ -73,7 +73,7 @@ class GuardStateTest {
         // what proves an item that was never staggered is not being paid as if it had.
         GuardState ticked = GuardState.EMPTY.withMax(3);
         for (int i = 0; i < STAGGER; i++) {
-            ticked = ticked.tick(REGEN, false, STAGGER);
+            ticked = ticked.tick(REGEN, false);
         }
         assertEquals(2, ticked.stamina());
     }
@@ -116,10 +116,13 @@ class GuardStateTest {
     @Test
     @DisplayName("holding the guard up recovers nothing")
     void noRegenWhileHeld() {
+        // The second argument is the guard's usability, so a raised guard passes true here. It
+        // used to be the stagger flag and this passed false, which was correct under the old
+        // three-argument signature and quietly stopped meaning anything under the new one.
         GuardState partiallySpent = new GuardState(true, 3, 1, REGEN);
         GuardState ticked = partiallySpent;
         for (int i = 0; i < REGEN * 3; i++) {
-            ticked = ticked.tick(REGEN, false, STAGGER);
+            ticked = ticked.tick(REGEN, true);
         }
         assertEquals(1, ticked.stamina(), "a raised guard is the cost of not being able to block twice");
     }
@@ -130,50 +133,69 @@ class GuardStateTest {
         GuardState spent = new GuardState(false, 3, 0, REGEN);
         GuardState ticked = spent;
         for (int i = 0; i < REGEN - 1; i++) {
-            ticked = ticked.tick(REGEN, false, STAGGER);
+            ticked = ticked.tick(REGEN, false);
         }
         assertEquals(0, ticked.stamina(), "must still be empty one tick before the interval is up");
-        ticked = ticked.tick(REGEN, false, STAGGER);
+        ticked = ticked.tick(REGEN, false);
         assertEquals(1, ticked.stamina());
     }
 
     @Test
-    @DisplayName("a stagger refills the guard exactly as the cooldown runs out")
-    void staggerIsTheRefillClock() {
-        // Three points over a 100 tick stagger: one back every 33 ticks, so the guard is full
-        // the instant the item becomes usable again and not a moment before.
+    @DisplayName("a broken guard regenerates nothing at all")
+    void aStaggeredGuardDoesNotRegenerate() {
+        // This test used to assert the exact opposite, and the playtest is what changed it.
+        //
+        // The old rule spread the refill across the stagger so the guard came back full exactly
+        // as the item cooldown ran out. It sounded careful and it was wrong about the feeling:
+        // points arriving during the stun is the one window where a player who is helpless is
+        // also recovering. A stagger that refills itself is a stagger that costs nothing.
+        //
+        // Three points over a hundred ticks used to be the expectation. Zero is the rule now,
+        // and "used to be three" is the number that makes the change legible.
         GuardState empty = new GuardState(false, 3, 0, REGEN);
         GuardState ticked = empty;
+        for (int i = 0; i < STAGGER * 3; i++) {
+            ticked = ticked.tick(REGEN, true);
+        }
+        assertEquals(0, ticked.stamina(),
+                "a broken guard is not a shorter refill, it is no refill");
+    }
+
+    @Test
+    @DisplayName("the refill resumes the moment the guard is usable again")
+    void regenResumesAfterTheStagger() {
+        // "Do not regenerate while broken" has to mean "and then do", or the guard is a
+        // one-way door and a player who loses a fight can end a session at zero permanently.
+        GuardState empty = new GuardState(false, 3, 0, REGEN);
+        GuardState staggered = empty;
         for (int i = 0; i < STAGGER; i++) {
-            ticked = ticked.tick(REGEN, true, STAGGER);
+            staggered = staggered.tick(REGEN, true);
         }
-        assertEquals(3, ticked.stamina());
+        assertEquals(0, staggered.stamina(), "nothing during the stagger");
+
+        GuardState recovered = staggered;
+        for (int i = 0; i < REGEN * 3; i++) {
+            recovered = recovered.tick(REGEN, false);
+        }
+        assertEquals(3, recovered.stamina(), "everything after it");
     }
 
     @Test
-    @DisplayName("a stagger does not refill faster than the cooldown lasts")
-    void staggerCannotOutrunTheCooldown() {
-        // Half the stagger must not already be two thirds of the way back.
-        GuardState empty = new GuardState(false, 3, 0, REGEN);
-        GuardState ticked = empty;
-        for (int i = 0; i < STAGGER / 2; i++) {
-            ticked = ticked.tick(REGEN, true, STAGGER);
-        }
-        assertTrue(ticked.stamina() <= 1,
-                "at half the cooldown the guard should still be mostly empty, was " + ticked.stamina());
-    }
-
-    @Test
-    @DisplayName("being staggered refills even with the button still held")
-    void staggerBeatsTheHeldPenalty() {
-        // The player never let go of the button; the guard broke on its own. Charging them for
-        // holding it on top of the stagger would be two punishments for one mistake.
+    @DisplayName("a stagger and a raised guard are one rule, not two")
+    void staggeredAndHeldCostTheSameThing() {
+        // The method takes one flag for both, and this is why: from here they are the same
+        // question, which is "can this guard be used right now".
+        //
+        // It used to be three parameters and two rates, which existed only to describe a
+        // stagger in words other than "do not regenerate". That is what a rule written wrong
+        // looks like when it is then made more precise instead of corrected.
         GuardState empty = new GuardState(true, 3, 0, REGEN);
         GuardState ticked = empty;
-        for (int i = 0; i < STAGGER; i++) {
-            ticked = ticked.tick(REGEN, true, STAGGER);
+        for (int i = 0; i < REGEN * 4; i++) {
+            ticked = ticked.tick(REGEN, true);
         }
-        assertEquals(3, ticked.stamina());
+        assertEquals(0, ticked.stamina(),
+                "held and staggered are the same cost, which is why they are the same flag");
     }
 
     @Test
@@ -186,10 +208,10 @@ class GuardStateTest {
         assertEquals(2, after.stamina());
         GuardState ticked = after;
         for (int i = 0; i < REGEN - 1; i++) {
-            ticked = ticked.tick(REGEN, false, STAGGER);
+            ticked = ticked.tick(REGEN, false);
         }
         assertEquals(2, ticked.stamina(), "still nothing back one tick before the interval");
-        ticked = ticked.tick(REGEN, false, STAGGER);
+        ticked = ticked.tick(REGEN, false);
         assertEquals(3, ticked.stamina());
     }
 
@@ -219,7 +241,7 @@ class GuardStateTest {
         GuardState nothing = new GuardState(true, 0, 0, REGEN);
         assertFalse(nothing.isActive());
         // And it must not tick itself into existence either.
-        assertEquals(0, nothing.tick(REGEN, false, STAGGER).stamina());
+        assertEquals(0, nothing.tick(REGEN, false).stamina());
     }
 
     @Test
@@ -228,7 +250,7 @@ class GuardStateTest {
         GuardState lowered = new GuardState(false, 3, 1, 0);
         GuardState ticked = lowered;
         for (int i = 0; i < REGEN; i++) {
-            ticked = ticked.tick(REGEN, false, STAGGER);
+            ticked = ticked.tick(REGEN, false);
         }
         assertEquals(2, ticked.stamina());
     }

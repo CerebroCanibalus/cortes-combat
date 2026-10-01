@@ -6,7 +6,8 @@
   "refmap": "cortescombat.refmap.json",
   "mixins": [],
   "client": [
-    "MinecraftAttackMixin"
+    "MinecraftAttackMixin",
+    "ItemInHandRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

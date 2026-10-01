@@ -7,19 +7,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * That the strike is scaled by the charge, which is the fix for a tap looking like a charge.
+ * That the strike is scaled by the charge, and that a tap still swings.
  *
- * <p>The report was that an ordinary attack looked "like a charge done badly". The cause was not
- * the wind-up, which was correctly tiny for a tap, but the strike: it was the same amplitude for
- * every release, so a two tick click and a full charge played the same thirty degree swing and
- * differed only in how long it lasted. A shorter version of the wrong motion is still the wrong
- * motion.</p>
+ * <p>This class has been wrong twice, in opposite directions, and both times because the test
+ * encoded a decision instead of a property.</p>
  *
- * <p>There is no floor and that is the second half of the fix. A tap used to arrive at the
- * viewmodel as a fifth of a charged animation, which the playtest described twice and in the
- * same breath: it "looks like a charge done badly" and it "should look like the vanilla swing
- * animation". A tap is not a small charge. It is the vanilla arm swing, and the input code plays
- * that instead of a viewmodel strike.</p>
+ * <p>First there was no scaling at all: every release played the same swing, so a two tick click
+ * and a full charge differed only in duration. Then the floor was set to zero, on the reading
+ * that a tap is "not a small charge" and therefore contributes nothing. The playtest overruled
+ * that: four attacks out of five are taps, and a weapon that does not move on them is a prop.</p>
+ *
+ * <p>What is actually being protected here is not a number. It is that the motion grows
+ * monotonically with the charge, never exceeds it, and that both ends of the range are far
+ * enough apart for a player to tell them apart by looking. Those hold whatever the floor is, and
+ * they are what a retune must not break.</p>
  */
 class ChargeScaledStrikeTest {
 
@@ -29,36 +30,50 @@ class ChargeScaledStrikeTest {
     private static float peakStrikeFor(float released) {
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, Math.min(1.0F, (i + 1) / 25.0F));
+            motion.tick(true, Math.min(1.0F, (i + 1) / 25.0F), Math.min(1.0F, (i + 1) / 25.0F), false, 1.0F);
         }
-        motion.onStrike(released);
+        motion.onStrike(released, ViewModelMotion.STRIKE_TICKS);
         float peak = 0.0F;
         for (int tick = 0; tick <= ViewModelMotion.STRIKE_TICKS; tick++) {
-            motion.tick(false, 0.0F);
+            motion.tick(false, 0.0F, 0.0F, false, 1.0F);
             for (int sub = 0; sub < 4; sub++) {
-                peak = Math.max(peak, motion.snapshot(sub / 4.0F, 0.0F, false).strike());
+                peak = Math.max(peak, motion.snapshot(sub / 4.0F, 0.0F).strike());
             }
         }
         return peak;
     }
 
     @Test
-    @DisplayName("a tap gets no strike at all: it is the vanilla arm swing and nothing else")
-    void tapIsNothing() {
-        // There was a floor here once, so a click arrived at the viewmodel as a fifth of a
-        // charged animation, and the playtest said both of the things that means: it looked
-        // "like a charge done badly" and it "should look like the vanilla swing animation".
-        // Those are the same complaint, and no amount of tuning answers it. A tap is not a small
-        // charge, it is not a charge at all.
-        assertEquals(0.0F, peakStrikeFor(0.0F), 0.0F,
-                "a tap must contribute nothing, or it is a small charge wearing a disguise");
+    @DisplayName("a tap swings almost as big as a charge, and a charge is still the heavier one")
+    void tapSwingsAndChargeIsStillHeavier() {
+        float tap = peakStrikeFor(0.0F);
+        float charged = peakStrikeFor(1.0F);
+
+        assertTrue(tap > 0.6F,
+                "an ordinary click has to be a real swing, it is " + tap
+                        + " of a full one. This floor was zero and then a third, and the playtest "
+                        + "rejected both: a weapon that does not move on four attacks out of five "
+                        + "is a prop, and one that twitches on them is worse.");
+        assertTrue(charged > tap,
+                "and a full charge has to be the heavier of the two, " + charged + " against " + tap);
     }
 
     @Test
-    @DisplayName("the strike scales with the charge, roughly linearly")
+    @DisplayName("the strike grows with the charge, and never past it")
     void scalesWithCharge() {
-        assertEquals(0.5F, peakStrikeFor(0.5F), 0.02F);
-        assertEquals(0.75F, peakStrikeFor(0.75F), 0.02F);
+        // Monotone and bounded rather than linear, because the floor makes the map deliberately
+        // non-linear: TAP_FLOOR + (1 - TAP_FLOOR) * charge. A test that demands linearity here
+        // would be a test that forbids the very thing the floor is for.
+        float previous = -1.0F;
+        for (float charge = 0.0F; charge <= 1.0001F; charge += 0.1F) {
+            float peak = peakStrikeFor(charge);
+            assertTrue(peak >= previous,
+                    "the strike must never shrink as the charge grows, " + peak
+                            + " came after " + previous);
+            assertTrue(peak <= 1.0F + EXACT,
+                    "and must never exceed a full charge, was " + peak);
+            previous = peak;
+        }
     }
 
     @Test
@@ -72,12 +87,12 @@ class ChargeScaledStrikeTest {
     void pressResetsTheCharge() {
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, 1.0F);
+            motion.tick(true, 1.0F, 1.0F, false, 1.0F);
         }
-        motion.onStrike(1.0F);
-        motion.tick(false, 0.0F);
+        motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
         // Tap straight away, without waiting for the follow-through to finish.
-        motion.tick(true, 0.0F);
+        motion.tick(true, 0.0F, 0.0F, false, 1.0F);
         assertEquals(0.0F, motion.released(), EXACT,
                 "a new press must zero the previous swing's charge");
     }
@@ -86,10 +101,10 @@ class ChargeScaledStrikeTest {
     @DisplayName("a cancelled swing leaves no charge behind")
     void cancelClearsTheCharge() {
         ViewModelMotion motion = new ViewModelMotion();
-        motion.onStrike(1.0F);
-        motion.tick(false, 0.0F);
+        motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
         motion.onCancel();
-        motion.tick(false, 0.0F);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
         assertEquals(0.0F, motion.released(), 0.0F);
     }
 
@@ -97,10 +112,12 @@ class ChargeScaledStrikeTest {
     @DisplayName("the recorded charge is clamped, so a bad value cannot blow up the motion")
     void clampsTheCharge() {
         ViewModelMotion motion = new ViewModelMotion();
-        motion.onStrike(5.0F);
+        motion.onStrike(5.0F, ViewModelMotion.STRIKE_TICKS);
         assertEquals(1.0F, motion.released(), EXACT);
-        motion.onStrike(-3.0F);
-        assertEquals(0.0F, motion.released(), EXACT);
+        // A negative charge is still a tap, and a tap still swings. The floor is a floor.
+        motion.onStrike(-3.0F, ViewModelMotion.STRIKE_TICKS);
+        assertEquals(ViewModelMotion.TAP_FLOOR, motion.released(), EXACT,
+                "clamped to the tap amplitude, not below it");
     }
 
     @Test
@@ -112,14 +129,14 @@ class ChargeScaledStrikeTest {
         // it. A follow-through that has ended is the end of everything the charge was driving.
         ViewModelMotion motion = new ViewModelMotion();
         for (int i = 0; i < 30; i++) {
-            motion.tick(true, 1.0F);
+            motion.tick(true, 1.0F, 1.0F, false, 1.0F);
         }
-        motion.onStrike(1.0F);
-        motion.tick(false, 0.0F);
+        motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
         assertTrue(motion.currentCharge() > 0.0F, "the charge should still be live mid-strike");
 
         for (int i = 0; i <= ViewModelMotion.STRIKE_TICKS; i++) {
-            motion.tick(false, 0.0F);
+            motion.tick(false, 0.0F, 0.0F, false, 1.0F);
         }
         assertEquals(0.0F, motion.currentCharge(), 0.0F,
                 "once the strike is over the charge must be zero, or the FOV never reopens");
@@ -130,9 +147,9 @@ class ChargeScaledStrikeTest {
     @DisplayName("a new press drops the previous swing's charge before the new one starts")
     void pressClearsThePreviousCharge() {
         ViewModelMotion motion = new ViewModelMotion();
-        motion.onStrike(1.0F);
-        motion.tick(false, 0.0F);
-        motion.tick(true, 0.0F);
+        motion.onStrike(1.0F, ViewModelMotion.STRIKE_TICKS);
+        motion.tick(false, 0.0F, 0.0F, false, 1.0F);
+        motion.tick(true, 0.0F, 0.0F, false, 1.0F);
         assertEquals(0.0F, motion.currentCharge(), EXACT);
     }
 }

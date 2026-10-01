@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_material": {
+      "conditions": {
+        "items": [
+          {
+            "items": "#minecraft:gold_tool_materials"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "advancements.cortescombat.weapon"
+    },
+    "hidden": true,
+    "icon": {
+      "count": 1,
+      "id": "cortescombat:golden_alabarda"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "item.cortescombat.golden_alabarda"
+    }
+  },
+  "requirements": [
+    [
+      "has_material"
+    ]
+  ]
+}

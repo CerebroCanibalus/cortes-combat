@@ -6,6 +6,9 @@ import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.registry.ModComponents;
+import com.cortes.combat.registry.ModCreativeTabs;
+import com.cortes.combat.registry.ModItems;
+import com.cortes.combat.registry.ModParticleTypes;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -35,6 +38,9 @@ public class CortesCombat {
     public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         ModComponents.DATA_COMPONENT_TYPES.register(modEventBus);
         ModAttachments.ATTACHMENT_TYPES.register(modEventBus);
+        ModItems.ITEMS.register(modEventBus);
+        ModCreativeTabs.TABS.register(modEventBus);
+        ModParticleTypes.PARTICLE_TYPES.register(modEventBus);
         modEventBus.addListener(ModNetworking::register);
         NeoForge.EVENT_BUS.register(CombatTicker.class);
         NeoForge.EVENT_BUS.register(GuardHandler.class);

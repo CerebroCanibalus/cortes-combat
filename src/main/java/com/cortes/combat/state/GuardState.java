@@ -91,41 +91,45 @@ public record GuardState(boolean held, int max, int stamina, int regenTicks) {
     }
 
     /**
-     * Regen, one point per interval, and never while the guard is raised.
+     * Regen, one point per interval, and never while the guard is raised or broken.
      *
-     * <p>Holding the guard up recovering nothing is the cost of holding it: not points, but
-     * the ability to block a second thing in a row.</p>
+     * <p>Holding the guard up costs the regen. Being staggered costs it too, and that is a
+     * change of mind rather than a first draft: the refill used to be <em>spread across</em> the
+     * stagger, so the guard came back full exactly as the item cooldown ran out. The playtest
+     * overruled that -- "the points keep regenerating while the guard is broken" -- and it is
+     * right about what it feels like. Points arriving during the stun is the one window where a
+     * player who is helpless is also recovering, and the stagger is supposed to be the cost.</p>
      *
-     * <p>While staggered, the stagger <em>is</em> the clock. The refill is spread across it so
-     * the guard comes back full exactly as the item cooldown runs out, rather than on an
-     * unrelated faster timer that had the player back at two points before the stagger was
-     * even half over, which made the stagger cost nothing at all.</p>
+     * <p>So a broken guard is a plain pause in the same clock that holding it up is, and it
+     * resumes on the tick the guard is usable again.</p>
+     *
+     * <p>What this removed is worth noting: three parameters, a special interval, and a counter
+     * that snapped between two rates. All of it existed to describe a stagger in words other than
+     * "do not regenerate", which is a sign the rule was written wrong the first time and then
+     * made more precise instead of being corrected.</p>
      *
      * @param regenInterval ticks per point in normal play
-     * @param staggered whether the guard item is on cooldown right now
-     * @param staggerLength the item's full cooldown, used to spread the refill over it
+     * @param regenPaused   whether the guard is raised <em>or</em> the item is staggered. Both
+     *                      pause the refill, and they arrive as one flag because from here they
+     *                      are one question: can this guard be used right now?
+     *
+     * <p>The parameter is named after what it does rather than after one of the two reasons,
+     * because it was written once named after the wrong one. Passing "can I use this" where the
+     * method means "stop regenerating" inverted both branches at once: the guard regenerated while
+     * it was raised and refused to while it was broken, and the second of those is what the
+     * playtest saw as three full orbs on a guard that was down.</p>
      */
-    public GuardState tick(int regenInterval, boolean staggered, int staggerLength) {
-        if (stamina >= max || max <= 0) {
+    public GuardState tick(int regenInterval, boolean regenPaused) {
+        if (max <= 0 || stamina >= max) {
             return new GuardState(held, max, stamina, regenTicks);
         }
-        // Holding the guard up costs the regen. Being staggered is not holding anything: the
-        // player never let go of the button, the guard broke on its own, and charging them for
-        // it on top of the stagger would be a second punishment for one mistake.
-        if (held && !staggered) {
+        if (regenPaused) {
             return new GuardState(held, max, stamina, regenTicks);
         }
-        int interval = staggered && staggerLength > 0
-                ? Math.max(1, staggerLength / max)
-                : Math.max(1, regenInterval);
-        // When a stagger begins, snap the countdown to the stagger's pace instead of letting the
-        // one already running finish first. Without this the first point arrives late and the
-        // guard is still short at the moment the item becomes usable again, which is the one
-        // moment the player actually cares about.
-        int counter = (staggered ? Math.min(regenTicks, interval) : regenTicks) - 1;
+        int counter = regenTicks - 1;
         if (counter > 0) {
             return new GuardState(held, max, stamina, counter);
         }
-        return new GuardState(held, max, stamina + 1, interval);
+        return new GuardState(held, max, stamina + 1, Math.max(1, regenInterval));
     }
 }

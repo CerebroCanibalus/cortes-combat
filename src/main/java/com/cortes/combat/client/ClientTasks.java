@@ -22,6 +22,11 @@ public final class ClientTasks {
         CombatAim.update();
         CrosshairFeedback.onTick(ClientCombatState.aiming());
         // Advances the local charge, which the meter and the viewmodel both read.
+        //
+        // SwingInputHandler.tick reconciles its own swing against the physical button, because it
+        // is the one that has to read `holding` before anything else does. The guard's flag has no
+        // such ordering constraint, so it is reconciled here instead of inside its own tick.
+        GuardInputHandler.reconcileWithTheButton();
         SwingInputHandler.tick();
         // Last, because it clears the verdict on the press: vanilla can run the attack path more
         // than once in a tick, and every one of those has to see the same verdict. Clearing it

@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
@@ -36,6 +37,32 @@ public abstract class MinecraftAttackMixin {
     private void cortescombat$claimThePress(CallbackInfoReturnable<Boolean> cir) {
         if (SwingInputHandler.claim() != SwingInputHandler.Claim.NOT_OURS) {
             cir.setReturnValue(true);
+        }
+    }
+
+    /**
+     * Stops the block breaking while a swing is open.
+     *
+     * <p>The second half of taking the button away from vanilla, and it was invisible until the
+     * playtest: <b>mining does not go through {@code startAttack}</b>. It goes through
+     * {@code continueAttack(boolean)}, which {@code handleKeybinds} calls <em>every tick</em> for
+     * as long as the key is down, and which advances the break progress on its own. Cancelling
+     * the press stops the first tick of it and every tick after that.</p>
+     *
+     * <p>The report was that a player charging an attack, who then looked at a block, started
+     * mining, and kept mining until they let go. Two things wrong with that at once: the block
+     * is being destroyed by a player who is winding up, and the release then resolves a swing
+     * against a world the mining has already changed.</p>
+     *
+     * <p>Gating on the open swing rather than on the crosshair is the point. A player who wants
+     * to mine presses on a block with nothing in the cone, the press is <em>not</em> claimed, no
+     * swing opens, and mining runs exactly as vanilla intends. Only the button that is
+     * committed to an attack stops mining, which is the only button that should.</p>
+     */
+    @Inject(method = "continueAttack", at = @At("HEAD"), cancellable = true)
+    private void cortescombat$noMiningWhileCharging(boolean pSwingStart, CallbackInfo ci) {
+        if (SwingInputHandler.holding()) {
+            ci.cancel();
         }
     }
 }

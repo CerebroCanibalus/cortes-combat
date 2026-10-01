@@ -158,6 +158,10 @@ public final class ConeTargeting {
      * The same test the server runs: the nearest point of the box, measured in the same two
      * frames. Mirroring {@link ConeMath} is the point; a separate approximation here would
      * make the debug overlay and the hit test disagree.
+     *
+     * <p>The leashes come from the box's own half extents, per axis. A wide flat thing and a
+     * tall thin thing do not earn the same tolerance, and giving them the same one would make
+     * the rule a single "target size" that reads as if it existed.</p>
      */
     private static boolean inCone(Vec3 eye, Vec3 look, AABB box, ReachProfile reach) {
         return ConeMath.inCone(
@@ -166,7 +170,18 @@ public final class ConeTargeting {
                 ConeMath.closestOnAxis(eye.x, box.minX, box.maxX),
                 ConeMath.closestOnAxis(eye.y, box.minY, box.maxY),
                 ConeMath.closestOnAxis(eye.z, box.minZ, box.maxZ),
-                reach.distance(), reach.horizontalAngle(), reach.verticalAngle());
+                reach.distance(), reach.horizontalAngle(), reach.verticalAngle(),
+                ConeMath.leash(halfWidth(box)),
+                ConeMath.leash(halfHeight(box)));
+    }
+
+    /** The box's half width, taking whichever horizontal axis is the larger one. */
+    private static double halfWidth(AABB box) {
+        return Math.max(box.maxX - box.minX, box.maxZ - box.minZ) * 0.5;
+    }
+
+    private static double halfHeight(AABB box) {
+        return (box.maxY - box.minY) * 0.5;
     }
 
     /**
