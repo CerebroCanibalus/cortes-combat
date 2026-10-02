@@ -22,6 +22,17 @@ refs/              → clones upstream, SOLO LECTURA, gitignored
 
 `refs/` gitignored a propósito: son clones c/ su propio `.git`. **Nunca commitees ni edites.** Actualizar: `git -C refs/<repo> pull`.
 
+### Paquetes que se agregaron después del mapa original
+
+| Paquete | Qué es | La trampa que tiene |
+|---|---|---|
+| `thirdperson/` | `BodyPoses` (los ángulos), `BodyPose` (record de 8 + `lerp`), `BodyPoseDispatcher` (PREVIOUS/CURRENT + interpolación) | **Todo en GRADOS y el mixin convierte.** Arg 7 del record es `bodyPitch` y el 8 `bodyYaw`; se han intercambiado |
+| `mixin/PlayerModelMixin` | 2 inyecciones en `setupAnim`: HEAD cancela `attackTime`, TAIL suma la pose | HEAD es **obligatoria**: el renderer asigna `attackTime` *antes* de `setupAnim`. Firma de **6** parámetros, sin `partialTick` |
+| `special/Arcabuz*.java`, `state/ArcabuzState` | el arma 31: mecha, disparo, transición de estados | La LASTIMA se gasta **al ENCENDER**, no al disparar |
+| `client/ArcabuzModelProperties` | registra la propiedad `cortescombat:fuse` que elige el frame | Va en `FMLClientSetupEvent`, ⊘ en el constructor: el item no está bound |
+| `attack/ArmorWearHandler` | doble desgaste de armadura del hacha cargado, vía `ArmorHurtEvent` | El loop de vanilla ya es código muerto (`if (true) return;`), así que **no hay mixin** |
+| `special/HalberdSweep` | los números del barrido, puros y testeados | `COOLDOWN_FACTOR 4.0` — gasta 4× el cooldown |
+
 ## Reglas duras
 
 - **Target: NeoForge 1.21.1 / Java 21.** No subir. Combatify está en MC 26.1.2 c/ APIs q no existen acá → **traducir ideas, no copiar código.**
@@ -166,16 +177,26 @@ JDK instalado **25**, toolchain pide **21**, `foojay-resolver-convention` en `se
 
 ## Fase activa: 3 — Vertical slice
 
-Diseño cerrado, arquitectura aprobada, pasos 1–8 hechos ⊕ verificados en cliente real, reworks completo del HUD, click unificado, librería de viewmodel c/ perfil de espada, y guardia unificada **cerrada como postura**. **450 tests verdes.** Siguiente: **paso 9**.
+Diseño cerrado, arquitectura aprobada, pasos 1–10 hechos ⊕ verificados en cliente real, reworks completo del HUD, click unificado, librería de viewmodel c/ perfil de espada, guardia unificada **cerrada como postura**, **las siete armas nuevas con sus animaciones**, y **el arcabuz como arma 31**. **639 tests verdes.** Animaciones **casi completas** según playtest.
 
 | # | Paso | Estado |
 |---|---|---|
-| 1–8 | esqueleto, registros, `reach/`, cooldown duro, flujo de ataque, carga, HUD, aguante | HECHOS |
-| 14 | framework de viewmodel | HECHO (falta 3ª persona, sonido de carga, `CHARGED`) |
-| **9** | **las 30 armas + datagen + recetas + set de cobre** | **SIGUIENTE** |
-| 10 | especiales: multi-hit de alabarda **hecho**, parry de sable **hecho**, **lunge de la ropera hecho y verificado**, damage type de ignore-armadura | el martillo |
+| 1–10 | esqueleto, registros, `reach/`, cooldown duro, flujo de ataque, carga, HUD, aguante, **las 30 armas + datagen + recetas + cobre**, especiales + `ignoredArmour` | HECHOS ⊕ verificados |
+| 14 | framework de viewmodel | HECHO (falta sonido de carga, `CHARGED`, 3ª persona parcial) |
 | 11 | supervivencia (`FoodData`): quitar exhaustion, curación de ciclo cerrado | pendiente |
 | 15 | compat / conversión de armas de otros mods | pendiente |
+| — | **arcabuz** (arma 31, fuera del catálogo de 30) | HECHO, sin receta de crafteo |
+| — | tercera persona (`thirdperson/`) | HECHO y verificado |
+
+### Deuda de esta ronda
+
+| Falta | Nota |
+|---|---|
+| **Rotar el worldmodel en la guardia** (3ª persona) | Pedido explícito: la espada y el sable deberían girar hacia el jugador como en 1ª persona. Exige un mixin nuevo sobre `ItemInHandLayer`; **no se hizo a propósito** para no meter una segunda inyección antes de verificar las cinco anteriores |
+| **Receta de crafteo del arcabuz** | Intencional: inventar la grilla es diseñar, y `FirestoneRecipeTest` lo marca como hueco conocido |
+| `/cc weapons` no lista arcabuz ni LASTIMA | Se consiguen con `/cc weapon cortescombat:arcabuz` |
+| Arcabuz: feedback, flash a 1.7 m, soldadura de frames | El número del muzzle flash está derivado del dibujo a ojo; es el primero a tocar si se ve mal |
+| Sonido de carga completa, `CombatFeedback.CHARGED` | De antes, sin tocar |
 
 ## Decisiones tomadas
 
@@ -372,6 +393,18 @@ Cada una costó un bug. Están juntas porque se repiten: **todas son sobre la di
 - **⊘ ignorar la infraestructura que hace el test correr.** DataFixerUpper en `testRuntimeOnly` (cualquier clase c/ `Codec` estático lo necesita; sin eso los tests dieben en `<clinit>` c/ un error que parece un test roto). Y `UseJUnitPlatform()`.
 - **Los enums del proyecto ⊘ implementan `StringRepresentable`**: es una clase de Minecraft → cualquier cosa q los sostenga necesita el juego en el classpath y los tests mueren c/ `NoClassDefFoundError`. Usan `Codec` escrito a mano. (Me pasó, y violé la regla que yo mismo había escrito 2 pasos antes.)
 
+### Herramientas, y por qué el `.gitignore` es peligroso
+
+- **Reescribir un archivo entero para cambiar un párrafo es la operación más peligrosa que tengo.** Al documentar el arcabuz reemplacé `.gitignore` por su versión nueva completa en vez de editar el bloque del final, y **me llevé las reglas de `refs/`, `build/`, `run/` y `tools/ffmpeg/`**. `git add -A` empezó a agregar repos embebidos y 600 MB de ffmpeg. Lo agarró el aviso "adding embedded git repository" en la salida. **En un archivo de reglas, cada línea que no toqué sigue siendo una regla que no puedo ver.**
+- **Un parche por índice de línea es un parche por número.** Encadené varios y perdí firmas de métodos, `}` de más y jumped la mitad de un archivo — **dos veces la misma noche**. El síntoma es `illegal start of type` en una línea que no parece tener nada. La respuesta es `javac`, no más parches: el error dice qué línea falta.
+- **Y `git checkout -- <archivo>` no es una revert, es una apuesta.** Reverti un archivo que yo habia roto y **borre trabajo de la ronda anterior que nunca estuvo commiteado** (el barrido, el hacha, el arcabuz). Lo recupere con `javap -c` contra el jar del ultimo build, que tenia los offsets exactos -- **suerte pura**: si no hubiera rebuild justo antes, estaba perdido.
+- ⊘ **Un commit no es un commit. Es una red.** El costo de no commitear no es el de olvidarse de hacerlo: es el de que una operación reversible deje de serlo.
+
+### Verificar una API cuesta un minuto y ahorra una tarde
+
+- **Preguntarle a `javac` es verificación, no adivinar.** Escribí un archivo que importa `ItemPropertyUtils` y lo compilé: no existe en 1.21.1. Sondeé cuatro candidatos más y ninguno estaba; el real era `ItemProperties.register(...)`. **Escribir el uso y dejar que el compilador responda es más rápido y más seguro que buscar la clase en el cache**, que es lo que hice primero y no encontró nada.
+- **Y `javap -c` recupera código, no sólo firmas.** Con el `.class` del jar se leen los `ldc` en orden y se vuelve el número exacto de cada `Offset`. Es la razón de que la pérdida de arriba no haya sido la pérdida que parecía.
+
 ### Bugs de razonamiento
 
 - **Un `lerp` sin clampear se pasa del objetivo cuando el frame se alarga, y eso se lee como lag.** La
@@ -533,6 +566,23 @@ Detalle en `textures/gui/PROTOTYPE-ASSETS.md`. Para reemplazar: **misma ruta y m
 
 
 ## Changelog
+- **Las siete armas, el arcabuz, y un tajo que no cabe en el canal de la estocada. 639 tests.** Commit `480fd7f`, el primero desde el lunge. Cinco rondas de playtest y **doce bugs reales**, la mayoría de ellos números que describían algo que ya no era cierto.
+  1. **Grados sumados a un campo en radianes.** `ModelPart.xRot` está en radianes y el cuerpo sumaba GRADOS ahí: 46 grados como 46.0 son **46 vueltas completas**. La "voltereta hacia el frente varias veces", en los tres canales a la vez, en cada frame. Un número plausible como número y absurdo como ángulo — y el único test que lo atrapa es uno que convierta a radianes y mire.
+  2. **El signo al revés en TRES poses.** `setupAttackAnimation` manda el brazo a **−69°**; positivo es **hacia atrás**. La carga, la guardia y el golpe eran positivas, y dos de las tres se reportaron como "al revés". La tercera se iba a reportar después.
+  3. **`attackTime` lo asigna el renderer ANTES de `setupAnim`.** Una inyección al TAIL suma encima del swing de vanilla. Hace falta una al HEAD que lo cancele — **solo si el perfil es nuestro**, o un hacha vanilla pierde el golpe.
+  4. **La segunda skin layer no seguía al brazo.** `rightSleeve`/`leftSleeve` son `ModelPart` aparte y vanilla copia el brazo a la manga **antes** de nuestra inyección. `copyFrom` después.
+  5. **`BodyPose` arg 7 es `bodyPitch` y el 8 `bodyYaw`.** Intercambiados: el torso de la guardia se iba al eje equivocado y un test verde no lo nombraba porque la aserción estaba escrita sobre el mismo campo.
+  6. **Un bump no puede ser un tajo.** `STRIKE` es `released · sin(√fase · π)`: sube y vuelve, que es una estocada — y por eso la ropera y la daga suenan *"exactas"*. El tajo necesita un número que **solo baja**: canal `CHOP` con reloj propio. **La puerta es `reads(CHOP)` y no una lista de armas**, que es la lección que el sable ya dio una vez.
+  7. **`pendingStrike` retrasa un tick, y para una ALTURA eso es un frame en reposo.** El release sólo *anuncia* el golpe. Para el bump da igual (arranca en cero igual); para el chop es **un frame con el brazo colgando y después al tope** — literalmente *"empieza desde el estado de reposo hacia el golpe"*. El chop arranca en el release, y `CHOP_START` dejó de ser un número elegido para ser **la razón entre las dos alturas**: dos constantes que coincidían sobreviven exactamente un retune.
+  8. **El easing de la caída estaba invertido.** Era `(1−t)²`: pendiente máxima en t=0, nula en t=1. **La hoja salía a tope y se frenaba — un arma arrojada.** Una caída que frena no tiene impacto porque lo más rápido ya pasó cuando el ojo llega. Ahora `1 − smoothstep`. Y **4 ticks de caída, no 6**: el impacto es velocidad sobre distancia, y la distancia nunca fue el problema.
+  9. **El tajo levantaba los DOS brazos** — el único pitch de segunda mano que quedaba de cuando era copia del strike. Un golpe se compromete con un brazo; la guardia y la carga usan las dos porque son postura y reunión.
+  10. **`ItemPropertyUtils` y `assignIndex` no existen en 1.21.1** (son de 1.20). El API real es `ItemProperties.register(Item, ResourceLocation, ItemPropertyFunction)` y **no hay `assignIndex`**: el modelo no guarda un número, la función lo **calcula** por frame desde la pila — por eso el frame de la mecha va en un **data component** y no en un campo del cliente.
+  11. **"No tiene texturas" NO era el `.mcmeta`: era la carpeta.** `blocks.json` de 1.21.1 construye el atlas desde `block/` y `item/` **y nada más**. Bajo `models/` nunca se cose. El archivo existía, el path estaba bien, el modelo era válido, el test de "la textura existe" estaba **verde**. **Tercera vez en el proyecto que un archivo presente ≠ un archivo que el juego mire** (con `particle/`/`particles/` y `sound/`/`sounds/`).
+  12. **Once tests fallaron al arreglar las poses, y los once fijaban los bugs.** Uno se llamaba *"un strike va negativo y un wind-up va positivo"* — **afirmaba que un wind-up levanta el brazo hacia atrás**, y estaba verde mientras el playtest reportaba exactamente eso. El techo de 60° además **prohibía la motion que vanilla ya hace** (su swing llega a 68.8), y por eso el golpe era una puñalada.
+  - **La daga pegaba con el filo porque el pitch era +14**: sobre una hoja dibujada vertical, +14 es *todavía vertical*, así que la mano empujaba y llegaba el plano. Ahora **−72°** (el de la ropera más lo que una daga más corta se permite) lleva **la punta de arriba a adelante**, y 112° de recorrido total desde el cock.
+  - **El barrido de la alabarda tenía todos los signos espejados** por una teoría —"que se lea como un arma golpeada en dos direcciones"— que el jugador no aprobó. Lejos: "hasta casi la off hand y regresar" ⇒ **0,98 de un item** de recorrido lateral.
+- **Dos destructive y un `.gitignore` casi commiteado.** Ver la sección de Lecciones: es el costo exacto de no commitear.
+
 
 - **El lunge de la ropera, cerrado. 503 tests.** Reconstruido entero sobre el riptide de vanilla, que son tres líneas, y la lección central es que **un dash en Minecraft no es una distancia: es un impulso y el rozamiento decide.** Toda la tabla de distancia (`FIRST_STEP`, `RETENTION`, `ticksFor`, `stepFor`, `steered`, `STEER_SHARE`) era aritmética resolviendo por un número que el motor no expone, y por eso el camino era inescapable: dos intentos de escalar el paso o el decaimiento, un techo de serie geométrica que hacía el netherite aritméticamente imposible, y un `* 0.5` que sobrevivió a lo que lo justificaba. **Cinco bugs, todos del mismo tipo — un número que parece controlar algo y no lo controla:**
   1. **`impulso / 0,6` con un rozamiento que no existe.** `Entity#move` multiplica por `getBlockSpeedFactor()` y el default es **1,0**. Cuatro rondas en el código.
