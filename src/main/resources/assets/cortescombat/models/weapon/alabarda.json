@@ -1,9 +1,5 @@
 {
-	"credit": "Made with Blockbench",
 	"parent": "minecraft:item/handheld",
-	"textures": {
-		"layer0": "cortescombat:item/wooden_alabarda"
-	},
 	"display": {
 		"thirdperson_righthand": {
 			"rotation": [31.5, -86.5, 41],

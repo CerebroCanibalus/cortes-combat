@@ -162,9 +162,14 @@ class AttackTimingTest {
         }
 
         @Test
-        @DisplayName("the dagger's 2.5 is 8 ticks, the fastest in the set")
+    @DisplayName("two and a half attacks per second is eight ticks")
         void dagger() {
             assertEquals(8, AttackTiming.ticksFor(2.5));
+        assertEquals(6, AttackTiming.ticksFor(3.2),
+                "and three point two is six, which is what the dagger is. This test is about the "
+                        + "arithmetic and not about the weapon, and an earlier version of its name "
+                        + "did say the dagger -- so it went stale the day the speed was retuned and "
+                        + "nothing failed, because the assertion never was about the weapon");
         }
 
         @Test

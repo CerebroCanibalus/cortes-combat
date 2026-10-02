@@ -1,6 +1,7 @@
 package com.cortes.combat.registry;
 
 import com.cortes.combat.CortesCombat;
+import com.cortes.combat.state.ArcabuzState;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
 import com.cortes.combat.state.GuardState;
@@ -123,6 +124,29 @@ public final class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<SyncState>> LAST_SYNCED =
             ATTACHMENT_TYPES.register("last_synced", () -> AttachmentType.builder(() -> SyncState.NEVER)
                     .serialize(SyncState.CODEC)
+                    .build());
+
+    /**
+     * The arcabuz: a firestone in the chamber and twenty ticks of fuse.
+     *
+     * <p><b>No {@code copyOnDeath}, and this is the same rule the guard's points follow.</b>
+     * {@code loaded} is a button the player pressed. It rode through the guard's held flag once
+     * already -- the player came back from the death screen with the guard already up -- and the
+     * arcabuz would have handed them a loaded gun nobody loaded, which is the same category of
+     * bug in a different item.</p>
+     *
+     * <p>So dying costs the fuse <em>and</em> the charge, and both come back on the empty. Which
+     * is also the honest reading of the design: a player who just lost the fight did not come
+     * back with a loaded weapon.</p>
+     *
+     * <p>The type witness is not decoration, the same as {@link #LUNGE_HITS}: this
+     * {@code DeferredRegister<AttachmentType<?>>} takes a {@code Supplier<? extends I>} and the
+     * diamond of {@code ArcabuzState.EMPTY} cannot be solved without being told what it is for.</p>
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<ArcabuzState>> ARCABUZ =
+            ATTACHMENT_TYPES.register("arcabuz", () -> AttachmentType
+                    .<ArcabuzState>builder(() -> ArcabuzState.EMPTY)
+                    .serialize(ArcabuzState.CODEC)
                     .build());
 
     private ModAttachments() {

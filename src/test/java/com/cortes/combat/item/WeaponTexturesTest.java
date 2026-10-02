@@ -49,6 +49,14 @@ class WeaponTexturesTest {
         var names = new java.util.LinkedHashSet<>(WeaponFamily.allItemNames());
         names.add("copper_ingot");
         names.add("copper_nugget");
+        // **The firestone, which is the one item here that is not a weapon.**
+        //
+        // It has a texture on disk and it is the whole price of an arcabuz shot, and this test
+        // caught it as an orphan: the catalogue below is built from `WeaponFamily`, which is a list
+        // of the thirty catalogue weapons, so anything registered outside a family is invisible to
+        // it. A texture that nothing claims is exactly the state this whole file exists to prevent,
+        // and the fix is to name it here rather than to loosen the test.
+        names.add("firestone");
         return names.stream();
     }
 
@@ -119,7 +127,17 @@ class WeaponTexturesTest {
         var expected = everyItemName().collect(java.util.stream.Collectors.toSet());
 
         try (var files = Files.list(TEXTURES)) {
-            files.map(p -> p.getFileName().toString().replace(".png", ""))
+            // **Regular `.png` files only, and not every entry.**
+            //
+            // `textures/item/` is an atlas source directory, so it is now also where the arcabuz's
+            // five fuse frames live -- under an `arcabuz_fuse/` subfolder. A subfolder is not an
+            // item icon, and this test failed on it the first time with "texture arcabuz_fuse.png
+            // has no item", which names neither what it found nor what it wanted.
+            //
+            // The distinction is the whole test: a top-level PNG here is an icon and must have an
+            // item, and anything below the top level belongs to a model that is not an icon.
+            files.filter(Files::isRegularFile)
+                    .map(p -> p.getFileName().toString().replace(".png", ""))
                     .filter(name -> !expected.contains(name))
                     .forEach(name -> fail("texture " + name + ".png has no item: the catalogue says "
                             + expected.size() + " items and this is not one of them"));

@@ -34,7 +34,7 @@ class CutIsARotationTest {
 
     /** A frame at the peak of a full-charge cut. */
     private static ViewModelInput atTheCut() {
-        return new ViewModelInput(0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1);
+        return ViewModelInput.chopping(1.0F);
     }
 
     @Test

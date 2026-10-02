@@ -224,6 +224,63 @@ public final class ViewModelMotion {
     /** Ticks since the step started. */
     private int lungeAge;
 
+    // **The arcabuz's three.** Held is a flag rather than an age, because it is a state and not a
+    // movement; the other two are an age each, and they are the only channels here whose length is
+    // decided by the server rather than by a constant on this class.
+
+    /** Whether the weapon is loaded and ready. Interpolated for the same reason as everything. */
+    private float held;
+
+    /** The same, a tick ago. */
+    private float heldPrev;
+
+    /** Ticks since the reload went out, or -1 when it has not. */
+    private int reloadAge;
+
+    /** The reload itself. */
+    private float reload;
+
+    /** The same, a tick ago. */
+    private float reloadPrev;
+
+    /** Ticks left on the fuse, or -1 when nothing is lit. */
+    private int shootAge;
+
+    /** How far through the fuse we are, 0..1. */
+    private float shoot;
+
+    /** The same, a tick ago. */
+    private float shootPrev;
+
+    /**
+     * The whole length of the shot, in ticks, as the server last reported it.
+     *
+     * <p>Not {@link #SWEEP_TICKS} and not any other constant here: the fuse is a weapon property
+     * and it is a number someone will eventually want to tune without recompiling the animation.
+     * The recoil and the visible burn are read off the same counter, so they cannot be two
+     * numbers that disagree about how long the shot is.</p>
+     */
+    private int shootLength = 1;
+
+    /**
+     * How far the sweep has gone, and how far it was a tick ago.
+     *
+     * <p>A one-shot bump like the strike, and interpolated for the same reason everything here is:
+     * the motion is advanced on the tick and drawn sixty times a second, so without the previous
+     * value the arc would step.</p>
+     */
+    private float sweep;
+
+    /** The same, a tick ago. */
+    private float sweepPrev;
+
+    /** Ticks since the chop started, and its value a tick ago. See {@link #chopAt}. */
+    private float chopPrev;
+
+    private float chop;
+    /** Ticks since the sweep went out, or -1 when it has not. */
+    private int sweepAge;
+
     /** Whether the server has the parry window open, which is what the ramp is built from. */
     private boolean parrying;
 
@@ -409,6 +466,243 @@ public final class ViewModelMotion {
         return lungePrev + (lunge - lungePrev) * t;
     }
 
+    /**
+     * Throw the sweep, and start its clock.
+     *
+     * <p>A bump rather than a flag, on the same terms as the strike: it starts here and is over in
+     * {@link #SWEEP_TICKS}, resting at zero the rest of the time, so no profile needs a track whose
+     * only job is undoing the last one.</p>
+     *
+     * <p>Restarting an arc that is already going is the interesting case. Pressing the button twice
+     * inside twelve ticks should read as <em>a wider, faster swing</em>, not as two arcs fighting
+     * over one channel, so the press pulls the age back to one rather than queueing a second.</p>
+     */
+    public void onSweep() {
+        sweepAge = 1;
+    }
+
+    /**
+     * The sweep is not this weapon's, on the same terms as {@link #clearParry()}.
+     *
+     * <p>The caller asks the profile whether it reads the channel first, and a profile that does
+     * not gets told to forget it. Without that a weapon the player swaps to mid-arc inherits a
+     * signal meant for the halberd -- which is how the sabre once spent five seconds drawn
+     * collapsed because a global channel was filtered to the wrong item.</p>
+     */
+    public void clearSweep() {
+        sweep = 0.0F;
+        sweepPrev = 0.0F;
+        sweepAge = 0;
+    }
+
+    /**
+     * The chop's own clock, in ticks, and it is NOT the strike's.
+     *
+     * <p><b>This is the fix for "it still starts from rest and then hits".</b> The chop was read
+     * off {@code strikeAge}, and {@code strikeAge} is not set on the tick of the release: the
+     * release only announces the strike ({@code pendingStrike}) and the age starts on the tick
+     * after. Correct for the strike bump, which is a shape that begins at zero anyway -- and wrong
+     * for the chop, which is a HEIGHT. One frame at zero is one frame of the arm hanging at the
+     * player's side, and then it is at the top, and the player sees a weapon that was resting and
+     * then struck.</p>
+     *
+     * <p>So the chop gets its own age, set to zero by {@code onStrike} on the release itself, and
+     * the height is already high on the first frame. The rest of the motion is the same clock's
+     * business; only the first frame is the fix.</p>
+     */
+    private int chopAge = -1;
+
+    /**
+     * The build-up, in ticks: two, which is a tenth of a second.
+     *
+     * <p><b>"It needs a tiny build-up so it does not feel like it hits suddenly."</b> A weapon that
+     * is at full height on frame zero and falling on frame one has no weight, because weight is
+     * the two hundred milliseconds before something moves. Two ticks is the smallest length that
+     * is visible at all -- one tick is a third of a frame at sixty hertz -- and it is the number
+     * that was asked for by name rather than one that looked right.</p>
+     */
+    public static final int CHOP_BUILDUP_TICKS = 2;
+
+    /**
+     * The fall, in ticks: four.
+     *
+     * <p><b>A quarter of a second in total with the build-up, and that is the impact.</b> Impact is
+     * speed over distance, and the distance was never the problem -- the blade travels from fully
+     * raised to fully down either way. Six ticks of fall borrowed from the strike's clock put a
+     * weight that is supposed to feel heavy into a tenth of a second of nothing happening, and the
+     * playtest read it as "too soft and with no impact".</p>
+     *
+     * <p><b>Four is not a guess against six.</b> It is what is left after saying the two halves are
+     * two ticks of anticipation and two of arrival, which is the shape of a swing: a beat of
+     * gathering and a beat of letting go.</p>
+     */
+    public static final int CHOP_FALL_TICKS = 4;
+
+    /**
+    /**
+     * How high the chop is on its very first frame, out of the full height.
+     *
+     * <p><b>And it is not a taste number: it is the continuity of the hand-off.</b> The wind-up
+     * leaves the arm at {@code CHARGE_ARM_PITCH}, and the chop has to start where the wind-up left
+     * it or the arm steps on the tick the button comes up. So this is the wind-up's height over
+     * the chop's, and the two are chosen together -- 0.85 of 122 is 103.7 against a wind-up of
+     * 104, which is a third of a degree.</p>
+     *
+     * <p><b>Starting at zero is what the playtest rejected.</b> "It still starts from rest and then
+     * hits" is a weapon that was hanging at the player's side and then struck, and it was the
+     * whole of the first complaint about the chop. Starting high means the blade is already up
+     * before the build-up adds anything.</p>
+     */
+    static final float CHOP_START = 0.743F;
+
+    /**
+     * The chop: already high on the release, two ticks of build-up, then the fall.
+     *
+     * <p><b>Three parts and each one is a different complaint answered.</b> It opens at
+     * {@link #CHOP_START} so the weapon is up before anything moves; it rises to the full height
+     * over {@link #CHOP_BUILDUP_TICKS} so there is weight; and it falls as the square of what is
+     * left, front-loaded, so the arm settles rather than stops.</p>
+     *
+     * <p><b>Scaled by the swing's own amplitude, and this is not optional.</b> The first version was
+     * the fall on its own and a test caught the consequence at once: a full charge and a tap
+     * travelled exactly the same distance, so the swing had stopped being a swing. The strike
+     * bump was always {@code released * sin(...)} and dropping the amplitude is how a charged
+     * weapon ends up looking identical to an ordinary click.</p>
+     */
+    public float chopAt(float offset) {
+        if (chopAge < 0 || released <= 0.0F) {
+            return 0.0F;
+        }
+        float t = chopAge + offset;
+        if (t < 0.0F) {
+            t = 0.0F;
+        }
+
+        if (t < CHOP_BUILDUP_TICKS) {
+            float rise = CHOP_START + (1.0F - CHOP_START) * ((t + 1.0F) / CHOP_BUILDUP_TICKS);
+            return released * Math.min(1.0F, rise);
+        }
+        float falling = t - CHOP_BUILDUP_TICKS;
+        // **Its own length, and it is the shortest clock in the library.**
+        //
+        // The chop used to borrow `strikeTicks`, which is six -- a tenth of a second of falling for
+        // a weapon described as heavy. Impact is speed over distance, and the distance was fine, so
+        // the speed is what had to change: four ticks is a sixth of a second, and together with the
+        // build-up the whole motion is a quarter of one.
+        float span = Math.max(1, CHOP_FALL_TICKS);
+        if (falling >= span) {
+            return 0.0F;
+        }
+        float through = falling / span;
+        // **Smoothstep, inverted, and the previous curve was exactly backwards.**
+        //
+        // The old one was `(1 - t)^2`, whose slope is steepest at t=0 and flat at t=1: the blade
+        // leaves the top at full speed and coasts to a stop. That is a weapon being *thrown*, and
+        // the playtest called it "too soft and with no impact" -- which is what a decelerating fall
+        // looks like, because the fastest part of the motion is over before the eye has caught up.
+        //
+        // `1 - (3t^2 - 2t^3)` is flat at both ends and steepest in the middle. **The blade is slow
+        // off the mark, fastest through the arrival, and settles into rest**, and the arrival is
+        // where the eye is. That is the whole difference between a swing and a chop, and it is the
+        // same reason a bullet leaves the barrel fast rather than accelerating into the target.
+        float eased = through * through * (3.0F - 2.0F * through);
+        return released * (1.0F - eased);
+    }
+
+    /** The chop right now, high on the release and zero once the swing is over. */
+    public float chop() {
+        return chopAt(0.0F);
+    }
+
+    /** The chop's value a tick ago, for the interpolation. Public so a test can read the pair. */
+    public float chopPrev() {
+        return chopPrev;
+    }
+
+    /** The sweep, part way through a frame. */
+    public float sweepAt(float offset) {
+        float t = clamp01(offset);
+        return sweepPrev + (sweep - sweepPrev) * t;
+    }
+
+    // ---------------------------------------------------------------- the arcabuz
+
+    /**
+     * The fuse is lit, and this is how long the whole shot is.
+     *
+     * <p><b>The length comes in with the call and is not a constant here.</b> The recoil and the
+     * visible burn are both read off this one counter, so "how long the gun is held up" and "how
+     * far through the fuse the sprite is" cannot become two numbers that disagree.</p>
+     */
+    public void observeFuse(boolean lit, int lengthTicks) {
+        if (!lit) {
+            shootAge = -1;
+            shoot = 0.0F;
+            return;
+        }
+        // A length of zero or less would divide by nothing, and a shot that has no length would
+        // jump the ramp from nothing to full on one frame.
+        shootLength = Math.max(1, lengthTicks);
+        if (shootAge < 0) {
+            shootAge = shootLength;
+        }
+    }
+
+    /** The weapon is loaded and waiting for a fuse, or it is not. */
+    public void observeLoaded(boolean loaded) {
+        held = loaded ? 1.0F : 0.0F;
+    }
+
+    /** The reload was thrown. */
+    public void onReload() {
+        reloadAge = 1;
+    }
+
+    /** The arcabuz is not this weapon, so the client forgets all three. */
+    public void clearHeld() {
+        held = 0.0F;
+        heldPrev = 0.0F;
+        reload = 0.0F;
+        reloadPrev = 0.0F;
+        reloadAge = 0;
+        shoot = 0.0F;
+        shootPrev = 0.0F;
+        shootAge = -1;
+    }
+
+    public float heldAt(float offset) {
+        float t = clamp01(offset);
+        return heldPrev + (held - heldPrev) * t;
+    }
+
+    public float reloadAt(float offset) {
+        float t = clamp01(offset);
+        return reloadPrev + (reload - reloadPrev) * t;
+    }
+
+    public float shootAt(float offset) {
+        float t = clamp01(offset);
+        return shootPrev + (shoot - shootPrev) * t;
+    }
+
+    /** Public so a test can pin the shapes without reaching into the private fields. */
+    public float held() {
+        return held;
+    }
+
+    public float reload() {
+        return reload;
+    }
+
+    public float shoot() {
+        return shoot;
+    }
+
+    /** Public so a test can pin the shape without reaching into the private field. */
+    public float sweep() {
+        return sweep;
+    }
+
     /** Public so a test can pin the shape without reaching into the private field. */
     public float guardBreak() {
         return Math.max(breakAt(0.0F), parryBreakAt(0.0F));
@@ -474,6 +768,34 @@ public final class ViewModelMotion {
      */
     public static final int LUNGE_RISE_TICKS = 4;
     public static final int LUNGE_FALL_TICKS = 6;
+
+    /**
+     * How long the halberd's sweep takes, in ticks.
+     *
+     * <p><b>Twelve, and it is long where the strike is short.</b> The strike leaves and returns in
+     * six, because a cut is a snap. A sweep is the whole body going round and the blade arriving on
+     * the other side, and twelve is what makes it read as travelling across the screen instead of
+     * as a cut that happened to be wide.</p>
+     *
+     * <p>It also has to be longer than the weapon's own cooldown is short. The sweep costs four
+     * swings to throw and the player is standing still for three quarters of a second after it,
+     * so an arc that finished in six ticks would be over before they could see where it had gone.</p>
+     */
+    public static final int SWEEP_TICKS = 9;
+
+    /**
+     * How long the arcabuz's reload takes, in ticks.
+     *
+     * <p><b>Ten, and it is half a second because that is what was asked for.</b> It is a bump, so it
+     * runs out and back over those ten rather than sitting down for them: a reload that held the
+     * weapon down for half a second and then put it back reads as a pause in the game, and one that
+     * sat down would need the player to press again.</p>
+     *
+     * <p>On a constant here rather than on the server, unlike the fuse. The reload is the same for
+     * every arcabuz and nobody has asked for it to vary; the fuse is a per-shot length that arrives
+     * with the payload.</p>
+     */
+    public static final int RELOAD_TICKS = 10;
 
     /**
  * How long the collapse lasts, in ticks.
@@ -560,6 +882,13 @@ public final class ViewModelMotion {
         // offset. The swing is the one motion that should be legible as the same gesture at two
         // different weights, because it is the same gesture.
         released = TAP_FLOOR + (1.0F - TAP_FLOOR) * clamp01(charge);
+        // **The chop starts HERE, on the release, and not on the next tick.**
+        //
+        // `pendingStrike` exists so the strike bump's first frame is not drawn at the previous
+        // swing's wind-up, and a bump starts at zero anyway so a frame of nothing costs nothing.
+        // The chop is a HEIGHT: a frame of zero is a frame of the arm hanging at the player's side,
+        // and that is the playtest's report that it still starts from rest and then hits.
+        chopAge = 0;
         // The same number, unfloored. One value for what happened and one for how far the item
         // travels, because they answer different questions and the day they shared one, the floor
         // shipped itself into the field of view.
@@ -582,6 +911,7 @@ public final class ViewModelMotion {
         strikeAge = -1;
         pendingStrike = false;
         released = 0.0F;
+        chopAge = -1;
         classified = 0.0F;
     }
 
@@ -619,6 +949,7 @@ public final class ViewModelMotion {
             strikeAge = -1;
             pendingStrike = false;
             released = 0.0F;
+        chopAge = -1;
             classified = 0.0F;
         } else if (pendingStrike) {
             strikeAge = 0;
@@ -633,6 +964,7 @@ public final class ViewModelMotion {
             // everything the charge was driving, including the field of view.
             strikeAge = -1;
             released = 0.0F;
+        chopAge = -1;
             classified = 0.0F;
         }
         float next = targetWindup(holding, rawCharge);
@@ -754,6 +1086,82 @@ public final class ViewModelMotion {
         }
         lungePrev = lungeChanged ? lunge : lungeBefore;
         this.lunging = lungeUp;
+
+        // The sweep's own bump, on the strike's terms rather than the parry's.
+        //
+        // The parry and the lunge are ramps because they are states the player is *in* for as long
+        // as they want: the window stays open, the step stays out. A sweep is not a state. It is
+        // twelve ticks and then it is over whatever the player does next, which is the strike's
+        // shape, so it gets the strike's age and its resting-at-zero guarantee.
+        float sweepBefore = sweep;
+        if (sweepAge > SWEEP_TICKS) {
+            // Cleared only once the age is already past the end, so the twelfth tick still draws.
+            //
+            // **Three orders of this block were wrong before it was right, and all three produced
+            // the same symptom: one tick short.**
+            //
+            // `age++; sweep = 1 - age/T` reaches zero ON the twelfth tick and then holds it for a
+            // frame. `sweep = 1 - (age-1)/T; age++` fixes the zero but zeroes the twelfth tick
+            // anyway, because the reset runs on the same tick as the last value. So the guard has
+            // to come first and the value has to be drawn from the age the press set: ages one
+            // through twelve all draw, from 1.00 down to 0.083, and the thirteenth is zero.
+            sweepAge = 0;
+            sweep = 0.0F;
+        } else if (sweepAge > 0) {
+            sweep = 1.0F - (float) (sweepAge - 1) / (float) SWEEP_TICKS;
+            sweepAge++;
+        } else {
+            sweep = 0.0F;
+        }
+        sweepPrev = sweepBefore;
+        // CHOP is read off the strike's clock rather than kept, so the two can never last
+        // different times. `chopPrev` is the previous tick's value and the snapshot interpolates
+        // between the two, because a chop that stepped twenty times a second inside a sixty frame
+        // renderer is the same staircase the whole viewmodel library was built to avoid.
+        float chopBefore = chop;
+        chop = chopAge < 0 ? 0.0F : chopAt(0.0F);
+        chopPrev = chopBefore;
+        if (chopAge >= 0 && ++chopAge > CHOP_BUILDUP_TICKS + CHOP_FALL_TICKS) {
+            chopAge = -1;
+        }
+
+        // The arcabuz's three, and they are three different shapes on purpose.
+
+        // HELD is a state, so it is a flag with the same interpolating previous value as everything
+        // else here -- the difference is what feeds it, which is a packet and not a clock.
+        float heldBefore = held;
+        heldPrev = heldBefore;
+
+        // RELOAD is a bump on the strike's terms: out and back over RELOAD_TICKS, zero the rest of
+        // the time. The order matters the same way the sweep's did -- compute from the age the
+        // press set, then advance, and let the guard come first -- or the last tick of the motion
+        // is spent drawing a reset instead of a pose.
+        float reloadBefore = reload;
+        if (reloadAge > RELOAD_TICKS) {
+            reloadAge = 0;
+            reload = 0.0F;
+        } else if (reloadAge > 0) {
+            reload = Math.abs(0.5F - reloadAge / (float) RELOAD_TICKS) * 2.0F;
+            reloadAge++;
+        } else {
+            reload = 0.0F;
+        }
+        reloadPrev = reloadBefore;
+
+        // SHOOT is a ramp held for as long as the fuse burns, counted DOWN, which is the only way
+        // to hold a ramp at a length the server decides. Going up from a length we guessed would be
+        // a second copy of the number that the payload already sent.
+        float shootBefore = shoot;
+        if (shootAge < 0) {
+            shoot = 0.0F;
+        } else if (shootAge <= 0) {
+            shootAge = -1;
+            shoot = 0.0F;
+        } else {
+            shoot = Math.min(1.0F, shootAge / (float) shootLength);
+            shootAge--;
+        }
+        shootPrev = shootBefore;
     }
 
     private float targetWindup(boolean holding, float charge) {
@@ -800,6 +1208,11 @@ public final class ViewModelMotion {
                 Math.max(breakAt(offset), parryBreakAt(offset)),
                 parryAt(offset),
                 lungeAt(offset),
+                sweepAt(offset),
+                chopAt(offset),
+                heldAt(offset),
+                reloadAt(offset),
+                shootAt(offset),
                 holding,
                 (ticks + offset) / 20.0F,
                 seed);
@@ -1001,6 +1414,7 @@ public final class ViewModelMotion {
         guardAge = 0;
         guarding = false;
         released = 0.0F;
+        chopAge = -1;
         classified = 0.0F;
         seed = 1;
         ticks = 0;

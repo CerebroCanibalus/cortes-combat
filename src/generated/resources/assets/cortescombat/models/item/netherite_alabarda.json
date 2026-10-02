@@ -1,0 +1,6 @@
+{
+  "parent": "cortescombat:weapon/alabarda",
+  "textures": {
+    "layer0": "cortescombat:item/netherite_alabarda"
+  }
+}

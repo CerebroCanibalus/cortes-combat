@@ -1,5 +1,6 @@
 {
   "advancements.cortescombat.weapon": "Hecho a mano.",
+  "item.cortescombat.arcabuz": "Arcabuz",
   "item.cortescombat.copper_alabarda": "Alabarda de Cobre",
   "item.cortescombat.copper_daga": "Daga de Cobre",
   "item.cortescombat.copper_martillo": "Martillo de Guerra de Cobre",
@@ -11,6 +12,7 @@
   "item.cortescombat.diamond_martillo": "Martillo de Guerra de Diamante",
   "item.cortescombat.diamond_ropera": "Ropera de Diamante",
   "item.cortescombat.diamond_shotel": "Shotel de Diamante",
+  "item.cortescombat.firestone": "Firestone",
   "item.cortescombat.golden_alabarda": "Alabarda de Oro",
   "item.cortescombat.golden_daga": "Daga de Oro",
   "item.cortescombat.golden_martillo": "Martillo de Guerra de Oro",

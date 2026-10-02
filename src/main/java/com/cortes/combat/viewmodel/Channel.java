@@ -133,7 +133,90 @@ public enum Channel {
      *
      * <p>The ropera is the only weapon that reads it, and the only one that can.</p>
      */
-    LUNGE;
+    LUNGE,
+
+    /**
+     * How far the halberd's wide sweep has gone, 0..1.
+     *
+     * <p><b>Its own channel, and not a bigger {@link #STRIKE}, because the sweep crosses the screen
+     * and a cut does not.</b> A thrust goes forward and returns along the same line: one
+     * displacement with a peak in the middle. A sweep goes one way, crosses in front of the player,
+     * and finishes on the other side, which is a signed yaw and a roll at the same time and cannot
+     * be written as an amplitude toward zero without the blade arriving at the centre on its way
+     * past.</p>
+     *
+     * <p>A one-shot bump like {@link #STRIKE} and {@link #RECOVER}, so it rests at zero and needs
+     * no undo track. The weapon that reads it is the one that has it, and the read is a gate rather
+     * than a branch: see {@link ViewModelProfile#reads}.</p>
+     *
+     * <p>It is the first channel a <em>special</em> owns. The three before it all hang off the
+     * attack button, and a special that reused one of those channels would have been drawn as a
+     * swing the player did not throw.</p>
+     */
+    SWEEP,
+
+        /**
+     * A blade that starts above and comes down: 1 to 0 across the swing, and never back up.
+     *
+     * <p><b>The first channel that only ever goes down, and it exists because a bump cannot express
+     * a chop.</b> Every other motion here is {@code amplitude * curve} over a value that rises and
+     * falls, and the playtest's complaint about the normal hit was exactly that: it starts from
+     * below and goes up. A bump scaled by a negative pitch leaves the arm at rest on the first
+     * frame of the swing, lifts it through the middle and brings it back -- so what the player sees
+     * is a stab upward, and the second half of it is the return rather than the cut.</p>
+     *
+     * <p><b>A chop is one-directional.</b> The arm is already up when the swing starts, because the
+     * charge raised it, and the whole motion is that height being given back to the ground. One
+     * number, falling, over the same {@code strikeTicks}: at its first frame the weapon is at the
+     * wind-up's own height, at its last it is at rest, and it never goes anywhere else.</p>
+     *
+     * <p><b>Which is why the wind-up and the chop can share a height without a jump.</b> The charge
+     * is at full when the button comes up and the chop starts at one, so the hand-off has no step in
+     * it. That continuity is the whole reason a charged swing reads as one motion instead of a
+     * wind-up followed by a different animation -- and it is the second "it goes up when I let go"
+     * the playtest reported, which was the bump answering a question a chop cannot be asked.</p>
+     *
+     * <p>Not every weapon reads it: the ropera and the dagger are a thrust, and their version of the
+     * swing was reported as excellent, so they keep {@link #STRIKE} and this stays at zero.</p>
+     */
+    CHOP,
+/**
+     * Whether the weapon is loaded and ready, 0 or 1, as a <em>pose</em> and not a motion.
+     *
+     * <p><b>The first channel that is a state rather than a movement.</b> Everything else here is
+     * "how much of this motion is happening", and a state cannot be that: a gun that is loaded is
+     * not <em>doing</em> anything, it is sitting there differently.</p>
+     *
+     * <p>It works anyway because a profile is a sum of {@code amplitude × curve(channel)}, so a
+     * channel that is 1 while loaded and 0 while not moves the weapon from its resting pose to the
+     * loaded one, and the resting pose is the idle one. The weapon's flintlock comes down and the
+     * profile says so by having a track here and no track anywhere else.</p>
+     *
+     * <p><b>Which is why IDLE needed no channel at all.</b> It is the profile's {@code rest}, and the
+     * resting pose is by definition the one with nothing happening.</p>
+     */
+    HELD,
+
+    /**
+     * The reload, a one-shot bump over half a second.
+     *
+     * <p>A motion like {@link #STRIKE}, on the shape of the {@link #BREAK} bump: out and back in
+     * half a second, resting at zero the rest of the time so it needs no undo track.</p>
+     */
+    RELOAD,
+
+    /**
+     * The fuse burning and the shot going off, 0..1 across the whole shot.
+     *
+     * <p><b>Not a bump.</b> Every other channel in this enum returns to zero, and this one only
+     * reaches zero when the shot is over -- so it is a ramp that is held for as long as the fuse
+     * is lit, the same shape as {@link #GUARD} and {@link #LUNGE}. That is what makes a long fuse
+     * possible at all: a bump would be over before the player could see it start.</p>
+     *
+     * <p>Its length is the server's {@code FUSE_TICKS} and nothing else, so the recoil and the
+     * visible burn are the same number and cannot drift apart.</p>
+     */
+    SHOOT;
 
     public static final Codec<Channel> CODEC = Codec.STRING.xmap(Channel::valueOf, Enum::name);
 
@@ -149,6 +232,11 @@ public enum Channel {
             case BREAK -> in.guardBreak();
             case PARRY -> in.parry();
             case LUNGE -> in.lunge();
+            case SWEEP -> in.sweep();
+            case CHOP -> in.chop();
+            case HELD -> in.held();
+            case RELOAD -> in.reload();
+            case SHOOT -> in.shoot();
         };
     }
 }

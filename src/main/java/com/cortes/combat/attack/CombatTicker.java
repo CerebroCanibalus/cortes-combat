@@ -46,6 +46,9 @@ public final class CombatTicker {
         // material that opened it, and sweeps whatever ground was actually crossed. See Lunge for
         // why the server could never have thrown the player itself.
         com.cortes.combat.special.Lunge.tick(player);
+        // The arcabuz's fuse. Twenty ticks of countdown and then the blast, and a press in the
+        // middle of it is refused by the state rather than by a guard here. See Arcabuz.
+        com.cortes.combat.special.Arcabuz.tick(player);
         ModNetworking.syncTo(player);
     }
 
@@ -79,6 +82,11 @@ public final class CombatTicker {
             // of one leaves steps owed to a connection that no longer exists, and the player would
             // be teleported the rest of the way on joining.
             com.cortes.combat.special.Lunge.clear(player);
+            // The arcabuz for the same reason and a sharper one. `loaded` is a button the player
+            // pressed on a connection that no longer exists: a session that opens with a loaded
+            // gun is a free shot nobody paid a firestone for, and it is the guard's `held` bug in
+            // a different item.
+            com.cortes.combat.special.Arcabuz.clear(player);
         }
     }
 

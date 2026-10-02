@@ -60,6 +60,24 @@ public final class SpecialInputHandler {
 
         PacketDistributor.sendToServer(new SpecialPayload(player.getMainHandItem()));
 
+        // The sweep's arc, predicted on the press.
+        //
+        // **Only this one special, and only while the weapon is actually ready.**
+        //
+        // The lunge and the parry are driven by the server's own state because both are more than
+        // a weapon moving -- one is the body going somewhere and the other is a window the server
+        // is holding open -- and drawing them on the press would show a step the server refused.
+        // A sweep is a weapon travelling, so predicting it on the press is right, and that is
+        // exactly what made it wrong: the sweep costs four halberd swings now, so the button is
+        // pressed and refused constantly, and the arc played every single time.
+        //
+        // **`cooldownRatio() >= 1.0F` is the same gate the lunge's prediction already used**, and
+        // `cooldownRatio` is the readiness, not the remaining cooldown: one means ready to swing.
+        // Without it the client animates a swing that no enemy ever saw.
+        if (stats.special() == SpecialType.MULTI_HIT && ClientCombatState.cooldownRatio() >= 1.0F) {
+            ItemViewModel.onSweep();
+        }
+
         // The lunge's animation is predicted on the press, and the prediction is only ever wrong
         // in a way that costs a packet.
         //

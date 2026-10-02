@@ -57,6 +57,11 @@ public final class CortesDataEvents {
         // entries: vanilla has no copper nugget at all, so the recipes exist to make our own item
         // obtainable rather than to add a weapon.
         event.createProvider(NuggetRecipes::new);
+        // And the firestone, the arcabuz's only ingredient. Same reason as the nuggets and one
+        // more: a provider whose job is "loop the catalogue" cannot hold a two ingredient
+        // conversion without the loop growing an if, and the catalogue's whole value is that it
+        // has none.
+        event.createProvider(FirestoneRecipes::new);
         event.createProvider(CortesLanguageProvider::new);
 
         // Built by hand for the existing-file helper, the same as the tags provider: no

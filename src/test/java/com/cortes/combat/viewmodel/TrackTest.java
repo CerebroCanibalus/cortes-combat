@@ -58,7 +58,7 @@ class TrackTest {
     @DisplayName("a track at full channel reaches exactly its amplitude")
     void fullChannelDeliversTheAmplitude() {
         Offset offset = Track.of(Channel.WINDUP, Curve.SMOOTH, SOME_MOVEMENT)
-                .evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1));
+                .evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, false, 0.0F, 1));
         assertEquals(SOME_MOVEMENT.x(), offset.x(), EXACT);
         assertEquals(SOME_MOVEMENT.y(), offset.y(), EXACT);
         assertEquals(SOME_MOVEMENT.z(), offset.z(), EXACT);
@@ -74,7 +74,7 @@ class TrackTest {
         float previous = Float.NEGATIVE_INFINITY;
         for (int i = 0; i <= 100; i++) {
             float t = i / 100.0F;
-            float depth = (float) -track.evaluate(new ViewModelInput(t, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1)).z();
+            float depth = (float) -track.evaluate(new ViewModelInput(t, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, false, 0.0F, 1)).z();
             assertTrue(depth >= previous - EXACT,
                     "the wind-up went backwards at t=" + t + ": " + depth + " after " + previous);
             previous = depth;
@@ -86,7 +86,7 @@ class TrackTest {
     void channelsAreIndependent() {
         Track windUp = Track.of(Channel.WINDUP, Curve.SMOOTH, new Offset(0, 0, -0.2, 0, 0, 0));
         Track strike = Track.of(Channel.STRIKE, Curve.EXPO, new Offset(0, 0, 0.3, 0, 0, 0));
-        ViewModelInput both = new ViewModelInput(1.0F, 1.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1);
+        ViewModelInput both = new ViewModelInput(1.0F, 1.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, false, 0.0F, 1);
         // Both active at once: the sum, not one winning.
         assertEquals(0.1F, windUp.evaluate(both).z() + strike.evaluate(both).z(), EXACT);
     }
@@ -96,7 +96,7 @@ class TrackTest {
     void trembleIsDeterministic() {
         Track track = Track.shaking(Channel.WINDUP, Curve.LINEAR, Offset.ZERO,
                 new Offset(0, 0, 0.02, 3.0, 0, 1.0), 14.0F, Curve.SMOOTH);
-        ViewModelInput frame = new ViewModelInput(1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 1.2345F, 7);
+        ViewModelInput frame = new ViewModelInput(1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, false, 1.2345F, 7);
         assertEquals(track.evaluate(frame).z(), track.evaluate(frame).z(), 0.0,
                 "the same frame evaluated twice must give the same tremble");
     }
@@ -106,8 +106,8 @@ class TrackTest {
     void trembleChangesWithTheSeed() {
         Track track = Track.shaking(Channel.WINDUP, Curve.LINEAR, Offset.ZERO,
                 new Offset(0, 0, 0.02, 3.0, 0, 1.0), 14.0F, Curve.SMOOTH);
-        float first = (float) track.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 1.2345F, 1)).z();
-        float second = (float) track.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 1.2345F, 2)).z();
+        float first = (float) track.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, false, 1.2345F, 1)).z();
+        float second = (float) track.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, false, 1.2345F, 2)).z();
         assertFalse(first == second, "two swings at the same instant should not shake identically");
     }
 
@@ -125,6 +125,6 @@ class TrackTest {
         ViewModelProfile profile = ViewModelProfile.of(
                 Track.of(Channel.WINDUP, Curve.SMOOTH, SOME_MOVEMENT));
         assertTrue(profile.idleFor(ViewModelInput.RESTING));
-        assertFalse(profile.idleFor(new ViewModelInput(0.5F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1)));
+        assertFalse(profile.idleFor(new ViewModelInput(0.5F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, false, 0.0F, 1)));
     }
 }

@@ -197,6 +197,21 @@ public final class WeaponStats {
         // to nothing. 1.25 puts them on four ticks, and the only thing that keeps that from
         // being strictly better than a weapon is that a punch does one damage.
         TEMPO.put(WeaponProfile.UNARMED, 1.25F);
+
+        // The axe, slowed to twenty four ticks from vanilla's twenty.
+        //
+        // Vanilla's axe is attack speed 1.0, which is twenty ticks -- already the slowest
+        // thing in the catalogue by one tick against the warhammer's nineteen. That is not
+        // "bastante lento", it is a rounding error, and a player cannot feel a difference
+        // between nineteen and twenty.
+        //
+        // 0.85 puts it at twenty four, which is the slowest swing in the game by five ticks
+        // and a fifth above the bare hand's four. The axe is the weapon whose base is
+        // deliberately weak -- seven damage in a second and a fifth is less than half the
+        // ropera's throughput -- and a base like that only reads as a choice if the rhythm
+        // is also a cost. At twenty ticks it was a slightly worse sword; at twenty four it
+        // is an axe.
+        TEMPO.put(WeaponProfile.AXE, 0.85F);
     }
 
     /**

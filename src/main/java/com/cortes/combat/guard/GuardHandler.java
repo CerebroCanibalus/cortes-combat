@@ -271,6 +271,45 @@ public final class GuardHandler {
         }
     }
 
+    /**
+     * The warhammer's charged hit, reaching past a guard entirely.
+     *
+     * <p><b>It empties the whole bar, and it does not ask how many points were left.</b> This is
+     * the same relationship a warhammer already has with a shield in vanilla -- one swing and the
+     * guard is gone -- made explicit, because ours pays for it: the swing has to be at full charge,
+     * which is the whole reason a warhammer can afford to be the slowest weapon in the game.</p>
+     *
+     * <p><b>Armour does not come into it.</b> A hit that already bypasses armour also bypasses the
+     * shield, which vanilla decides for us by nesting {@code bypasses_armor} inside
+     * {@code bypasses_shield}; this method is what <em>charges</em> the defender for having put the
+     * shield up, which bypasses_shield alone does not do. Without it a warhammer would walk through
+     * a raised shield for free, and the guard would be the one thing in the game with no price.</p>
+     *
+     * <p>Guarded items only. An unarmed player has no bar to empty, and hitting one is what the
+     * swing is for.</p>
+     *
+     * <p>It empties the bar <em>and</em> pays the stagger, because those are one event and the
+     * caller should not have to know that this is two steps. The stagger is the item's own vanilla
+     * cooldown, so it arrives already synced and already drawn by the vanilla HUD.</p>
+     */
+    public static void breakGuard(Player player) {
+        // **Both hands, not the main one.** The guard has been readable from either hand since it
+        // was unified, and reading only the main hand would mean a player covering with a shield in
+        // the off hand is invulnerable to the warhammer while a player with the same shield in the
+        // main hand is not. `best` is the same call the rest of this file makes.
+        GuardStats.Resolved guard = GuardStats.best(player);
+        if (!guard.canGuard()) {
+            return;
+        }
+        GuardState state = player.getData(ModAttachments.GUARD_STAMINA.get());
+        if (!state.isActive()) {
+            return;
+        }
+        player.setData(ModAttachments.GUARD_STAMINA.get(),
+                state.breakGuard(guard.profile().regenTicks()));
+        stagger(player, guard, guard.profile().stunTicks());
+    }
+
     /** An explosion takes half its damage through the guard, and still costs a point of stamina. */
     public static final float EXPLOSION_BLOCKED = 0.5F;
 

@@ -2,6 +2,7 @@ package com.cortes.combat.registry;
 
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.weapon.WeaponMaterial;
+import com.cortes.combat.item.ArcabuzItem;
 import com.cortes.combat.item.CortesWeaponItem;
 import com.cortes.combat.item.WeaponFamily;
 import net.minecraft.world.item.Item;
@@ -65,6 +66,41 @@ public final class ModItems {
      */
     public static final DeferredItem<Item> COPPER_NUGGET =
             ITEMS.registerSimpleItem("copper_nugget", new Item.Properties());
+
+    /**
+     * The arcabuz: the thirty-first weapon, and not one of the catalogue's thirty.
+     *
+     * <p><b>Registered by hand because it is not a (family, material) pair.</b> Every other
+     * weapon in this class comes out of the loop below, and that loop is the property the whole
+     * catalogue rests on: thirty items because five shapes times an uneven set of materials
+     * exist. A firearm is one item with one set of numbers, and forcing it into a family would
+     * have meant six identical registrations and a crafting grid nobody drew.</p>
+     *
+     * <p>So it sits beside the loop, and it gets a {@link
+     * com.cortes.combat.core.weapon.WeaponProfile} of its own -- which is what the four tables
+     * are keyed by, and {@code WeaponTablesTest} requires a row in all four for every profile.</p>
+     *
+     * <p>Deliberately <b>not</b> added to {@code #minecraft:swords} by the tag provider. It is
+     * not a blade, and that tag exists so vanilla's tag-driven code gets a truthful answer; the
+     * one thing it does for us is the derivation's fallback, and that is never reached because
+     * the profile component is on the item.</p>
+     */
+    public static final DeferredItem<ArcabuzItem> ARCABUZ =
+            ITEMS.registerItem("arcabuz", ArcabuzItem::of);
+
+    /**
+     * The firestone: one explosive ball, and the whole price of a shot.
+     *
+     * <p>Neither a weapon nor a material, and it is the second item in this class that is neither
+     * because the design asks for it: the arcabuz spends one of these per shot, which is what
+     * turns "wait a second" from a delay into a cost.</p>
+     *
+     * <p>A plain item with no components, because nothing about it is read by the combat code.
+     * The gun asks the inventory for one and spends one; the rest of the mod never says the
+     * word.</p>
+     */
+    public static final DeferredItem<Item> FIRESTONE =
+            ITEMS.registerSimpleItem("firestone", new Item.Properties());
 
     private static final Map<String, DeferredItem<? extends Item>> WEAPONS = new LinkedHashMap<>();
 

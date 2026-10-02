@@ -77,7 +77,19 @@ public final class WeaponTables {
         // between the two and is deliberate: the sword is the weapon you are expected to have, so
         // it should be the one that reaches far enough to matter.
         REACH.put(WeaponProfile.SWORD, new ReachProfile(3.6F, 35.0F, 30.0F));
-        REACH.put(WeaponProfile.AXE, new ReachProfile(3.0F, 45.0F, 35.0F));
+        // The axe: longer than it is wide, which is the opposite of what an axe is for.
+//
+// Three point four of reach against thirty five by twenty five. It was three of reach and
+// forty five by thirty five, i.e. short and generous -- the second best cone in the game
+// behind the sabre's seventy five, on a weapon whose whole argument is that it hits
+// hard. What was asked for was "rango bueno, radio mediocre", and those are two
+// different axes: the axe keeps the reach to close a distance the ropera cannot and
+// gives up the width that lets it hit four things at once.
+//
+// The vertical at twenty five is the tightest in the game after the ropera. An axe
+// lifts things and a wide vertical would make it a thing that hits everything in
+// front of it at once, which is the halberd.
+REACH.put(WeaponProfile.AXE, new ReachProfile(3.4F, 35.0F, 25.0F));
         REACH.put(WeaponProfile.PICKAXE, new ReachProfile(3.0F, 35.0F, 30.0F));
         REACH.put(WeaponProfile.SHOVEL, new ReachProfile(3.0F, 35.0F, 30.0F));
         REACH.put(WeaponProfile.MACE, new ReachProfile(3.4F, 30.0F, 40.0F));
@@ -106,6 +118,25 @@ public final class WeaponTables {
         REACH.put(WeaponProfile.WARHAMMER, new ReachProfile(2.9F, 30.0F, 30.0F));
         // Sabre: the widest cone in the game, shortest range. It pays for that cone with a parry.
         REACH.put(WeaponProfile.SABRE, new ReachProfile(2.5F, 75.0F, 25.0F));
+        // Arcabuz: 4.0 of reach at 40 by 25.
+        //
+        // **The only shape in the table that is long AND wide AND tight vertically**, and that is
+        // not a coincidence, it is what a shoulder-fired gun looks like from behind it: you reach
+        // out past anything a blade can touch, the spread is wide because it is a scattergun,
+        // and the vertical stays tight because you are aiming down a barrel rather than swinging
+        // an arc through the air.
+        //
+        // Compare the two neighbours it has to sit between. The halberd is 4.2 by 55 by 35 and is
+        // wide in BOTH axes, which is a polearm describing an area on the ground. The trident is
+        // 4.0 by 15 by 20 and is narrow in both, which is a stabbing line. Four by forty by
+        // twenty five is neither of those, and there is no other weapon in the game that wants
+        // it.
+        //
+        // The vertical at twenty five is the second tightest in the game after the ropera's
+        // fifteen, and that is the axis the shot's whole identity lives on: this cone is wide
+        // enough to be a shotgun sideways and short enough that aiming at the feet of a zombie
+        // does not hit it.
+        REACH.put(WeaponProfile.ARCABUZ, new ReachProfile(4.0F, 40.0F, 25.0F));
     }
 
     // --------------------------------------------------------------- charge --
@@ -120,7 +151,33 @@ public final class WeaponTables {
         CHARGE.put(WeaponProfile.NONE, ChargeProfile.NONE);
         CHARGE.put(WeaponProfile.UNARMED, new ChargeProfile(true, 0.3F, 12));
         CHARGE.put(WeaponProfile.SWORD, new ChargeProfile(true, 0.5F, 25));
-        CHARGE.put(WeaponProfile.AXE, new ChargeProfile(true, 0.6F, 40));
+        // The axe: the slowest charge in the game, and the biggest thing it buys.
+//
+// Seventy ticks is three and a half seconds. The sabre is twenty and the warhammer
+// thirty two, so this is more than twice the sabre's and the sabre is meant to be the
+// weapon with the heaviest commitment on the button.
+//
+// **The trade is the whole weapon, and getting it wrong makes the button a trap.**
+//
+// Sixty ticks is three seconds, three times the sabre's twenty and nearly twice the
+// warhammer's thirty two, so the axe is the slowest charge in the game by a wide
+// margin.
+//
+// **The bonus is two, and it is two because of arithmetic that was done wrong first.** At 1.2 the
+// charged swing dealt fifteen and a half damage for a cycle of ninety four ticks -- charge plus
+// the twenty four tick cooldown -- which is 3.3 damage a second against the 5.8 of tapping it. The
+// charge was a 44% loss on raw throughput, so the correct play was to never use it and the most
+// distinctive mechanic the weapon had would have been dead on arrival. A slow single hit ALWAYS
+// loses to tapping unless the multiplier is enormous, which is arithmetic and not taste.
+//
+// At two it is twenty one damage -- exactly three uncharged swings -- for eighty four ticks
+// against the seventy two three uncharged swings take. So it is still slightly below tapping on
+// throughput, and that is deliberate: the lunge and the sweep are below it too, and what they
+// buy is not damage per second. What the axe buys is a guard emptied in one hit, a plate that
+// comes apart twice as fast, and a hit that ends a fight.
+//
+// The bar is honest the whole time the player is standing there waiting.
+CHARGE.put(WeaponProfile.AXE, new ChargeProfile(true, 2.0F, 60));
         CHARGE.put(WeaponProfile.PICKAXE, new ChargeProfile(true, 0.4F, 33));
         CHARGE.put(WeaponProfile.SHOVEL, new ChargeProfile(true, 0.4F, 33));
         CHARGE.put(WeaponProfile.MACE, new ChargeProfile(true, 0.7F, 40));
@@ -146,6 +203,19 @@ public final class WeaponTables {
         // fully charged swing. That is the weapon's whole identity: the worst reach in the game,
         // bought back by being the only thing in the set that can kill in a single committed hit.
         CHARGE.put(WeaponProfile.SABRE, new ChargeProfile(true, 1.0F, 20));
+        // The arcabuz does not charge, and the reason is the same twenty ticks as everything
+        // else about it.
+        //
+        // **A charge window and a fuse are the same promise told twice.** If holding the button
+        // bought anything, "how long until this fires" would stop having one answer: the player
+        // would be reading a bar that says twenty ticks while a different bar says forty. The
+        // fuse is the delay, it is fixed, and it is not something the player can spend time on
+        // to make the shot better -- they spend time on it whether they like it or not, which is
+        // the price.
+        //
+        // So this is a written-down NONE like the ropera's and the daga's, and the system asks
+        // the component rather than branching. A click on the arcabuz is exactly vanilla's swing.
+        CHARGE.put(WeaponProfile.ARCABUZ, ChargeProfile.NONE);
     }
 
     // ------------------------------------------------------------- knockback --
@@ -174,6 +244,20 @@ public final class WeaponTables {
         KNOCKBACK.put(WeaponProfile.WARHAMMER, new KnockbackProfile(0.55F, 0.30F));
         // The sabre is fast and light: a lot of push for very little lift.
         KNOCKBACK.put(WeaponProfile.SABRE, new KnockbackProfile(0.38F, 0.06F));
+        // The arcabuz is the hardest shove in the game, and it is the "recoil" the weapon has.
+        //
+        // **0.70 horizontal, past every other weapon, and it comes off this table rather than
+        // from the shot.** The recoil of a musket goes in two directions and only one of them is
+        // the game's problem: the target is thrown, and the shooter is pushed back a step. The
+        // second half is not here because a server cannot push a player -- the position is
+        // driven by the movement report the client sends every tick, which is the whole reason
+        // Lunge does not move anybody either. So what this row buys is the half that IS ours, and
+        // the muzzle walking up in the viewmodel is the other half.
+        //
+        // Vertical is 0.18: a blast lifts a little and is not a launcher. The warhammer's 0.30 is
+        // a hammer hitting one thing and the halberd's 0.14 is a polearm hitting a line; this is
+        // ten things at once, so it sits between them rather than at either end.
+        KNOCKBACK.put(WeaponProfile.ARCABUZ, new KnockbackProfile(0.70F, 0.18F));
     }
 
     // --------------------------------------------------------------- special --
@@ -205,6 +289,10 @@ public final class WeaponTables {
         // a warhammer with a right button has no commitment left to make.
         SPECIAL.put(WeaponProfile.DAGGER, SpecialType.NONE);
         SPECIAL.put(WeaponProfile.WARHAMMER, SpecialType.NONE);
+        // And the sixth weapon, which is the first one whose special is twenty ticks late. The
+        // right button lights the fuse or loads the gun depending on what is already in it, and
+        // both halves are the same press, which is why this is one value and not two.
+        SPECIAL.put(WeaponProfile.ARCABUZ, SpecialType.FUSEE);
     }
 
     // ----------------------------------------------------------- the lookups --

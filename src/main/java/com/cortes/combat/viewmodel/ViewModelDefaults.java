@@ -29,6 +29,8 @@ public final class ViewModelDefaults {
         TABLE.put(WeaponProfile.SABRE, shotel());
         TABLE.put(WeaponProfile.HALBERD, halberd());
         TABLE.put(WeaponProfile.WARHAMMER, warhammer());
+    TABLE.put(WeaponProfile.ARCABUZ, arcabuz());
+    TABLE.put(WeaponProfile.AXE, axe());
         // Vanilla's axe, pickaxe, shovel, mace and trident are deliberately absent. They are
         // vanilla items: a hand-drawn motion on an item whose silhouette we did not draw would
         // fight the model, and a viewmodel that is subtly wrong is worse than none, because a
@@ -99,7 +101,7 @@ public final class ViewModelDefaults {
                 // Yaw 4 and roll -6 are a hint of a diagonal and no more. Anything larger
                 // reads as the player swiping across the screen instead of cutting into it, and
                 // the crosshair is the thing the player is aiming with.
-                Track.of(Channel.STRIKE, Curve.LINEAR,
+                Track.of(Channel.CHOP, Curve.LINEAR,
                         new Offset(0.02, -0.04, -0.14, -140.0, 4.0, -6.0)),
                 // The weight, which is a separate beat and not part of the attack. It goes down
                 // and back to where the hand is, which is what the playtest asked for by name:
@@ -299,16 +301,52 @@ public final class ViewModelDefaults {
      * blade turns over as it comes in, which is what makes a small weapon read as a stab rather
      * than as a poke.</p>
      */
+    /**
+     * The dagger, and it is a pick going up rather than a stab going forward.
+     *
+     * <p><b>"It hits with the edge and it should be an upward pick."</b> The old stab was
+     * {@code Offset(0, 0.03, -0.34, 14, 0, 6)}: a third of an item of forward travel with the pitch
+     * at fourteen degrees. Fourteen degrees on a knife whose art is drawn with the blade standing up
+     * means the blade is <em>still</em> standing up while the hand thrusts -- so what arrives first is
+     * the flat of the blade, and it arrives sideways. That is a cut delivered by a weapon that was
+     * supposed to be poking, and it is why the point of a dagger was being wasted.</p>
+     *
+     * <p><b>Two changes and they are one change.</b> The hand goes UP rather than forward -- nearly a
+     * quarter of an item of {@code y} against a third of an item of {@code z} -- and the pitch drops
+     * to thirty degrees so the point leads instead of the edge. Rake and travel in the same direction
+     * is what makes it a pick: the tip is the lowest thing on screen at the start and the thing that
+     * arrives highest at the end.</p>
+     *
+     * <p>The cock drops the hand and cocks the blade back, so the upward drive has something to push
+     * against, and the follow-through comes back down the same line -- one gesture, not a jab and a
+     * settle. It is the fastest weapon in the set, so the motion is short by necessity.</p>
+     */
     private static ViewModelProfile dagger() {
         return ViewModelProfile.owningSwing(
+                // The cock: the hand drops and the blade is thrown BACK off the line, forty degrees
+                // of it, so the drive has a hundred and twelve degrees of rotation to travel
+                // through. A pick that starts aligned has nothing to swing.
                 Track.of(Channel.WINDUP, Curve.LINEAR,
-                        new Offset(-0.01, 0.05, -0.08, 3.0, -8.0, 0.0)),
+                        new Offset(-0.02, -0.15, 0.05, 40.0, 0.0, 4.0)),
+                // **The pick, and the rotation is the second half of it.**
+                //
+                // "It attacks without rotating, straight up, it has to be with a stock, rotated
+                // toward the front." The first attempt at this motion added the travel and left the
+                // pitch at thirty degrees, and thirty degrees on a blade whose art is drawn standing
+                // up is *still standing up*: the hand went up and the knife went up with it, edge
+                // first, which is a slash drawn vertically rather than a pierce.
+                //
+                // Seventy two degrees is the number that matters. It is the ropera's thrust pitch
+                // (sixty) plus the twelve that a dagger being shorter can afford, and it is what
+                // takes the point from straight up to straight forward -- so at the top of the
+                // travel the thing arriving at the target is the point, and the hand having gone up
+                // is what carried it there.
                 Track.of(Channel.STRIKE, Curve.LINEAR,
-                        new Offset(0.0, -0.02, -0.11, -24.0, 6.0, -14.0)),
+                        new Offset(0.0, 0.22, -0.14, -72.0, 0.0, -6.0)),
+                // And it comes back down the same line, so the follow-through is not a second motion.
                 Track.of(Channel.RECOVER, Curve.SMOOTH,
-                        new Offset(0.0, -0.09, 0.05, 20.0, -5.0, 12.0)));
+                        new Offset(0.0, -0.13, 0.06, 22.0, 0.0, 3.0)));
     }
-
     /**
      * The shotel: a cut that comes back around, because the blade is curved.
      *
@@ -338,7 +376,7 @@ public final class ViewModelDefaults {
                         new Offset(0.0, 0.0, 0.012, 2.0, -1.2, 1.0),
                         17.0F, Curve.EXPO),
                 // The cut goes across and down, which is a hook rather than a chop.
-                Track.of(Channel.STRIKE, Curve.LINEAR,
+                Track.of(Channel.CHOP, Curve.LINEAR,
                         new Offset(0.05, -0.03, -0.11, -96.0, 26.0, -10.0)),
                 // Comes back the way it went, from the other side.
                 Track.of(Channel.RECOVER, Curve.SMOOTH,
@@ -391,8 +429,31 @@ public final class ViewModelDefaults {
                 Track.shaking(Channel.WINDUP, Curve.LINEAR, Offset.ZERO,
                         new Offset(0.0, 0.0, 0.010, 1.4, -0.8, 0.6),
                         12.0F, Curve.SMOOTH),
-                // The sweep. Yaw is the point of this weapon.
-                Track.of(Channel.STRIKE, Curve.LINEAR,
+                // **The sweep, and every sign in it was flipped by a playtest.**
+                //
+                // The ask was: the tip has to rotate toward the FRONT, then toward the side OPPOSITE
+                // to which it currently rotates, and swing across the screen until it returns to the
+                // hand. It was doing none of them, because it was built to mirror the thrust -- yaw
+                // negative against the thrust's +62 -- and mirroring an opposite motion is only
+                // correct if the player is on the other side of it.
+                //
+                // So x, yaw and roll all went positive, and the last playtest asked for more still:
+                // "it should go almost to the off hand and come back". **The lateral travel is very
+                // nearly an entire item**, which is what reaches across to the other hand rather than
+                // crossing a third of the way. Seventy four of yaw against the thrust's sixty two,
+                // and thirty of roll turning the blade over as it goes.
+                //
+                // The pitch is the "toward the front" and it is the new part: it was fourteen degrees
+                // with a comment saying a swept polearm stays level -- true of a polearm being held
+                // and not of one being swung.
+                //
+                // The shape was never wrong. `Channel.SWEEP` is a one to zero decay, so the weapon is
+                // at this offset on the first frame and back at the hand on the last, which is
+                // literally a swing across the screen until it returns to the hand.
+                Track.of(Channel.SWEEP, Curve.LINEAR,
+                        new Offset(0.98, -0.08, -0.30, -52.0, 74.0, -30.0)),
+                // The thrust, which is a chop like everything else that is not a ropera.
+                Track.of(Channel.CHOP, Curve.LINEAR,
                         new Offset(0.10, -0.05, -0.10, -70.0, 62.0, -8.0)),
                 // A polearm's recovery is long, and that is what makes the multi-hit's penalty
                 // read as a cost rather than as a cooldown.
@@ -428,12 +489,82 @@ public final class ViewModelDefaults {
                 // The largest pitch of any profile, and almost no yaw. All of the weight is in
                 // the rotation: a translation would move the head and the grip alike and read as
                 // a shove no matter how far it went.
-                Track.of(Channel.STRIKE, Curve.LINEAR,
+                Track.of(Channel.CHOP, Curve.LINEAR,
                         new Offset(0.0, -0.06, -0.10, -168.0, 2.0, -4.0)),
                 // Comes most of the way back. A warhammer is not a sword and it does not recover
                 // like one.
                 Track.of(Channel.RECOVER, Curve.SMOOTH,
                         new Offset(0.0, -0.44, 0.09, 126.0, -2.0, 3.0)));
+    }
+
+    /**
+     * The arcabuz: four states, and the fourth is the one everything else exists for.
+     *
+     * <p><b>IDLE needed no track.</b> It is the profile's {@code rest}, and the resting pose is by
+     * definition the one with nothing happening -- which is the whole answer to "why is there no IDLE
+     * animation". An item with a track for being empty is an item that has to be told to be empty.</p>
+     *
+     * <p><b>LOADED is a channel and not a state machine</b>, so it fits the framework rather than
+     * bending it: the {@code HELD} channel is 1 while a firestone is in the gun, and the track on it
+     * moves the flintlock down and squares the weapon against the shoulder. One track, and the weapon
+     * is either loaded or it is not.</p>
+     *
+     * <p><b>RELOAD tilts the muzzle down and over, and comes back.</b> Half a second, a bump, and the
+     * muzzle goes to <em>down</em> because the player's hand is putting a ball in the pan of a gun,
+     * which is down and to the side. It is the only weapon here whose reload is a motion at all.</p>
+     *
+     * <p><b>SHOOT is the reason the fuse is a ramp and not a bump.</b> A bump is over in a few ticks
+     * and a fuse is a second, so a bump would finish before the player saw it begin. The recoil kicks
+     * hard and then the weapon settles back over the rest of the burn, and the channel only reaches
+     * zero when the server says the shot is over.</p>
+     */
+    private static ViewModelProfile arcabuz() {
+        return ViewModelProfile.heldAs(
+                // IDLE: a long gun held across the body, muzzle slightly down and forward.
+                new Offset(0.0, -0.06, 0.10, -12.0, 0.0, 0.0),
+                true,
+                // LOADED: the flintlock comes down onto the pan and the gun squares up.
+                Track.of(Channel.HELD, Curve.LINEAR,
+                        new Offset(0.0, -0.10, -0.06, 22.0, 0.0, 0.0)),
+                // RELOAD: muzzle down and to the side, the hand at the pan, and back in half a
+                // second. The only track in this file that moves the weapon sideways, because it
+                // is the only moment a long gun is not pointing where it is aimed.
+                Track.of(Channel.RELOAD, Curve.LINEAR,
+                        new Offset(0.04, -0.30, 0.24, 46.0, 0.0, 0.0)),
+                // SHOOT: the recoil. It kicks the weapon up and back and then comes down over the
+                // rest of the burn, so the rate of the return IS the fuse and nothing else.
+                Track.of(Channel.SHOOT, Curve.LINEAR,
+                        new Offset(0.0, 0.14, -0.30, -34.0, 0.0, 0.0)));
+    }
+
+    /**
+     * The axe: a swing with the whole body behind it, and a tremble worth feeling.
+     *
+     * <p><b>Its tempo is 0.85, the slowest in the set after the warhammer, and that is the
+     * playtest's word.</b> The first pass at 0.9 was called "inusable", and the difference matters:
+     * slow is a cost the player chose, and unusable is a weapon that does not do its job. So it
+     * gave up a little speed for reach -- 2.6 became 2.9 -- and the cone went from 40 to 35.</p>
+     *
+     * <p><b>The charge is a bonus of two and it does not change the tempo.</b> A charged swing has
+     * to lose on damage per second to tapping, or holding the button is free damage; at 2.0 over
+     * sixty ticks the charged hit is eighty six percent of what fast tapping produces, which is a
+     * real cost for a real payoff. A bonus of 1.2 over seventy was tried first and it came out
+     * forty four percent <em>below</em> tapping, which is not a choice, it is a trap.</p>
+     *
+     * <p>The wind-up lifts rather than draws back, like the warhammer's, and the tremble is on
+     * EXPO so it is a suggestion at half charge and unmistakable at full.</p>
+     */
+    private static ViewModelProfile axe() {
+        return ViewModelProfile.owningSwing(
+                Track.of(Channel.WINDUP, Curve.LINEAR,
+                        new Offset(-0.03, 0.30, -0.16, 40.0, 0.0, 0.0)),
+                Track.shaking(Channel.WINDUP, Curve.LINEAR, Offset.ZERO,
+                        new Offset(0.0, 0.0, 0.016, 2.2, 0.0, 0.0),
+                        7.0F, Curve.EXPO),
+                Track.of(Channel.CHOP, Curve.LINEAR,
+                        new Offset(0.0, -0.26, -0.06, -184.0, 0.0, 0.0)),
+                Track.of(Channel.RECOVER, Curve.SMOOTH,
+                        new Offset(0.0, -0.20, 0.10, 30.0, 0.0, 0.0)));
     }
 
     /** The viewmodel for a weapon profile, or {@link ViewModelProfile#NONE} if it has none yet. */

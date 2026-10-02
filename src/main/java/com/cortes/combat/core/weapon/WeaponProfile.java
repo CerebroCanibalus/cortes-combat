@@ -50,7 +50,22 @@ public enum WeaponProfile {
     HALBERD("halberd"),
     WARHAMMER("warhammer"),
     DAGGER("dagger"),
-    SABRE("sabre");
+    SABRE("sabre"),
+    /**
+     * The arcabuz: a cane gun whose left click is a bayonet poke and whose right click is a
+     * twenty tick fuse and a blast.
+     *
+     * <p><b>A profile and not a {@code WeaponFamily}, and that is the whole reason it exists.</b>
+     * The thirty catalogue weapons are (family, material) pairs, so adding one meant choosing
+     * which of the five shapes it was and inventing six tiers for a firearm. This is a single
+     * item with one set of numbers, and pretending it was a family would have meant six
+     * identical registrations and a {@code WeaponShape} grid nobody drew.
+     *
+     * <p>It still needs a profile because that is what the four tables are keyed by, and the
+     * tables being complete for every profile is the invariant {@code WeaponTablesTest} holds.
+     * A profile with no row in any of the four is the ropera's bug wearing a different hat.</p>
+     */
+    ARCABUZ("arcabuz");
 
     private static final Function<String, DataResult<WeaponProfile>> BY_ID = id -> {
         String key = id.toLowerCase(Locale.ROOT);

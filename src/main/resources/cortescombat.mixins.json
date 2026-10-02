@@ -7,7 +7,8 @@
   "mixins": [],
   "client": [
     "MinecraftAttackMixin",
-    "ItemInHandRendererMixin"
+    "ItemInHandRendererMixin",
+    "PlayerModelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

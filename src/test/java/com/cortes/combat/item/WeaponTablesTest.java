@@ -153,9 +153,11 @@ class WeaponTablesTest {
     @Test
     @DisplayName("and the profiles are all there in the first place")
     void theProfileListIsComplete() {
-        assertEquals(13, EnumSet.allOf(WeaponProfile.class).size(),
-                "a profile was added and the tables were not told. Thirteen is NONE, UNARMED, the "
-                        + "six vanilla, and the five new families");
+        assertEquals(14, EnumSet.allOf(WeaponProfile.class).size(),
+                "a profile was added and the tables were not told. Fourteen is NONE, UNARMED, the "
+                        + "six vanilla, the five new families, and the arcabuz -- which is a "
+                        + "profile and NOT a family, because a firearm is one item rather than a "
+                        + "(family, material) pair, and the tables are keyed by profile");
     }
 
     /** Sanity on the three families' numbers, so a bad edit is loud and not subtle. */

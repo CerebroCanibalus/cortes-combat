@@ -49,7 +49,23 @@ public final class ModSounds {
          */
         PARRY,
         /** The charge went all the way up. Not used yet: no sound is bound to it. */
-        CHARGE_FULL
+        CHARGE_FULL,
+        /**
+         * The arcabuz's blast, and the only event in the game that is twenty ticks late.
+         *
+         * <p>Its own kind because it has no analogue on any other weapon, not because borrowing
+         * one would be wrong: a shot does not sound like a slash, and reusing {@link #SPECIAL}
+         * would have made every blast sound like a halberd sweep.</p>
+         *
+         * <p><b>Vanilla's own recording, by name.</b> This mod ships thirty five files and none
+         * of them is a gunshot, and inventing one to fill the gap would have produced a silence
+         * no test can see. {@code SoundPoolTest} checks both directions -- a name in
+         * {@code sounds.json} with no file behind it is a line in the log, and a file nothing
+         * names is dead weight in the jar -- and neither of them notices a sound that was never
+         * declared at all. So the arcabuz borrows, and the borrowing is written down here rather
+         * than left to whoever reads {@link #of}.</p>
+         */
+        FUSEE
     }
 
     private static final Map<WeaponProfile, String> HIT = new EnumMap<>(WeaponProfile.class);
@@ -78,6 +94,36 @@ public final class ModSounds {
 
     /** Every weapon that loads a charge. One file, for all of them. */
     public static final String CHARGE = "cortescombat:charge_generic";
+
+    /**
+     * The blast, and it is vanilla's {@code entity.blaze.shoot}.
+     *
+     * <p><b>Why that one and not {@code entity.generic.explode}.</b> The explosion is already
+     * spoken for: vanilla's own blasts, the charge's look, and a dozen other things, so the
+     * player has heard it and will file it under "a creeper went off" rather than under "my
+     * gun went off". The blaze's shot is a short, sharp, broadband crack with a fast tail, which
+     * is the shape a musket report actually is, and it is a sound nothing in ordinary play is
+     * standing next to.</p>
+     *
+     * <p>Written out rather than left to a fallback so that {@code ModSounds#of} has one arm per
+     * kind with no "and otherwise vanilla" branch hiding a decision in it.</p>
+     */
+    public static final String ARCABUZ_SHOT = "minecraft:entity.blaze.shoot";
+
+    /**
+     * How far down the blaze's shot is played for the arcabuz.
+     *
+     * <p><b>0.55, and it is a multiplier on the pitch rather than an absolute.</b> The vanilla
+     * recording is a fireball cracking past; dropped to roughly a fifth below where it was
+     * written it loses the whoosh and keeps the thump, which is the part a gun is made of. Pitch
+     * is a playback rate, so this is also a little shorter, and a report that is a fifth shorter
+     * reads as closer.</p>
+     *
+     * <p>Not sharpened and not dropped by an octave like the charged borrows: those two changes
+     * exist to tell two recordings of the <em>same</em> weapon apart, and this is the only weapon
+     * that plays it.</p>
+     */
+    public static final float ARCABUZ_SHOT_PITCH = 0.55F;
 
     static {
         HIT.put(WeaponProfile.SWORD, "cortescombat:sword_hit");
@@ -133,6 +179,7 @@ public final class ModSounds {
             case LUNGE -> "cortescombat:alabarda_wide_swing";
             case PARRY -> "cortescombat:shotel_parry";
             case CHARGE_FULL -> CHARGE;
+            case FUSEE -> ARCABUZ_SHOT;
         };
     }
 
@@ -152,6 +199,13 @@ public final class ModSounds {
         }
         if (kind == Kind.LUNGE) {
             return LUNGE_PITCH;
+        }
+        // The arcabuz is the one weapon whose blast is a vanilla recording nobody else plays, so
+        // it is the only one whose blast is dropped. Same reasoning as VANILLA_CHARGED_PITCH,
+        // inverted: there the pitch was the only thing telling two borrowings apart, and here
+        // there is nothing to tell apart.
+        if (kind == Kind.FUSEE) {
+            return ARCABUZ_SHOT_PITCH;
         }
         if (kind == Kind.CHARGED_HIT
                 && !CHARGED_HIT.containsKey(resolved)) {

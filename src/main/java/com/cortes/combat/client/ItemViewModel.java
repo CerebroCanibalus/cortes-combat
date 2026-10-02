@@ -163,6 +163,24 @@ public final class ItemViewModel {
         if (!lungeWeapon) {
             MOTION.clearLunge();
         }
+        // Third gate, third copy of the same rule. The sweep is the first channel a *special*
+        // owns, and a special the player cannot throw with the weapon in hand is exactly the case
+        // where a leftover channel would be worst: swap from the halberd mid-arc to a sword and
+        // the sword would carry the halberd's arc.
+        boolean sweepWeapon = profile.reads(Channel.SWEEP);
+        if (!sweepWeapon) {
+            MOTION.clearSweep();
+        }
+        // Fourth gate. These three are the only channels whose state belongs to an ITEM rather than
+        // to the player, so they are the ones where a leftover is most visible: switch from a loaded
+        // gun to a sword and the sword is drawn with its flintlock down.
+        boolean gun = profile.reads(Channel.HELD) || profile.reads(Channel.RELOAD)
+                || profile.reads(Channel.SHOOT);
+        if (gun) {
+            tickArcabuz();
+        } else {
+            clearArcabuz();
+        }
         if (guarding != lastGuarding) {
             trace("guardia " + (guarding ? "ARRIBA" : "abajo")
                     + " stamina=" + ClientCombatState.guardStamina()
@@ -236,6 +254,48 @@ public final class ItemViewModel {
      */
     public static void onStrike(float charge, int durationTicks) {
         MOTION.onStrike(charge, durationTicks);
+    }
+
+    /**
+     * The halberd's sweep went out, from the right button.
+     *
+     * <p><b>Called on the press and not from the server's answer</b>, and the reason is the one the
+     * whole library is built on: the client predicts in order to draw and the server decides what
+     * actually happened. A special's effect is not drawn at a target, so waiting for the round trip
+     * would only add latency to a motion the player is going to see either way -- and if the server
+     * then refuses the sweep, the arc having happened is <em>true</em>, the player threw it.</p>
+     *
+     * <p>Named for what happened rather than for which button, because the other two specials have
+     * their own entrances: the lunge is driven by the server's own state because it is a body
+     * movement, and the parry likewise. A sweep is a weapon moving.</p>
+     */
+    public static void onSweep() {
+        MOTION.onSweep();
+    }
+
+    /**
+     * The arcabuz's three channels, filled from the fuse state the server sent.
+     *
+     * <p><b>Read once per tick, beside the other channels, and not from the packet handler.</b> The
+     * payload arrives once and says "lit, twenty ticks, loaded"; what the viewmodel needs is a
+     * number that stays twenty for twenty ticks and then stops, which is the same reason
+     * {@code observeParry} is called from the render-side tick rather than from the packet.</p>
+     *
+     * <p><b>The gate is the profile, so a gun in the off hand or a sword in the main hand clears
+     * all three.</b> These are the only channels whose state belongs to an item rather than to the
+     * player, so they are the ones that most need the "can this profile do anything with this
+     * signal" question.</p>
+     */
+    public static void tickArcabuz() {
+        var fuse = com.cortes.combat.client.ArcabuzFuseState.class;
+        MOTION.observeLoaded(com.cortes.combat.client.ArcabuzFuseState.isLoaded());
+        MOTION.observeFuse(com.cortes.combat.client.ArcabuzFuseState.isBurning(),
+                com.cortes.combat.client.ArcabuzFuseState.fuseTicks());
+    }
+
+    /** A weapon that is not the arcabuz forgets all three of its channels. */
+    public static void clearArcabuz() {
+        MOTION.clearHeld();
     }
 
     /** The swing was abandoned: released, cancelled, or the item changed under us. */
@@ -340,6 +400,23 @@ public final class ItemViewModel {
      */
     private static ViewModelInput input(float partialTick) {
         return MOTION.snapshot(partialTick, cooldownRunning());
+    }
+
+    /**
+     * The frame the item is being drawn with, for anything else that has to agree with it.
+     *
+     * <p><b>Public because the third-person poses read the same three numbers.</b> The charge
+     * ratio, the guard ramp and the lunge are already computed and interpolated once per frame for
+     * the weapon in the player's hand. A body pose that tracked its own copy of the charge would be
+     * a second clock for the same fact, and the day the two disagreed would be a day where the
+     * player's arms and their weapon were doing different things.</p>
+     *
+     * <p>Public and not package private because the reader is in another package, and the
+     * alternative -- a setter that pushes the values down -- is the same coupling with more
+     * ceremony.</p>
+     */
+    public static ViewModelInput frame() {
+        return input(PARTIAL_TICK.get());
     }
 
     /**

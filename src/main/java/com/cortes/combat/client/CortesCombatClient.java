@@ -113,6 +113,19 @@ public class CortesCombatClient {
      * stale. The value is left in the options screen either way, so it stays adjustable.</p>
      */
     private static void onClientSetup(FMLClientSetupEvent event) {
+        // **The arcabuz's fuse frame, first, and on this event rather than in the constructor.**
+        //
+        // The first version called it from the constructor and the client died before the world
+        // loaded: `NullPointerException: Trying to access unbound value: ResourceKey[minecraft:item
+        // / cortescombat:arcabuz]`. It reads `ModItems.ARCABUZ.get()` to say which item the
+        // property belongs to, and the constructor runs before the item registry is frozen and
+        // bound, so the deferred item is not a value yet.
+        //
+        // `ItemProperties` is a client-side table the models consult when they are baked, and
+        // baking happens after client setup -- so this is the window, which is where vanilla's
+        // fishing rod puts its own `cast` property too.
+        event.enqueueWork(ArcabuzModelProperties::register);
+
         Minecraft mc = Minecraft.getInstance();
         if (mc.options == null) {
             return;

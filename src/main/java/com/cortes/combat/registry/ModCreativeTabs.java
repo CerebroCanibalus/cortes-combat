@@ -40,7 +40,13 @@ public final class ModCreativeTabs {
                     .icon(ModItems::tabIcon)
                     .displayItems((parameters, output) -> {
                         ModItems.weapons().forEach(item -> output.accept(item.get()));
-                                        output.accept(ModItems.COPPER_NUGGET.get());
+                        output.accept(ModItems.ARCABUZ.get());
+                        // The two things that are not weapons, after all of them that are, and in
+                        // the order a player needs them: the gun, then what to put in it. The
+                        // tab teaches the progression for the catalogue and the dependency for the
+                        // arcabuz, which is the same thing it was already doing.
+                        output.accept(ModItems.FIRESTONE.get());
+                        output.accept(ModItems.COPPER_NUGGET.get());
                     })
                     .build());
 

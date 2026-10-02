@@ -7,6 +7,7 @@ import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.reach.Reach;
 import com.cortes.combat.sound.ModSounds;
 import com.cortes.combat.registry.ModAttachments;
+import com.cortes.combat.registry.ModDamageTypes;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.StreakState;
 import net.minecraft.world.InteractionHand;
@@ -46,15 +47,7 @@ import net.minecraft.world.item.ItemStack;
  */
 public final class CombatEngine {
 
-    /**
-     * I-frames this mod applies to a target it just hit, in ticks.
-     *
-     * <p>Vanilla uses 20 (a full second). Four is a fifth of that: still enough to stop one
-     * swing landing twice through some other path, short enough that it never decides a
-     * fight. Every weapon in the catalogue has a slower interval than this, so a real
-     * follow-up is never blocked by it.</p>
-     */
-    private static final int IFRAME_TICKS = 4;
+  
 
     private CombatEngine() {
     }
@@ -199,8 +192,10 @@ public final class CombatEngine {
             // both: re-armed between them it would eat the second cut of the sabre's own charge,
             // which is the one double hit in this game that is meant to land.
             target.invulnerableTime = 0;
-            boolean hurt = target.hurt(damageSource(player, result.ignoredArmour()), result.damage());
-            target.invulnerableTime = IFRAME_TICKS;
+            boolean hurt = target.hurt(
+                    damageSource(player, result.ignoredArmour(), result.axeCharged()),
+                    result.damage());
+            target.invulnerableTime = AttackTiming.IFRAME_TICKS;
             if (hurt) {
                 landed++;
                 anyLanded = true;
@@ -208,6 +203,22 @@ public final class CombatEngine {
                 // across the room, and a second cut that shoves is not a second cut.
                 if (i == 0) {
                     onHit(player, target, stats, result, chargeRatio);
+                    // **Inside `hurt`, and after it returned true.**
+                    //
+                    // The guard is on the target, not the attacker. Two weapons come through
+                    // here and for two different reasons: the warhammer's source bypasses the
+                    // shield outright, and the axe's charged one does not but empties the bar by
+                    // hand. Either way the defender pays, which is the whole point -- without
+                    // this the warhammer would go through a raised shield for free and the guard
+                    // would be the one thing in the game with no price.
+                    //
+                    // After `hurt` and inside it: a swing that missed breaks nothing, and a
+                    // second hit of a double cut does not break it twice. `target` may not be a
+                    // player at all, and a mob has no guard to spend.
+                    boolean breaksGuard = result.ignoredArmour() || result.axeCharged();
+                    if (breaksGuard && target instanceof Player defender) {
+                        com.cortes.combat.guard.GuardHandler.breakGuard(defender);
+                    }
                 }
                 spawnSlash(player, target, stats, chargeRatio, i == 0);
                 // **The second cut's sound is DELAYED, and that is the fix.**
@@ -338,8 +349,14 @@ public final class CombatEngine {
     private static void onHit(Player player, Entity target, WeaponStats stats,
                               AttackResult result, float chargeRatio) {
         if (stats.profile() == WeaponProfile.WARHAMMER) {
-            StreakState streak = player.getData(ModAttachments.HAMMER_STREAK.get());
-            player.setData(ModAttachments.HAMMER_STREAK.get(), streak.onHit());
+            StreakState streak = player.getData(ModAttachments.HAMMER_STREAK.get()).onHit();
+            player.setData(ModAttachments.HAMMER_STREAK.get(), streak);
+            // After the increment, so the first landed hit is one and sounds at the floor. The pitch
+            // reads the new streak rather than taking a count as an argument, so a caller cannot
+            // play the note for the streak the player was in before this swing.
+            if (player instanceof net.minecraft.server.level.ServerPlayer server) {
+                com.cortes.combat.sound.CombatSounds.playStackStep(server, target, streak.stackPitch());
+            }
         }
         // The weapon's own push, not a number from the damage result. Knockback is what the
         // weapon does, not a by-product of how hard it hit, and folding it into the damage
@@ -349,12 +366,32 @@ public final class CombatEngine {
     }
 
     /**
-     * The warhammer's charged swing bypasses armour, which needs a damage type declared in
-     * the mod's data and a {@code Holder<DamageType>} to reference it. That belongs with the
-     * specials, not with the flow replacement, so for now every swing uses the normal player
-     * attack source and the flag is carried but not applied.
-     */
-    private static DamageSource damageSource(Player player, boolean ignoreArmour) {
-        return player.damageSources().playerAttack(player);
+ * The warhammer's charged swing bypasses armour, and the axe's charged swing wears it twice as
+ * fast. Two different consequences, two different damage types.
+ *
+ * <p>The warhammer's flag was computed for two rounds with nowhere to land, because
+ * {@code CombatRules.getDamageAfterAbsorb} reads nothing but the source's tags: no amount of
+ * arithmetic before the hit changes what armour takes.</p>
+ *
+ * <p><b>And the warhammer carries a consequence that is not ours to choose.</b> Vanilla nests
+ * {@code bypasses_armor} inside {@code bypasses_shield}
+ * ({@code DamageTypeTagsProvider}: {@code BYPASSES_SHIELD.addTag(BYPASSES_ARMOR)}), so anything
+ * that ignores armour also goes straight through a raised shield, and {@code GuardHandler} leaves
+ * the defender's stamina untouched when the source bypasses. There is no tag that opts out of
+ * that.</p>
+ *
+ * <p><b>The axe is deliberately the other way round.</b> It is <em>not</em> tagged
+ * {@code bypasses_armor}: a charged axe hit still gets reduced by a diamond plate, and the axe
+ * still breaks a guard because {@link #breakGuard} spends the defender's points by hand rather
+ * than by asking a tag to do it. One weapon reaches past armour and one weapon takes it apart, and
+ * they are two entries in this method rather than one rule with a flag.</p>
+ */
+    private static DamageSource damageSource(Player player, boolean ignoreArmour,
+                                            boolean axeCharged) {
+        if (ignoreArmour) {
+            return ModDamageTypes.warhammerIgnoredArmour(player);
+        }
+        return axeCharged ? ModDamageTypes.axeCharged(player)
+                : player.damageSources().playerAttack(player);
     }
 }

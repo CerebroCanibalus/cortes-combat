@@ -1,6 +1,7 @@
 package com.cortes.combat.registry;
 
 import com.cortes.combat.CortesCombat;
+import com.mojang.serialization.Codec;
 import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.core.weapon.KnockbackProfile;
@@ -28,6 +29,23 @@ public final class ModComponents {
 
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<WeaponProfile>> WEAPON_PROFILE =
             component("weapon_profile", WeaponProfile.TYPE);
+
+    /**
+     * Which of the arcabuz's five fuse frames the gun is showing, 0 to 4.
+     *
+     * <p><b>A data component and not a client field, and that is the whole design.</b> The frame has
+     * to be the same on every client that can see the gun, and the only value that is guaranteed
+     * to be is one the server wrote and the network carried.</p>
+     *
+     * <p>It exists because a texture <em>animation</em> cannot do this. The drawn art is one
+     * 64x320 strip of five frames and a {@code .mcmeta} runs it at whatever rate it is told to,
+     * freely, forever -- so the gun's fuse burned down on its own in the inventory whether or not
+     * anything was happening. 1.21.1 gives a mod no way to choose a frame of an animated texture,
+     * so the strip was cut into five files and the model picks one with a predicate on this
+     * component.</p>
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>>
+            ARCABUZ_FUSE = component("arcabuz_fuse", Codec.INT);
 
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ReachProfile>> REACH_PROFILE =
             component("reach_profile", ReachProfile.CODEC);

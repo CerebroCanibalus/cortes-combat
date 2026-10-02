@@ -56,8 +56,8 @@ class SwordViewModelTest {
         assertFalse(fist.isEmpty(), "the playtest asked for a charge animation on the fist");
         assertTrue(fist.ownsSwing(), "a charged fist owns its strike, like any charged weapon");
 
-        Offset fistBack = fist.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1));
-        Offset swordBack = sword.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1));
+        Offset fistBack = fist.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, true, 0.0F, 1));
+        Offset swordBack = sword.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, true, 0.0F, 1));
         assertTrue(fistBack.y() > 0.0, "the fist lifts too");
         assertTrue(fistBack.y() < swordBack.y(),
                 "but less than a sword: it lifted to " + fistBack.y()
@@ -65,23 +65,28 @@ class SwordViewModelTest {
     }
 
     /**
-     * The five vanilla tools still get the exact vanilla pose.
+     * The four vanilla tools that are still untouched, and the axe that is not.
      *
      * <p>Was "every other weapon", and it failed the moment the five new families got their
      * profiles -- which is the test working. The old form asserted a snapshot of the table
      * ("everything except the sword and the fist has no profile"), so it could only ever be fixed
-     * by deleting the assertion. The rule it was standing in for is narrower and does not expire:
-     * <em>vanilla's items have no viewmodel of ours</em>.</p>
+     * by deleting the assertion.</p>
      *
-     * <p>That rule is the point. A hand-drawn motion on an item whose model Mojang drew would
-     * fight the model, and the five tools are all vanilla. The moment one of them gets a profile
-     * it means someone drew one for it deliberately, and this test is where that has to be
-     * noticed.</p>
+     * <p><b>Then it failed a second time, for the axe, and that one was the rule narrowing rather
+     * than the rule expiring.</b> The claim was "vanilla's items have no viewmodel of ours", and
+     * the axe broke it. The narrower claim is the one that still holds: a vanilla item gets no
+     * profile <em>unless its mechanic is one a player cannot aim without seeing it</em>. The
+     * axe's is -- a three and a half second charge whose only feedback would otherwise be a bar
+     * across the bottom of the screen -- and the other four have no charge worth showing, so they
+     * keep the exact vanilla pose.</p>
+     *
+     * <p>The axe is therefore pinned separately, by name, below. A list of five that quietly
+     * becomes a list of four is how the exception stops being an exception.</p>
      */
     @Test
-    @DisplayName("the vanilla tools still get the exact vanilla pose")
+    @DisplayName("the vanilla tools without a charge of their own stay on the vanilla pose")
     void vanillaToolsAreUntouched() {
-        for (WeaponProfile profile : List.of(WeaponProfile.AXE, WeaponProfile.PICKAXE,
+        for (WeaponProfile profile : List.of(WeaponProfile.PICKAXE,
                 WeaponProfile.SHOVEL, WeaponProfile.MACE, WeaponProfile.TRIDENT)) {
             ViewModelProfile viewModel = ViewModelDefaults.of(profile);
             assertTrue(viewModel.isEmpty(),
@@ -156,7 +161,7 @@ class SwordViewModelTest {
     @Test
     @DisplayName("a full charge draws the item back and lifts it")
     void fullChargeDrawsBack() {
-        ViewModelInput charged = new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1);
+        ViewModelInput charged = new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, true, 0.0F, 1);
         Offset offset = sword.evaluate(charged);
         // The lift stays because the playtest confirmed it: "el arma sÃ­ se levanta perfecto". The
         // draw-back is negative Z because the profile is now applied in the item's own frame, at
@@ -172,7 +177,7 @@ class SwordViewModelTest {
     @Test
     @DisplayName("the wind-up leans as well as lifts, but modestly")
     void fullChargeLeans() {
-        Offset offset = sword.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1));
+        Offset offset = sword.evaluate(new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, true, 0.0F, 1));
         // The pitch sign is the one number in this profile that has to be read off a screen
         // rather than off a constant, so the test pins its magnitude and leaves its direction
         // to the next playtest. What it does enforce is that the lean stays small enough that
@@ -196,7 +201,7 @@ class SwordViewModelTest {
         // so zero is not the resting value; and a bound tied to a number in a profile is a test
         // that fails on every retune. The thing that must hold is that the two weapons read as
         // different motions, and that one is a fraction of the other.
-        ViewModelInput charged = new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1);
+        ViewModelInput charged = new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, true, 0.0F, 1);
         double swordSway = Math.abs(sword.evaluate(charged).yaw());
         double fistSway = Math.abs(
                 ViewModelDefaults.of(WeaponProfile.UNARMED).evaluate(charged).yaw());
@@ -213,7 +218,7 @@ class SwordViewModelTest {
     void cutArcsTheBlade() {
         // Rotation led, because a translation moves a rigid item as one block and a bigger one is
         // a bigger shove. See CutIsARotationTest for the whole account of three rounds of this.
-        ViewModelInput striking = new ViewModelInput(0.0F, 1.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1);
+        ViewModelInput striking = ViewModelInput.chopping(1.0F);
         Offset offset = sword.evaluate(striking);
         assertTrue(Math.abs(offset.pitch()) > 60.0,
                 "the blade should travel most of vanilla's 80 degree arc, was pitch=" + offset.pitch());
@@ -291,7 +296,7 @@ class SwordViewModelTest {
     @Test
     @DisplayName("the tremble is not there at rest and is unmistakable at full charge")
     void theTrembleIsAChargeTremble() {
-        ViewModelInput atRest = new ViewModelInput(0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1);
+        ViewModelInput atRest = new ViewModelInput(0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, false, 0.0F, 1);
         assertTrue(sword.evaluate(atRest).isZero(), "a sheathed sword does not shake");
 
         // Sweep a second of shaking at render rate and measure how far the pitch wanders. The
@@ -301,7 +306,7 @@ class SwordViewModelTest {
         float max = -Float.MAX_VALUE;
         for (int frame = 0; frame < 60; frame++) {
             Offset offset = sword.evaluate(
-                    new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, frame * RENDER_STEP, 3));
+                    new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, true, frame * RENDER_STEP, 3));
             min = Math.min(min, (float) offset.pitch());
             max = Math.max(max, (float) offset.pitch());
         }

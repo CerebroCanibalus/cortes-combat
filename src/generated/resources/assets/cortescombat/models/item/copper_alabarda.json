@@ -1,5 +1,5 @@
 {
-  "parent": "minecraft:item/handheld",
+  "parent": "cortescombat:weapon/alabarda",
   "textures": {
     "layer0": "cortescombat:item/copper_alabarda"
   }

@@ -26,6 +26,27 @@ public final class AttackTiming {
     public static final int MAX_INTERVAL = 40;
 
     /**
+     * I-frames a target gets from a hit this mod landed, in ticks.
+     *
+     * <p><b>Three, and it was four, and the reason is a bug the test found rather than a taste.</b>
+     * The fast thing in the game is not the dagger. It is <em>bare hands</em>: the player's base
+     * {@code ATTACK_SPEED} of 4.0 with the unarmed tempo of 1.25 gives {@code ticksFor(5.0)}, which
+     * is four ticks. A four tick window against a four tick swing means every second punch landed
+     * on nothing -- silently, with a green build, a correct damage number and no message anywhere.
+     * Punching things, which is the first thing a new player does, was quietly half broken.</p>
+     *
+     * <p>Three leaves the bare hand a tick of margin and the dagger three. It still does the job it
+     * exists for, which is stopping one swing landing twice through some other path, and the hard
+     * cooldown is what actually gates the player's own follow-up.</p>
+     *
+     * <p><b>It lives here rather than in the engine so that the thing it has to stay shorter than
+     * can be compared against it.</b> {@code CombatEngine} touches Minecraft and cannot be loaded
+     * in a unit test, so a window living there could only be checked by launching a client and
+     * hitting a zombie twice. This is pure and {@code IframesTest} asks the real question.</p>
+     */
+    public static final int IFRAME_TICKS = 3;
+
+    /**
      * How long the attack button has to be held before the swing counts as charged, in ticks.
      *
      * <p>Four ticks is two hundred milliseconds, and it is the number that lets one button mean

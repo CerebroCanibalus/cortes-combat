@@ -1,5 +1,6 @@
 package com.cortes.combat.data;
 
+import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.weapon.WeaponMaterial;
 import com.cortes.combat.item.WeaponFamily;
 import com.cortes.combat.registry.ModItems;
@@ -59,24 +60,76 @@ public class CortesModelProvider implements DataProvider {
                     PackType.CLIENT_RESOURCES, ".json", "models/item");
 
     /**
-     * Whether a designer already drew this model by hand.
-     *
-     * <p>Asks the filesystem instead of {@code ExistingFileHelper} on purpose, and the reason is
-     * written up at the call site: the helper's own methods answer a different question, and both
-     * answers were wrong in a way that produced no error at all.</p>
-     *
-     * <p>Rooted at the <em>generated output folder's parent</em> rather than at
-     * {@code src/main/resources}: the datagen run's working directory is the project root for an
-     * IDE launch and something else under Gradle, so a hard-coded relative path silently fails
-     * to resolve and every model comes back hand-drawn. Walking up from the output folder is the
-     * one anchor both launch paths agree on.</p>
-     *
-     * <p>Not that it matters for correctness whether the hand-drawn one would have won:
-     * {@code src/generated} comes after {@code src/main} on the resource path, so a generated
-     * model <em>does</em> win, and skipping it is the whole fix.</p>
-     */
-    private boolean handDrawn(ResourceLocation id) {
-        return Files.isRegularFile(handDrawnRoot()
+ * A hand-drawn model a whole family shares, if one exists.
+ *
+ * <p><b>This replaced six files that were six copies of one shape.</b> The halberds each had their
+ * own model, identical except for {@code layer0}, and a human was keeping them in sync: the set
+ * was drawn before copper was a material, so it had a {@code wooden_alabarda.json} pointing at a
+ * texture nobody drew and no {@code copper_alabarda.json} at all. The copper halberd then fell
+ * through to the two-line generic and rendered at 1x while its five sisters rendered at 1.5x in
+ * the GUI and 2x in third person -- and nothing failed, because nothing was wrong as far as the
+ * game was concerned.</p>
+ *
+ * <p>So the shape lives in {@code models/weapon/alabarda.json} and each item model is three lines
+ * naming a texture. Six files become one, and a material added to {@code WeaponMaterial} gets a
+ * correct model without anyone remembering that models are also hand-written.</p>
+ */
+private ResourceLocation familyBase(WeaponFamily family) {
+    // Only the halberd, and by name rather than by a flag on the enum: the base is a drawn asset,
+    // and an enum that claimed one existed for a shape nobody had drawn would point at a file that
+    // is not there.
+    if (family == WeaponFamily.ALABARDA) {
+        return ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "weapon/alabarda");
+    }
+    return null;
+}
+
+/** Whether the file behind {@link #familyBase} is actually on disk. */
+private boolean handDrawnBase(WeaponFamily family) {
+    ResourceLocation base = familyBase(family);
+    if (base == null) {
+        return false;
+    }
+    return Files.isRegularFile(handDrawnRoot()
+            .resolve(base.getNamespace())
+            .resolve("models")
+            .resolve(base.getPath() + ".json"));
+}
+
+/**
+ * The parent an item model points at.
+ *
+ * <p>Vanilla's {@code item/handheld} is the right default for a weapon nobody has tuned: it is
+ * exactly the pose vanilla draws, and the viewmodel framework treats a missing profile as "draw it
+ * exactly as vanilla does". Same decision in two places. A viewmodel that is subtly wrong is worse
+ * than none, because a player cannot tell that a motion was meant to be there.</p>
+ */
+private String parentFor(WeaponFamily family, boolean handheld) {
+    if (handheld && handDrawnBase(family)) {
+        return familyBase(family).toString();
+    }
+    return handheld ? "minecraft:item/handheld" : "minecraft:item/generated";
+}
+
+/**
+ * Whether a designer already drew this model by hand.
+ *
+ * <p>Asks the filesystem instead of {@code ExistingFileHelper} on purpose, and the reason is
+ * written up at the call site: the helper's own methods answer a different question, and both
+ * answers were wrong in a way that produced no error at all.</p>
+ *
+ * <p>Rooted at the <em>generated output folder's parent</em> rather than at
+ * {@code src/main/resources}: the datagen run's working directory is the project root for an
+ * IDE launch and something else under Gradle, so a hard-coded relative path silently fails
+ * to resolve and every model comes back hand-drawn. Walking up from the output folder is the
+ * one anchor both launch paths agree on.</p>
+ *
+ * <p>Not that it matters for correctness whether the hand-drawn one would have won:
+ * {@code src/generated} comes after {@code src/main} on the resource path, so a generated
+ * model <em>does</em> win, and skipping it is the whole fix.</p>
+ */
+private boolean handDrawn(ResourceLocation id) {
+    return Files.isRegularFile(handDrawnRoot()
                 .resolve(id.getNamespace())
                 .resolve("models/item")
                 .resolve(id.getPath() + ".json"));
@@ -123,17 +176,58 @@ public class CortesModelProvider implements DataProvider {
         List<CompletableFuture<?>> futures = new ArrayList<>();
         for (WeaponFamily family : WeaponFamily.values()) {
             for (WeaponMaterial material : family.materialsInOrder()) {
-                futures.add(write(cached, ModItems.weapon(family.itemName(material)).get(), true));
+                futures.add(write(cached, family,
+                        ModItems.weapon(family.itemName(material)).get(), true));
             }
         }
         // Flat, not handheld: an ingot is not a thing you swing, and the handheld template's
         // display transforms exist to make a held item lie at a believable angle.
-        futures.add(write(cached, ModItems.COPPER_NUGGET.get(), false));
+        futures.add(write(cached, null, ModItems.COPPER_NUGGET.get(), false));
+
+        // The arcabuz asks for nothing. Its model is a hand drawn Blockbench file with eight
+        // elements, five groups and its own display transforms, it names its texture with a
+        // numbered key instead of layer0, and its texture is a five frame animated strip rather
+        // than a 16x16 icon. There is nothing this provider could write for it that would not be
+        // worse than the file that already exists.
+        //
+        // It is also not in the catalogue and not in textures/item, so nothing downstream is
+        // expecting a file here -- which is why `ModelDeclarationTest` grew a test for the
+        // arcabuz specifically instead of reading it off WeaponFamily.
+        futures.add(write(cached, null, ModItems.FIRESTONE.get(), false,
+                // **The copper nugget's texture, deliberately.**
+                //
+                // A firestone has no art of its own yet and a placeholder that exists beats a
+                // placeholder that does not: the missing-model cube is loud and a copper nugget
+                // labelled "Firestone" is obviously temporary. Reusing the file rather than
+                // copying it also means the jar carries one PNG instead of two identical ones,
+                // and swapping in a real texture later is a one-word change here.
+                //
+                // Naming it explicitly rather than by the item's own path is the whole reason
+                // `write` grew an overload: the default names layer0 after the item, which would
+                // have pointed at textures/item/firestone.png -- a file that does not exist, and
+                // one WeaponTexturesTest's orphan check would then have failed on.
+                ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "item/copper_nugget")));
 
         return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
     }
 
-    private CompletableFuture<?> write(CachedOutput cached, Item item, boolean handheld) {
+    private CompletableFuture<?> write(CachedOutput cached, WeaponFamily family, Item item,
+                                       boolean handheld) {
+        return write(cached, family, item, handheld, null);
+    }
+
+    /**
+     * The same write, with the texture spelled out.
+     *
+     * <p>An overload rather than a parameter on the existing one because the default case is
+     * thirty-one items and the exception is one, and a parameter that is null in thirty-one of
+     * thirty-two call sites is a parameter nobody reads. The null means "name it after the item",
+     * which is what every weapon and the nugget want.</p>
+     *
+     * @param texture the texture to name as layer0, or null to name it after the item's own id
+     */
+    private CompletableFuture<?> write(CachedOutput cached, WeaponFamily family, Item item,
+                                       boolean handheld, ResourceLocation texture) {
         // The registry key, not the description id.
         //
         // getDescriptionId() returns "item.cortescombat.iron_ropera", which is a translation key
@@ -144,7 +238,7 @@ public class CortesModelProvider implements DataProvider {
         // with datagen reporting success.
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
 
-        // Whether a hand-drawn model already owns this name.
+        // Whether a hand-drawn model already owns this exact name.
         //
         // Two other APIs were wrong here and both failed silently in opposite directions:
         //
@@ -162,13 +256,14 @@ public class CortesModelProvider implements DataProvider {
         }
 
         JsonObject json = new JsonObject();
-        json.addProperty("parent", handheld
-                ? "minecraft:item/handheld"
-                : "minecraft:item/generated");
+        json.addProperty("parent", parentFor(family, handheld));
         JsonObject textures = new JsonObject();
         // The texture is named after the item, so "cortescombat:item/iron_ropera" resolves to the
-        // file the designer actually drew. Same string as the model name, by construction.
-        textures.addProperty("layer0", id.getNamespace() + ":item/" + id.getPath());
+        // file the designer actually drew. Same string as the model name, by construction --
+        // unless the caller named one, which is the firestone's case and the only one.
+        textures.addProperty("layer0", texture != null
+                ? texture.toString()
+                : id.getNamespace() + ":item/" + id.getPath());
         json.add("textures", textures);
 
         Path path = output.createPathProvider(PackOutput.Target.RESOURCE_PACK, "models/item")
@@ -193,6 +288,11 @@ public class CortesModelProvider implements DataProvider {
     public static Set<String> itemNames() {
         Set<String> names = new LinkedHashSet<>(WeaponFamily.allItemNames());
         names.add("copper_nugget");
+        // The firestone, because this provider writes a model for it. **Not the arcabuz**, and
+        // that asymmetry is the point: the arcabuz's model is a hand drawn file on disk and this
+        // provider skips anything already there, so listing it here would be a claim about a file
+        // it never writes.
+        names.add("firestone");
         return names;
     }
 }

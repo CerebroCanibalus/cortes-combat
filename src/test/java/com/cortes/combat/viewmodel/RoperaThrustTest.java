@@ -114,7 +114,7 @@ class RoperaThrustTest {
     void theWindupIsAWCock() {
         ViewModelProfile ropera = ViewModelDefaults.of(WeaponProfile.ROPERA);
         Offset back = ropera.evaluate(
-                new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, 0.0F, 1));
+                new ViewModelInput(1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,  0.0F, 0.0F, true, 0.0F, 1));
 
         assertTrue(back.z() > 0.0,
                 "positive z is toward the camera, so the pull is positive: " + back.z());

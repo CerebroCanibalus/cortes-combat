@@ -91,6 +91,22 @@ public record GuardState(boolean held, int max, int stamina, int regenTicks) {
     }
 
     /**
+     * Empty the whole bar at once, for the warhammer's charged hit.
+     *
+     * <p><b>All of it, and not one point.</b> A warhammer swing is one hit and it is the reason
+     * this method exists; spending three ticks of a shield's worth one at a time is a different
+     * mechanic wearing the same coat. Three blocked hits is what the <em>shield</em> is for, and
+     * the answer to "break it faster" is a weapon that reaches past the guard, not a warhammer that
+     * does the shield's job three times in a row.</p>
+     *
+     * <p>The guard lowers itself, the same way spending the last point does. What follows is not
+     * decided here: the stagger belongs to the item, and the handler owns that.</p>
+     */
+    public GuardState breakGuard(int regenInterval) {
+        return new GuardState(false, max, 0, Math.max(1, regenInterval));
+    }
+
+    /**
      * Regen, one point per interval, and never while the guard is raised or broken.
      *
      * <p>Holding the guard up costs the regen. Being staggered costs it too, and that is a

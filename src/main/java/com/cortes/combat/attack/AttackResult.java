@@ -15,10 +15,23 @@ package com.cortes.combat.attack;
  * @param damage       final damage before armour, after charge and escalation
  * @param chargeRatio  0..1, how charged the swing was
  * @param ignoredArmour whether this swing bypasses armour (warhammer's charged hit)
+ * @param axeCharged   whether this is the axe's charged swing, which wears armour twice as fast
+ *                     and empties a guard in one hit. <b>A second boolean and not a third
+ *                     {@code SpecialType}:</b> these two are properties of the <em>hit</em> that
+ *                     have to travel to the damage source and to the armour event, and an enum
+ *                     would have meant a lookup at each of those. They are mutually exclusive by
+ *                     construction -- one is the warhammer and one is the axe -- so a result with
+ *                     both true is impossible rather than merely unlikely.
  */
-public record AttackResult(float damage, float chargeRatio, boolean ignoredArmour) {
+public record AttackResult(float damage, float chargeRatio, boolean ignoredArmour,
+                           boolean axeCharged) {
 
-    public static final AttackResult MISS = new AttackResult(0.0F, 0.0F, false);
+    public static final AttackResult MISS = new AttackResult(0.0F, 0.0F, false, false);
+
+    /** The old three-argument shape, for the cases that only care about damage. */
+    public AttackResult(float damage, float chargeRatio, boolean ignoredArmour) {
+        this(damage, chargeRatio, ignoredArmour, false);
+    }
 
     public boolean isMiss() {
         return damage <= 0.0F;

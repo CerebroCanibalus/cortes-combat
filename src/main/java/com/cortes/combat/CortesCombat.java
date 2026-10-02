@@ -47,6 +47,7 @@ public class CortesCombat {
         NeoForge.EVENT_BUS.register(GuardHandler.class);
         NeoForge.EVENT_BUS.register(com.cortes.combat.special.ParryHandler.class);
         NeoForge.EVENT_BUS.register(com.cortes.combat.special.LungeImmunity.class);
+        NeoForge.EVENT_BUS.register(com.cortes.combat.attack.ArmorWearHandler.class);
         NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class,
                 event -> CortesCommand.register(event.getDispatcher()));
         LOGGER.info("Cortés Combat loading");

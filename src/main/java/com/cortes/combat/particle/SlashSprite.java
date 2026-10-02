@@ -55,7 +55,14 @@ public final class SlashSprite {
             "martillo_hit",
             "shotel_hit",
             "alabarda_hit",
-            "barrido_alabarda");
+            "barrido_alabarda",
+              // The arcabuz's muzzle flash, last so every index above it is unchanged.
+              //
+              // It is not a slash and it does not pretend to be one: same 32x160 strip, same five
+              // frames, same single animated quad. What makes it a different thing is where it is
+              // spawned -- at the barrel, facing the way the gun points -- and a second particle
+              // type would have been a second renderer for a difference in the spawn call.
+              "arcabuz_shot");
 
     private static final Map<WeaponProfile, String> BY_PROFILE = new EnumMap<>(WeaponProfile.class);
 
@@ -91,6 +98,15 @@ public final class SlashSprite {
 
     /** The sweep the halberd throws on its right button, hit or no hit. */
     public static final String SWEEP = "barrido_alabarda";
+
+    /**
+     * The arcabuz's muzzle flash.
+     *
+     * <p>Its own sprite for the same reason the sweep has one: a flash at the barrel is a
+     * different event from a slash that connects, and borrowing the weapon's hit sprite would say
+     * "something was cut" at the moment the shot goes off.</p>
+     */
+    public static final String MUZZLE = "arcabuz_shot";
 
     /**
      * Which entry of {@link #SPRITES} a name is, and zero for anything unknown.

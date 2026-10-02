@@ -72,9 +72,19 @@ public enum WeaponFamily {
      *
      * <p>The only one of the five with a wooden version, and the only one of the five that can be
      * made from a tree on the first day.</p>
+     *
+     * <p><b>Two point six was eight ticks, and this asks for six.</b> The dagger was already the
+     * fastest weapon in the game and the playtest still read it as the slowest thing to actually
+     * use, which is the dagger's whole argument: a short reach and low damage are only worth
+     * something if the hands are quick. Eight ticks is a swing you can see coming.</p>
+     *
+     * <p><b>Six is also the last number before the i-frames become a problem</b>, and that is a
+     * test rather than a coincidence. {@code AttackTiming.IFRAME_TICKS} is four, and a weapon that
+     * swung again inside its own window would silently lose every second hit to it. Six leaves a
+     * two tick margin, and {@code IframesTest} fails if anything in the catalogue goes below that.</p>
      */
     DAGA("daga", "Daga", WeaponProfile.DAGGER, WeaponShape.DAGA,
-            2.0F, 2.6F),
+            2.0F, 3.2F),
 
     /**
      * The shotel: the widest cone in the game, the shortest reach that is not the warhammer's,

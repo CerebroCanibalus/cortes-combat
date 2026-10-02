@@ -1,0 +1,6 @@
+{
+	"_comment": "Five frames, and the fuse is one second. 5 ticks a frame means the four lit frames arrive across exactly 20 ticks, which is the FUSE_TICKS the shot waits. At frametime 1 the whole strip burns in a quarter of a second and the fuse the player is told to watch is a quarter of the one they are actually waiting for.",
+	"animation": {
+		"frametime": 5
+	}
+}

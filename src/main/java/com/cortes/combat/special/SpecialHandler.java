@@ -9,6 +9,7 @@ import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.sound.CombatSounds;
 import com.cortes.combat.sound.ModSounds;
 import com.cortes.combat.core.weapon.SpecialType;
+import com.cortes.combat.core.weapon.ReachProfile;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.particle.SlashParticles;
 import com.cortes.combat.reach.Reach;
@@ -85,6 +86,20 @@ public final class SpecialHandler {
                 return;
             }
             lunge(player, level, stats);
+        } else if (stats.special() == SpecialType.FUSEE) {
+            // **No cooldown gate here, and that is the decision.**
+            //
+            // The first three specials are refused on a cooldown before they are even looked at.
+            // The arcabuz cannot be: its press may be a RELOAD, which does pay the attack
+            // cooldown, or it may be lighting a fuse, which pays a firestone and twenty ticks
+            // instead. Gating the branch on readiness would have made the fuse impossible to
+            // light while a swing was recovering, which is exactly when a player holding a gun
+            // most wants to start the one second.
+            //
+            // So the gate moved into the state, where it can tell the two apart: ArcabuzState
+            // refuses a second press while the fuse burns, and Arcabuz#load refuses a reload the
+            // player cannot pay for.
+            Arcabuz.resolve(player, level, stats);
         }
     }
 
@@ -181,20 +196,28 @@ public final class SpecialHandler {
     private static final int SLOWNESS_AMPLIFIER = 3;
 
     private static void sweep(ServerPlayer player, ServerLevel level, WeaponStats stats) {
-        List<LivingEntity> targets = targetsInCone(player, stats);
+        var reach = HalberdSweep.reachFor(stats.reach());
+        List<LivingEntity> targets = targetsInCone(player, reach);
 
         // The sound and the sweep particle happen whether or not anything was hit. The swing is an
         // event: a polearm swung wide is a thing the player did, and the orbs come out of the arc
         // itself. Making the effect conditional on a hit would make a miss into no feedback at all.
         CombatSounds.play(level, player, WeaponProfile.HALBERD, ModSounds.Kind.SPECIAL);
+        double arc = HalberdSweep.arcOffset(reach);
         SlashParticles.sweep(level, stats.profile(),
-                player.getX() + player.getLookAngle().x * 1.2,
+                player.getX() + player.getLookAngle().x * arc,
                 player.getEyeY(),
-                player.getZ() + player.getLookAngle().z * 1.2);
+                player.getZ() + player.getLookAngle().z * arc);
 
         // Spent whether or not it connected. A special that only cost anything on a hit would be
         // free to spam at air, and air is the thing you want to be able to practise against.
-        AttackCooldown.consume(player, WeaponStats.attackInterval(player));
+        //
+        // **Four swings, not one.** The sweep used to cost exactly what the click it competes with
+        // costs, which made it that click with a wider hitbox, more targets and more shove -- and a
+        // button that is strictly better than the attack is not a button, it is a mistake. At four
+        // swings the choice is real and it is the count that decides it.
+        AttackCooldown.consume(player,
+                HalberdSweep.cooldownFor(WeaponStats.attackInterval(player)));
 
         for (LivingEntity target : targets) {
             AttackResult result = DamageResolver.resolve(
@@ -203,7 +226,7 @@ public final class SpecialHandler {
                     stats.profile(),
                     0.0F,
                     player.getData(com.cortes.combat.registry.ModAttachments.HAMMER_STREAK.get()));
-            Knockback.apply(player, target, stats.knockback(), 0.0F);
+            Knockback.apply(player, target, stats.knockback(), HalberdSweep.PUSH);
             target.invulnerableTime = 0;
             if (target.hurt(player.damageSources().playerAttack(player), result.damage())) {
                 target.invulnerableTime = IFRAME_TICKS;
@@ -219,10 +242,13 @@ public final class SpecialHandler {
      *
      * <p>Nearest first so that when the invulnerability window eats the second hit of a pair of
      * overlapping mobs, the one that dies is the one the player was looking at.</p>
+     *
+     * <p>The cone is a parameter and not read off the weapon, because the sweep's is deliberately
+     * not the weapon's: it reaches further and opens wider. Reading {@code stats.reach()} here is
+     * what had the sweep hitting exactly what the thrust hits, only more of it.</p>
      */
-    private static List<LivingEntity> targetsInCone(ServerPlayer player, WeaponStats stats) {
+    private static List<LivingEntity> targetsInCone(ServerPlayer player, ReachProfile reach) {
         List<LivingEntity> found = new java.util.ArrayList<>();
-        var reach = stats.reach();
         var box = player.getBoundingBox().inflate(reach.distance() + 1.0);
         for (Entity candidate : player.level().getEntitiesOfClass(LivingEntity.class, box)) {
             if (candidate == player || !candidate.isAlive()

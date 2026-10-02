@@ -37,10 +37,23 @@ sound-src/
 # the one file worth keeping and it is two directories down.
 tools/ffmpeg/
 
-# The arcabuz was an experiment that never became a weapon. The files stay on disk in
-# case the idea comes back, but they are not part of the mod and they were sitting in
-# the resources tree where the jar would have shipped them.
-src/main/resources/assets/cortescombat/models/item/arcabuz.json
-src/main/resources/assets/cortescombat/textures/models/arcabuz.png
-src/main/resources/assets/cortescombat/textures/models/arcabuz.png.mcmeta
-src/main/resources/assets/cortescombat/textures/particle/arcabuz_shot.png
+# The arcabuz used to be ignored here, on the grounds that it was an experiment that never became
+# a weapon. It is a weapon now. Nothing is ignored here any more, and the reason is worth writing
+# down because the file itself was never what was wrong:
+#
+#   models/item/arcabuz.json             Blockbench, 64x64, eight elements in six groups
+#   textures/models/arcabuz.png          64x320 -- the five frames of the fuse burning down
+#   textures/models/arcabuz.png.mcmeta   one line, and the only thing that makes frame one lit
+#   textures/particle/arcabuz_shot.png   32x160, the muzzle flash in the strip format the
+#                                        slash particle already reads
+#
+# **The problem was that the model pointed at a path the game never reads.** 1.21.1's blocks.json
+# builds the atlas from block/ and item/ and nothing else, so a texture under models/ is never
+# stitched and the item renders as the missing cube -- which is what the playtest reported, and
+# what the client log said in one line. A file being present is not the same as the game looking
+# at it, and three separate things in this project have been that exact bug.
+#
+# The strip now exists TWICE on purpose. textures/models/arcabuz.png is the original, untouched,
+# where it was drawn, so the next person can tell which of the two is the artwork. The five frames
+# the model actually reads are cut out under textures/item/arcabuz_fuse/, because that is a
+# folder the atlas reads.

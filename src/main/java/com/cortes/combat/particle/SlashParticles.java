@@ -101,6 +101,23 @@ public static void hit(ServerLevel level, WeaponProfile profile, Entity target, 
     }
 
     /**
+     * The arcabuz's muzzle flash, at the barrel.
+     *
+     * <p><b>Spawned at the muzzle and not at the player's eye</b>, because a flash drawn where the
+     * camera is sits behind the camera and reads as the screen flickering. The caller passes a
+     * point ahead of the gun.</p>
+     *
+     * <p>One particle and no spread: it is a flash and not an explosion, and the shot's damage and
+     * the shot's spread are two separate things that each happen once.</p>
+     */
+    public static void muzzle(ServerLevel level, double x, double y, double z) {
+        level.sendParticles(
+                new SlashParticleOptions(SlashSprite.MUZZLE),
+                x, y, z,
+                1, 0.0, 0.0, 0.0, 0.0);
+    }
+
+    /**
      * A slash with no enemy attached, for a swing that swept.
      *
      * <p>The halberd's wide swing is an event in its own right: it happens, it hits three things

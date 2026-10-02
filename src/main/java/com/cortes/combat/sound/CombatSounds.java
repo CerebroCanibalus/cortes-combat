@@ -1,10 +1,14 @@
 package com.cortes.combat.sound;
 
 import com.cortes.combat.core.weapon.WeaponProfile;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 
@@ -68,6 +72,57 @@ public final class CombatSounds {
         float pitch = ModSounds.pitch(profile, kind) * pitchScale;
         level.playSound(null, at.getX(), at.getY(), at.getZ(),
                 event, SoundSource.PLAYERS, 1.0F, pitch);
+    }
+
+    /**
+     * The warhammer streak's own voice, and it is vanilla's.
+     *
+     * <p><b>Not one of ours, and that is the point.</b> The escalation is a bare multiplier with no
+     * sound bound to it, so this is the only channel the player has for finding out that a streak
+     * is running at all -- and a sound the game already ships is a sound the ear is already tuned
+     * to.</p>
+     *
+     * <p><b>The note block, because a pitch ladder is the one thing it was built for.</b> Every
+     * other candidate is a hit: short, broadband, and read as impact rather than as pitch, so
+     * sliding it from half to double only makes it louder. The note block's own pitch slider runs
+     * 0.5 to 2.0 across two octaves, which is exactly the range the streak wanted, and the player
+     * has heard that sweep on a note block a thousand times.</p>
+     *
+     * <p>A {@code Holder.Reference} rather than a bare {@code SoundEvent}, taken straight off
+     * {@code SoundEvents}: it already is the registered holder the sound packet wants.</p>
+     */
+    public static final Holder<SoundEvent> STACK_STEP = SoundEvents.NOTE_BLOCK_PLING;
+
+    /**
+     * Quiet, because this layers under a warhammer impact rather than competing with it.
+     *
+     * <p>Half a note block's own volume: the hit sound already says the hammer landed, and this one
+     * only has to say the streak went up.</p>
+     */
+    public static final float STACK_STEP_VOLUME = 0.5F;
+
+    /**
+     * The streak step, heard by the player building the streak and by nobody else.
+     *
+     * <p><b>One packet rather than a broadcast, and that is a rule and not an optimisation.</b> A
+     * pitch ladder is only readable played alone. Broadcast to everyone nearby, two warhammers
+     * trading blows produce two interleaved ladders and neither can be followed -- and bystanders
+     * hear a stranger's combo count, which is information nobody needs.</p>
+     *
+     * <p><b>Not {@code level.playSound(player, ...)}.</b> That reads like the private version and is
+     * the opposite: it forwards to {@code PlayerList#broadcast}, whose first argument is named
+     * {@code except}, and the loop tests {@code serverplayer != except}. Passing the attacker
+     * would mute it for the one player it is meant for. Verified in the 1.21.1 sources, not
+     * remembered.</p>
+     *
+     * <p><b>Seed zero, so the same streak always sounds the same.</b> A seeded sound varies per
+     * play, which is right for a hit and wrong for an instrument: a ladder that plays a slightly
+     * different note each time is not a ladder.</p>
+     */
+    public static void playStackStep(ServerPlayer listener, Entity at, float pitch) {
+        listener.connection.send(new ClientboundSoundPacket(
+                STACK_STEP, SoundSource.PLAYERS, at.getX(), at.getY(), at.getZ(),
+                STACK_STEP_VOLUME, pitch, 0L));
     }
 
     /**

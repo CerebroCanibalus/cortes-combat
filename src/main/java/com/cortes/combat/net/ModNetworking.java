@@ -44,6 +44,8 @@ public final class ModNetworking {
                 ModNetworking::handleCombatFeedback);
         registrar.playToClient(ParryStatePayload.TYPE, ParryStatePayload.STREAM_CODEC,
                 ModNetworking::handleParryState);
+        registrar.playToClient(ArcabuzFusePayload.TYPE, ArcabuzFusePayload.STREAM_CODEC,
+                ModNetworking::handleArcabuzFuse);
         registrar.playToClient(DelayedSoundPayload.TYPE, DelayedSoundPayload.STREAM_CODEC,
                 (payload, context) -> {
                     if (context.player() instanceof net.minecraft.client.player.LocalPlayer p) {
@@ -57,6 +59,31 @@ public final class ModNetworking {
 
     private static void handleParryState(ParryStatePayload payload, IPayloadContext context) {
         com.cortes.combat.client.ClientCombatState.setParry(payload.active(), payload.cooldown());
+    }
+
+    /**
+     * The fuse started or stopped, and the client keeps the countdown from there.
+     *
+     * <p>On the transitions only, for the reason {@link ArcabuzFusePayload} gives. The client's
+     * own clock runs against the server's and the jitter between them is normal, so a value that
+     * arrives higher than the local one wins -- the same correction
+     * {@code ClientCombatState#tickParry} makes, and for the same reason: without it a late
+     * correction reads as "the number went up" and a client that mistakes that for a new press
+     * restarts something it should have let finish.</p>
+     */
+    private static void handleArcabuzFuse(ArcabuzFusePayload payload, IPayloadContext context) {
+        com.cortes.combat.client.ArcabuzFuseState.accept(
+                payload.lit(), payload.fuseTicks(), payload.loaded());
+    }
+
+    /**
+     * Tell one player what the arcabuz is doing, so the model can burn through the fuse.
+     *
+     * @param fuseTicks the whole fuse length, or zero when it has gone off
+     */
+    public static void sendArcabuzFuse(ServerPlayer player, boolean lit, int fuseTicks,
+                                       boolean loaded) {
+        PacketDistributor.sendToPlayer(player, new ArcabuzFusePayload(lit, fuseTicks, loaded));
     }
 
     /**

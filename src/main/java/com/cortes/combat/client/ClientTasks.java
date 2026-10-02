@@ -40,6 +40,11 @@ public final class ClientTasks {
         ClientCombatState.tickParry();
         ClientCombatState.tickLunge();
         SwingInputHandler.tick();
+        // **After the swing handler**, and that order is the whole thing: the body's poses read
+        // the viewmodel's frame, so the frame has to have been advanced first. Putting this above
+        // `SwingInputHandler.tick` would draw the arms one tick behind the weapon, which on a
+        // three-second axe charge is a charge bar and an arm that disagree for three seconds.
+        com.cortes.combat.thirdperson.BodyPoseDispatcher.tick(Minecraft.getInstance().player);
         // Last, because it clears the verdict on the press: vanilla can run the attack path more
         // than once in a tick, and every one of those has to see the same verdict. Clearing it
         // anywhere earlier would let the second of them through to a free vanilla attack.

@@ -36,6 +36,14 @@ public class CortesLanguageProvider extends LanguageProvider {
             }
         }
         addItem(ModItems.COPPER_NUGGET, "Pepita de Cobre");
+        addItem(ModItems.ARCABUZ, "Arcabuz");
+        // "Firestone" and not a Spanish translation of it, and that is a decision rather than an
+        // oversight. The design names the item in English -- it calls it Firestone twice and the
+        // weapon it feeds is "Arcabuz", which is a Spanish word with no English one -- so the
+        // only string here that is not Spanish is the string the design actually wrote. Inventing
+        // "Piedra Fulgurante" would be a second answer to a name that already has one, and a
+        // translator would later have to guess which of the two the notes meant.
+        addItem(ModItems.FIRESTONE, "Firestone");
 
         // The recipe book description, shared by all thirty advancements.
         //
