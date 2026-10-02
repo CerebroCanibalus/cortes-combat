@@ -14,11 +14,8 @@ import com.cortes.combat.particle.SlashParticles;
 import com.cortes.combat.reach.Reach;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ParryState;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -110,22 +107,18 @@ public final class SpecialHandler {
      * this button cost" would be two numbers.</p>
      */
     private static void lunge(ServerPlayer player, ServerLevel level, WeaponStats stats) {
-        int tier = tierOf(player);
-
-        // The direction is taken ONCE, at the press, and stored on the player. Deriving it
-        // from the player's motion each tick meant any steering during the lunge bent the dash into
-        // a curve, which is not a lunge -- it is a flight the player is flying.
-        var look = player.getLookAngle();
-        var direction = new net.minecraft.world.phys.Vec3(look.x, 0.0, look.z);
-        if (direction.lengthSqr() < 1.0E-6) {
-            return;
-        }
-        direction = direction.normalize();
-
-        // Six small steps across six ticks, not one jump. See Lunge for why a server-side velocity
-        // does not move a player at all, and why the fix is to move them over TIME rather than to
-        // move them less.
-        Lunge.begin(player, tier);
+        // **Three things, and none of them is a hit.**
+        //
+        // This used to build a box of the promised length in front of the player and damage
+        // everything in it, right here, before the player had moved a centimetre. That is the whole
+        // reason the lunge cost nothing: cover was free, because the volume did not care where the
+        // body went. The step is supposed to BE the price, and a hit resolved at the press is not
+        // paid in position.
+        //
+        // So the press now only charges and opens the window. The ground gets swept as it is
+        // covered, out of the player's own movement report, and Lunge.tick decides whether any of
+        // it was legal. See Lunge for the authority model and for why the server could never have
+        // moved the player in the first place.
 
         // Four swings, on the same hard cooldown as an attack so that the answer to "what does
         // this button cost" stays one number per button.
@@ -134,65 +127,7 @@ public final class SpecialHandler {
 
         CombatSounds.play(level, player, WeaponProfile.ROPERA, ModSounds.Kind.LUNGE);
 
-        // Flat and uncharged, like the sweep: the value of a lunge is the ground it covered, not
-        // the number on any single hit. A special that also scaled would be competing with the
-        // swing on the axis the swing is already best at.
-        float baseDamage = (float) player.getAttributeValue(
-                net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
-
-        // **A box from the torso, not a cone from the camera.** A swing is a cone because the
-        // camera is what the player aims with. A lunge is not aimed -- it is thrown, and what it
-        // sweeps is the space the body passed through. Testing the camera cone made the hit land
-        // where the player was looking, which during a movement they did not choose is the one
-        // thing that feels wrong.
-        // The corridor is as long as the player will travel and as wide as the tier's reach, so a
-        // better material sweeps more ground rather than a longer corridor through the same crowd.
-        double length = LungeDamage.distanceFor(tier);
-        double width = LungeDamage.reachFor(tier);
-        var sweep = Lunge.sweepBox(player.position(), direction, length, width);
-        var query = player.getBoundingBox().inflate(length + 1.5);
-
-        var targets = new java.util.ArrayList<LivingEntity>();
-        for (Entity candidate : level.getEntitiesOfClass(LivingEntity.class, query)) {
-            if (candidate == player || !candidate.isAlive()
-                    || candidate.isSpectator() || candidate.isRemoved()) {
-                continue;
-            }
-            if (Lunge.sweeps(sweep, candidate.position(), candidate.getBbHeight())) {
-                targets.add((LivingEntity) candidate);
-            }
-        }
-        // Nearest first, and it matters twice over: the enemy the player was aiming at is the one
-        // that takes the first and therefore the smallest multiplier, and it is the one that
-        // survives if an invulnerability window eats a later hit.
-        targets.sort((a, b) -> Double.compare(a.distanceToSqr(player), b.distanceToSqr(player)));
-
-        // **Everything in the box, and each one hits harder than the last.** Nearest is the
-        // weakest, so the player is rewarded for aiming into the far end of a group rather than
-        // for turning around after it starts.
-        int index = 0;
-        for (LivingEntity target : targets) {
-            float damage = LungeDamage.damageFor(baseDamage, index);
-            Knockback.apply(player, target, stats.knockback(), 0.0F);
-            target.invulnerableTime = 0;
-            if (target.hurt(player.damageSources().playerAttack(player), damage)) {
-                target.invulnerableTime = IFRAME_TICKS;
-                SlashParticles.hit(level, stats.profile(), target, false);
-                // The per-target hit, a fifth of a tone down from the weapon's own: a rising
-                // series across a group rather than one sound repeated.
-                CombatSounds.play(level, target, WeaponProfile.ROPERA, ModSounds.Kind.HIT,
-                        1.0F - index * 0.06F);
-            }
-            index++;
-        }
-
-        // Vanilla's crit on top, once, for the lunge itself. Not one per target: the crit is the
-        // sound of the movement landing, and a movement makes one.
-        if (!targets.isEmpty()) {
-            ModNetworking.sendFeedback(player, com.cortes.combat.core.CombatFeedback.HIT);
-            level.sendParticles(ParticleTypes.CRIT, player.getX(), player.getY() + 0.9, player.getZ(),
-                    12, 0.3, 0.3, 0.3, 0.05);
-        }
+        Lunge.begin(player, tierOf(player));
     }
 
     /** The material rank of whatever the player is holding, or zero if it is not ours. */

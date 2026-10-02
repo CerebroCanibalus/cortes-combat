@@ -43,7 +43,7 @@ class ConeLeashTest {
     private static final double ZOMBIE_HALF_HEIGHT = ZOMBIE_TOP / 2.0;
 
     /** The ropera's limits, the worst case in the game. */
-    private static final double ROPERA_REACH = 3.4;
+    private static final double ROPERA_REACH = 3.5;
     private static final double ROPERA_H = 12.0;
     private static final double ROPERA_V = 15.0;
 

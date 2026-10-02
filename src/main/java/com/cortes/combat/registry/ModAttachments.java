@@ -8,7 +8,11 @@ import com.cortes.combat.state.ParryState;
 import com.cortes.combat.state.LungeState;
 import com.cortes.combat.state.StreakState;
 import com.cortes.combat.state.SyncState;
+import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.attachment.AttachmentType;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -74,10 +78,11 @@ public final class ModAttachments {
                     .build());
 
     /**
-     * The ropera's lunge in progress: which way it was committed and how far into it the player is.
+     * The ropera's lunge in progress: where the player has been measured to, and how far into the
+     * window it is.
      *
      * <p>An attachment and not a static, because a static would be one lunge for the whole server:
-     * two players in a world would overwrite each other's direction, and it would survive death and
+     * two players in a world would overwrite each other's positions, and it would survive death and
      * world change. Both of those are the bug this class's siblings already had once.</p>
      *
      * <p>Deliberately not {@code copyOnDeath}. A lunge is a movement in progress and dying ends it;
@@ -87,6 +92,28 @@ public final class ModAttachments {
             ATTACHMENT_TYPES.register("lunge", () -> AttachmentType.builder(() -> LungeState.IDLE)
                     .serialize(LungeState.CODEC)
                     .build());
+
+    /**
+     * The entities this player's last lunge has already hit.
+     *
+     * <p><b>A separate attachment from {@link #LUNGE} and not a field inside it.</b> This list was
+     * in the state, and the state is written twenty times per lunge; a list of ids that grows on
+     * every write is twenty packets of integers to the client, for something the client never
+     * reads. It is also not serializable, because entity references have no codec and inventing one
+     * to persist a set that lives for a single dash would be a worse mistake than not persisting
+     * it.</p>
+     *
+     * <p>Never synchronized for the same reason. {@link Lunge} clears it wherever it clears the
+     * lunge, so it outlives the dash and not the player.</p>
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Set<LivingEntity>>> LUNGE_HITS =
+            ATTACHMENT_TYPES.register("lunge_hits",
+                    // The type witness is not decoration. `DeferredRegister<AttachmentType<?>>`
+                    // takes a `Supplier<? extends I>` whose `I` is the attachment's own type, and
+                    // the diamond of `new LinkedHashSet<>()` is nested two inference levels deep
+                    // inside it, so it cannot be solved without being told what it is for.
+                    () -> AttachmentType.<Set<LivingEntity>>builder(
+                            () -> new LinkedHashSet<>()).build());
 
     /**
      * What was last pushed to this client's HUD, so an unchanged state is not resent. Bandwidth

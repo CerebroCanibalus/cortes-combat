@@ -75,27 +75,17 @@ class DelayedFeedbackTest {
      * rather than accumulated onto the previous tick's. Accumulating would accelerate -- each tick on
      * top of the last -- and a lunge that builds to a sprint is a different move.</p>
      */
-    @Test
-    @DisplayName("the client sets the velocity to the curve rather than adding to it")
-    void theVelocityIsSetNotAccumulated() {
-        // The curve itself, which is the shape a lunge has: fast at the front, gone at the back.
-        double first = LungeDamage.stepFor(0);
-        double last = LungeDamage.stepFor(LungeDamage.ticksFor(6) - 1);
-        assertTrue(first > last,
-                "the lunge decelerates: " + first + " then " + last
-                        + ". A constant speed is a slide and an accumulating one is a sprint");
-    }
-
-    /** The client and the server have to agree on how long the lunge is, or the ends do not match. */
-    @Test
-    @DisplayName("the client and the server run the same curve, so the lunge ends together")
-    void bothSidesRunTheSameCurve() {
-        for (int rank = 0; rank <= 6; rank++) {
-            assertEquals(LungeDamage.ticksFor(rank),
-                    LungeDamage.ticksFor(rank),
-                    "rank " + rank + ": the client reads the same table the server does. Two "
-                            + "copies of this number and the lunge ends on one side before the "
-                            + "other, which reads as the weapon glitching");
-        }
-    }
+    /**
+     * The two lunge tests that used to live here are gone with the curve they described.
+     *
+     * <p>They asserted that the client's velocity was <em>set</em> to a decaying curve rather than
+     * accumulated, and that both sides read the same table. Both were real properties and both were
+     * only true because the client was driving the movement tick by tick.</p>
+     *
+     * <p>It no longer does. There is one impulse at the press and then the game's own friction, so
+     * there is no curve to set and no tick count for the two sides to disagree about -- which is why
+     * the "the lunge ends on one side before the other" failure they guarded against cannot happen
+     * any more. The replacement is a different test: that the impulse is one number and the ceiling
+     * is a different number, which is what {@code LungeSweepTest} checks.</p>
+     */
 }

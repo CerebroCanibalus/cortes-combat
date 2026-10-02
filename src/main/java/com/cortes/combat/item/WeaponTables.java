@@ -87,7 +87,14 @@ public final class WeaponTables {
         // fifteen is small enough that the player has to mean it -- and there is deliberately no
         // smaller cone inside it. The precision bonus that used to live there asked the player to
         // aim inside a cone inside the one that was already asking them to aim.
-        REACH.put(WeaponProfile.ROPERA, new ReachProfile(3.4F, 12.0F, 15.0F));
+        //
+        // Three point five, and it was three point four. The lunge was nerfed for being overpowered
+        // and the first attempt took a tenth off this number rather than the lunge's own cube,
+        // which is the axis the player actually reads as the weapon's reach. A tenth of a block
+        // gives it back, and stops it short of the sword's three point six on purpose: the sword is
+        // the weapon the design assumes you have, and the ropera being the shortest-ranged of the
+        // committed weapons is the reason its speed matters.
+        REACH.put(WeaponProfile.ROPERA, new ReachProfile(3.5F, 12.0F, 15.0F));
         // Dagger: tiny range, wide cone.
         REACH.put(WeaponProfile.DAGGER, new ReachProfile(2.4F, 45.0F, 30.0F));
         // Halberd: widest and longest.

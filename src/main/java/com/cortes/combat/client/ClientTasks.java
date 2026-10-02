@@ -24,9 +24,10 @@ public final class ClientTasks {
         // The sabre's second cut is heard eight ticks after the first, and 1.21.1 cannot schedule a
         // sound, so the delay is held here.
         DelayedSounds.tick();
-        // The lunge's movement. Client side, on the game's own physics -- the server cannot move a
-        // player, and teleporting around that juddered at every step distance.
-        LungeMotion.tick(Minecraft.getInstance().player);
+        // The lunge has no tick here any more. It used to sit in this list setting the player's
+        // velocity once per frame from a decaying curve, which meant the client owned the movement
+        // tick by tick and the player had no steering against it. It is now one `push` at the press
+        // and then the game's own physics, so there is nothing to advance.
         CrosshairFeedback.onTick(ClientCombatState.aiming());
         // Advances the local charge, which the meter and the viewmodel both read.
         //

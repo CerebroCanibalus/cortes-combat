@@ -42,8 +42,9 @@ public final class CombatTicker {
         tickGuard(player);
         tickStreak(player);
         tickParry(player);
-        // The lunge's momentum. Six ticks of re-applied velocity, which is the whole difference
-        // between a dash and a teleport -- see Lunge for why one velocity does nothing at all.
+        // The lunge's window. It moves nobody: it measures how far the player got against the
+        // material that opened it, and sweeps whatever ground was actually crossed. See Lunge for
+        // why the server could never have thrown the player itself.
         com.cortes.combat.special.Lunge.tick(player);
         ModNetworking.syncTo(player);
     }

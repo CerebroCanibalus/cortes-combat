@@ -162,7 +162,7 @@ class WeaponTablesTest {
     @Test
     @DisplayName("the reach numbers are the ones the design settled on")
     void theReachNumbers() {
-        assertEquals(3.4F, WeaponTables.reach(WeaponProfile.ROPERA).distance(), 1.0E-6);
+        assertEquals(3.5F, WeaponTables.reach(WeaponProfile.ROPERA).distance(), 1.0E-6);
         assertEquals(12.0F, WeaponTables.reach(WeaponProfile.ROPERA).horizontalAngle(), 1.0E-6);
         assertEquals(15.0F, WeaponTables.reach(WeaponProfile.ROPERA).verticalAngle(), 1.0E-6);
         assertEquals(3.6F, WeaponTables.reach(WeaponProfile.SWORD).distance(), 1.0E-6,

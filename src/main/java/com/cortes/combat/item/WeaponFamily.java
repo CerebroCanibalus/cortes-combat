@@ -38,7 +38,7 @@ public enum WeaponFamily {
      * a second thing to manage, and the design says no.</p>
      */
     ROPERA("ropera", "Ropera", WeaponProfile.ROPERA, WeaponShape.ROPERA,
-            4.0F, 2.0F),
+            5.0F, 2.0F),
 
     /**
      * The halberd: the longest reach and the widest cone of the four that are not the sabre.

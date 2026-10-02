@@ -41,10 +41,12 @@ public class CortesCombat {
         ModItems.ITEMS.register(modEventBus);
         ModCreativeTabs.TABS.register(modEventBus);
         ModParticleTypes.PARTICLE_TYPES.register(modEventBus);
+        com.cortes.combat.registry.ModEffects.register(modEventBus);
         modEventBus.addListener(ModNetworking::register);
         NeoForge.EVENT_BUS.register(CombatTicker.class);
         NeoForge.EVENT_BUS.register(GuardHandler.class);
         NeoForge.EVENT_BUS.register(com.cortes.combat.special.ParryHandler.class);
+        NeoForge.EVENT_BUS.register(com.cortes.combat.special.LungeImmunity.class);
         NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class,
                 event -> CortesCommand.register(event.getDispatcher()));
         LOGGER.info("Cortés Combat loading");
