@@ -49,12 +49,13 @@ public final class WeaponStats {
     private final KnockbackProfile knockback;
 
     private WeaponStats(WeaponProfile profile, ReachProfile reach, ChargeProfile charge,
-                        SpecialType special, KnockbackProfile knockback) {
+                        SpecialType special, KnockbackProfile knockback, ReachProfile shotReach) {
         this.profile = profile;
         this.reach = reach;
         this.charge = charge;
         this.special = special;
         this.knockback = knockback;
+        this.shotReach = shotReach;
     }
 
     public WeaponProfile profile() {
@@ -80,6 +81,47 @@ public final class WeaponStats {
         return knockback;
     }
 
+    private final ReachProfile shotReach;
+
+    /**
+     * The cone a weapon's <b>right button</b> hits with.
+     *
+     * <p><b>Falls back to the melee cone, so it always answers something usable.</b> Thirty-one
+     * weapons have no second cone, and a caller asking "where does this weapon's right button
+     * reach" should not have to branch on whether the weapon happens to be the arcabuz. For those,
+     * this is {@link #reach()}; for the arcabuz it is six and a half blocks at thirty two
+     * degrees, and {@link #reach()} is a two point six block bayonet.</p>
+     *
+     * <p>Which is exactly why the two are separate and not one cone with a modifier: a caller that
+     * wanted the left button could not tell them apart afterwards.</p>
+     */
+    public ReachProfile shotReach() {
+        return shotReach == null || shotReach.isNone() ? reach : shotReach;
+    }
+
+    /** Whether this weapon has a cone of its own for its right button. */
+    public boolean hasOwnShotCone() {
+        return shotReach != null && !shotReach.isNone();
+    }
+
+    /**
+     * The cone the player is shown, which is the shot's when there is one.
+     *
+     * <p><b>Written down as its own question because "the reach" is two questions.</b> The melee
+     * cone is a fact about a hit; this is a fact about what the brackets around the crosshair are
+     * measuring. On thirty-one weapons they are the same number, which is why nobody noticed they
+     * were two numbers until one weapon had both.</p>
+     *
+     * <p>And the shot wins, because a player holding a loaded arcabuz is aiming the gun: the
+     * crosshair has to describe where the blast will go, or the player is aiming with a marker
+     * that lies about the thing they are about to do. The bayonet's short cone is still what the
+     * left click uses, and it still decides what a click can hit -- the marker simply stops
+     * describing it.</p>
+     */
+    public ReachProfile displayedReach() {
+        return hasOwnShotCone() ? shotReach : reach;
+    }
+
     public static WeaponStats of(ItemStack stack) {
         if (stack == null || stack.isEmpty()) {
             return bareHands();
@@ -90,7 +132,15 @@ public final class WeaponStats {
                 readOr(stack, ModComponents.REACH_PROFILE, WeaponTables.reach(profile)),
                 readOr(stack, ModComponents.CHARGE_PROFILE, WeaponTables.charge(profile)),
                 readOr(stack, ModComponents.SPECIAL, WeaponTables.special(profile)),
-                readOr(stack, ModComponents.KNOCKBACK_PROFILE, WeaponTables.knockback(profile)));
+                readOr(stack, ModComponents.KNOCKBACK_PROFILE, WeaponTables.knockback(profile)),
+                // The second cone, resolved through the same four layers as every other number:
+                // a data component first, then the profile's row, then NONE for the thirty-one
+                // weapons that have none. **It is the one stat whose component name is the same as
+                // the field it feeds** -- reach_profile is the bayonet, shot_reach is the barrel --
+                // and that is worth a test rather than a comment, because a swapped pair would
+                // make the arcabuz's left click six and a half blocks long and nothing else would
+                // notice.
+                readOr(stack, ModComponents.SHOT_REACH, WeaponTables.shotReach(profile)));
     }
 
     private static WeaponStats bareHands() {
@@ -99,7 +149,8 @@ public final class WeaponStats {
                 WeaponTables.reach(WeaponProfile.UNARMED),
                 WeaponTables.charge(WeaponProfile.UNARMED),
                 SpecialType.NONE,
-                WeaponTables.knockback(WeaponProfile.UNARMED));
+                WeaponTables.knockback(WeaponProfile.UNARMED),
+                ReachProfile.NONE);
     }
 
     private static WeaponProfile readProfile(ItemStack stack) {
@@ -166,6 +217,19 @@ public final class WeaponStats {
      */
     public static int attackInterval(LivingEntity holder) {
         return attackInterval(holder, WeaponStats.of(holder.getMainHandItem()).profile());
+    }
+
+    /**
+     * The tempo multiplier for a profile, which is the third of the four numbers behind an attack
+     * interval and the only one that used to be unreachable from outside.
+     *
+     * <p>Exposed because a tooltip that printed vanilla's untouched attribute would be printing
+     * a number this table then changes: the sword's real tempo is 0.85 and its real interval is
+     * not the one its item declares. A readout that skips this step is a readout of a weapon that
+     * does not exist.</p>
+     */
+    public static float tempoFor(WeaponProfile profile) {
+        return TEMPO.getOrDefault(profile, 1.0F);
     }
 
     /** As above, for a profile whose tempo is already known. */

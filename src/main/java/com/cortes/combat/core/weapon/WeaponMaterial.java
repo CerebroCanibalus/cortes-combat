@@ -113,6 +113,31 @@ public enum WeaponMaterial {
     }
 
     /**
+     * The same name in English, for the {@code en_us} file.
+     *
+     * <p><b>A switch and not a lookup table, and the two are not interchangeable.</b> The
+     * Spanish one is a noun and goes in front of the weapon ("Ropera de Hierro"), because that is
+     * how Spanish builds it; English puts the material first and needs an adjective ("Iron
+     * Ropera"). So the English string cannot be assembled from the Spanish one by moving a
+     * space, and a table shared between the two languages would have to encode the grammar
+     * difference as data.</p>
+     *
+     * <p>{@code Netherite} is the same word in both, and that is not an oversight: it is Mojang's
+     * own spelling and inventing an English spelling for it would be worse than borrowing it.</p>
+     */
+    public String displayNameEn() {
+        return switch (this) {
+            case WOODEN -> "Wooden";
+            case STONE -> "Stone";
+            case COPPER -> "Copper";
+            case IRON -> "Iron";
+            case GOLDEN -> "Golden";
+            case DIAMOND -> "Diamond";
+            case NETHERITE -> "Netherite";
+        };
+    }
+
+    /**
      * The name a player reads, in Spanish, because that is the language this mod is written in.
      *
      * <p>Separate from {@link #id()} on purpose. The id is a registry name: it ends up in every

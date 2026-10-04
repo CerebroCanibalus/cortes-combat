@@ -29,6 +29,27 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  */
 public record ReachProfile(float distance, float horizontalAngle, float verticalAngle) {
 
+    /**
+     * **The weapon has no second cone.**
+     *
+     * <p>Not a zero cone and not a missing row: an explicit "there is nothing else here", which
+     * is the same shape as {@link WeaponProfile#NONE} and for the same reason. Thirty-one of the
+     * weapons in the game hit with the same cone they aim with, and the arcabuz is the only one
+     * that does not -- so the table needs a value that says "use the melee one" for every other
+     * row, and {@code null} would have made every reader null-check a map value to find out
+     * whether it was the interesting case.</p>
+     *
+     * <p>Zero distance is the test, and it is a distance nothing can be inside: {@code Reach}
+     * compares against it before any angle, so a caller that forgets to check gets an empty cone
+     * rather than a full-radius one.</p>
+     */
+    public static final ReachProfile NONE = new ReachProfile(0.0F, 0.0F, 0.0F);
+
+    /** Whether this profile is the "no second cone" one. */
+    public boolean isNone() {
+        return distance <= 0.0F;
+    }
+
     public static final ReachProfile UNARMED = new ReachProfile(3.0F, 25.0F, 20.0F);
 
     public static final Codec<ReachProfile> CODEC = RecordCodecBuilder.create(instance -> instance.group(

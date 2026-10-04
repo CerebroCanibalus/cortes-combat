@@ -113,6 +113,16 @@ class SoundPoolTest {
         List<String> missing = new ArrayList<>();
         for (var pool : pools().entrySet()) {
             for (String file : pool.getValue()) {
+                // **A vanilla name is resolved by the game and not by this jar.** The check exists
+                // because sounds.json naming a file nobody shipped is silence, and the arcabuz's
+                // fuse is exactly that kind of silence: `minecraft:entity.creeper.primed` is the
+                // closest thing the game has to a match lighting and there is no reason to ship a
+                // worse copy of it. Skipping namespaced-other entries here is not a loosening of
+                // the test -- the sibling below still catches every orphan FILE on disk, and a
+                // vanilla name cannot be an orphan file because the jar does not carry it.
+                if (file.contains(":")) {
+                    continue;
+                }
                 if (!onDisk.contains(file)) {
                     missing.add(pool.getKey() + " -> " + file);
                 }

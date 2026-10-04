@@ -3,6 +3,7 @@ package com.cortes.combat.client;
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.guard.GuardStats;
+import com.cortes.combat.net.SpecialHeldPayload;
 import com.cortes.combat.net.SpecialPayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
@@ -28,14 +29,53 @@ import net.neoforged.neoforge.network.PacketDistributor;
  */
 public final class SpecialInputHandler {
 
+    /**
+     * What the server was last told about the right button.
+     *
+     * <p>The client-side mirror of the attachment's flag, and it exists so the tick can decide
+     * whether a change is worth a packet. It is reset on logout by {@link #forget()} rather than
+     * left to the next join: a new session has a new window, and whatever the old one was doing is
+     * not a fact about this one.</p>
+     */
+    private static boolean lastSentHeld;
+
     private SpecialInputHandler() {
     }
 
+    /**
+     * The release, handled as its own event and not as the absence of a press.
+     *
+     * <p>The one thing this class must not do is send a packet per {@code MouseButton} event,
+     * because that event fires on press <em>and</em> on release. One click of the right button
+     * then became two: the press loaded the arcabuz, and the release -- a few hundredths of a
+     * second later -- found it loaded and lit the fuse. The gun fired on its own a second after
+     * being reloaded.</p>
+     *
+     * <p>{@code SwingInputHandler} has had the {@code getAction() == GLFW_PRESS} filter for the
+     * whole life of the project. The arcabuz is the only weapon where the damage showed up, because
+     * it is the only weapon where a press and a release twenty ticks apart mean two different
+     * things.</p>
+     */
     @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
         if (event.getButton() != InputConstants.MOUSE_BUTTON_RIGHT) {
             return;
         }
+        if (event.getAction() != org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+            return;
+        }
+        press();
+    }
+
+    /**
+     * The press, split out so the tick can ask the same question and reach the same answer.
+     *
+     * <p>{@link #reconcileWithTheButton()} answers "should the server hear about the button" every
+     * tick, and on the tick the button goes down that answer is yes and the press is sent from
+     * here. One place builds the packet, so a second route to it cannot disagree about the
+     * refusals.</p>
+     */
+    private static void press() {
         Minecraft mc = Minecraft.getInstance();
         // The button can be pressed on the title screen or while a world loads, and a null
         // connection there takes the render thread with it.
@@ -59,6 +99,18 @@ public final class SpecialInputHandler {
         }
 
         PacketDistributor.sendToServer(new SpecialPayload(player.getMainHandItem()));
+
+        // **And the button itself, before the press lands.**
+        //
+        // The server's reload advances on a flag this class owns, and that flag starts false. If
+        // the press arrived without it, the reload would begin and then sit at fifty ticks until
+        // the player let go and pressed again -- which is the "no reload time at all" bug wearing
+        // a different hat.
+        //
+        // Setting the local mirror here too, so the tick's reconciliation sees no change and does
+        // not send this a second time.
+        lastSentHeld = true;
+        PacketDistributor.sendToServer(new SpecialHeldPayload(true));
 
         // The sweep's arc, predicted on the press.
         //
@@ -106,5 +158,58 @@ public final class SpecialInputHandler {
                     ? weapon.material().rank() : 0;
             LungeMotion.begin(player, tier);
         }
+    }
+
+    /**
+     * Every tick, ask the window what the right button is doing.
+     *
+     * <p><b>Not the event stream, for the reason {@link SwingInputHandler} says it out loud.</b>
+     * GLFW does not deliver a release when the window loses focus with a button down, and a flag
+     * that only moves on events leaves the server believing a button is still held. The arcabuz's
+     * reload is the thing that would hang: a gun at forty of fifty ticks, waiting for a release
+     * that is never coming, until the player touched the mouse again.</p>
+     */
+    @SubscribeEvent
+    public static void onClientTick(net.neoforged.neoforge.client.event.ClientTickEvent.Post event) {
+        reconcileWithTheButton();
+        // The arcabuz's report, drawn on the client's own tick rather than on the packet's
+        // arrival: a particle wants a level, and arming on the packet and drawing on a tick
+        // means the effect happens at a frame the client chose.
+        ClientArcabuzShot.drawIfArmed();
+    }
+
+    /**
+     * The reconciliation, separate from the subscription so {@code /cc} can call it and so the
+     * decision can be reasoned about without a window.
+     *
+     * @return whether a packet was sent
+     */
+    public static boolean reconcileWithTheButton() {
+        Minecraft mc = Minecraft.getInstance();
+
+        // A window that is gone answers "not down", which sends the release and stops a reload
+        // rather than leaving it waiting. Same safe direction as every other question in
+        // InputLiveness, and for the same reason.
+        var window = mc.getWindow();
+        boolean down = InputLiveness.buttonIsDown(window != null,
+                window != null
+                        && org.lwjgl.glfw.GLFW.glfwGetMouseButton(window.getWindow(),
+                                org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT)
+                        != org.lwjgl.glfw.GLFW.GLFW_RELEASE);
+
+        if (mc.getConnection() == null || mc.level == null || mc.player == null) {
+            // Nothing to talk to. The mirror is cleared rather than kept, because the window it
+            // described belongs to a session that has ended, and a stale true here would swallow
+            // the first press of the next one.
+            lastSentHeld = false;
+            return false;
+        }
+
+        if (!InputLiveness.shouldSendHeldChange(lastSentHeld, down)) {
+            return false;
+        }
+        lastSentHeld = down;
+        PacketDistributor.sendToServer(new SpecialHeldPayload(down));
+        return true;
     }
 }

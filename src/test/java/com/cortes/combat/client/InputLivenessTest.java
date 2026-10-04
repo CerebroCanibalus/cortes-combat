@@ -87,4 +87,48 @@ class InputLivenessTest {
         assertTrue(InputLiveness.buttonIsDown(true, true));
         assertFalse(InputLiveness.buttonIsDown(true, false));
     }
+    /**
+     * The third question in this class, and it is the inverse of the other two.
+     *
+     * <p>The other two close a state the window says is over. This one keeps one <em>open</em>, and
+     * the arcabuz's reload cannot advance unless the server is told the button is down -- so a
+     * release that never arrives (GLFW drops it when the window loses focus with a button held)
+     * leaves a gun at forty of fifty ticks waiting for a press that is never coming.</p>
+     *
+     * <p>So the client reads the window every tick and sends only on a change. Four assertions: the
+     * two transitions, and the two quiet cases -- and the quiet cases are the half that matters,
+     * because a version that returned {@code true} always would also pass the first two.</p>
+     */
+    @Test
+    @DisplayName("a held change is sent on the transition and not on the tick after it")
+    void heldChangesAreSentOnTransitionsOnly() {
+        assertTrue(InputLiveness.shouldSendHeldChange(false, true),
+                "the button just went down and the server does not know");
+        assertTrue(InputLiveness.shouldSendHeldChange(true, false),
+                "and it just came up");
+
+        assertFalse(InputLiveness.shouldSendHeldChange(true, true),
+                "still held. Twenty packets a second to say one bit that has not changed");
+        assertFalse(InputLiveness.shouldSendHeldChange(false, false),
+                "and the same for the other direction");
+    }
+
+    /**
+     * And a window that is gone sends the release, because that is the safe direction.
+     *
+     * <p>Same reason every other question here treats a null handle as "not down": nothing stays
+     * latched to a window that is not there. A reload that keeps filling after the window closes
+     * is a gun the player loaded by logging out.</p>
+     */
+    @Test
+    @DisplayName("a window that is gone reads as not held")
+    void aWindowThatIsGoneIsNotHeld() {
+        assertFalse(InputLiveness.buttonIsDown(false, true),
+                "no window means the button cannot be down, whatever the raw state says");
+        assertTrue(InputLiveness.shouldSendHeldChange(true, false),
+                "and having read that, the server IS told to let go. The first version of this "
+                        + "assertion said false while its own message said the packet goes out, "
+                        + "which is a test that contradicts itself rather than one that is merely "
+                        + "wrong");
+    }
 }

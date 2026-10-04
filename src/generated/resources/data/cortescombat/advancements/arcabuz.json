@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_dispenser": {
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:dispenser"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "advancements.cortescombat.arcabuz"
+    },
+    "hidden": true,
+    "icon": {
+      "count": 1,
+      "id": "cortescombat:arcabuz"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "item.cortescombat.arcabuz"
+    }
+  },
+  "requirements": [
+    [
+      "has_dispenser"
+    ]
+  ]
+}

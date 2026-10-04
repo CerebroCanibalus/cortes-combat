@@ -1,5 +1,4 @@
 package com.cortes.combat.sound;
-
 import com.cortes.combat.core.weapon.WeaponProfile;
 
 import java.util.EnumMap;
@@ -65,6 +64,15 @@ public final class ModSounds {
          * declared at all. So the arcabuz borrows, and the borrowing is written down here rather
          * than left to whoever reads {@link #of}.</p>
          */
+        /**
+         * The fuse was struck. Vanilla's creeper hiss is the closest thing the game has to a match
+         * lighting, and at one and a half it is a fuse rather than a gunshot.
+         */
+        FUSE_LIT,
+        /** The reload started: the press, before any of the fifty ticks. */
+        RELOAD_START,
+        /** The reload finished and the firestone was paid for. */
+        LOADED,
         FUSEE
     }
 
@@ -72,7 +80,9 @@ public final class ModSounds {
     private static final Map<WeaponProfile, String> MISS = new EnumMap<>(WeaponProfile.class);
     private static final Map<WeaponProfile, String> CHARGED_HIT = new EnumMap<>(WeaponProfile.class);
 
-    /** The pitch the shotel adds to everything it borrows from the sword. */
+    /** The arcabuz's fuse: a vanilla event, named as a string and played as an event. */
+    private static final String FUSE_LIT_SOUND = "minecraft:entity.creeper.primed";
+
     public static final float SHOTEL_PITCH = 1.2F;
 
     /** The lunge plays far outside the range everything else does. */
@@ -108,7 +118,7 @@ public final class ModSounds {
      * <p>Written out rather than left to a fallback so that {@code ModSounds#of} has one arm per
      * kind with no "and otherwise vanilla" branch hiding a decision in it.</p>
      */
-    public static final String ARCABUZ_SHOT = "minecraft:entity.blaze.shoot";
+    public static final String ARCABUZ_SHOT = "cortescombat:arcabuz_shot";
 
     /**
      * How far down the blaze's shot is played for the arcabuz.
@@ -124,6 +134,22 @@ public final class ModSounds {
      * that plays it.</p>
      */
     public static final float ARCABUZ_SHOT_PITCH = 0.55F;
+
+    /**
+     * The fuse lighting, as a multiple of the creeper hiss it borrows.
+     *
+     * <p>Half a step up, and the only pitch here that is chosen against the recording rather than
+     * against another sound. {@code entity.creeper.primed} is a hiss with a long tail and every
+     * creeper on the map plays it, so a player who hears one has no way to tell an ignition from a
+     * creeper winding up. Raising it shortens the tail, which is what makes the two read as
+     * different events instead of the same one in a different place.</p>
+     *
+     * <p>It was silently 1.0 because the pitch ladder had no branch for {@link Kind#FUSE_LIT} and
+     * returns its default past the end. A {@code Kind} that is declared, registered in
+     * {@code sounds.json} and played is not thereby given a pitch; the ladder is a second list of
+     * the same kinds and it has to be told separately.</p>
+     */
+    public static final float ARCABUZ_FUSE_PITCH = 1.5F;
 
     static {
         HIT.put(WeaponProfile.SWORD, "cortescombat:sword_hit");
@@ -180,6 +206,13 @@ public final class ModSounds {
             case PARRY -> "cortescombat:shotel_parry";
             case CHARGE_FULL -> CHARGE;
             case FUSEE -> ARCABUZ_SHOT;
+        // **The three sounds the playtest asked for, by name.** A gunshot of our own now exists,
+        // so FUSEE stops borrowing the blaze and names it. RELOAD_START is the press and LOADED is
+        // the tick the firestone is paid for: two different moments of the same two and a half
+        // seconds, which is why they are two kinds rather than one sound played twice.
+        case RELOAD_START -> "cortescombat:arcabuz_reload";
+        case LOADED -> "cortescombat:arcabuz_loaded";
+        case FUSE_LIT -> FUSE_LIT_SOUND;
         };
     }
 
@@ -206,6 +239,23 @@ public final class ModSounds {
         // there is nothing to tell apart.
         if (kind == Kind.FUSEE) {
             return ARCABUZ_SHOT_PITCH;
+        }
+        // **The fuse, and the reason it is the one pitch in this file that is about the recording
+        // rather than about telling two borrows apart.**
+        //
+        // Every other branch here earns its number by separating two sounds a player might confuse.
+        // This one separates a sound from its own family: `entity.creeper.primed` is a hiss with a
+        // long tail, and every creeper on the map plays it, so the arcabuz lighting its fuse is
+        // indistinguishable from a creeper about to go off. Half a step up and it is not -- the tail
+        // shortens, and the "wrongness" that makes a creeper hiss read as an ignition.
+        //
+        // It was 1.0 because there was no case for it here at all, which is the shape this file
+        // keeps taking: a new `Kind` arrives, it is declared and it is played, and the pitch ladder
+        // quietly returns the default because nobody added the branch. The log is what said so --
+        // `'minecraft:entity.creeper.primed' pedido, pitch 1.0`, from a number in the source that
+        // reads 1.5 everywhere else.
+        if (kind == Kind.FUSE_LIT) {
+            return ARCABUZ_FUSE_PITCH;
         }
         if (kind == Kind.CHARGED_HIT
                 && !CHARGED_HIT.containsKey(resolved)) {

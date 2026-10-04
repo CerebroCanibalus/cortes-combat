@@ -54,6 +54,17 @@ public final class WeaponTables {
     private static final Map<WeaponProfile, KnockbackProfile> KNOCKBACK = new HashMap<>();
     private static final Map<WeaponProfile, SpecialType> SPECIAL = new HashMap<>();
 
+    /**
+     * The cone a weapon's <em>right button</em> hits with, which is {@link ReachProfile#NONE} for
+     * every weapon but the arcabuz.
+     *
+     * <p>A separate table and not a field on {@link ReachProfile}, because the two cones answer two
+     * different questions and a melee profile carrying a "and also this" is a profile whose name no
+     * longer says what it is. {@link WeaponStats#reach()} is what the left button hits with;
+     * {@link WeaponStats#shotReach()} is what the right button hits with.</p>
+     */
+    private static final Map<WeaponProfile, ReachProfile> SHOT_REACH = new HashMap<>();
+
     private WeaponTables() {
     }
 
@@ -118,25 +129,65 @@ REACH.put(WeaponProfile.AXE, new ReachProfile(3.4F, 35.0F, 25.0F));
         REACH.put(WeaponProfile.WARHAMMER, new ReachProfile(2.9F, 30.0F, 30.0F));
         // Sabre: the widest cone in the game, shortest range. It pays for that cone with a parry.
         REACH.put(WeaponProfile.SABRE, new ReachProfile(2.5F, 75.0F, 25.0F));
-        // Arcabuz: 4.0 of reach at 40 by 25.
+        // Arcabuz: the **bayonet**, and it is the melee cone, not the gun's.
         //
-        // **The only shape in the table that is long AND wide AND tight vertically**, and that is
-        // not a coincidence, it is what a shoulder-fired gun looks like from behind it: you reach
-        // out past anything a blade can touch, the spread is wide because it is a scattergun,
-        // and the vertical stays tight because you are aiming down a barrel rather than swinging
-        // an arc through the air.
+        // **Two point six and forty six by thirty five, and it is short on purpose.** The bayonet is
+        // a stabbing weapon on the end of a two block gun: it reaches about as far as a dagger and
+        // it has to be *short*, because a musket whose point-and-click also reaches four blocks is
+        // a weapon that does two unrelated jobs and charges for neither. The radius is generous --
+        // forty six degrees, wider than the sword's thirty five and only the dagger, the sabre and
+        // the halberd are wider -- so the poke is the forgiving weapon it should be.
         //
-        // Compare the two neighbours it has to sit between. The halberd is 4.2 by 55 by 35 and is
-        // wide in BOTH axes, which is a polearm describing an area on the ground. The trident is
-        // 4.0 by 15 by 20 and is narrow in both, which is a stabbing line. Four by forty by
-        // twenty five is neither of those, and there is no other weapon in the game that wants
-        // it.
+        // **Forty six and not fifty, and that is a real constraint rather than taste.**
+        // {@code ConeSize} draws its band edges at the midpoints of the gaps in this table, and
+        // fifty is one of them. An angle that sits exactly on an edge puts the weapon in whichever
+        // band the comparison picks, and a knife-edge number is a number that flips the tooltip
+        // the next time somebody retunes anything next to it.
         //
-        // The vertical at twenty five is the second tightest in the game after the ropera's
-        // fifteen, and that is the axis the shot's whole identity lives on: this cone is wide
-        // enough to be a shotgun sideways and short enough that aiming at the feet of a zombie
-        // does not hit it.
-        REACH.put(WeaponProfile.ARCABUZ, new ReachProfile(4.0F, 40.0F, 25.0F));
+        // **The four by forty by twenty five this row used to hold is now the gun's, not the
+        // bayonet's.** It was one cone doing both jobs, and it was wrong for both: a left click that
+        // could hit something four blocks away was a bayonet with a rifle's reach, and the shot
+        // inherited a cone that belonged to a swing. See SHOT_REACH below for where those numbers
+        // went.
+        REACH.put(WeaponProfile.ARCABUZ, new ReachProfile(2.6F, 46.0F, 35.0F));
+    }
+
+    // --------------------------------------------------------------- shot reach --
+    //
+    // **The second cone, and only one weapon in the game has one.**
+    //
+    // The arcabuz hits with its bayonet on the left button and with its barrel on the right, and
+    // those are two different weapons doing two different things. Sharing one cone between them
+    // could not work: the numbers that make a stab forgiving make a shot useless, and the numbers
+    // that make a shot reach across a room make a stab silly. So the gun's cone is its own row and
+    // every other weapon carries ReachProfile.NONE.
+    //
+    // It is a table with a row for every profile rather than a nullable map because an absent row
+    // reads as an accident and this project has been bitten by exactly that: the ropera had no row
+    // in the special table and arrived with no right button at all, and the family enum one field
+    // away said LUNGE the whole time. NONE is a decision somebody wrote down.
+
+    static {
+        for (WeaponProfile profile : WeaponProfile.values()) {
+            SHOT_REACH.put(profile, ReachProfile.NONE);
+        }
+
+        // **Six and a half blocks at thirty two by twenty four.**
+        //
+        // Range: longer than anything else in the game, and it has to be. The halberd is the
+        // longest thing anyone holds at four point two, and a gun whose blast reaches exactly as
+        // far as a polearm is a polearm that costs a firestone.
+        //
+        // Radius: **thirty two, which is narrower than the melee cone the left click uses.** That
+        // is the part worth reading twice. A blast that scatters wide is a shotgun, and a shotgun
+        // that hits everything in front of you is the halberd with a worse reload. Thirty two at
+        // six and a half blocks is still eleven metres across at the target, which is a room --
+        // and it is aimed, so what the player points at is what the gun is for.
+        //
+        // The vertical stays tighter than the horizontal for the same reason it always has: you are
+        // looking down a barrel, not swinging an arc, and a wide vertical would make the gun hit
+        // the floor and the ceiling rather than what is in front of it.
+        SHOT_REACH.put(WeaponProfile.ARCABUZ, new ReachProfile(6.5F, 32.0F, 24.0F));
     }
 
     // --------------------------------------------------------------- charge --
@@ -311,6 +362,17 @@ CHARGE.put(WeaponProfile.AXE, new ChargeProfile(true, 2.0F, 60));
 
     public static SpecialType special(WeaponProfile profile) {
         return SPECIAL.get(profile);
+    }
+
+    /**
+     * The cone a weapon's right button hits with, or {@link ReachProfile#NONE}.
+     *
+     * <p>A caller that has {@code NONE} in hand wants {@link WeaponStats#reach()} instead, and
+     * {@link WeaponStats#shotReach()} is the accessor that does that for it rather than making
+     * thirty call sites remember.</p>
+     */
+    public static ReachProfile shotReach(WeaponProfile profile) {
+        return SHOT_REACH.get(profile);
     }
 
     /**

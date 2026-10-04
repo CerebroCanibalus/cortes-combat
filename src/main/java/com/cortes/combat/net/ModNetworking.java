@@ -36,7 +36,14 @@ public final class ModNetworking {
                     if (context.player() instanceof ServerPlayer sp) {
                         com.cortes.combat.special.SpecialHandler.resolve(sp, payload.stack());
                     }
-                });        registrar.playToClient(CombatStatePayload.TYPE, CombatStatePayload.STREAM_CODEC,
+                });        registrar.playToServer(SpecialHeldPayload.TYPE,
+                SpecialHeldPayload.STREAM_CODEC,
+                (payload, context) -> {
+                    if (context.player() instanceof ServerPlayer sp) {
+                        com.cortes.combat.special.Arcabuz.setHeld(sp, payload.held());
+                    }
+                });
+        registrar.playToClient(CombatStatePayload.TYPE, CombatStatePayload.STREAM_CODEC,
                 ModNetworking::handleCombatState);
         registrar.playToClient(DebugTogglePayload.TYPE, DebugTogglePayload.STREAM_CODEC,
                 ModNetworking::handleDebugToggle);
@@ -46,6 +53,17 @@ public final class ModNetworking {
                 ModNetworking::handleParryState);
         registrar.playToClient(ArcabuzFusePayload.TYPE, ArcabuzFusePayload.STREAM_CODEC,
                 ModNetworking::handleArcabuzFuse);
+
+        // "You fired", and the things it reached. The server cannot place the muzzle flash --
+        // the weapon's transform is the client's, and the only point the server can produce is
+        // the player's eye, which is on the view axis and reads as the screen flickering. So it
+        // says WHAT happened and the client works out WHERE the gun is.
+        registrar.playToClient(ArcabuzShotPayload.TYPE, ArcabuzShotPayload.STREAM_CODEC,
+                (payload, context) -> {
+                    if (context.player() instanceof net.minecraft.client.player.LocalPlayer) {
+                        com.cortes.combat.client.ClientArcabuzShot.arm(payload.targets());
+                    }
+                });
         registrar.playToClient(DelayedSoundPayload.TYPE, DelayedSoundPayload.STREAM_CODEC,
                 (payload, context) -> {
                     if (context.player() instanceof net.minecraft.client.player.LocalPlayer p) {
@@ -73,17 +91,26 @@ public final class ModNetworking {
      */
     private static void handleArcabuzFuse(ArcabuzFusePayload payload, IPayloadContext context) {
         com.cortes.combat.client.ArcabuzFuseState.accept(
-                payload.lit(), payload.fuseTicks(), payload.loaded());
+                payload.lit(), payload.fuseTicks(), payload.loaded(), payload.reloadTicks());
     }
 
     /**
      * Tell one player what the arcabuz is doing, so the model can burn through the fuse.
      *
-     * @param fuseTicks the whole fuse length, or zero when it has gone off
+     * <p><b>Four numbers and they are four states, not one state with decoration.</b> Every call
+     * site below says which of them it is sending, because the two that were wrong before were
+     * wrong in exactly this way: the lit packet used to say {@code loaded = false} and the press
+     * used to say nothing at all, so the client spent a second showing an unloaded gun and a
+     * reload with no motion on it.</p>
+     *
+     * @param fuseTicks   the whole fuse length on the light, or zero otherwise
+     * @param loaded      whether the chamber holds its charge; <b>true while the fuse burns</b>
+     * @param reloadTicks ticks of loading left, zero when no reload is running
      */
     public static void sendArcabuzFuse(ServerPlayer player, boolean lit, int fuseTicks,
-                                       boolean loaded) {
-        PacketDistributor.sendToPlayer(player, new ArcabuzFusePayload(lit, fuseTicks, loaded));
+                                       boolean loaded, int reloadTicks) {
+        PacketDistributor.sendToPlayer(player,
+                new ArcabuzFusePayload(lit, fuseTicks, loaded, reloadTicks));
     }
 
     /**

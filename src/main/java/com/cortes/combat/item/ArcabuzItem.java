@@ -52,6 +52,14 @@ public final class ArcabuzItem extends SwordItem {
      *
      * <p>Two components and the attributes. Every number is read from {@link ArcabuzStats}, so
      * this class is an adapter and nothing here is a second copy of anything.</p>
+     *
+     * <p><b>And the gun's cone, which is the third component and the only weapon that carries
+     * one.</b> The arcabuz hits with a bayonet on the left and a barrel on the right, so the item
+     * states both: {@link ModComponents#REACH_PROFILE} is the two and a half block stab and
+     * {@link ModComponents#SHOT_REACH} is the six and a half block blast. Writing them here rather
+     * than leaving both to the table is the difference between a weapon that says what it is and
+     * one that happens to resolve to it -- and it is also what lets the crosshair show the right
+     * cone without the display code knowing anything about which weapon is special.</p>
      */
     public static Item.Properties properties() {
         return new Item.Properties()
@@ -59,6 +67,7 @@ public final class ArcabuzItem extends SwordItem {
                 .attributes(SwordItem.createAttributes(ArcabuzTier.INSTANCE,
                         ArcabuzStats.DAMAGE, ArcabuzStats.SPEED_OFFSET))
                 .component(ModComponents.WEAPON_PROFILE.get(), WeaponProfile.ARCABUZ)
+                .component(ModComponents.SHOT_REACH.get(), WeaponTables.shotReach(WeaponProfile.ARCABUZ))
                 .component(ModComponents.GUARD_PROFILE.get(), GuardProfile.NONE);
     }
 

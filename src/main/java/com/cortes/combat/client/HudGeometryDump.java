@@ -40,7 +40,8 @@ public final class HudGeometryDump {
         // else from it, so a throwaway is not a lie about what is being measured.
         int guiWidth = mc.getWindow().getGuiScaledWidth();
         int guiHeight = mc.getWindow().getGuiScaledHeight();
-        ReachProfile reach = WeaponStats.of(player.getMainHandItem()).reach();
+        // The cone the brackets actually drew, which is the one /cc hud exists to explain.
+        ReachProfile reach = WeaponStats.of(player.getMainHandItem()).displayedReach();
         double fov = mc.options.fov().get();
 
         ConeGauge.Geometry g = ConeGauge.geometry(reach.horizontalAngle(), guiWidth, guiHeight,

@@ -74,6 +74,20 @@ public final class SlashSprite {
         BY_PROFILE.put(WeaponProfile.HALBERD, "alabarda_hit");
         BY_PROFILE.put(WeaponProfile.WARHAMMER, "martillo_hit");
         BY_PROFILE.put(WeaponProfile.ROPERA, "ropera_hit");
+        // **The bayonet borrows the daga's stab, and it used to fall through to the sword.**
+        //
+        // There was no row here for the arcabuz, so `of` returned the FALLBACK -- which is
+        // `sword_hit` -- and a bayonet poke drew a sword's slash. The player saw a sword arc on a
+        // gun, which is worse than no effect at all: it says the weapon is something it is not.
+        //
+        // **The daga and not a sprite of its own**, and the reason is the shape rather than the
+        // convenience: the bayonet is a *stab*, the daga is this game's stab, and the two are the
+        // same kind of motion at the same scale. `axe_hit` is a chop and `martillo_hit` is a
+        // collapse, and a third of the two reads as a different weapon's swing.
+        //
+        // If a bayonet strip is ever drawn, this is the one line to change, and the list above grows
+        // at the end so no existing index moves.
+        BY_PROFILE.put(WeaponProfile.ARCABUZ, "daga_hit");
     }
 
     private SlashSprite() {

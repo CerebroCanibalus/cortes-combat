@@ -68,4 +68,29 @@ public final class InputLiveness {
     public static boolean buttonIsDown(boolean windowExists, boolean rawButtonState) {
         return windowExists && rawButtonState;
     }
+
+    /**
+     * Whether the server has to be told the right button changed state.
+     *
+     * <p><b>The inverse question from the two above, and it needs the same trust.</b> Those close a
+     * state the window says is over. This one keeps one <em>open</em>, and a reload that only
+     * advances while the button is down cannot be advanced by an event the window might never
+     * deliver: the player alt-tabs with the button held, the release never arrives, and the server
+     * is still waiting for a press that will never come.</p>
+     *
+     * <p>So the client reads the button every tick and sends <b>only on a change</b>. A packet a
+     * tick would be twenty a second of "still holding" to say one bit, and the bit is the same
+     * nineteen times out of twenty.</p>
+     *
+     * <p>Symmetric with {@link #buttonIsDown(boolean, boolean)} on purpose: a window that is gone
+     * answers "not down", which sends {@code false} and stops a reload that is already running.
+     * Both directions of that choice point at the same place: nothing stays latched to a window
+     * that is not there.</p>
+     *
+     * @param lastSent what the server currently believes, or {@code false} before anything was sent
+     * @param buttonDown what the window says about the right button, right now
+     */
+    public static boolean shouldSendHeldChange(boolean lastSent, boolean buttonDown) {
+        return lastSent != buttonDown;
+    }
 }

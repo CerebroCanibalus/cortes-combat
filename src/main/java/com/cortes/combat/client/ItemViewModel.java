@@ -287,15 +287,49 @@ public final class ItemViewModel {
      * signal" question.</p>
      */
     public static void tickArcabuz() {
-        var fuse = com.cortes.combat.client.ArcabuzFuseState.class;
+        // **The client's own countdown, advanced HERE, before anything reads it.** This call is the
+        // fix for "the reload animation never appears", and the method it calls
+        // (`ArcabuzFuseState#tick`) had **no callers at all** -- the third dead method in this
+        // project after the sabre's BREAK and `ViewModelMotion#onReload`.
+        //
+        // The chain was entirely silent. The server sent `reloadTicks = 50` on the press, the
+        // client stored it, and with nothing decrementing it `reloadProgress()` evaluated
+        // `1 - 50/50` on every frame until the player let go. The RELOAD channel was therefore
+        // pinned at zero for the entire reload, and a channel at zero is indistinguishable from a
+        // channel that was never wired up -- which is exactly how it read: "the animation does not
+        // happen", rather than "the animation is being told to do nothing".
+        //
+        // Before the reads, not after: the countdown belongs to the tick that is happening, and
+        // every reader below wants the value this tick rather than the one the last one left.
+        com.cortes.combat.client.ArcabuzFuseState.tick();
         MOTION.observeLoaded(com.cortes.combat.client.ArcabuzFuseState.isLoaded());
+        // **And the reload, which was the arcabuz's only channel with nothing driving it.** The
+        // server sends the count and the motion runs off it, so the movement lasts fifty ticks
+        // exactly when the player is holding the button for fifty ticks.
+        MOTION.observeReloading(com.cortes.combat.client.ArcabuzFuseState.reloadProgress());
+        // **The sparks, on the edge and only on the edge.** The fuse going from unlit to lit is
+        // already one packet the server sends on the press, and the client was holding the answer
+        // in a field it was not reading. Called from here because this is the place that already
+        // looks at the fuse every tick, so the effect and the channel it belongs to cannot drift
+        // apart by a frame.
+        ClientArcabuzShot.sparkIfTheFuseWasJustLit(net.minecraft.client.Minecraft.getInstance());
         MOTION.observeFuse(com.cortes.combat.client.ArcabuzFuseState.isBurning(),
                 com.cortes.combat.client.ArcabuzFuseState.fuseTicks());
     }
 
-    /** A weapon that is not the arcabuz forgets all three of its channels. */
+    /**
+     * A weapon that is not the arcabuz forgets all three of its channels.
+     *
+     * <p><b>The client's own numbers go with them, not just the motion.</b> It used to clear only
+     * {@code MOTION}, which left the countdown and the loaded flag sitting in
+     * {@link ArcabuzFuseState}: draw the arcabuz, start a reload, swap to a sword and back, and
+     * the client would find a reload forty ticks old that the server had long since cancelled.
+     * The motion was being reset from a source that still held the answer.</p>
+     */
     public static void clearArcabuz() {
         MOTION.clearHeld();
+        ArcabuzFuseState.clear();
+        ClientArcabuzShot.clear();
     }
 
     /** The swing was abandoned: released, cancelled, or the item changed under us. */
@@ -445,6 +479,19 @@ public final class ItemViewModel {
      */
     public static float chargeAt(float partialTick) {
         return MOTION.chargeAt(partialTick);
+    }
+
+    /**
+     * The arcabuz's recoil, interpolated exactly the way the charge is.
+     *
+     * <p><b>Exposed as a channel and not read from the fuse state.</b> The recoil is four ticks
+     * that started when the fuse went out; the fuse state knows whether a fuse is burning and
+     * knows nothing about whether the recoil is still running. The motion knows, and it is also
+     * what is drawing the weapon on the same frame -- so the field of view and the barrel read one
+     * number on one frame and cannot come apart by a tick.</p>
+     */
+    public static float recoilAt(float partialTick) {
+        return MOTION.shootAt(partialTick);
     }
 
     /** The charge the last strike was classified as: 0 for a tap. Not the amplitude. */

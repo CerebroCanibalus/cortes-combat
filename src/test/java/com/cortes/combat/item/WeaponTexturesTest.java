@@ -57,6 +57,19 @@ class WeaponTexturesTest {
         // it. A texture that nothing claims is exactly the state this whole file exists to prevent,
         // and the fix is to name it here rather than to loosen the test.
         names.add("firestone");
+
+        // **And NOT the arcabuz, which looks like it belongs here and does not.**
+        //
+        // It is registered by hand like the firestone, so the catalogue cannot see it, and it has a
+        // hand-drawn PNG -- so the obvious move was to add it and be done. That put a 64x320
+        // hand-drawn model into an audit written about icons: "four families at 16x16 and the
+        // halberd at 32x32, and a third size means somebody rescaled one texture and not its
+        // siblings."
+        //
+        // The arcabuz's own texture is not an icon and never was. It is `arcabuz_fuse_0`, the top
+        // frame of a five frame strip, under `textures/item/arcabuz_fuse/` -- below the top level,
+        // so this test already skips it for the reason it skips a subfolder. The strip that lives
+        // beside it is the fuse, drawn by a model that is only selected while a fuse is lit.
         return names.stream();
     }
 
@@ -110,6 +123,13 @@ class WeaponTexturesTest {
         // wearing a different hat.
         var sizes = new java.util.TreeSet<String>();
         everyItemName().forEach(name -> {
+            // **The arcabuz is not in here, and that is the correct answer, not an exemption.**
+            //
+            // This audit is about the thirty catalogue weapons: four families at 16x16 and the
+            // halberd at 32x32, and a third size means somebody rescaled one texture and not its
+            // siblings. The arcabuz is a hand-drawn 64x320 model and its texture is the top frame of
+            // the fuse strip, under `textures/item/arcabuz_fuse/` -- below the top level of this
+            // folder, so `everyItemName()` never reaches it and nothing has to be excluded here.
             try {
                 var image = javax.imageio.ImageIO.read(TEXTURES.resolve(name + ".png").toFile());
                 sizes.add(image.getWidth() + "x" + image.getHeight());

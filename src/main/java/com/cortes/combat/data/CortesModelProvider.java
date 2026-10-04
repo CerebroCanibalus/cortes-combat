@@ -195,18 +195,17 @@ private boolean handDrawn(ResourceLocation id) {
         // arcabuz specifically instead of reading it off WeaponFamily.
         futures.add(write(cached, null, ModItems.FIRESTONE.get(), false,
                 // **The copper nugget's texture, deliberately.**
+                // **Its own texture, which now exists.**
                 //
-                // A firestone has no art of its own yet and a placeholder that exists beats a
-                // placeholder that does not: the missing-model cube is loud and a copper nugget
-                // labelled "Firestone" is obviously temporary. Reusing the file rather than
-                // copying it also means the jar carries one PNG instead of two identical ones,
-                // and swapping in a real texture later is a one-word change here.
+                // This was the copper nugget's, deliberately, back when the firestone had no art:
+                // a placeholder that exists beats the missing-model cube. The playtest then reported
+                // the firestone showing the nugget sprite, which is the placeholder having done
+                // exactly its job for exactly as long as it was needed.
                 //
-                // Naming it explicitly rather than by the item's own path is the whole reason
-                // `write` grew an overload: the default names layer0 after the item, which would
-                // have pointed at textures/item/firestone.png -- a file that does not exist, and
-                // one WeaponTexturesTest's orphan check would then have failed on.
-                ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "item/copper_nugget")));
+                // Still named explicitly rather than left to the item's own path: `write` grew that
+                // overload for this call, and dropping the argument now would delete the reason it
+                // exists.
+                ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "item/firestone")));
 
         return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
     }

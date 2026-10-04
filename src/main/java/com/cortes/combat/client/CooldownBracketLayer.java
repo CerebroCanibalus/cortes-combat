@@ -65,7 +65,8 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
 
         int centreX = HudAnchor.centreX(graphics);
         int centreY = HudAnchor.centreY(graphics);
-        ReachProfile reach = WeaponStats.of(player.getMainHandItem()).reach();
+        // **displayedReach and not reach.** The brackets measure what the player's button will do, and on the arcabuz that is the barrel: six and a half blocks at thirty two degrees, while the left click is a two and a half block bayonet at fifty. A crosshair that described the bayonet while the player is aiming the gun is a marker lying about the thing they are about to do.
+        ReachProfile reach = WeaponStats.of(player.getMainHandItem()).displayedReach();
 
         // One geometry, computed once, and the same one the /cc hud diagnostic prints. The bar
         // and the brackets both measure from it, and a second copy of it is a second chance to

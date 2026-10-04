@@ -81,6 +81,18 @@ public final class ChargeFovEffect {
      */
     private static final float OPENING = 0.18F;
 
+    /**
+     * How much the FOV closes at the end of a full arcabuz reload, in degrees.
+     *
+     * <p><b>Not the same number as {@link #MAX_NARROWING} on purpose, and not a second use of
+     * it.</b> Two tenths against the charge's two tenths and two tenths, but a reload is fifty
+     * ticks of holding a button and a charge is a second of holding a button, so the same number
+     * held for two and a half times as long is two and a half times as much FOV movement on
+     * screen. The lesson {@link #MAX_NARROWING} already carries -- that a full degree is a lot --
+     * turns out to be about <em>time</em> as much as degrees.</p>
+     */
+    private static final float RELOAD_NARROWING = 0.30F;
+
     /** The narrowing currently on screen, in degrees. Never snapped while closing. */
     private static float narrowing;
 
@@ -104,10 +116,27 @@ public final class ChargeFovEffect {
                 narrowing = target;
             }
         }
-        if (narrowing <= 0.0F) {
-            return;
+        if (narrowing > 0.0F) {
+            event.setNewFovModifier(event.getNewFovModifier() - narrowing);
         }
-        event.setNewFovModifier(event.getNewFovModifier() - narrowing);
+        // **The recoil is applied after the guard and in the other direction, because it is a
+        // different thing and putting it in the same number broke it silently.**
+        //
+        // It used to be subtracted into the same `narrowing` the two closing effects share, which
+        // makes the total negative while a shot is punching, and the guard above returns on
+        // anything at or below zero. **So the one moment the view was supposed to open was the one
+        // moment the guard discarded it** -- the effect existed, it was computed every frame, and
+        // the playtest reported nothing at all, which is the same shape as a channel wired to
+        // nothing.
+        //
+        // No easing here, and that is deliberate: the recoil channel is already a four tick shape
+        // read from the same interpolated value that is drawing the weapon this frame. Easing a
+        // curve that is already the right length is the second smoothing pass this file's own
+        // MAX_NARROWING javadoc warns about -- two curves for one number, free to disagree.
+        float widening = recoilWidening();
+        if (widening > 0.0F) {
+            event.setNewFovModifier(event.getNewFovModifier() + widening);
+        }
     }
 
     /**
@@ -147,6 +176,70 @@ public final class ChargeFovEffect {
      * already continuous.</p>
      */
     private static float narrowingFor(LocalPlayer player) {
+        // **A max of two closing ones, and the recoil opens the view rather than closing it.** One of
+        // the three has to go the other way, and it cannot be folded into the same return:
+        // a charge and a reload both narrow, and a shot widens.
+        float narrowing = Math.max(chargeNarrowingFor(player), reloadNarrowing());
+        return narrowing;
+    }
+
+    /**
+     * The arcabuz's blast widens the field of view, the opposite sign to everything else here.
+     *
+     * <p><b>A punch, not a rush.</b> A recoil that opened the view over four ticks and closed it
+     * again would read as the world breathing in, which is what a sprint FOV effect looks like and
+     * has nothing to do with a gun going off. What a shot does to the eye is a punch: it happens
+     * at once and it is over.</p>
+     *
+     * <p><b>It goes through the same easing as the charge, not around it.</b> A discontinuity in
+     * a field of view reads as a glitch, and a four tick pulse is short enough that the easing is
+     * the thing that keeps it from being one.</p>
+     *
+     * <p>Smaller than the reload's, for the reason {@link #MAX_NARROWING} already gives: the
+     * arcabuz's own motion is the loud part and this only has to be felt.</p>
+     */
+    private static float recoilWidening() {
+        float bump = 1.0F - ItemViewModel.recoilAt(partialTick());
+        return RECOIL_WIDENING * Math.max(0.0F, Math.min(1.0F, bump));
+    }
+
+    /**
+     * How much the shot opens the field of view at full recoil, in degrees.
+     *
+     * <p><b>Two thirds of the reload's narrowing</b>, and lasting four ticks against fifty. The
+     * charge is a thing the player holds for a second and watches build; the shot is something
+     * the player did not ask to be startled by.</p>
+     */
+    private static final float RECOIL_WIDENING = 0.08F;
+
+    /**
+     * The arcabuz's half of the effect: the view closes a hair while it loads.
+     *
+     * <p>Asked for by name in the playtest -- "the screen should zoom in very slightly" -- and it
+     * is a separate number from {@link #MAX_NARROWING} rather than a second use of it because
+     * <b>the two have opposite shapes</b>. The charge is a burst that saturates near the top, so
+     * the camera snaps shut and holds; a reload is fifty ticks of the player holding a button
+     * waiting, and a camera that snapped shut for two and a half seconds would be a punishment
+     * rather than a cue. So this one is the progress itself, unbent, which is a slow creep the
+     * whole way.</p>
+     *
+     * <p>And it is deliberately smaller than the charge's: the arcabuz's own motion is small, and
+     * this is the third copy of the same information (the model leans, the FOV leans, the player is
+     * holding the button). Two tenths of a degree at the end of fifty ticks is felt and not
+     * argued with.</p>
+     */
+    private static float reloadNarrowing() {
+        float progress = clamp01(ArcabuzFuseState.reloadProgress());
+        if (progress <= 0.0F) {
+            return 0.0F;
+        }
+        return RELOAD_NARROWING * progress;
+    }
+
+    /**
+     * The charging half, unchanged: the original effect, with its saturation and its own floor.
+     */
+    private static float chargeNarrowingFor(LocalPlayer player) {
         ItemStack held = player.getMainHandItem();
         ChargeProfile profile = WeaponStats.of(held).charge();
         if (!profile.canCharge()) {

@@ -48,6 +48,13 @@ class ViewModelMotionTest {
         tick(false, 0.0F);
         assertEquals(0.0F, motion.windup(), 0.0F);
         assertEquals(0.0F, motion.strike(), 0.0F);
+        // **And the reload, which is the third of the three.** Added after shipping the arcabuz
+        // with the reload channel stuck at one in every idle frame -- which is exactly the bug this
+        // line would have caught, had the test existed. A channel that is correct only while the
+        // thing it draws is happening has no rest state, and the rest state is what every other
+        // frame reads.
+        motion.observeReloading(0.0F);
+        assertEquals(0.0F, motion.reload(), 0.0F, "an idle reload channel must be zero, not one");
     }
 
     @Test
@@ -165,5 +172,48 @@ class ViewModelMotionTest {
         tick(false, 0.0F);
         assertEquals(0.0F, motion.windup(), 0.0F, "letting go with no strike must not hold a wind-up");
         assertEquals(0.0F, motion.strike(), 0.0F);
+    }
+
+    /**
+     * The whole reload channel, in one place, because it has now been wrong in three distinct ways
+     * and a future one would not have been caught by any of the other tests in this file.
+     */
+    @Test
+    @DisplayName("the reload channel is the progress itself: zero at rest, one at the end")
+    void theReloadChannelIsTheProgressAndNotItsMirror() {
+        motion.observeReloading(0.0F);
+        assertEquals(0.0F, motion.reload(), 0.0F, "at rest");
+
+        motion.observeReloading(0.25F);
+        assertEquals(0.25F, motion.reload(), 1.0E-6F, "a quarter in");
+
+        motion.observeReloading(0.5F);
+        assertEquals(0.5F, motion.reload(), 1.0E-6F,
+                "halfway is half, not one -- the shipped version read one here and zero at the ends,"
+                        + " which is the inverse of a lean and a weapon that unfolds as it loads");
+
+        motion.observeReloading(1.0F);
+        assertEquals(1.0F, motion.reload(), 1.0E-6F, "loaded");
+    }
+
+    @Test
+    @DisplayName("a reload that ends or is cancelled comes back to zero")
+    void aFinishedOrCancelledReloadReturnsToZero() {
+        motion.observeReloading(1.0F);
+        assertEquals(1.0F, motion.reload(), 0.0F);
+        // The server sends a zero count on completion and on release, so zero is both "done" and
+        // "cancelled". The channel has to come back either way, or a gun that has been loaded once
+        // leans over for the rest of the session.
+        motion.observeReloading(0.0F);
+        assertEquals(0.0F, motion.reload(), 0.0F, "the gun must stand back up");
+    }
+
+    @Test
+    @DisplayName("progress outside zero to one is clamped, not trusted")
+    void theReloadChannelClampsItsInput() {
+        motion.observeReloading(-0.5F);
+        assertEquals(0.0F, motion.reload(), 0.0F, "negative is not a backwards reload");
+        motion.observeReloading(4.0F);
+        assertEquals(1.0F, motion.reload(), 1.0E-6F, "a count longer than the reload cannot lift it further");
     }
 }

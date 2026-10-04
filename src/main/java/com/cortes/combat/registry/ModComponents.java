@@ -47,8 +47,47 @@ public final class ModComponents {
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>>
             ARCABUZ_FUSE = component("arcabuz_fuse", Codec.INT);
 
+    /**
+     * A firestone is in the chamber of <b>this stack</b>.
+     *
+     * <p><b>On the stack and not in the player's attachment, and that is the fix for two bugs at
+     * once.</b> The chamber used to be a field on {@code ArcabuzState}, which is an attachment on
+     * the <em>player</em>, so the charge travelled with the player rather than with the gun: load a
+     * musket, swap to the other one, and the second came out of the inventory charged and ready to
+     * fire. The model lied about it too, because the client's mirror of the chamber was a static
+     * with no idea which stack it was describing, so the flintlock was drawn down on a gun that had
+     * never been loaded -- and once, down permanently.</p>
+     *
+     * <p>Read as "present", not as a boolean value, so an absent component means an empty gun and
+     * a gun that has never been loaded is indistinguishable from one that has just been fired.</p>
+     *
+     * <p>The cost of putting it here is the item-swap animation: writing a component on the stack
+     * the hand holds replaces the client's {@code ItemStack}, which is what moves the weapon sixty
+     * centimetres while it settles. That is the same write that used to happen sixty times a second
+     * for the fuse frame; here it is twice per shot, once on the reload completing and once at the
+     * shot. <b>Bounded, not free</b> -- suppressing it is the next thing this needs.</p>
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>>
+            ARCABUZ_CHAMBER = component("arcabuz_chamber", Codec.BOOL);
+
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ReachProfile>> REACH_PROFILE =
             component("reach_profile", ReachProfile.CODEC);
+
+    /**
+     * The cone a weapon's <b>right button</b> hits with, which only the arcabuz has.
+     *
+     * <p>Separate from {@link #REACH_PROFILE} and not a second field inside it, for the reason
+     * {@code WeaponTables}' second table gives: the two cones answer two different questions, and
+     * a melee profile carrying "and also this" is a profile whose name no longer says what it
+     * is. A weapon with none of this carries {@link ReachProfile#NONE} rather than leaving the
+     * component off, because an absent component reads as a bug and an explicit NONE reads as a
+     * decision.</p>
+     *
+     * <p>Same type and same codec as {@code REACH_PROFILE} on purpose: the shape is the same
+     * thing, and reusing the record means a datapack author writes one kind of number.</p>
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<ReachProfile>> SHOT_REACH =
+            component("shot_reach", ReachProfile.CODEC);
 
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ChargeProfile>> CHARGE_PROFILE =
             component("charge_profile", ChargeProfile.CODEC);

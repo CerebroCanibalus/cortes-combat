@@ -91,12 +91,20 @@ class ChopVersusThrustTest {
                 continue;
             }
 
-            // The arcabuz has neither, and that is a separate known gap: its left click is a
-            // bayonet poke and its profile was written for the right click's three states.
+            // The arcabuz used to have neither, and that was a real hole rather than a decision:
+            // its left click is a bayonet poke and its profile had been written for the
+            // right click's three states, so a swing moved nothing in first person.
+            //
+            // It reads STRIKE now. **A bayonet is a thrust**, and the reason to write that
+            // down is that the alternative was leaving a weapon whose primary
+            // button is silent -- the same shape as the sabre's dead BREAK channel.
             if (profile == WeaponProfile.ARCABUZ) {
-                assertFalse(of(profile).reads(Channel.STRIKE),
-                        "the arcabuz reads the strike channel, which it should not: it was written "
-                                + "for the fuse and has no left click motion of its own");
+                assertTrue(of(profile).reads(Channel.STRIKE),
+                        "the arcabuz's left click is a bayonet poke, and a poke is a thrust. "
+                                + "Without a STRIKE track the gun does not move when it hits");
+                assertFalse(of(profile).reads(Channel.CHOP),
+                        "and it is not a chop: the weapon is held two-handed and comes "
+                                + "forward, not down");
                 continue;
             }
             // **The four vanilla tools that have no viewmodel profile at all.**

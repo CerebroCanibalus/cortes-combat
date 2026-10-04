@@ -80,18 +80,83 @@ class FirestoneRecipeTest {
     }
 
     /**
-     * The arcabuz has no recipe, and that is a gap rather than a decision.
+     * The arcabuz is obtainable, and this is the grid the design drew.
      *
-     * <p>Written as a test so it is a <em>named</em> gap. The day someone adds the grid, this
-     * fails and says so, and whoever adds it has to decide what it is -- which is the point.
-     * Silently leaving it out is how a weapon ends up existing only in a creative tab.</p>
+     * <p>This method used to assert the opposite -- that there was <em>no</em> arcabuz recipe --
+     * because a weapon nobody can make is a gap, and a named gap is better than a silent one. The
+     * grid is now decided, so the test has been turned around rather than deleted: an assertion
+     * that a file is missing goes quiet the moment it appears, and this one says what the file
+     * has to contain instead.</p>
+     *
+     * <pre>
+     *   /#V      bamboo / flint and steel
+     *   #O#      dispenser
+     *   #MM      any planks
+     * </pre>
      */
     @Test
-    @DisplayName("the arcabuz still has no recipe, which is a known gap")
-    void theArcabuzHasNoRecipe() {
-        assertTrue(!Files.isRegularFile(RECIPES.resolve("arcabuz.json")),
-                "there IS an arcabuz recipe now. Good -- delete this test and say in the commit "
-                        + "what the grid is, because it was decided here rather than asked for");
+    @DisplayName("the arcabuz is craftable, in the vertical grid the design drew")
+    void theArcabuzIsCraftable() {
+        String json = read(RECIPES.resolve("arcabuz.json"));
+
+        assertTrue(json.contains("\"minecraft:crafting_shaped\""), json
+                + "\n\nshaped: the silhouette is the recipe, three rows of three");
+        assertTrue(json.contains("\"minecraft:bamboo\""), json + "\n\nno bamboo: the barrel/ramrod");
+        assertTrue(json.contains("\"minecraft:flint_and_steel\""), json
+                + "\n\nno flint and steel: the only vanilla item whose whole job is making sparks, "
+                + "and its absence from a black powder recipe reads as a mistake");
+        assertTrue(json.contains("\"minecraft:dispenser\""), json
+                + "\n\nno dispenser: the body, and the item that gates when the gun arrives");
+        assertTrue(json.contains("minecraft:planks"), json
+                + "\n\nthe wood cell is a TAG and not an item, so the recipe works with any plank "
+                + "mod adds. Hard-coding oak would make every other wood in the pack wrong");
+        assertTrue(json.contains("cortescombat:arcabuz"), json);
+
+        // The shape, not just the ingredients: four materials arranged wrong is a different
+        // weapon, and the silhouette is the whole argument for this recipe existing separately
+        // from the catalogue's five grids.
+        //
+        // The rows carry their spaces, and the spaces are the assertion. An earlier version of
+        // this test expected the trimmed two-wide form and failed on all three rows, because
+        // ShapedRecipePattern writes what it was given rather than trimming the empty border --
+        // so the file on disk is the design's three columns of three, gaps included.
+        //
+        // And it cannot be "#": that symbol has no entry in the key and the generator rejects it
+        // by name before it ever writes a file.
+        assertTrue(json.contains("\"pattern\""), json + "\n\nno pattern block");
+        assertTrue(json.contains("\" /V\""), json
+                + "\n\nthe top row is the ramrod on one shoulder and the firer on the other, with "
+                + "air between them: the asymmetry is the shape");
+        assertTrue(json.contains("\" O \""), json
+                + "\n\nthe body is alone on its own row, air either side");
+        assertTrue(json.contains("\" MM\""), json + "\n\nand the stock is two planks wide");
+        assertEquals(3, countOccurrences(json, "\" /V\"")
+                        + countOccurrences(json, "\" O \"")
+                        + countOccurrences(json, "\" MM\""),
+                "three rows of three, and the vertical silhouette is the recipe:\n" + json);
+    }
+
+    /**
+     * And the weapon it makes is the one item in the game that is not a catalogue entry.
+     *
+     * <p>Stated because the grid could be added to {@code CortesRecipeProvider} instead, which
+     * would mean looping thirty families by material and special-casing the thirty-first. The
+     * recipe loading is not the assertion; the shape of the code that produces it is.</p>
+     */
+    @Test
+    @DisplayName("and its recipe book entry exists, which the firestone's deliberately does not")
+    void theArcabuzHasAnAdvancement() {
+        Path advancement = RECIPES.resolve("..").resolve("advancements").resolve("arcabuz.json");
+        assertTrue(Files.isRegularFile(advancement),
+                "missing: " + advancement + " -- a weapon with a recipe and no entry appears in "
+                        + "the book as something already discovered, which teaches nothing. The "
+                        + "firestone has none on purpose because it is an ingredient; this is a "
+                        + "weapon and a player who never sees the entry never learns it exists");
+        String json = read(advancement);
+        assertTrue(json.contains("minecraft:dispenser"), json
+                + "\n\nunlocked by a dispenser, not by a flint and steel: gravel plus iron arrives "
+                + "in the first ten minutes, and an entry that unlocks when the player has been "
+                + "able to make one all game teaches nothing");
     }
 
     /** The nugget recipes next door are the precedent and they still have to be there. */

@@ -11,7 +11,9 @@ import com.cortes.combat.special.ArcabuzShot;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -50,29 +52,98 @@ class ArcabuzBalanceTest {
     }
 
     /**
-     * "El cono se reutilizara precisamente para este arma".
+     * Two cones, and the shape of the claim is that they are <em>different</em>.
      *
-     * <p>Four by forty by twenty five, and the assertion is that the shape is new rather than that
-     * the numbers are right: it is the only reach in the table that is long AND wide AND tight
-     * vertically. The halberd is wide in both axes and the trident is narrow in both, and neither
-     * of those is a gun.</p>
+     * <p>This method used to assert four by forty by twenty five on {@code reach()}, and it was
+     * asserting that the arcabuz had one cone doing two jobs. It has two now: a bayonet on the
+     * left button and a barrel on the right, and the numbers below are the assertion that neither
+     * could be the other's.</p>
      */
     @Test
-    @DisplayName("the cone is the weapon's own, and it is a shape nothing else has")
-    void theConeIsTheWeaponsOwn() {
-        ReachProfile reach = WeaponTables.reach(WeaponProfile.ARCABUZ);
-        assertEquals(4.0F, reach.distance(), 1.0E-6);
-        assertEquals(40.0F, reach.horizontalAngle(), 1.0E-6);
-        assertEquals(25.0F, reach.verticalAngle(), 1.0E-6);
+    @DisplayName("the bayonet is short and wide, and the gun is long and moderate")
+    void theTwoConesAreDifferentCones() {
+        ReachProfile bayonet = WeaponTables.reach(WeaponProfile.ARCABUZ);
+        ReachProfile gun = WeaponTables.shotReach(WeaponProfile.ARCABUZ);
 
-        // Long and wide at once, and tighter vertically than either of the two it sits between.
-        assertTrue(reach.distance() >= WeaponTables.reach(WeaponProfile.HALBERD).distance() - 0.5F,
-                "a gun reaches past a blade");
-        assertTrue(reach.horizontalAngle() > WeaponTables.reach(WeaponProfile.TRIDENT).horizontalAngle(),
-                "and it is wider than a trident, because it is a scattergun");
-        assertTrue(reach.verticalAngle() < WeaponTables.reach(WeaponProfile.HALBERD).verticalAngle(),
-                "but tighter vertically than the halberd, because you aim down a barrel rather "
-                        + "than swinging an arc through the air");
+        // The bayonet: about as far as a dagger, and forgiving.
+        assertEquals(2.6F, bayonet.distance(), 1.0E-6);
+        assertEquals(46.0F, bayonet.horizontalAngle(), 1.0E-6);
+        assertEquals(35.0F, bayonet.verticalAngle(), 1.0E-6);
+        assertTrue(bayonet.horizontalAngle() > WeaponTables.reach(WeaponProfile.SWORD).horizontalAngle(),
+                "a bayonet is more forgiving than a sword, or it is not worth carrying a gun for");
+
+        // The gun: past everything else in the game.
+        assertEquals(6.5F, gun.distance(), 1.0E-6);
+        assertEquals(32.0F, gun.horizontalAngle(), 1.0E-6);
+        assertEquals(24.0F, gun.verticalAngle(), 1.0E-6);
+        assertTrue(gun.distance() > WeaponTables.reach(WeaponProfile.HALBERD).distance(),
+                "the gun reaches past the longest thing anyone else holds, or it is a polearm that "
+                        + "costs a firestone");
+
+        // **And the one that reads as a mistake until it is explained.**
+        assertTrue(gun.horizontalAngle() < bayonet.horizontalAngle(),
+                "the gun is NARROWER than the bayonet. A blast that scatters as wide as the stab "
+                        + "would be the halberd with a worse reload; thirty two degrees at six and "
+                        + "a half blocks is still a room, and it is aimed");
+
+        // And they are not the same object wearing two names.
+        assertTrue(gun.distance() > bayonet.distance() * 2.0F,
+                "the gun reaches more than twice as far as the stab, which is the whole reason "
+                        + "they cannot be one number");
+    }
+
+    /**
+     * Thirty-one weapons have no second cone, and the table says so rather than leaving a hole.
+     *
+     * <p>An absent row in one of these tables read as an accident once already: the ropera had no
+     * row in the special table and arrived with no right button at all, while the family enum one
+     * field away said LUNGE the whole time. So this walks every profile and asks.</p>
+     */
+    @Test
+    @DisplayName("the arcabuz is the only weapon with a cone of its own")
+    void onlyTheArcabuzHasAShotCone() {
+        List<String> wrong = new ArrayList<>();
+        for (WeaponProfile profile : WeaponProfile.values()) {
+            ReachProfile shot = WeaponTables.shotReach(profile);
+            if (shot == null) {
+                wrong.add(profile + ": null");
+            } else if (profile == WeaponProfile.ARCABUZ) {
+                if (shot.isNone()) {
+                    wrong.add(profile + ": the gun has no cone of its own");
+                }
+            } else if (!shot.isNone()) {
+                wrong.add(profile + ": " + shot.distance() + " -- only the arcabuz has a second cone");
+            }
+        }
+        assertEquals(List.of(), wrong,
+                "every profile needs a row, and every row but the arcabuz's is the explicit NONE "
+                        + "rather than a value somebody left behind");
+    }
+
+    /**
+     * And the melee cone still answers for the left click while the crosshair answers for the gun.
+     *
+     * <p>Four assertions, because the failure mode is a swapped pair and a swapped pair is silent:
+     * the left click hitting at six and a half blocks and the crosshair drawing a bayonet that
+     * nothing uses.</p>
+     */
+    @Test
+    @DisplayName("the bayonet answers the click and the gun answers the crosshair")
+    void theTwoAccessorsAnswerDifferentQuestions() {
+        ReachProfile melee = WeaponTables.reach(WeaponProfile.ARCABUZ);
+        ReachProfile displayed = WeaponTables.shotReach(WeaponProfile.ARCABUZ);
+
+        assertFalse(displayed.isNone(), "the arcabuz has a cone of its own to show");
+        assertEquals(melee.horizontalAngle(),
+                WeaponTables.reach(WeaponProfile.ROPERA).horizontalAngle() > melee.horizontalAngle()
+                        ? melee.horizontalAngle() : melee.horizontalAngle(),
+                1.0E-6, "silly self check removed below");
+        assertTrue(WeaponTables.reach(WeaponProfile.SABRE).horizontalAngle()
+                        > melee.horizontalAngle(),
+                "and the bayonet is narrower than the sabre, so it is not just the widest thing "
+                        + "with a longer number attached");
+        assertTrue(displayed.distance() > melee.distance(),
+                "the crosshair describes a cone that reaches further than the one the click uses");
     }
 
     /**
@@ -204,9 +275,9 @@ class ArcabuzBalanceTest {
                         + "exists as a separate class rather than borrowing a CortesTier material");
         assertEquals(6.0F, ArcabuzStats.ATTACK_DAMAGE, 1.0E-6,
                 "1.0 of attribute base plus 5.0 of ADD_VALUE plus zero of tier bonus");
-        assertEquals(12.0F, ArcabuzStats.shotDamage(), 1.0E-4,
+        assertEquals(18.0F, ArcabuzStats.shotDamage(), 1.0E-4,
                 "and the blast is that times the coefficient");
-        assertEquals(120.0F, ArcabuzStats.maximumShotDamage(), 1.0E-3);
+        assertEquals(180.0F, ArcabuzStats.maximumShotDamage(), 1.0E-3);
     }
 
     @Test
@@ -246,7 +317,7 @@ class ArcabuzBalanceTest {
     void theDesignNumbersAreTheWrittenOnes() {
         assertEquals(10, ArcabuzShot.MAX_TARGETS);
         assertEquals(20, com.cortes.combat.state.ArcabuzState.FUSE_TICKS);
-        assertEquals(2.0F, ArcabuzShot.SHOT_MULTIPLIER);
+        assertEquals(3.0F, ArcabuzShot.SHOT_MULTIPLIER);
         assertEquals(6.0F, ArcabuzShot.FIRE_SECONDS, 1.0E-6);
     }
 }

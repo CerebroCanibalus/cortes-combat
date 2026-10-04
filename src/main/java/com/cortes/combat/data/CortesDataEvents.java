@@ -62,7 +62,16 @@ public final class CortesDataEvents {
         // conversion without the loop growing an if, and the catalogue's whole value is that it
         // has none.
         event.createProvider(FirestoneRecipes::new);
-        event.createProvider(CortesLanguageProvider::new);
+        // And the arcabuz, the thirty-first item and the last one that had no way to be made. It
+        // is a weapon and not an ingredient, so it is the one non-catalogue recipe that does carry
+        // an advancement: a player who never sees this entry never learns the gun exists, which is
+        // exactly what happened for as long as the grid was missing.
+        event.createProvider(ArcabuzRecipes::new);
+        // Two language files, as two providers. The English one is not optional: en_us is what
+        // Minecraft runs in until a player opens the options menu, so a mod with only es_es
+        // shows every item's translation key to anyone who has not done that.
+        event.addProvider(new CortesLanguageProvider(event.getGenerator().getPackOutput(), "es_es"));
+        event.addProvider(new CortesLanguageProvider(event.getGenerator().getPackOutput(), "en_us"));
 
         // Built by hand for the existing-file helper, the same as the tags provider: no
         // createProvider overload takes it, and without it the model provider overwrites the six

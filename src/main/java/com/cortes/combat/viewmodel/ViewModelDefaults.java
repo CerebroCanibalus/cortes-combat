@@ -523,18 +523,74 @@ public final class ViewModelDefaults {
                 // IDLE: a long gun held across the body, muzzle slightly down and forward.
                 new Offset(0.0, -0.06, 0.10, -12.0, 0.0, 0.0),
                 true,
-                // LOADED: the flintlock comes down onto the pan and the gun squares up.
-                Track.of(Channel.HELD, Curve.LINEAR,
-                        new Offset(0.0, -0.10, -0.06, 22.0, 0.0, 0.0)),
-                // RELOAD: muzzle down and to the side, the hand at the pan, and back in half a
-                // second. The only track in this file that moves the weapon sideways, because it
-                // is the only moment a long gun is not pointing where it is aimed.
-                Track.of(Channel.RELOAD, Curve.LINEAR,
-                        new Offset(0.04, -0.30, 0.24, 46.0, 0.0, 0.0)),
-                // SHOOT: the recoil. It kicks the weapon up and back and then comes down over the
-                // rest of the burn, so the rate of the return IS the fuse and nothing else.
-                Track.of(Channel.SHOOT, Curve.LINEAR,
-                        new Offset(0.0, 0.14, -0.30, -34.0, 0.0, 0.0)));
+                  // LOADED: the gun comes DOWN and forward, and no rotation at all.
+                  //
+                  // **The pitch is deliberately zero, and that is a decision, not an omission.**
+                  // This axis was flipped once on a convention that had been verified for the
+                  // *third person* body (PlayerModelMixin) and then applied here, in first person,
+                  // without ever checking it in this frame. The playtest answered: the gun now
+                  // aims at the sky. That was the third correction on this number, so it is out.
+                  //
+                  // **What replaces it is a claim that can be checked by reading.** dy is the
+                  // screen Y axis, so negative is down and positive is up, with no convention to
+                  // import from anywhere. That makes "the flintlock comes down when it is loaded"
+                  // a statement about one number in one direction, which is the only kind this
+                  // project can afford after three playtests went into a sign.
+                  // **And the depth is half of what it was, because the playtest said "too low".**
+                  // Ten centimetres down from a rest that is already six is a gun at the player's
+                  // knees; five is a gun that has been brought down onto the pan and no further.
+                  Track.of(Channel.HELD, Curve.LINEAR,
+                          new Offset(0.0, -0.05, -0.06, 0.0, 0.0, 0.0)),
+                  // RELOAD: the hand going to the pan, down and to the side. The only track in
+                  // this file that carries roll, because that is what makes it read as *ladeado*
+                  // rather than as a weapon that slid sideways.
+                  //
+                  // **This offset has now been cut twice and tripled once, and the three numbers
+                  // are the three things that were wrong with it.** It started at z = 0.24 -- a
+                  // quarter of a block *toward the camera* -- with a pitch of 46, written back when
+                  // the channel was a ten tick bump that nothing in the game ever started, so it
+                  // had never been seen on screen once. The first time it ran, it dragged the
+                  // weapon into the lens and the playtest called the gun enormous. Cutting it to
+                  // five centimetres and sixteen degrees overcorrected into invisibility: the next
+                  // playtest said the reload had no motion at all. Twelve centimetres and sixteen
+                  // degrees on a first person arm is not a movement, it is noise -- the weapon has
+                  // to travel far enough that the eye reads it as an arm moving rather than a
+                  // model drifting. This is the third cut, and the first one to have been chosen
+                  // by watching the reload rather than by reasoning about how far twenty
+                  // centimetres looks.
+                  Track.of(Channel.RELOAD, Curve.LINEAR,
+                          new Offset(0.10, -0.26, 0.10, 34.0, 0.0, 14.0)),
+                // SHOOT: the recoil, four ticks, started by the fuse going out.
+                  // up and back" while every sign pointed it down and toward the lens. The playtest
+                  // called it "it goes down instead of forward", which is this line, read correctly
+                  // for the first time.
+                  Track.of(Channel.SHOOT, Curve.LINEAR,
+                          new Offset(0.0, -0.16, 0.26, 30.0, 0.0, 0.0)),
+                // The bayonet. This is the left click, and it was the one hole in the profile:
+                // the three tracks above are all the RIGHT button, so a swing did nothing at all in
+                // first person -- the gun stayed exactly where it was while it hit.
+                //
+                // **A thrust, and not a chop, and barely a rotation.** A bayonet poke is mostly
+                // translation: the weapon goes forward a little and stays pointed where it was
+                // aimed. The ropera's is 0.62 into the screen and sixty degrees of pitch, which is
+                // right for a one-handed lunge and wrong here twice over -- a musket is held in
+                // both hands and pivots through the shoulder rather than the wrist, and its point
+                // is a bayonet rather than a metre and a half of rapier. So this is under half
+                // the push and under a quarter of the rotation.
+                //
+                // The pitch is negative because the rest is twelve degrees nose-down and a jab
+                // brings the muzzle level: it is the difference between the size of that change
+                // and nothing more.
+                //
+                // **These numbers are written, not played.** What a bayonet poke should read like
+                // on screen is a playtest question, and it is a short one to answer because the
+                // weapon has a point in frame that moves about a hand's width.
+                Track.of(Channel.STRIKE, Curve.EXPO,
+                        new Offset(0.0, -0.02, -0.28, -14.0, 0.0, 0.0)),
+                // And back. The overshoot is what makes it a jab rather than a machine returning
+                // to a position, which is the same reason the ropera's recover goes past the line.
+                Track.of(Channel.RECOVER, Curve.SMOOTH,
+                        new Offset(0.0, 0.01, 0.09, 6.0, 0.0, 0.0)));
     }
 
     /**

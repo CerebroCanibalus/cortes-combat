@@ -95,7 +95,7 @@ class ArcabuzShotTest {
     /**
      * The swing's damage and the shot's damage are one number and one coefficient.
      *
-     * <p>This is the whole reason {@code SHOT_MULTIPLIER} is a multiplier. An absolute twelve in
+     * <p>This is the whole reason {@code SHOT_MULTIPLIER} is a multiplier. An absolute eighteen in
      * {@code ArcabuzShot} would have been a second place the weapon's damage is written down, and
      * the first of the two to be retuned would have been the one nobody noticed.</p>
      */
@@ -103,13 +103,13 @@ class ArcabuzShotTest {
     @DisplayName("the blast is the weapon's own damage times the coefficient")
     void theShotIsAMultipleOfTheWeapon() {
         float attackDamage = com.cortes.combat.item.ArcabuzStats.ATTACK_DAMAGE;
-        assertEquals(2.0F, ArcabuzShot.SHOT_MULTIPLIER);
-        assertEquals(attackDamage * 2.0F, ArcabuzShot.damageFor(attackDamage), 1.0E-6);
+        assertEquals(3.0F, ArcabuzShot.SHOT_MULTIPLIER);
+        assertEquals(attackDamage * 3.0F, ArcabuzShot.damageFor(attackDamage), 1.0E-6);
         assertEquals(ArcabuzShot.SHOT_MULTIPLIER * attackDamage,
                 com.cortes.combat.item.ArcabuzStats.shotDamage(), 1.0E-6,
                 "the item's own answer and the shot's answer are one multiplication, read twice");
 
-        assertEquals(12.0F, ArcabuzShot.damageFor(6.0F), 1.0E-6,
+        assertEquals(18.0F, ArcabuzShot.damageFor(6.0F), 1.0E-6,
                 "and 6.0 of attack damage is what the arcabuz actually gives a player");
     }
 
@@ -121,9 +121,9 @@ class ArcabuzShotTest {
      * would have no reason to cost a firestone and a second.</p>
      */
     @Test
-    @DisplayName("a full blast is a hundred and twenty, which kills a husk six times over")
+    @DisplayName("a full blast is a hundred and eighty, which kills a husk six times over")
     void theCeilingIsAHundredAndTwenty() {
-        assertEquals(120.0F, ArcabuzShot.maximumDamage(6.0F), 1.0E-4);
+        assertEquals(180.0F, ArcabuzShot.maximumDamage(6.0F), 1.0E-4);
         assertEquals(ArcabuzShot.SHOT_MULTIPLIER * 6.0F * ArcabuzShot.MAX_TARGETS,
                 ArcabuzShot.maximumDamage(6.0F), 1.0E-4);
     }
@@ -203,5 +203,67 @@ class ArcabuzShotTest {
         assertEquals(List.of(), none);
         assertThrows(UnsupportedOperationException.class, () -> none.add("extra"),
                 "an empty crowd is still a list nobody can write to");
+    }
+    /**
+     * Aim before distance, which is the opposite of what this file sorted by before.
+     *
+     * <p><b>The whole of "los de al frente tienen prioridad", and it is the difference between a
+     * weapon that does what the player meant and one that does what the geometry said.</b> The old
+     * order was nearest first, which is right for a sword: you swing at what is in front of you.
+     * It is wrong for a gun six and a half blocks long, where the mob the player is looking at is
+     * routinely further away than the one standing in front of them -- and the cap of ten then
+     * hands back the ten closest, none of which are the ten aimed at.</p>
+     *
+     * <p>Five assertions, and the second one is the one that would catch the bug coming back: two
+     * targets with the same aim are ordered by distance, so the cap still takes the more urgent of
+     * two things that are equally aimed at.</p>
+     */
+    @Test
+    @DisplayName("the blast takes what the player is aiming at, not what is nearest")
+    void aimWinsOverDistance() {
+        // Far and dead ahead beats near and off to the side. This is the whole test.
+        assertTrue(ArcabuzShot.compareByAimThenDistance(0.0, 100.0, 0.4, 4.0) < 0,
+                "a mob at the crosshair six blocks away outranks a husk four blocks off to the "
+                        + "side, even though the husk is nearly twice as close");
+
+        // Reverse of the same pair, so the comparator cannot be returning a constant.
+        assertTrue(ArcabuzShot.compareByAimThenDistance(0.4, 4.0, 0.0, 100.0) > 0,
+                "and the same two the other way round");
+
+        // Same aim: distance decides.
+        assertTrue(ArcabuzShot.compareByAimThenDistance(0.1, 9.0, 0.1, 5.0) > 0,
+                "two things under the crosshair are both aimed at, and the nearer one is the more "
+                        + "urgent");
+        assertTrue(ArcabuzShot.compareByAimThenDistance(0.1, 5.0, 0.1, 9.0) < 0);
+
+        // Identical on both counts is a tie, and a tie that is not negative either way.
+        assertEquals(0, ArcabuzShot.compareByAimThenDistance(0.2, 5.0, 0.2, 5.0),
+                "the same target compared with itself is neither before nor after");
+    }
+
+    /**
+     * And the cap then takes ten of them, which is where the order becomes a promise.
+     *
+     * <p>Sorted aimed-at-first, capped at ten, and the eleventh <em>aimed</em> mob loses to the
+     * tenth <em>nearest</em> one -- which is the price of a hard ceiling and the reason the
+     * tooltip can print a number.</p>
+     */
+    @Test
+    @DisplayName("the cap takes ten of the aimed-at ones and nobody after them")
+    void theCapTakesTheFirstTenOfTheAimedAt() {
+        java.util.List<String> order = new java.util.ArrayList<>();
+        java.util.List<String> targets = new java.util.ArrayList<>();
+        for (int i = 0; i < 14; i++) {
+            targets.add("t" + i);
+        }
+        // Pretend t0..t9 are what the player is aiming at and t10..t13 are behind them all.
+        targets.sort((a, b) -> ArcabuzShot.compareByAimThenDistance(
+                Double.parseDouble(a.substring(1)), 1.0,
+                Double.parseDouble(b.substring(1)), 1.0));
+        for (String target : ArcabuzShot.capped(targets)) {
+            order.add(target);
+        }
+        assertEquals(10, order.size(), "ten, and not thirteen");
+        assertEquals("t9", order.get(9), "the tenth of the aimed-at ones is the last one hit");
     }
 }

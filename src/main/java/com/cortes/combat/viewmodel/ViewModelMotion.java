@@ -234,8 +234,6 @@ public final class ViewModelMotion {
     /** The same, a tick ago. */
     private float heldPrev;
 
-    /** Ticks since the reload went out, or -1 when it has not. */
-    private int reloadAge;
 
     /** The reload itself. */
     private float reload;
@@ -634,28 +632,119 @@ public final class ViewModelMotion {
      * visible burn are both read off this one counter, so "how long the gun is held up" and "how
      * far through the fuse the sprite is" cannot become two numbers that disagree.</p>
      */
+    /**
+     * The fuse, and -- on the edge where it goes out -- the recoil.
+     *
+     * <p><b>The burn does not move the weapon at all, and that is the correction.</b> This used to be
+     * one channel doing two jobs: a ramp whose length was the fuse, and a recoil that rode on the
+     * same number. The playtest rejected both halves of that, and it is worth being precise about
+     * why, because the two symptoms looked like unrelated complaints:</p>
+     *
+     * <ul>
+     *   <li><b>"it starts aiming down instead of forward"</b> -- with the age counting down from the
+     *       length, the ramp was 1.0 on the <em>first</em> tick of the burn. The gun took a full
+     *       recoil the instant the match was lit, a whole second before anything was fired.</li>
+     *   <li><b>"it lowers every frame until it points at the floor"</b> -- inverting the ramp fixed
+     *       the first one and created the second, because a ramp across the burn is a droop across
+     *       the burn however it is oriented. <b>A fuse burning is anticipation, and anticipation
+     *       does not lower a musket.</b></li>
+     *   <li><b>"it keeps bobbing in my hand"</b> -- the ramp peaked at 1.0 and then the server's
+     *       "the fuse is out" packet zeroed it on a single frame. A one-frame fall from full recoil
+     *       to rest is the bob, once per shot, and it is on the same channel as the other two.</li>
+     * </ul>
+     *
+     * <p>So the recoil is <b>not</b> the fuse any more. It is its own short bump that starts on the
+     * edge where the fuse goes out and dies on its own clock, which is the only shape that has room
+     * to exist: while the fuse burns the channel rests at zero, and the weapon stays aimed forward
+     * for the whole second the player is standing still looking down a barrel.</p>
+     *
+     * <p>The edge is the same one the sparks use, and it is a real one: the packet that carries
+     * {@code lit = false} arrives because the shot went off, and nothing else turns a lit fuse
+     * unlit. A client that joined mid-burn still gets one recoil, and one only.</p>
+     *
+     * @param lengthTicks how long the whole fuse is, read while it burns and unused afterwards
+     */
     public void observeFuse(boolean lit, int lengthTicks) {
         if (!lit) {
-            shootAge = -1;
-            shoot = 0.0F;
+            if (fuseWasLit) {
+                fuseWasLit = false;
+                shootLength = RECOIL_TICKS;
+                shootAge = shootLength;
+            }
             return;
         }
-        // A length of zero or less would divide by nothing, and a shot that has no length would
-        // jump the ramp from nothing to full on one frame.
-        shootLength = Math.max(1, lengthTicks);
-        if (shootAge < 0) {
-            shootAge = shootLength;
-        }
+        fuseWasLit = true;
     }
+
+    /**
+     * Whether a fuse was burning on the previous call.
+     *
+     * <p>A field and not a parameter because the packet says what is true now and nothing says
+     * what was true a moment ago, and the recoil has to live on the difference between the two.</p>
+     */
+    private boolean fuseWasLit;
+
+    /**
+     * How long the recoil lasts, in ticks.
+     *
+     * <p><b>Four, and the reason it is its own number rather than the fuse's.</b> Vanilla's swing is
+     * six, which is the closest thing in the game to a reference. Four is shorter because this
+     * recoil is only the weapon's half of the event: the sound, the flash and the knockback are
+     * already carrying the other half, and a musket's barrel does not spend a sixth of a second
+     * coming back up.</p>
+     */
+    private static final int RECOIL_TICKS = 4;
 
     /** The weapon is loaded and waiting for a fuse, or it is not. */
     public void observeLoaded(boolean loaded) {
         held = loaded ? 1.0F : 0.0F;
     }
 
-    /** The reload was thrown. */
-    public void onReload() {
-        reloadAge = 1;
+    /**
+     * How far through a reload the client is, 0 to 1, straight from the server's count.
+     *
+     * <p><b>Out and back, and it is the same shape as the bump this replaced.</b> The channel used
+     * to be a ten tick bump started by {@code onReload()}, and {@code onReload()} had <em>no
+     * callers at all</em> -- a channel with a track on the arcabuz's profile and nothing in the
+     * game to move it, which is the same shape as the sabre's dead BREAK and the half the project
+     * has spent the last two rounds on.</p>
+     *
+     * <p>Out and back rather than a rise and a hold because a reload that leaves the muzzle tilted
+     * down would be a gun that stays broken after it is loaded. The middle of the reload is the
+     * fullest tilt, and the two ends are both the rest pose.</p>
+     *
+     * @param progress elapsed fraction of the reload, from {@code ArcabuzFuseState}
+     */
+    /**
+     * How far through a reload the client is, 0 to 1, straight from the server's count.
+     *
+     * <p><b>A straight ramp, and zero at rest.</b> The channel used to be a ten tick bump started by
+     * {@code onReload()}, and {@code onReload()} had <em>no callers at all</em> -- a track on the
+     * arcabuz's profile and nothing in the game to move it.</p>
+     *
+     * <h3>The formula that was wrong, and how</h3>
+     *
+     * <p>The first version of this copied the old bump's shape, {@code abs(0.5 - p) * 2}, on the
+     * reasoning that "the shape is not new". It is the <b>inverse</b> of an out-and-back: it is
+     * <b>one at both ends and zero in the middle</b>. Since {@code reloadProgress()} answers zero
+     * when nothing is reloading, the channel sat at <b>1.0 in every idle frame</b> -- the whole
+     * reload pose applied for ever, which is what put the muzzle at its full tilt and a quarter of
+     * a block toward the camera in every animation including standing still.</p>
+     *
+     * <p>The out-and-back shape is {@code 1 - abs(2p - 1)}: zero at both ends, one in the middle.
+     * <b>This one is not that either</b>, because the design is a weapon that leans over and stays
+     * leaning while it loads, so the value is the progress itself.</p>
+     *
+     * <p>And it rests at zero, which is the half the inverse got wrong and the half no playtest
+     * could have diagnosed: a channel that is only correct while the thing it draws is happening
+     * is a channel with no rest state, and the rest state is what every other frame reads.</p>
+     *
+     * @param progress elapsed fraction of the reload, from {@code ArcabuzFuseState}
+     */
+    public void observeReloading(float progress) {
+        float clamped = Math.max(0.0F, Math.min(1.0F, progress));
+        reloadPrev = reload;
+        reload = clamped;
     }
 
     /** The arcabuz is not this weapon, so the client forgets all three. */
@@ -664,7 +753,6 @@ public final class ViewModelMotion {
         heldPrev = 0.0F;
         reload = 0.0F;
         reloadPrev = 0.0F;
-        reloadAge = 0;
         shoot = 0.0F;
         shootPrev = 0.0F;
         shootAge = -1;
@@ -1132,25 +1220,35 @@ public final class ViewModelMotion {
         float heldBefore = held;
         heldPrev = heldBefore;
 
-        // RELOAD is a bump on the strike's terms: out and back over RELOAD_TICKS, zero the rest of
-        // the time. The order matters the same way the sweep's did -- compute from the age the
-        // press set, then advance, and let the guard come first -- or the last tick of the motion
-        // is spent drawing a reset instead of a pose.
-        float reloadBefore = reload;
-        if (reloadAge > RELOAD_TICKS) {
-            reloadAge = 0;
-            reload = 0.0F;
-        } else if (reloadAge > 0) {
-            reload = Math.abs(0.5F - reloadAge / (float) RELOAD_TICKS) * 2.0F;
-            reloadAge++;
-        } else {
-            reload = 0.0F;
-        }
-        reloadPrev = reloadBefore;
+        // **RELOAD is the server's now, and this whole block is gone.** It used to be a ten tick
+        // bump counted from a local age that {@code onReload()} set -- and onReload() had no
+        // callers, so the channel sat at zero through every reload the player ever performed.
+        // The shape it drew is unchanged: out and back over the motion, and {@code
+        // observeReloading} is the same abs(0.5 - p) * 2 with the server's progress in place of
+        // the age. What changed is that something now sets it, and that it lasts fifty ticks
+        // instead of ten, which is how long the player is actually holding the button.
 
-        // SHOOT is a ramp held for as long as the fuse burns, counted DOWN, which is the only way
-        // to hold a ramp at a length the server decides. Going up from a length we guessed would be
-        // a second copy of the number that the payload already sent.
+        // **SHOOT is the recoil and nothing else: a bump that runs DOWN from one to zero over
+        // RECOIL_TICKS, started the moment the fuse goes out.**
+        //
+        // It used to be a ramp whose length was the fuse, which was wrong in three separate ways
+        // and the playtest reported each of them as a different symptom:
+        //
+        //   - the age counted DOWN from the length, so the ramp was 1.0 on the first tick of the
+        //     burn: the gun took the full recoil the instant the match was lit.
+        //   - inverting that fixed the first symptom and created the next, because a ramp across
+        //     the burn is a droop across the burn however it points. **A fuse burning is
+        //     anticipation, and anticipation does not lower a musket.**
+        //   - and the ramp peaked at 1.0 and then the server's packet zeroed it on one frame, which
+        //     is the bob: a single-frame fall from full recoil to rest, once per shot.
+        //
+        // All three are the same mistake, which is that the recoil was riding on the fuse at all.
+        // The fuse burns for a second and then the shot happens AT THE END of it, so there is no
+        // burn left after the recoil to settle over -- the shape the profile's own comment
+        // described was not buildable, and the code implemented its documentation backwards.
+        //
+        // The gun now holds still, aimed forward, for the whole burn, and the recoil is four ticks
+        // that begin when the shot does.
         float shootBefore = shoot;
         if (shootAge < 0) {
             shoot = 0.0F;

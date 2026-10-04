@@ -46,8 +46,10 @@ public final class CombatTicker {
         // material that opened it, and sweeps whatever ground was actually crossed. See Lunge for
         // why the server could never have thrown the player itself.
         com.cortes.combat.special.Lunge.tick(player);
-        // The arcabuz's fuse. Twenty ticks of countdown and then the blast, and a press in the
-        // middle of it is refused by the state rather than by a guard here. See Arcabuz.
+        // The arcabuz's fuse AND its reload. Twenty ticks of countdown and then the blast; fifty ticks
+        // of filling that only advance while the right button is up. Both live here because both
+        // are state the player started and the server has to finish, and a press arriving in the
+        // middle of either is refused by the state rather than by a guard on this line.
         com.cortes.combat.special.Arcabuz.tick(player);
         ModNetworking.syncTo(player);
     }

@@ -37,7 +37,7 @@ public enum WeaponFamily {
      * thing you either have or do not; a window that fills up while you aim at an exact spot is
      * a second thing to manage, and the design says no.</p>
      */
-    ROPERA("ropera", "Ropera", WeaponProfile.ROPERA, WeaponShape.ROPERA,
+    ROPERA("ropera", "Ropera", "Ropera", WeaponProfile.ROPERA, WeaponShape.ROPERA,
             5.0F, 2.0F),
 
     /**
@@ -46,7 +46,7 @@ public enum WeaponFamily {
      * <p>Its right click is the multi-hit, and the shape is the most expensive grid in the mod on
      * purpose -- four material pieces and three sticks for the weapon that covers a crowd.</p>
      */
-    ALABARDA("alabarda", "Alabarda", WeaponProfile.HALBERD, WeaponShape.ALABARDA,
+    ALABARDA("alabarda", "Alabarda", "Alabarda", WeaponProfile.HALBERD, WeaponShape.ALABARDA,
             4.0F, 1.1F),
 
     /**
@@ -64,7 +64,7 @@ public enum WeaponFamily {
      * escalation was saving up for. This is the one number in the catalogue that is bounded by
      * another system rather than by feel.</p>
      */
-    MARTILLO("martillo", "Martillo de Guerra", WeaponProfile.WARHAMMER, WeaponShape.MARTILLO,
+    MARTILLO("martillo", "Martillo de Guerra", "War Hammer", WeaponProfile.WARHAMMER, WeaponShape.MARTILLO,
             3.0F, 1.05F),
 
     /**
@@ -83,7 +83,7 @@ public enum WeaponFamily {
      * swung again inside its own window would silently lose every second hit to it. Six leaves a
      * two tick margin, and {@code IframesTest} fails if anything in the catalogue goes below that.</p>
      */
-    DAGA("daga", "Daga", WeaponProfile.DAGGER, WeaponShape.DAGA,
+    DAGA("daga", "Daga", "Dagger", WeaponProfile.DAGGER, WeaponShape.DAGA,
             2.0F, 3.2F),
 
     /**
@@ -93,7 +93,7 @@ public enum WeaponFamily {
      * <p>The only weapon whose full charge doubles rather than adds, which is why its charge
      * window is the shortest in the set: a bigger number needs less time to be a decision.</p>
      */
-    SHOTEL("shotel", "Shotel", WeaponProfile.SABRE, WeaponShape.SHOTEL,
+    SHOTEL("shotel", "Shotel", "Shotel", WeaponProfile.SABRE, WeaponShape.SHOTEL,
             3.0F, 2.0F);
 
     /**
@@ -111,6 +111,31 @@ public enum WeaponFamily {
     private final String id;
 
     private final String displayName;
+
+    /**
+     * The same name for the {@code en_us} file, and it is <b>not a translation of all six</b>.
+     *
+     * <p>The project's own decision on which of these names survive being read by an English
+     * speaker:</p>
+     *
+     * <ul>
+     *   <li><b>Ropera, Alabarda and Arcabuz stay as they are.</b> Not because they were left
+     *       untranslated by accident, but because they are the iconic ones -- a "rapier" and a
+     *       "halberd" are ordinary English words for ordinary things, and renaming the weapon set
+     *       to a generic vocabulary gives the two languages two different weapons instead of the
+     *       same one.</li>
+     *   <li><b>Martillo de Guerra becomes War Hammer and Daga becomes Dagger.</b> These two are
+     *       descriptive rather than iconic, so the English word is a better name than a literal
+     *       translation would be.</li>
+     *   <li><b>Shotel stays "Shotel".</b> It is a Muslim term for the curved sword, and the
+     *       argument for keeping it is that translating it into another script is a transliteration
+     *       -- the same word in different letters, as happens with this kind of name in Russian.
+     *       A transliteration of a Latin-script word is the word itself, so this entry is
+     *       deliberately identical to the Spanish one.</li>
+     * </ul>
+     */
+    private final String displayNameEn;
+
     private final WeaponProfile profile;
     private final WeaponShape shape;
     private final float attackDamage;
@@ -118,10 +143,11 @@ public enum WeaponFamily {
 
     private final Set<WeaponMaterial> materials;
 
-    WeaponFamily(String id, String displayName, WeaponProfile profile, WeaponShape shape,
-                 float attackDamage, float attackSpeed) {
+    WeaponFamily(String id, String displayName, String displayNameEn, WeaponProfile profile,
+                 WeaponShape shape, float attackDamage, float attackSpeed) {
         this.id = id;
         this.displayName = displayName;
+        this.displayNameEn = displayNameEn;
         this.profile = profile;
         this.shape = shape;
         this.attackDamage = attackDamage;
@@ -221,6 +247,25 @@ public enum WeaponFamily {
     /** The full name, as the hotbar shows it: {@code Ropera de Hierro}. */
     public String displayName(WeaponMaterial material) {
         return displayName + " de " + material.displayName();
+    }
+
+    /** The bare name for {@code en_us}, and the one that is not a translation for three of six. */
+    public String displayNameEn() {
+        return displayNameEn;
+    }
+
+    /**
+     * The English name as the hotbar shows it: {@code Iron Ropera}.
+     *
+     * <p><b>Material first, and the word order is the reason this is a method and not a
+     * translation of the Spanish line.</b> Spanish says "Ropera de Hierro" and English says "Iron
+     * Ropera" -- the material moves from behind to in front, and it moves because it is an
+     * adjective rather than a noun with a preposition. A name built by rearranging the Spanish
+     * one would be wrong in every language that does not use "de", and a test asserting the
+     * Spanish spelling here would be asserting a coincidence of English.</p>
+     */
+    public String displayNameEn(WeaponMaterial material) {
+        return material.displayNameEn() + " " + displayNameEn;
     }
 
     public WeaponProfile profile() {

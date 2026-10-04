@@ -118,7 +118,8 @@ public final class CombatAim {
             return;
         }
 
-        ClientCombatState.setAiming(stillAiming(player, held, WeaponStats.of(held).reach()));
+        // displayedReach, like the brackets it sits next to: the aim marker's job is to say where the shot goes.
+        ClientCombatState.setAiming(stillAiming(player, held, WeaponStats.of(held).displayedReach()));
     }
 
     /**

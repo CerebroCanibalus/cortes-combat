@@ -308,7 +308,7 @@ serializador. `InventoryChangeTrigger.hasItems` **⊘ tiene overload de `TagKey<
 
 Pasos 1–10 hechos ⊕ verificados en cliente real. Librería de viewmodel, guardia unificada
 **cerrada como postura**, **las siete armas nuevas con sus animaciones**, y el **arcabuz como arma
-31**. **639 tests verdes.** Animaciones **casi completas** según playtest.
+31**. **660 tests verdes.** Animaciones **casi completas** según playtest. Receta del arcabuz y **tooltips de stats**, que reemplazan los de las armas vanilla también.
 
 | # | Paso | Estado |
 |---|---|---|
@@ -693,11 +693,16 @@ deducen de un número:
 
 ## Estado técnico actual
 
-**639 tests unitarios verdes.** Todo lo testeable corre en JVM pelada; lo que necesita el juego queda
-en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardState` y los `viewmodel/*` puros.
+**660 tests unitarios verdes.** Todo lo testeable corre en JVM pelada; lo que necesita el juego queda
+en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardState`, `ConeSize`, `WeaponTooltip`
+y los `viewmodel/*` puros.
 
 - **2 mixins**: `MinecraftAttackMixin` (ataque) c/ su seam `ItemInHandRendererMixin`, y
   `PlayerModelMixin` (3ª persona, 2 inyecciones).
+- **Tooltips de stats, en TODAS las armas ⊘ vanilla.** `CombatTooltipHandler` (2 eventos) +
+  `ConeSize` + `WeaponTooltip` + `TooltipLine`. Reemplaza los 2 renglones de vanilla
+  (`GatherSkippedAttributeTooltipsEvent` por **id de modificador**, ⊘ por texto) c/ 7 renglones.
+  Cero componente de Minecraft en la capa que decide.
 - **5 data components**: `weapon_profile` (14 perfiles), `reach_profile`, `charge_profile`, `special`,
   `arcabuz_fuse`.
 - **6 attachments**: `charge`, `guard_stamina`, `cooldown`, `hammer_streak`, `parry`, `arcabuz`,
@@ -722,18 +727,22 @@ en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardState` y los `vi
 |---|---|---|
 | `thirdperson/` | `BodyPoses` (ángulos), `BodyPose` (record de 8 + `lerp`), `BodyPoseDispatcher` (PREVIOUS/CURRENT) | **Todo en GRADOS y el mixin convierte.** Arg 7 = `bodyPitch`, arg 8 = `bodyYaw` |
 | `mixin/PlayerModelMixin` | HEAD cancela `attackTime`, TAIL suma la pose | HEAD **obligatoria**. Firma de **6** parámetros, sin `partialTick`; `T` erasa a `LivingEntity`; la clase debe ser `public abstract` |
-| `special/Arcabuz*.java`, `state/ArcabuzState` | arma 31: mecha, disparo, transición | La LASTIMA se gasta **al ENCENDER** |
+| `special/Arcabuz*.java`, `state/ArcabuzState` | arma 31: mecha, disparo, transición | La **Firestone** se gasta **al ENCENDER** |
 | `client/ArcabuzModelProperties` | registra `cortescombat:fuse`, que elige el frame | Va en `FMLClientSetupEvent`, ⊘ en el constructor: el item no está bound |
 | `attack/ArmorWearHandler` | doble desgaste del hacha cargado, vía `ArmorHurtEvent` | El loop de vanilla ya es código muerto (`if (true) return;`) → ⊘ hay mixin |
 | `special/HalberdSweep` | números del barrido, puros y testeados | `COOLDOWN_FACTOR 4.0` — gasta 4× el cooldown |
+| `item/tooltip/` | `TooltipLine` (record), `WeaponTooltip` (7 renglones, decide todo), `ConeSize` (6 bandas) | **`Component` es de Minecraft → ⊘ el tooltip se construye como `List<TooltipLine>`** y sólo la capa del evento lo pasa a `Component`. Los bordes de `ConeSize` (20/29/37.5/50/65) son **el punto medio de los huecos** de los ángulos reales, ⊘ números redondos |
+| `client/CombatTooltipHandler` | 2 eventos: `skipId` los 2 de vanilla + agrega los 7 | Va en `net.neoforged.neoforge.event.entity.player.ItemTooltipEvent` (⊘ `event.item`). `skipId`, ⊘ `skipGroup`/`skipAll`: se llevarían los encantamientos |
+| `data/ArcabuzRecipes` | el grid del arcabuz, vertical | **`#` ⊘ es celda vacía**: es un símbolo sin entrada en la key. El vacío es un **espacio**, y Minecraft **no** recorta el borde: escribe `" /V"`, `" O "`, `" MM"` tal cual |
+| `data/CortesLanguageProvider` | **DOS** archivos: `es_es` + `en_us`, un provider cada uno | El ctor toma el locale; `LanguageProvider.getName()` **ya incluye el locale** → dos instancias ⊘ colisionan (leído, ⊘ asumido). **El nombre de la munición del arcabuz es `Firestone` en los dos idiomas** — `LASTIMA` era un nombre interno que se filtró a AGENTS.md y a dos `trace()`, y yo lo metí en el tooltip |
 
 ### Deuda conocida
 
 | Falta | Nota |
 |---|---|
 | **Rotar el worldmodel en la guardia** (3ª persona) | Pedido explícito: espada y sable deberían girar hacia el jugador como en 1ª. Exige un mixin nuevo sobre `ItemInHandLayer`; **⊘ se hizo a propósito** para no meter una segunda inyección sin verificar las cinco primeras |
-| **Arcabuz** | Sin receta de crafteo (inventar la grilla es diseñar; `FirestoneRecipeTest` lo marca como hueco). Falta feedback por objetivo, y el flash a 1.7 m está derivado del dibujo **a ojo** — primer número a tocar si se ve mal |
-| `/cc weapons` desactualizado | Tiene 11 armas vanilla. Arcabuz y LASTIMA: `/cc weapon cortescombat:<id>` |
+| **Arcabuz** | Receta **hecha** (grid vertical decided por el usuario). Queda: feedback por objetivo, y el flash a 1.7 m está derivado del dibujo **a ojo** — primer número a tocar si se ve mal. El click izquierdo ya tiene `STRIKE`+`RECOVER` |
+| `/cc weapons` desactualizado | Tiene 11 armas vanilla. Arcabuz y Firestone: `/cc weapon cortescombat:<id>` |
 | **Retroalimentación de "esto fue cargado"** | `CombatFeedback` sólo tiene `HIT`/`KILL`/`GUARDED`. Hace falta `CHARGED`: un HUD que reacciona a todo deja de significar nada, y el enum es una lista cerrada a propósito |
 | **FOV de carga** | Hecho: 3° → 0.6° c/ suavizado exponencial, por `ComputeFovModifierEvent`. **Resta, ⊘ reemplaza** |
 | Sonido de carga completa | El proyecto tiene **un solo sonido**: `SHIELD_BREAK`. Faltan 3 de los 4 eventos que el jugador tiene que reconocer s/ mirar |
@@ -795,15 +804,66 @@ rechazan un press, 6 silenciosos a propósito. **Lee los campos, ⊘ recalcula n
 ## Próximos pasos
 
 1. **Rotar el worldmodel en la guardia** (3ª persona) — mixin sobre `ItemInHandLayer`.
-2. **Arcabuz**: receta, feedback por objetivo, el flash a 1.7 m, y el cuerpo del bayonetazo.
+2. **Arcabuz**: feedback por objetivo y el flash a 1.7 m (los dos siguen abiertos).
 3. **Paso 11: supervivencia (`FoodData`)** — el cambio más caro, en commit propio. **Los umbrales
    internos hay que leerlos en las fuentes de 1.21.1 antes de escribir el mixin.**
 4. **Sonido de carga completa** y el valor `CHARGED` de `CombatFeedback`.
-5. **Afinar a playtest los perfiles de las armas nuevas** — los números están escritos y el
-   impacto/velocidad de cada uno es pregunta de juego, ⊘ de código.
-6. **El `arcabuz.png` original se queda en `textures/models/`** (donde fue dibujado) **y los cinco
+5. **Afinar a playtest**: la bayoneta del arcabuz (`STRIKE` −0.28/−14°), los números de los
+   tooltips, y los perfiles de las armas nuevas.
+6. **Los 30 advancements dicen "Hecho a mano."** — el arcabuz ya tiene su propia línea. Una por
+   familia es el siguiente paso natural; ⊘ son 30 entradas que sólo cambian el nombre.
+7. **El `arcabuz.png` original se queda en `textures/models/`** (donde fue dibujado) **y los cinco
    frames en `textures/item/arcabuz_fuse/`** (que es lo que el atlas lee). Duplicado a propósito; el
    test lo afirma.
+
+### La ronda del arcabuz + tooltips — las cuatro cosas que costaron
+
+1. **Un número que el jugador lee, y el juego no, es un bug con buen Marketing.** El tooltip tiene
+   que llamar a `DamageResolver.resolve` y a `SlashTiming.hitsAt`, ⊘ recalcular. Y el sable carga
+   pegando **dos cortes**: el daño cargado es ×4 del base, ⊘ ×2, y la mitad de un número grande
+   sigue pareciendo grande en pantalla, así que **nada se ve mal** hasta que un jugador compara la
+   línea contra una muerte.
+2. **`%s` es el único formato que el idioma de tooltip soporta.** `TranslatableContents` rechaza
+   cualquier otro en render: `"Unsupported format: '%1.1f'"`. ∴ los números se pre-formatean en Java,
+   y `String.valueOf` sobre un float de aritmética imprime `6.949999809265137` → `%.1f`.
+3. **Borrar un renglón de vanilla por texto es adivinar; por id de modificador es un contrato.**
+   `GatherSkippedAttributeTooltipsEvent` + `skipId(Item.BASE_ATTACK_DAMAGE_ID)` saca exactamente
+   los 2 que el tooltip reemplaza y deja los de encantamientos. `ItemStack#forEachModifier` **no**
+   sirve para esto: recorre también los de encantamiento, así que una espada con Filo reportaría
+   más daño que el arma.
+4. **Un arma con su botón principal mudo es la forma exacta del canal muerto.** El sable sin track
+   de `BREAK`; el arcabuz sin track de `STRIKE`: sus 3 tracks eran todos del click **derecho**, así
+   que el click izquierdo no movía nada en 1ª persona. La **bayoneta es una estocada**, y el
+   `ChopVersusThrustTest` la tenía anotada como hueco. ∴ preguntarse "**¿quién enciende el canal
+   del botón principal?**" y no "¿este canal se mueve?".
+
+> **Y `#` en un grid vuelve a ser el símbolo sin entrada en la key.** Está en la sección de datagen
+> desde hace rondas. Se cayó igual, y el comentario del código que explicaba la trampa estaba
+> **en el mismo archivo, dos líneas más arriba, mientras se escribía `#`**. Un comentario no
+> previene: previene **leer**.
+
+### Idiomas — `es_es` + `en_us`, y las dos reglas que había que tirar
+
+- **⊘ sólo español.** El razonamiento era *"una traducción tosca es peor que la clave"*, y de ahí
+  salió *"no generamos inglés"*. **El paso que faltaba:** una `en_us` faltante ⊘ muestra una
+  traducción tosca, **muestra los internals a todo el que no abrió el menú de opciones** — y `en_us`
+  es lo que corre Minecraft hasta que alguien lo cambie. Un mod en español sin español por defecto
+  ⊘ es una traducción, es un build roto.
+- **⊘ "que lo traduzca un humano".** Esa regla **no la decidió nadie**: estaba escrita en el javadoc
+  como si fuera del proyecto, y el siguiente lector la tomó como tal. **Una regla que nadie eligió
+  es peor que ninguna**, porque sobrevive: parece un muro y no hay nadie detrás.
+- **Los nombres NO son una traducción de los seis** (decisión del usuario): **Ropera, Alabarda y
+  Arcabuz** quedan en español porque son las icónicas — "rapier" y "halberd" son palabras
+  ordinarias y renombrar el set le da a cada idioma dos juegos de armas distintos. **Martillo de
+  Guerra → War Hammer** y **Daga → Dagger** sí se traducen, porque son descriptivas. **Shotel
+  queda "Shotel"**: es un término musulmán y su traducción a otro alfabeto es una
+  transliteración; la transliteración de una palabra latina es la palabra.
+- **El idioma cambia el orden de palabras, no sólo las palabras.** ES `"Ropera de Hierro"` (el
+  material atrás, con `de`), EN `"Iron Ropera"` (el material adelante, porque es adjetivo). ∴
+  `displayNameEn(material)` es un método, ⊘ una traducción de `displayName`. Un test lo afirma.
+- **`LanguageFilesTest` camina los enums**, ⊘ una lista escrita a mano: agregar un `SpecialType` o
+  una banda de `ConeSize` sin su línea en los dos idiomas **falla el build**, en vez de imprimir el
+  identificador en pantalla.
 
 ---
 

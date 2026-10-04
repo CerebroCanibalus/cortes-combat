@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -72,16 +73,57 @@ class SlashSpriteTest {
         }
     }
 
+    /**
+     * The pairs that are allowed to share a sprite, and why. Everything else must be distinct.
+     *
+     * <p><b>An explicit list rather than a rule that lets sharing through.</b> The test this
+     * replaces said "no two profiles may share", and it caught the arcabuz drawing the sword's
+     * slash -- which was a real bug and exactly what it was written for. But the arcabuz now
+     * borrows the daga's stab on purpose, so the rule had to become "sharing is a decision somebody
+     * writes down" rather than "sharing is always a bug".</p>
+ *
+     * <p>The map is keyed both ways, so declaring the pair once forbids either profile from quietly
+     * sharing with a third.</p>
+     */
+    private static final Map<String, String> DECLARED_SHARES = Map.of(
+            // The bayonet borrows the daga's stab: both are short thrusts at the same scale, and a
+            // chop or a collapse would read as a different weapon's swing.
+            "daga_hit", WeaponProfile.ARCABUZ.id());
+
     @Test
-    @DisplayName("no two profiles with art share a sprite, and no sprite is named twice")
+    @DisplayName("no two profiles share a sprite unless the pair is declared")
     void theNamesAreDistinct() {
         Set<String> seen = new HashSet<>();
         for (WeaponProfile profile : WeaponProfile.values()) {
             if (!SlashSprite.hasOwn(profile)) {
                 continue;
             }
-            assertTrue(seen.add(SlashSprite.of(profile)),
-                    "two profiles are drawing the same slash: " + SlashSprite.of(profile));
+            String sprite = SlashSprite.of(profile);
+            if (seen.add(sprite)) {
+                continue;
+            }
+            String declared = DECLARED_SHARES.get(sprite);
+            assertEquals(profile.id(), declared,
+                    "two profiles are drawing the same slash (" + sprite + ") and the pair is not "
+                            + "declared in DECLARED_SHARES. Add it there with a reason, or give "
+                            + "this weapon art of its own");
+        }
+    }
+
+    /** And a declared share cannot go stale: a sprite nobody draws any more is a lie in the map. */
+    @Test
+    @DisplayName("every declared share names a sprite that is really being drawn")
+    void declaredSharesAreNotStale() {
+        Set<String> drawn = new HashSet<>();
+        for (WeaponProfile profile : WeaponProfile.values()) {
+            if (SlashSprite.hasOwn(profile)) {
+                drawn.add(SlashSprite.of(profile));
+            }
+        }
+        for (String sprite : DECLARED_SHARES.keySet()) {
+            assertTrue(drawn.contains(sprite),
+                    "DECLARED_SHARES names " + sprite + " but nothing draws it any more. A stale "
+                            + "entry here would hide the next accidental share of a different sprite");
         }
     }
 

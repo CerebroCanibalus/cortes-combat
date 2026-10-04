@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "/": {
+      "item": "minecraft:bamboo"
+    },
+    "M": {
+      "tag": "minecraft:planks"
+    },
+    "O": {
+      "item": "minecraft:dispenser"
+    },
+    "V": {
+      "item": "minecraft:flint_and_steel"
+    }
+  },
+  "pattern": [
+    " /V",
+    " O ",
+    " MM"
+  ],
+  "result": {
+    "count": 1,
+    "id": "cortescombat:arcabuz"
+  }
+}

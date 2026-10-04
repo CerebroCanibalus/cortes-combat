@@ -24,9 +24,22 @@ import net.minecraft.resources.ResourceLocation;
  * @param lit whether a fuse is burning right now
  * @param fuseTicks the whole fuse length on the light, so the client counts it down from the
  *                  server's number rather than keeping its own copy of the constant
- * @param loaded whether a firestone went into the chamber
+ * @param loaded whether the chamber still holds its charge.
+ *
+ * <p><b>True while the fuse burns</b>, because the ball does not leave the barrel until the gun
+ * goes off. It was {@code false} for the whole burn, which dropped the loaded pose the instant the
+ * fuse was lit: the gun pointed at the floor for a full second and then sprang back, and the two
+ * channels moving in opposite directions at once is what the playtest saw as the model bobbing up
+ * and down.</p>
+ *
+ * @param reloadTicks ticks of loading left, zero when no reload is running.
+ *
+ * <p><b>The server's own number and not a local age.</b> The reload is fifty ticks long and the
+ * player is holding a button for all of them, so the motion has to be exactly as long as the
+ * reload: a client that counted from the moment the packet landed would draw a motion of a
+ * different length than the thing it is drawing.</p>
  */
-public record ArcabuzFusePayload(boolean lit, int fuseTicks, boolean loaded)
+public record ArcabuzFusePayload(boolean lit, int fuseTicks, boolean loaded, int reloadTicks)
         implements CustomPacketPayload {
 
     public static final Type<ArcabuzFusePayload> TYPE = new Type<>(
@@ -37,6 +50,7 @@ public record ArcabuzFusePayload(boolean lit, int fuseTicks, boolean loaded)
                     ByteBufCodecs.BOOL, ArcabuzFusePayload::lit,
                     ByteBufCodecs.VAR_INT, ArcabuzFusePayload::fuseTicks,
                     ByteBufCodecs.BOOL, ArcabuzFusePayload::loaded,
+                    ByteBufCodecs.VAR_INT, ArcabuzFusePayload::reloadTicks,
                     ArcabuzFusePayload::new);
 
     @Override

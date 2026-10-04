@@ -40,6 +40,10 @@ public class CortesCombatClient {
         NeoForge.EVENT_BUS.register(SpecialInputHandler.class);
         NeoForge.EVENT_BUS.register(ClientTasks.class);
         NeoForge.EVENT_BUS.register(ConeDebugRenderer.class);
+        // The weapon tooltips. Registered here rather than through @EventBusSubscriber because
+        // this class already is the client's subscription list, and a second list is a second
+        // place to forget one.
+        NeoForge.EVENT_BUS.register(CombatTooltipHandler.class);
         modEventBus.addListener(CortesCombatClient::registerParticles);
         modEventBus.addListener(CortesCombatClient::registerLayers);
         modEventBus.addListener(CortesCombatClient::onClientSetup);
@@ -112,7 +116,26 @@ public class CortesCombatClient {
      * picked their own number is never overruled, with no flag to remember and nothing to go
      * stale. The value is left in the options screen either way, so it stays adjustable.</p>
      */
-    private static void onClientSetup(FMLClientSetupEvent event) {
+    /**
+     * {@code @SubscribeEvent} on the mod bus, which is what makes any of the above run.
+     *
+     * <p><b>This annotation was missing, and nothing in the file said so.</b> The method had a
+     * javadoc explaining in detail why the fuse properties have to be registered on this event and
+     * not in the constructor, it took the right event type, and it enqueued the right work -- and it
+     * was never called, because a method that handles a lifecycle event is a convention, not a
+     * declaration. With no subscriber, {@link ArcabuzModelProperties#register()} never ran, so
+     * {@code ItemProperties} had no entry for either predicate, and
+     * {@code ItemOverrides#resolve} fills an unregistered property with {@code NEGATIVE_INFINITY}.
+     * Every override then failed, on every frame, for the whole session, and the gun drew its base
+     * model forever: the flintlock never moved and the flame never appeared.</p>
+     *
+     * <p>The two symptoms looked like two bugs in two files, and the one real cause was a line
+     * that was not there. Nothing warns about an unsubscribed handler, the client log is clean, and
+     * the model bakes without complaint -- a predicate nobody registered is indistinguishable from
+     * a predicate that is simply never satisfied.</p>
+     */
+    @net.neoforged.bus.api.SubscribeEvent
+    public static void onClientSetup(FMLClientSetupEvent event) {
         // **The arcabuz's fuse frame, first, and on this event rather than in the constructor.**
         //
         // The first version called it from the constructor and the client died before the world

@@ -1,4 +1,5 @@
 {
+  "advancements.cortescombat.arcabuz": "Una caña, un mechero, un dispensador y madera. La Firestone es lo caro.",
   "advancements.cortescombat.weapon": "Hecho a mano.",
   "item.cortescombat.arcabuz": "Arcabuz",
   "item.cortescombat.copper_alabarda": "Alabarda de Cobre",
@@ -33,5 +34,24 @@
   "item.cortescombat.stone_ropera": "Ropera de Piedra",
   "item.cortescombat.stone_shotel": "Shotel de Piedra",
   "item.cortescombat.wooden_daga": "Daga de Madera",
-  "itemGroup.cortescombat.combat": "Cortés Combat"
+  "itemGroup.cortescombat.combat": "Cortés Combat",
+  "tooltip.cortescombat.attack_speed": "%s golpes por segundo",
+  "tooltip.cortescombat.charged_damage": "%s de daño cargado",
+  "tooltip.cortescombat.damage": "%s de daño",
+  "tooltip.cortescombat.durability": "Durabilidad: %s",
+  "tooltip.cortescombat.range": "%s de alcance",
+  "tooltip.cortescombat.size.maximum": "Máximo",
+  "tooltip.cortescombat.size.medium": "Medio",
+  "tooltip.cortescombat.size.small": "Pequeño",
+  "tooltip.cortescombat.size.very_small": "Muy pequeño",
+  "tooltip.cortescombat.size.very_wide": "Muy ancho",
+  "tooltip.cortescombat.size.wide": "Ancho",
+  "tooltip.cortescombat.special.fusee": "Click derecho: gasta una Firestone, y un segundo después quemo todo el cono",
+  "tooltip.cortescombat.special.lunge": "Click derecho: embestida hacia adelante",
+  "tooltip.cortescombat.special.multi_hit": "Click derecho: golpea a todo lo que hay en el cono",
+  "tooltip.cortescombat.special.parry": "Click derecho: parry, devuelve el golpe que le pegues",
+  "tooltip.cortescombat.special.shove": "Click derecho: empujón corto",
+  "tooltip.cortescombat.special.slam": "Click derecho: golpe en el suelo",
+  "tooltip.cortescombat.special.sweep": "Click derecho: barrido por el suelo",
+  "tooltip.cortescombat.special.throw": "Click derecho: lanzamiento"
 }

@@ -79,4 +79,9 @@
   "martillo_charged_hit": { "sounds": [ { "name": "cortescombat:weapons/martillo_charged_hit" } ] },
 
   "shotel_parry": { "sounds": [ { "name": "cortescombat:weapons/shotel_parry" } ] }
+  ,  "arcabuz_shot": {
+    "sounds": [ { "name": "cortescombat:weapons/arcabuz_shot" } ]
+  },
+  "arcabuz_reload": { "sounds": [ { "name": "cortescombat:weapons/arcabuz_reload" } ] },
+  "arcabuz_loaded": { "sounds": [ { "name": "cortescombat:weapons/arcabuz_loaded" } ] }
 }

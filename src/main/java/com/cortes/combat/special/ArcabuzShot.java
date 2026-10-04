@@ -49,25 +49,54 @@ public final class ArcabuzShot {
     /**
      * The shot's damage, as a multiple of the weapon's own attack damage.
      *
-     * <p><b>Two, and it is a multiplier rather than an absolute number for one reason: the rest
-     * of the project reads {@code Attributes.ATTACK_DAMAGE} and so does this.</b> The swing's
-     * damage and the shot's damage then cannot drift apart, because they are the same number and
-     * one coefficient. An absolute twelve here would have been a second place where the weapon's
+     * <p><b>Three, and it is a multiplier rather than an absolute number for one reason: the rest
+     * of the project reads {@code Attributes.ATTACK_DAMAGE} and so does this.</b> The swing's damage
+     * and the shot's damage then cannot drift apart, because they are the same number and one
+     * coefficient. An absolute eighteen here would have been a second place where the weapon's
      * damage is written down, and the first one to be retuned would have been this.</p>
      *
      * <p>The arithmetic with the item's own number: the arcabuz is built with a
      * {@code createAttributes} damage of 5.0 and a tier bonus of zero, so a player's
      * {@code ATTACK_DAMAGE} reads <b>6.0</b> (the attribute base is 1.0 and the modifier is an
-     * ADD_VALUE on top of it). A blast is therefore <b>12.0 per target</b>, and ten targets is
-     * <b>120</b>.</p>
+     * ADD_VALUE on top of it). A blast is therefore <b>18.0 per target</b>, and ten targets is
+     * <b>180</b>.</p>
      *
-     * <p>That is a husk dead in one shot and about six of ten husks dead in one blast, which is
-     * what "escopeta" has to mean to be worth a second of standing still. And it is not a delete
-     * button, because it costs a firestone, a full second of not moving and a reload, and because
-     * armour still reduces it on the way in.</p>
+     * <p><b>It was two, and the reason it moved is the cone moving.</b> At two a blast was twelve per
+     * target: a husk dead, six of ten husks dead, and the whole thing read as "a weapon that hits
+     * things". It is now eighteen, which is a husk dead <em>and on fire</em> -- and at six seconds
+     * the fire is most of a second husk dying to what the blast started. The two halves were
+     * already there; the number is what makes a player choose the gun for a group instead of for
+     * one target.</p>
+     *
+     * <p>And it is not a delete button, because it costs a firestone, a full second of not moving
+     * and a two and a half second reload, because armour still reduces it on the way in, and
+     * because a guard covers it exactly as it covers a sword.</p>
      */
-    public static final float SHOT_MULTIPLIER = 2.0F;
+    public static final float SHOT_MULTIPLIER = 3.0F;
 
+    /**
+     * Which of two targets the blast should take, when the cap has to choose.
+     *
+     * <p><b>By aim before distance, and that is the opposite of what this file sorted by before.</b>
+     * Nearest-first was right for a sword and wrong for a gun: a player standing six blocks from a
+     * mob with a husk four blocks behind it was asking to shoot the husk, and the cap handed them
+     * the one at their feet. A gun is aimed, and what "aimed" means is the thing closest to the
+     * crosshair.</p>
+     *
+     * <p>Distance breaks the tie rather than the other way round, because two things at the same
+     * angle are both under the crosshair and the nearer one is the more urgent.</p>
+     *
+     * <p>Pure, and it takes two doubles so the rule can be asserted without a world. The first
+     * argument is a squared deviation from the look axis, which is monotone in the angle and so
+     * orders the same way a real angle would.</p>
+     *
+     * @return negative when A should be hit first
+     */
+    public static int compareByAimThenDistance(double aimA, double distanceA,
+                                               double aimB, double distanceB) {
+        int byAim = Double.compare(aimA, aimB);
+        return byAim != 0 ? byAim : Double.compare(distanceA, distanceB);
+    }
     /**
      * How long a hit target burns, in seconds.
      *

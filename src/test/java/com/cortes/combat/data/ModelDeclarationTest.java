@@ -235,58 +235,145 @@ class ModelDeclarationTest {
     }
 
     /**
-     * The five fuse frames are five files, and the model picks between them on a predicate.
      *
-     * <p>The frame cannot be chosen from an animated texture -- 1.21.1 has no API for that, and the
-     * {@code .mcmeta} ran the strip freely, which is why the playtest called the weapon "bugged,
-     * it has no textures": the fuse burned down in the inventory whether or not anything had
-     * happened.</p>
+     * <p><b>This test used to assert the opposite.</b> Five hand-drawn models, one per frame, each
+     * a thirty seven kilobyte copy of the same eight elements differing only in UVs. That was not a
+     * bad test -- it described a real arrangement. But the arrangement was wrong, and a test that
+     * describes a wrong arrangement stops being a test and becomes a lock.</p>
      *
-     * <p>So the strip was cut and the model takes an {@code overrides} entry per frame, keyed on
-     * the {@code cortescombat:fuse} property. This asserts the whole chain exists: the frames, the
-     * four models that point at them, and the four predicates that name those models. A model
-     * pointing at a frame that was never written renders as the missing-model cube.</p>
+     * <p>The replacement asserts the two things that can still go wrong, and both are silent when
+     * they do: the {@code .mcmeta} has to exist beside the strip, because without it the flame is
+     * one static frame and the fuse does not visibly burn; and the model has to name the strip,
+     * because a predicate pointing at a model that forgot its texture draws the gun with no flame
+     * and no error.</p>
+     */
+    /**
+     * Which of the two overrides wins, which vanilla decides in the opposite order to the one the
+     * file is written in.
+     *
+     * <p><b>{@code ItemOverrides} bakes the list back to front</b> -- {@code for (int j = size - 1;
+     * j >= 0; j--)} -- and {@code resolve} then returns the first match walking that baked array.
+     * The net effect is that <em>the last override in the JSON is the first one tried</em>, which is
+     * the opposite of every other override list in the game and of what the file reads like.
+     *
+     * <p>It is a real bug and it was a real playtest: the file had the fuse first and the loaded
+     * pose second, on the reasoning that a lit fuse is the more specific state and so should be
+     * checked first. Vanilla checked the loaded pose first, the chamber was loaded for the whole
+     * session, and <b>the flame model was never once selected</b> -- reported as "the fuse animation
+     * does not play when I shoot".</p>
+     *
+     * <p>Nothing about the symptom pointed at ordering. The predicate was registered, the model was
+     * baked, the {@code .mcmeta} was in the jar, and the override that draws the flame was simply
+     * never reached. So the order is asserted here rather than trusted, because it is a property of
+     * <em>vanilla's</em> loop and not of anything this file says.</p>
      */
     @Test
-    @DisplayName("the fuse is five frames chosen by a model predicate")
-    void theFuseHasFiveFramesAndFourPredicates() throws IOException {
-        Path frames = ASSETS.resolve(Path.of("textures", "item", "arcabuz_fuse"));
-        assertTrue(Files.isDirectory(frames), "missing: " + frames);
+    @DisplayName("the lit fuse is the last override in the file, because vanilla tries them backwards")
+    void theFuseIsTheLastOverrideSoItIsTriedFirst() throws IOException {
+        String base = read(ASSETS.resolve(Path.of("models", "item", "arcabuz.json")));
+        // **Only from `overrides` onward.** Searching the whole file finds
+        // `cortescombat:item/arcabuz_fuse` in the `textures` block first -- the particle names
+        // `arcabuz_fuse_0` -- and reports the fuse override as first when it is last. Which is what
+        // it did, and the fix it proposed was to swap two overrides that were already right.
+        int from = base.indexOf("\"overrides\"");
+        assertTrue(from >= 0, "arcabuz.json declares no overrides, so it is always the empty pose");
+        String onlyOverrides = base.substring(from);
 
-        List<String> files = new ArrayList<>();
-        try (var list = Files.list(frames)) {
-            list.map(p -> p.getFileName().toString()).sorted().forEach(files::add);
-        }
-        assertEquals(List.of("arcabuz_fuse_0.png", "arcabuz_fuse_1.png", "arcabuz_fuse_2.png",
-                        "arcabuz_fuse_3.png", "arcabuz_fuse_4.png"), files,
-                "five frames, frame zero unlit and one to four the burn. The original strip is "
-                        + "five frames, frame zero unlit and one to four the burn. The original"
-                        + " strip is untouched and still on disk under textures/models/, which is"
-                        + " not an atlas source -- see everyNamedTextureIsInAnAtlasSource, which is the"
-                        + " reason these had to be cut somewhere else");
-        java.util.Set<String> hashes = new java.util.HashSet<>();
-        for (String name : files) {
-            hashes.add(hashOf(frames.resolve(name)));
-        }
-        assertEquals(5, hashes.size(),
-                "five identical files means the crop took one frame five times and the fuse would "
-                        + "not appear to burn at all");
+        int fuse = onlyOverrides.indexOf("cortescombat:item/arcabuz_fuse");
+        int down = onlyOverrides.indexOf("cortescombat:item/arcabuz_flintlockdown");
 
-        String json = read(ASSETS.resolve(Path.of("models", "item", "arcabuz.json")));
-        assertTrue(json.contains("\"overrides\""),
-                "the model has to choose between them, or the gun is always frame zero");
+        assertTrue(fuse >= 0 && down >= 0,
+                "arcabuz.json has to name both the lit model and the loaded one, or one of the two "
+                        + "states is not drawn at all. fuse=" + fuse + " flintlockdown=" + down);
+        assertTrue(fuse > down,
+                "the lit fuse override is written BEFORE the loaded one, so vanilla -- which bakes "
+                        + "the list with `for (int j = size - 1; j >= 0; j--)` and resolves the "
+                        + "first match of the baked array -- tests the loaded pose first and never "
+                        + "reaches the flame. Move the fuse override to be the last one in the file.");
+    }
 
-        for (int frame = 1; frame <= 4; frame++) {
-            assertTrue(json.contains("\"cortescombat:fuse\": " + frame),
-                    "no predicate for frame " + frame + ". A frame with no override is a frame "
-                            + "that can never be seen");
-            Path model = ASSETS.resolve(Path.of("models", "item", "arcabuz_fuse_" + frame + ".json"));
-            assertTrue(Files.isRegularFile(model), "missing: " + model
-                    + " -- the predicate names a model that is not there");
-            assertTrue(read(model).contains("arcabuz_fuse_" + frame + "\""),
-                    model.getFileName() + " does not point at frame " + frame
-                            + ". All four models would then be the same picture");
+    @Test
+    @DisplayName("the fuse is four separate frames, and there is no .mcmeta")
+    void theFuseIsFourFramesAndNoAnimatedStrip() throws IOException {
+        // **The four frames exist and the animated strip does not, and the second half of that is
+        // the assertion that matters.**
+        //
+        // A `.mcmeta` on a five frame strip was tried and it looked like it worked: the strip is
+        // only drawn while a fuse is lit, so the flame freezes the moment the fuse goes out, which
+        // is true and reads like proof that the animation is scoped correctly. It is not. A sprite's
+        // frame index is a clock belonging to the atlas, shared by every model that names the same
+        // texture, started when the atlas was stitched and never rewound. So the fuse lit for the
+        // first time in a session showed frame 0 and the tenth showed whatever the clock was on --
+        // "the animation appears sometimes and does not always start at the beginning".
+        //
+        // A countdown fuse needs the frame to be a function of the countdown, and only the predicate
+        // can be. Four frames and four ascending thresholds is the whole mechanism, and it costs 263
+        // bytes each because the geometry is inherited rather than copied.
+        Path dir = ASSETS.resolve(Path.of("textures", "item", "arcabuz_fuse"));
+        for (int i = 1; i <= 4; i++) {
+            Path frame = dir.resolve("arcabuz_fuse_" + i + ".png");
+            assertTrue(Files.isRegularFile(frame), "missing the lit frame " + i + ": " + frame);
         }
+
+        Path strip = dir.resolve("arcabuz_fuse_anim.png");
+        Path meta = dir.resolve("arcabuz_fuse_anim.png.mcmeta");
+        assertTrue(!Files.exists(strip) && !Files.exists(meta),
+                "the animated strip is back at " + strip + ". Its frame index is the atlas's clock, "
+                        + "not the fuse's, so the flame starts wherever that clock happens to be.");
+
+        // **And each frame is a model in its own right, inheriting the geometry.**
+        for (int i = 1; i <= 4; i++) {
+            String fuse = read(ASSETS.resolve(Path.of("models", "item", "arcabuz_fuse_" + i + ".json")));
+            assertTrue(fuse.contains("arcabuz_fuse_" + i),
+                    "the model for lit frame " + i + " has to name that frame, or the gun draws a "
+                            + "flame it does not have");
+            assertTrue(fuse.contains("arcabuz_flintlockdown"),
+                    "the model for lit frame " + i + " has to inherit the geometry from the parent. "
+                            + "A model with no parent and no elements draws nothing at all, and "
+                            + "reports nothing at all.");
+        }
+
+        String base = read(ASSETS.resolve(Path.of("models", "item", "arcabuz.json")));
+        assertTrue(base.contains("cortescombat:fuse"),
+                "nothing chooses a fuse frame, so the gun is never lit");
+        assertTrue(base.contains("arcabuz_flintlockdown"),
+                "nothing chooses the flintlock-down model, so loading a firestone would not put"
+                        + " the flintlock down. This override is the only thing that can do that:"
+                        + " an offset on the viewmodel moves the whole weapon, which is what the"
+                        + " playtest rejected four times over as too low and then as not moving.");
+    }
+
+    /**
+     * The four thresholds, ascending in the file, which is descending in the order vanilla tries.
+     *
+     * <p>A predicate matches on {@code value >= threshold}, so the most burnt frame has to be the
+     * one asked first, and vanilla asks them from the bottom of the file up. Written the other way
+     * round, {@code fuse >= 0.01} matches on the first tick and the fuse is a single frame for its
+     * whole second -- which is what a boolean predicate produced, and it is indistinguishable from
+     * an animation that does not run.</p>
+     */
+    @Test
+    @DisplayName("the four fuse thresholds ascend in the file, because vanilla tests them backwards")
+    void theFuseThresholdsAscendInTheFile() throws IOException {
+        String base = read(ASSETS.resolve(Path.of("models", "item", "arcabuz.json")));
+        int from = base.indexOf("\"overrides\"");
+        assertTrue(from >= 0, "arcabuz.json declares no overrides");
+        String only = base.substring(from);
+
+        int quarter = only.indexOf("0.25");
+        int half = only.indexOf("0.5");
+        int three = only.indexOf("0.75");
+        assertTrue(quarter > 0 && half > quarter && three > half,
+                "the three upper fuse thresholds have to ascend in the file so that vanilla, which "
+                        + "tests the last one first, asks for the most burnt frame first. Found 0.25 "
+                        + "at " + quarter + ", 0.5 at " + half + ", 0.75 at " + three + ".");
+
+        // The lit frames have to come after the loaded pose in the file, for the same reason: the
+        // flame is the more specific state and has to be asked first.
+        assertTrue(only.indexOf("arcabuz_fuse_1") > only.indexOf("arcabuz_flintlockdown"),
+                "the loaded pose is written after the lit frames, so vanilla asks for a flame before "
+                        + "it asks whether the gun is loaded. A gun with a lit fuse would draw the "
+                        + "empty pose.");
     }
 
     /**
@@ -416,7 +503,7 @@ class ModelDeclarationTest {
                         + "description JSON lists");
     }
 
-    /** The firestone borrows the copper nugget's texture until it has art of its own. */
+    /** The firestone names its own texture, which now exists. */
     @Test
     @DisplayName("the firestone's generated model names a texture that exists")
     void theFirestoneResolves() throws IOException {
@@ -425,7 +512,7 @@ class ModelDeclarationTest {
                 "missing: " + model + " -- CortesModelProvider writes one for it, so run gradlew "
                         + "runData");
         String reference = first(LAYER0, read(model), model);
-        assertEquals("cortescombat:item/copper_nugget", reference,
+        assertEquals("cortescombat:item/firestone", reference,
                 "the placeholder is the copper nugget's own PNG, named explicitly rather than "
                         + "after the item. A model written by the default path would have named "
                         + "cortescombat:item/firestone.png, which is a file nobody drew");

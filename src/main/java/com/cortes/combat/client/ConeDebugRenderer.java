@@ -64,7 +64,8 @@ public final class ConeDebugRenderer {
         }
 
         WeaponStats stats = WeaponStats.of(player.getMainHandItem());
-        ReachProfile reach = stats.reach();
+        // The shot's cone when there is one: the debug draw has to describe what the player is being shown, or /cc cone reports a different weapon from the HUD.
+        ReachProfile reach = stats.displayedReach();
         Vec3 eye = player.getEyePosition();
         Vec3 look = player.getLookAngle();
 
