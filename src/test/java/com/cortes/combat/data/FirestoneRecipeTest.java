@@ -99,8 +99,11 @@ class FirestoneRecipeTest {
     void theArcabuzIsCraftable() {
         String json = read(RECIPES.resolve("arcabuz.json"));
 
-        assertTrue(json.contains("\"minecraft:crafting_shaped\""), json
-                + "\n\nshaped: the silhouette is the recipe, three rows of three");
+        assertTrue(json.contains("\"cortescombat:shiftable_shaped\""), json
+                + "\n\nshaped: the silhouette is the recipe, three rows of three. And it is OURS and "
+                + "not minecraft:crafting_shaped -- same format, same fields, a class that also "
+                + "accepts the pattern in another corner, which a 3x3 pattern in a 3x3 bench has "
+                + "exactly one of");
         assertTrue(json.contains("\"minecraft:bamboo\""), json + "\n\nno bamboo: the barrel/ramrod");
         assertTrue(json.contains("\"minecraft:flint_and_steel\""), json
                 + "\n\nno flint and steel: the only vanilla item whose whole job is making sparks, "

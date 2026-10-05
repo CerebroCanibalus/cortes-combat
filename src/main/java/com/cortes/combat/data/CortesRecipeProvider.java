@@ -28,6 +28,8 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import com.cortes.combat.core.crafting.ShiftableShapedRecipe;
+import com.cortes.combat.core.crafting.ShiftableShapedRecipe;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.item.crafting.ShapedRecipePattern;
 import net.neoforged.neoforge.common.conditions.WithConditions;
@@ -126,8 +128,18 @@ public class CortesRecipeProvider implements DataProvider {
         ShapedRecipePattern pattern =
                 ShapedRecipePattern.of(key, family.shape().toRecipeRows());
 
-        ShapedRecipe recipe = new ShapedRecipe(
-                "", CraftingBookCategory.EQUIPMENT, pattern, new ItemStack(result));
+        // **ShiftableShapedRecipe and not ShapedRecipe**, and the JSON "type" changes by itself:
+        // `Recipe.CODEC` is `RECIPE_SERIALIZER.byNameCodec().dispatch(Recipe::getSerializer,
+        // RecipeSerializer::codec)`, so the type written is whichever `getSerializer()` reports.
+        // Nothing here names the id.
+        //
+        // **On the grids of today only the daga gains anything** -- it is the one 2x2 shape and the
+        // four others fill the bench. They were already accepting the mirrored pattern, because
+        // vanilla tries the mirror before the plain one and that has not changed. This goes on all
+        // of them so the property belongs to "a recipe of ours" rather than to "a grid that happens
+        // to be smaller than the bench", which is not something you can tell by reading a shape.
+        ShapedRecipe recipe = new ShiftableShapedRecipe(
+                "", CraftingBookCategory.EQUIPMENT, pattern, new ItemStack(result), true);
 
         return CompletableFuture.allOf(
                 // CONDITIONAL_CODEC, not the plain one: it is what vanilla's own RecipeProvider

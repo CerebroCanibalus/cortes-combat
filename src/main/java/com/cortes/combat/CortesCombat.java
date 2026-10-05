@@ -42,6 +42,16 @@ public class CortesCombat {
         ModCreativeTabs.TABS.register(modEventBus);
         ModParticleTypes.PARTICLE_TYPES.register(modEventBus);
         com.cortes.combat.registry.ModEffects.register(modEventBus);
+        // The shiftable crafting recipe's serializer, and **this call is what makes it exist.**
+        //
+        // `SHIFTABLE_SHAPED` is a static field in a nested class, so it is initialised when that
+        // class is first touched -- and nothing else touches it. The only other reader is
+        // `getSerializer()`, which only runs on a recipe that has already been built, and a recipe
+        // is built after the manager looked its `"type"` up in the registry. So left here the
+        // lookup finds nothing, the class never loads, and the field initialises never. That is a
+        // loop, not a bug that throws: the symptom would be thirty weapons whose recipes silently
+        // do not exist.
+        com.cortes.combat.core.crafting.ShiftableShapedRecipe.ModRecipes.register(modEventBus);
         modEventBus.addListener(ModNetworking::register);
         NeoForge.EVENT_BUS.register(CombatTicker.class);
         NeoForge.EVENT_BUS.register(GuardHandler.class);

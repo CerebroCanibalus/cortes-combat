@@ -23,6 +23,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import com.cortes.combat.core.crafting.ShiftableShapedRecipe;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.item.crafting.ShapedRecipePattern;
 import net.minecraft.core.registries.Registries;
@@ -163,9 +164,13 @@ public final class ArcabuzRecipes implements DataProvider {
      * make.</p>
      */
     private static ShapedRecipe recipe() {
-        return new ShapedRecipe("", CraftingBookCategory.EQUIPMENT,
+        // **Shiftable, for the same reason as the other thirty-two** and with the same caveat:
+        // the arcabuz grid is 3x3, so it has one placement and vanilla already mirrored it. What
+        // this buys today is nothing visible, and what it costs is nothing; what it avoids is a
+        // grid change later turning into a second edit here.
+        return new ShiftableShapedRecipe("", CraftingBookCategory.EQUIPMENT,
                 ShapedRecipePattern.of(KEY, PATTERN),
-                new ItemStack(ModItems.ARCABUZ.get()));
+                new ItemStack(ModItems.ARCABUZ.get()), true);
     }
 
     private Path recipePath() {
