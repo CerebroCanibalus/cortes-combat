@@ -48,6 +48,11 @@ public class CortesCombat {
         NeoForge.EVENT_BUS.register(com.cortes.combat.special.ParryHandler.class);
         NeoForge.EVENT_BUS.register(com.cortes.combat.special.LungeImmunity.class);
         NeoForge.EVENT_BUS.register(com.cortes.combat.attack.ArmorWearHandler.class);
+        // Pone las recetas del mod en el libro de crafteo de quien entra. Sin esto el libro depende
+        // de que se conceda un avance, y en un mundo viejo donde las 32 ya estaban completas nunca
+        // pasa: el jugador se queda con el libro vacío hasta que empieza otro mundo.
+        NeoForge.EVENT_BUS.register(
+                com.cortes.combat.data.RecipeBookPopulation.class);
         NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class,
                 event -> CortesCommand.register(event.getDispatcher()));
         LOGGER.info("Cortés Combat loading");
