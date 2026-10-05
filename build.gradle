@@ -140,7 +140,36 @@ dependencies {
     // and profile in this mod does. Without it the unit tests die at class-init with
     // NoClassDefFoundError: com/mojang/datafixers/kinds/App, and the failure looks like a
     // broken test rather than a missing dependency.
+    //
+    // **And `testImplementation`, not only `testRuntimeOnly`, since the pose format's tests call
+    // `Codec.parse` on a codec they read off the class.** `testRuntimeOnly` puts the jar on the
+    // runtime classpath, which is enough for a class to *load* and not enough for `javac` to
+    // resolve a symbol in it -- so the first version of that test failed to compile with
+    // "cannot access Codec" on a dependency that was already there. A test that holds a Codec
+    // needs to see the Codec.
+    testImplementation 'com.mojang:datafixerupper:8.0.16'
     testRuntimeOnly 'com.mojang:datafixerupper:8.0.16'
+
+    // Netty, and only so that `ViewModelChannels`'s codec can be tested.
+    //
+    // **It is not in the neoforge jar.** `neoforge-21.1.250-merged.jar` has
+    // `net/minecraft/network/codec/StreamCodec.class` and does *not* have
+    // `io/netty/buffer/Unpooled.class`: Mojang ships netty as separate libraries and the game
+    // resolves them at launch, so a test classpath built from the moddev jar has the codec's
+    // interface and not its buffer.
+    //
+    // Version read out of the 1.21.1 version manifest rather than picked: `4.1.97.Final` is what
+    // the launcher downloads, and `4.1.118` is also in the Gradle cache because something else in
+    // this project pulled it. Pinning the wrong one would give a codec that compiles and a
+    // runtime that disagrees with the game's buffer.
+    //
+    // And the reason this is worth a dependency: **the channel order is a silent bug.** A codec
+    // whose write order and read order disagree compiles, runs, and animates the wrong thing --
+    // the sabre's parry plays as a wind-up -- and it is invisible with one player on the screen,
+    // which is the only way this project has ever tested. This is the same failure shape as the
+    // missing `@SubscribeEvent` that cost the arcabuz its fuse frames.
+    testImplementation 'io.netty:netty-buffer:4.1.97.Final'
+    testRuntimeOnly 'io.netty:netty-common:4.1.97.Final'
 
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
@@ -170,6 +199,14 @@ tasks.named('test', Test).configure {
     testLogging {
         events "passed", "skipped", "failed"
     }
+}
+
+// src/generated/resources is a resource srcDir, so the datagen provider's content-hash cache
+// rides into the jar. It is build bookkeeping, not mod content: the game never reads a .cache
+// directory at the jar root, so this costs nothing at runtime -- but a release jar handed to
+// someone else should carry only what the game actually loads.
+tasks.named('jar', Jar).configure {
+    exclude '.cache/**'
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

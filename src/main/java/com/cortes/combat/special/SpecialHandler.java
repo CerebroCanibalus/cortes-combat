@@ -79,6 +79,20 @@ public final class SpecialHandler {
                 return;
             }
             sweep(player, level, stats);
+            // **And the sweep is announced, because a sweep is a moment and not a state.**
+            //
+            // The client predicts it on the press for the player doing it, which is why nobody ever
+            // noticed: `SpecialInputHandler` calls `onSweep` locally and the animation is right for
+            // you and absent for everybody watching. The sweep has twenty ticks of life that the
+            // clock runs down from this one call, and nothing in a rate-sampled state packet could
+            // say when it started.
+            //
+            // **After the call and not before**, so a refused sweep announces nothing. And this is
+            // the server's decision, not the client's: the client already predicted it, so a client
+            // that was wrong about the cooldown will animate a sweep that nobody else ever sees,
+            // which is the correct outcome -- their prediction was wrong and the truth is the truth.
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntity(player,
+                    com.cortes.combat.net.CombatEventPayload.sweep(player.getId()));
         } else if (stats.special() == SpecialType.PARRY) {
             parry(player, level, stats);
         } else if (stats.special() == SpecialType.LUNGE) {

@@ -60,15 +60,22 @@ public final class CombatEngine {
      * hand a player free damage.</p>
      *
      * @param targetId the entity the client resolved against the cone, or zero for a whiff
+     * @return the charge this swing was resolved at, or {@code -1} when there was no open swing.
+     *         <p><b>Returned rather than re-read by the caller.</b> The value is decided here,
+     *         against this player's own {@code ChargeState} and this weapon's own charge profile,
+     *         and the caller that needs it -- the network layer, which tells the players watching
+     *         what kind of strike this was -- would otherwise have to compute it a second time
+     *         from the same two inputs. Two copies of an arithmetic that decides whether a hit was
+     *         charged is the shape that drifts.</p>
      */
-    public static void resolveSwing(Player player, int targetId) {
+    public static float resolveSwing(Player player, int targetId) {
         ChargeState charge = player.getData(ModAttachments.CHARGE.get());
         if (!charge.holding()) {
             // No open swing. Either the release arrived twice, or it arrived without a press,
             // or the press was refused client side because the cooldown was not ready. All three
             // mean the same thing: this is not an attack and must not cost anything.
             debug(player, "release SIN press abierto: no es un ataque");
-            return;
+            return NO_SWING;
         }
 
         ItemStack held = player.getMainHandItem();
@@ -81,7 +88,19 @@ public final class CombatEngine {
 
         float ratio = chargedRatio(charge, stats.charge());
         resolveTarget(player, targetId, stats, ratio);
+        return ratio;
     }
+
+    /**
+     * What {@link #resolveSwing} returns when there was nothing open.
+     *
+     * <p><b>Minus one and not zero, and the difference is the whole point.</b> A whiff is a real
+     * swing resolved at no charge, and it is drawn: a weapon swings, it just hits nothing. Zero
+     * would read as "a tap", which is a different animation at a different length. A caller that
+     * treated this as a charge of zero would tell every client watching that the player struck at
+     * a quarter of a second's hold when in fact they swung at nothing.</p>
+     */
+    public static final float NO_SWING = -1.0F;
 
     /**
      * The charge this swing gets, or zero if it was a tap.

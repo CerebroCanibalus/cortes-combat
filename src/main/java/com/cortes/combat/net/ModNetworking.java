@@ -54,6 +54,19 @@ public final class ModNetworking {
         registrar.playToClient(ArcabuzFusePayload.TYPE, ArcabuzFusePayload.STREAM_CODEC,
                 ModNetworking::handleArcabuzFuse);
 
+        // Another player's combat state, so this client can work out their pose.
+        //
+        // **It is the same shape of question as `CombatStatePayload` and not the same question.**
+        // That one goes to a player about their own HUD; this one goes to everyone who can see a
+        // given player, about that player. The destinations differ, so the packets differ.
+        registrar.playToClient(PlayerCombatStatePayload.TYPE,
+                PlayerCombatStatePayload.STREAM_CODEC,
+                ModNetworking::handlePlayerCombatState);
+
+        // The three moments a clock cannot work out from state: the strike, the sweep, the cancel.
+        registrar.playToClient(CombatEventPayload.TYPE, CombatEventPayload.STREAM_CODEC,
+                ModNetworking::handleCombatEvent);
+
         // "You fired", and the things it reached. The server cannot place the muzzle flash --
         // the weapon's transform is the client's, and the only point the server can produce is
         // the player's eye, which is on the view axis and reads as the screen flickering. So it
@@ -77,6 +90,75 @@ public final class ModNetworking {
 
     private static void handleParryState(ParryStatePayload payload, IPayloadContext context) {
         com.cortes.combat.client.ClientCombatState.setParry(payload.active(), payload.cooldown());
+    }
+
+    /**
+     * One other player's state arrived, and this client now has a clock for them.
+     *
+     * <p><b>The id in the payload is resolved against the level rather than trusted.</b> The state
+     * carries a network entity id so the receiving side does not have to match names or UUIDs, but
+     * an id can name something that is not a player: an entity that has just despawned, one that
+     * left tracking, or an armor stand whose id this client has not heard about yet. So the lookup
+     * is a question with an answer that can be "no", and a "no" is a state that is simply not
+     * recorded.</p>
+     *
+     * <p><b>And the state's own id is what is kept, not the entity's.</b> They are the same number
+     * today, but the key is the one the next packet will name: if the entity is replaced by one
+     * with a different id, the old clock goes with the old id rather than the new player inheriting
+     * somebody's half-finished swing.</p>
+     *
+     * <p>Gated on {@code LocalPlayer} like every other client-side handler here, because this class
+     * is loaded on a dedicated server too and {@code context.player()} is a {@code ServerPlayer}
+     * there. The pattern is not defensive: the branch that would fail is never taken.</p>
+     */
+    private static void handlePlayerCombatState(PlayerCombatStatePayload payload,
+                                               IPayloadContext context) {
+        if (!(context.player() instanceof net.minecraft.client.player.LocalPlayer local)) {
+            return;
+        }
+        PlayerCombatState state = payload.state();
+        net.minecraft.world.entity.Entity found = local.level().getEntity(state.entityId());
+        if (!(found instanceof net.minecraft.client.player.AbstractClientPlayer player)) {
+            // **Forget rather than record a partial state.**
+            //
+            // A clock with no profiles on it still produces a pose -- just one with no charge and
+            // no guard, silently. That is the shape of bug this project has already paid for twice,
+            // and a player rendered half-animated is worse than one rendered standing still,
+            // because the first looks intentional.
+            //
+            // Forgetting is also what stops a leak: without this, an id that keeps resolving to
+            // nothing keeps an entry alive forever.
+            com.cortes.combat.client.RemotePoseStates.forget(state.entityId());
+            return;
+        }
+        com.cortes.combat.client.RemotePoseStates.accept(state, player);
+    }
+
+    /**
+     * A moment arrived, and one clock has to hear it.
+     *
+     * <p><b>Resolved by id, and a clock that does not exist is not created here.</b> An event for a
+     * player nobody has a clock for cannot be played: the clock is what turns the charge into a
+     * strike length and a swing age, and a clock made from this event alone would be a strike with
+     * no state behind it. The state packet is what creates clocks; this one only moves them.</p>
+     *
+     * <p>That is also what makes a lost event harmless rather than wrong. The clock keeps running
+     * from the last state it had, and the next event arrives on the next action &mdash; a weapon
+     * that misses one strike is a weapon one beat out of date, not a weapon animating a strike
+     * that never happened.</p>
+     */
+    private static void handleCombatEvent(CombatEventPayload payload, IPayloadContext context) {
+        if (!(context.player() instanceof net.minecraft.client.player.LocalPlayer)) {
+            return;
+        }
+        CombatEventPayload.Kind kind = payload.kind();
+        int id = payload.entityId();
+        switch (kind) {
+            case STRIKE -> com.cortes.combat.client.RemotePoseStates.strike(
+                    id, payload.charge(), payload.durationTicks());
+            case SWEEP -> com.cortes.combat.client.RemotePoseStates.sweep(id);
+            case CANCEL -> com.cortes.combat.client.RemotePoseStates.cancel(id);
+        }
     }
 
     /**
@@ -190,7 +272,27 @@ public final class ModNetworking {
                         + " objetivo=" + payload.entityId()
                         + " abierto=" + player.getData(ModAttachments.CHARGE.get()).holding()
                         + " ticks=" + player.getData(ModAttachments.CHARGE.get()).ticks());
-        CombatEngine.resolveSwing(player, payload.entityId());
+
+        float charged = CombatEngine.resolveSwing(player, payload.entityId());
+
+        // **And then the strike is told to everybody watching.**
+        //
+        // This is the moment the wire state cannot carry. The chop is born on the release with the
+        // charge it was released at, and a state packet saying "the button came up" does not say
+        // what it was worth on the way -- so a remote client given only state plays a swing that
+        // is a tap, always.
+        //
+        // **`NO_SWING` is a distinct answer from zero**, and this is the line that reads it: a
+        // release with nothing open is not a strike and must not announce one, while a release
+        // that hit nothing is a strike at no charge and does.
+        if (charged != CombatEngine.NO_SWING) {
+            PacketDistributor.sendToPlayersTrackingEntity(player,
+                    CombatEventPayload.strike(player.getId(), charged,
+                            WeaponStats.attackInterval(player)));
+        } else {
+            PacketDistributor.sendToPlayersTrackingEntity(player,
+                    CombatEventPayload.cancel(player.getId()));
+        }
     }
 
     private static void handleCombatState(CombatStatePayload payload, IPayloadContext context) {

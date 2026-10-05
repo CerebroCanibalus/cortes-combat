@@ -4,7 +4,9 @@ import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.guard.GuardRules;
 import com.cortes.combat.guard.GuardStats;
+import com.cortes.combat.client.RemotePoseStates;
 import com.cortes.combat.net.ModNetworking;
+import com.cortes.combat.net.PlayerStateSync;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
@@ -52,6 +54,38 @@ public final class CombatTicker {
         // middle of either is refused by the state rather than by a guard on this line.
         com.cortes.combat.special.Arcabuz.tick(player);
         ModNetworking.syncTo(player);
+        // **After every other tick above, and the order is load-bearing.**
+        //
+        // This describes the player to the clients watching them, so it has to read the states
+        // those ticks just advanced. Sent before `tickCharge`, a charge would travel one tick
+        // behind the arm it is describing -- which on a three second axe commit is a charge bar
+        // and an arm that disagree for three seconds, the exact thing `ClientTasks` documents for
+        // the local player's own ordering.
+        //
+        // It goes out every tick while something is happening and once a second when it is not.
+        // See `PlayerStateSync` for why a counter that climbs by one is not an edge.
+        PlayerStateSync.sync(player);
+    }
+
+    /**
+     * A player stopped being watched, so this client should stop remembering them.
+     *
+     * <p><b>Without this, every player who walks out of range leaves a clock behind.</b> Not a
+     * crash and not a visible bug: an entity id is never reused within a session, so the stale
+     * entry is only memory. A server with players coming and going accumulates one
+     * {@code ViewModelMotion}, one previous pose and one current pose per player who has ever been
+     * in range, for as long as the process runs.</p>
+     *
+     * <p>It is registered on the game bus and reads a client-side class, and that is the same
+     * asymmetry every other handler here has: the class is loaded on a dedicated server and this
+     * method is never reached there, because the event that reaches it only fires where there are
+     * players watching.</p>
+     */
+    @SubscribeEvent
+    public static void onStopTracking(PlayerEvent.StopTracking event) {
+        if (event.getEntity() instanceof net.minecraft.client.player.LocalPlayer) {
+            RemotePoseStates.forget(event.getTarget().getId());
+        }
     }
 
     /**

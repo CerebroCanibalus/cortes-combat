@@ -21,6 +21,17 @@ public final class ClientTasks {
         // one tick old and decays on schedule rather than sitting at full strength for an extra
         // frame.
         CombatAim.update();
+        // **Every other player's clock, once per game tick.**
+        //
+        // Before the local body's pose, and for the same reason that one is last: the pose is read
+        // from the clock's frame, so the frame has to have been advanced first. Each remote runs the
+        // same `ViewModelMotion` from the state the server sent it, driven here rather than where
+        // the packet arrived -- a packet is a moment, and the animation is every tick after it.
+        //
+        // **It is not the local player.** `ItemViewModel.MOTION` is that one, and stepping it from
+        // two places would draw the local swing at double speed for the person doing it and at
+        // normal speed for everybody watching.
+        RemotePoseStates.tick();
         // The sabre's second cut is heard eight ticks after the first, and 1.21.1 cannot schedule a
         // sound, so the delay is held here.
         DelayedSounds.tick();

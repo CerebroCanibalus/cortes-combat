@@ -90,6 +90,24 @@ public enum WeaponProfile {
         return id;
     }
 
+    /**
+     * The profile at that position in the declaration, or {@code null} if there is none.
+     *
+     * <p><b>Reads off {@code values()} and returns null rather than throwing.</b> The only caller is
+     * {@code PlayerCombatState}'s wire codec, and the case it has to survive is a client receiving a
+     * payload from a server whose enum is longer than its own: an out-of-range ordinal there is a
+     * version skew, and an {@code ArrayIndexOutOfBoundsException} inside a packet handler drops the
+     * packet and takes the connection with it. A null is an answer the caller can check.</p>
+     *
+     * <p>The second thing worth knowing is that <b>this makes the declaration order a wire
+     * contract</b>: inserting a profile renumbers the ones after it. {@code PlayerCombatState} says
+     * why that is accepted rather than worked around.</p>
+     */
+    public static WeaponProfile byOrdinal(int ordinal) {
+        WeaponProfile[] all = values();
+        return ordinal < 0 || ordinal >= all.length ? null : all[ordinal];
+    }
+
     /** Whether the vanilla item behind this profile can break blocks. */
     public boolean isTool() {
         return switch (this) {
