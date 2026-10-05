@@ -1,0 +1,47 @@
+{
+  "id": "cortescombat:shotel",
+  "axes": "first_person",
+
+  "rest": { "x": 0, "y": 0, "z": 0, "pitch": 0, "yaw": 0, "roll": 0 },
+
+  "tracks": [
+    {
+      "channel": "WINDUP",
+      "curve": "LINEAR",
+      "amplitude": { "x": -0.04, "y": 0.10, "z": -0.09, "pitch": 8.0, "yaw": -16.0, "roll": 6.0 }
+    },
+    {
+      "channel": "WINDUP",
+      "curve": "LINEAR",
+      "amplitude": { "x": 0, "y": 0, "z": 0, "pitch": 0, "yaw": 0, "roll": 0 },
+      "tremor": { "x": 0.0, "y": 0.0, "z": 0.012, "pitch": 2.0, "yaw": -1.2, "roll": 1.0 },
+      "tremor_hz": 17.0,
+      "tremor_weight": "EXPO"
+    },
+    {
+      "channel": "CHOP",
+      "curve": "LINEAR",
+      "amplitude": { "x": 0.05, "y": -0.03, "z": -0.11, "pitch": -96.0, "yaw": 26.0, "roll": -10.0 }
+    },
+    {
+      "channel": "RECOVER",
+      "curve": "SMOOTH",
+      "amplitude": { "x": -0.05, "y": -0.30, "z": 0.10, "pitch": 86.0, "yaw": -22.0, "roll": 9.0 }
+    },
+    {
+      "channel": "PARRY",
+      "curve": "SMOOTH",
+      "amplitude": { "x": -0.26, "y": 0.06, "z": -0.14, "pitch": -22.0, "yaw": 104.0, "roll": -18.0 }
+    },
+    {
+      "channel": "BREAK",
+      "curve": "SMOOTH",
+      "amplitude": { "x": 0.05, "y": -0.07, "z": 0.06, "pitch": 16.0, "yaw": 7.0, "roll": 4.0 }
+    }
+  ],
+
+  "body": {
+    "aim":    { "x": 0, "y": 0, "z": 0, "pitch": -96.0, "yaw": 0, "roll": -22.0 },
+    "reload": { "x": 0, "y": 0, "z": 0, "pitch": 0, "yaw": 0, "roll": 0 }
+  }
+}

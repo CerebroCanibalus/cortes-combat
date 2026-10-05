@@ -25,6 +25,11 @@ bin/
 .DS_Store
 Thumbs.db
 
+# Datagen content-hash cache, one file per provider output, rewritten on every runData.
+# The jar excludes it as well, but a file that changes on every datagen run does not belong
+# in the history either -- it turns `git status` into noise that hides real edits.
+src/generated/resources/.cache/
+
 # Upstream reference clones — not part of this mod
 refs/
 
@@ -57,3 +62,9 @@ tools/ffmpeg/
 # where it was drawn, so the next person can tell which of the two is the artwork. The five frames
 # the model actually reads are cut out under textures/item/arcabuz_fuse/, because that is a
 # folder the atlas reads.
+
+# Los logs de runClient/runServer que se tiran con Tee-Object.
+*.log
+
+# El backup que se saca antes de compactar AGENTS.md.
+AGENTS.md.bak-*
