@@ -31,5 +31,10 @@
     [
       "has_material"
     ]
-  ]
+  ],
+  "rewards": {
+    "recipes": [
+      "cortescombat:wooden_daga"
+    ]
+  }
 }

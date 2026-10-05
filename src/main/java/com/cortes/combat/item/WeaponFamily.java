@@ -47,7 +47,7 @@ public enum WeaponFamily {
      * purpose -- four material pieces and three sticks for the weapon that covers a crowd.</p>
      */
     ALABARDA("alabarda", "Alabarda", "Alabarda", WeaponProfile.HALBERD, WeaponShape.ALABARDA,
-            4.0F, 1.1F),
+            4.0F, 0.88F),
 
     /**
      * The warhammer: still the second slowest thing in the game and the lowest base damage, and
@@ -84,7 +84,7 @@ public enum WeaponFamily {
      * two tick margin, and {@code IframesTest} fails if anything in the catalogue goes below that.</p>
      */
     DAGA("daga", "Daga", "Dagger", WeaponProfile.DAGGER, WeaponShape.DAGA,
-            2.0F, 3.2F),
+            1.6F, 3.2F),
 
     /**
      * The shotel: the widest cone in the game, the shortest reach that is not the warhammer's,
@@ -94,8 +94,7 @@ public enum WeaponFamily {
      * window is the shortest in the set: a bigger number needs less time to be a decision.</p>
      */
     SHOTEL("shotel", "Shotel", "Shotel", WeaponProfile.SABRE, WeaponShape.SHOTEL,
-            3.0F, 2.0F);
-
+            2.7F, 2.0F);
     /**
      * Every player starts with this much ATTACK_SPEED, and a weapon's attribute is an offset from
      * it rather than a total.

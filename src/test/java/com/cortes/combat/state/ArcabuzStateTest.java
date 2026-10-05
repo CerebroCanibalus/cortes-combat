@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -336,5 +337,155 @@ class ArcabuzStateTest {
                 "a minute later the gun can still light its fuse, which is the whole point of "
                         + "loading it");
         assertEquals(0, state.fuseTicks(), "and nothing has been burning during any of it");
+    }
+
+    /**
+     * The state follows the stack when the two disagree, and the gun it disagrees about is a gun
+     * the player is holding.
+     *
+     * <p><b>The bug this was written for, and it was a bug in two places at once.</b> Swap to a
+     * sword with a charged musket in your hand and the client''s viewmodel wipes its own copy of the
+     * fuse, because a sword has no fuse and a leftover reload is the thing this project has been
+     * bitten by twice. Pick the musket back up and nothing tells the client what it is holding: the
+     * gun draws empty, and the next shot asks for a firestone that was already spent.
+     *
+     * <p><b>The server had the right answer the whole time.</b> The chamber lives on the
+     * {@code ItemStack}, so reading it back says the gun is loaded. Nobody asked. The reconciliation
+     * existed, but only in {@code resolve()}, which runs on the press -- and putting a gun back in
+     * your hand is not a press.
+     *
+     * <p>So the rule is here, in the pure class, where a test can reach it: the stack wins, and the
+     * countdown and the button flag survive the reconciliation untouched.</p>
+     */
+    @Test
+    @DisplayName("a gun picked back up is charged again, because the stack still says so")
+    void aGunPickedBackUpIsChargedAgain() {
+        ArcabuzState loaded = ArcabuzState.EMPTY.finishReload();
+        assertTrue(loaded.loaded(), "the gun starts out loaded");
+
+        // The client''s copy was wiped, which is not a change on the server: the record still says
+        // loaded and the stack still carries the chamber. What goes wrong is that nothing travels.
+        ArcabuzState afterSwap = loaded.withChamber(true);
+        assertTrue(afterSwap.loaded(),
+                "the stack carries the chamber, so the gun is still charged. This one lost its "
+                        + "charge because the client stopped listening");
+        assertTrue(afterSwap.canLight(),
+                "and it can be lit, which is the whole complaint: a musket that has a firestone in "
+                        + "it and refuses to fire is a weapon the player cannot read");
+    }
+
+    /** And the reconciliation must not touch the two fields it has no opinion about. */
+    @Test
+    @DisplayName("reconciling the chamber keeps the countdown and the button")
+    void reconcilingKeepsTheCountdownAndTheButton() {
+        ArcabuzState burning = ArcabuzState.EMPTY.finishReload().light();
+        for (int tick = 0; tick < 7; tick++) {
+            burning = burning.step().state();
+        }
+        int fuseBefore = burning.fuseTicks();
+        boolean heldBefore = burning.reloadHeld();
+        assertTrue(fuseBefore > 0, "the gun is burning for this test to mean anything");
+        assertTrue(fuseBefore < ArcabuzState.FUSE_TICKS, "and it is partly spent");
+
+        ArcabuzState reconciled = burning.withChamber(false);
+        assertEquals(fuseBefore, reconciled.fuseTicks(),
+                "a gun picked up mid-burn keeps the countdown it had. Sending only the loaded flag "
+                        + "would draw a fuse a third spent as though it had just been lit, because "
+                        + "the frame comes off the countdown");
+        assertEquals(heldBefore, reconciled.reloadHeld(),
+                "and the button flag survives, because the reconciliation is about the chamber and "
+                        + "knows nothing about what the mouse is doing");
+    }
+
+    /**
+     * A reconciliation that changes nothing returns the same instance.
+     *
+     * <p><b>Because the caller compares by identity to decide whether to send a packet.</b> That is
+     * the whole of "cheap": one compare per tick against a value already on the stack, and a packet
+     * only on the tick where the two answers actually disagree. A method that built a fresh equal
+     * record would send the state to the client twenty times a second forever.</p>
+     */
+    @Test
+    void agreeingWithTheStackSendsNothing() {
+        ArcabuzState loaded = ArcabuzState.EMPTY.finishReload();
+        assertSame(loaded, loaded.withChamber(true),
+                "the gun agrees with the stack, so nothing is rebuilt and no packet is sent");
+        assertSame(loaded, loaded.withChamber(false),
+                "and a stack that says empty does not rebuild the record either -- see the test "
+                        + "below for why that direction is not the negation of this one");
+    }
+
+    /**
+     * The stack can only fill the gun, never empty it, and that asymmetry is the whole mechanic.
+     *
+     * <p><b>This is a bug the first version of this method had, and it was nearly invisible.</b>
+     * {@code withChamber} was written as "the stack wins", which reads symmetric and is not: the
+     * chamber component is removed at the <em>light</em>, in the same statement that lights the
+     * fuse. So for the twenty ticks a fuse burns, the honest server state is
+     * {@code loaded == false} while the gun is about to fire -- the ball is in the barrel. A
+     * symmetric reconciliation would empty the gun on that tick, and again on every tick after, and
+     * the player would watch a charged musket drain itself while the fuse burned.
+     *
+     * <p><b>The empty direction belongs to the shot alone.</b> {@code resolve} takes the component
+     * and lights the fuse in one breath, and there is no other event anywhere in this weapon that
+     * turns a charged gun into an empty one. So this method fills and nothing else does, and a stack
+     * that says "no" to a record that says "yes" is a gun the server has never heard of.</p>
+     */
+    @Test
+    @DisplayName("the stack can fill the gun but cannot empty it while the fuse burns")
+    void theStackCanFillButNotEmpty() {
+        ArcabuzState burning = ArcabuzState.EMPTY.finishReload().light();
+        assertFalse(burning.loaded(),
+                "the firestone was spent at the light, so the chamber is empty on the stack from "
+                        + "the moment the fuse is lit");
+        assertTrue(burning.isBurning(), "and the gun is about to go off");
+
+        ArcabuzState reconciled = burning.withChamber(false);
+        assertFalse(reconciled.loaded(),
+                "the record stays empty too, because the light already decided that and nothing "
+                        + "here gets to decide it a second time");
+        assertSame(burning, reconciled,
+                "and the reconciliation does not even rebuild the record: the stack agreeing with "
+                        + "the record is the no-packet case");
+        assertFalse(reconciled.canLight(),
+                "and a gun already burning cannot be lit twice, which is the gate that made the "
+                        + "first version of this method look harmless");
+
+        // **And a fuse that runs out does not come back**, which is the half the bug above could
+        // not have told us: a one-way fill is only safe because something else empties the gun.
+        ArcabuzState afterShot = burning;
+        for (int tick = 0; tick < ArcabuzState.FUSE_TICKS + 1; tick++) {
+            afterShot = afterShot.step().state();
+        }
+        assertFalse(afterShot.isBurning(), "the fuse ran out");
+        assertFalse(afterShot.loaded(), "and there is nothing left to light");
+    }
+
+    /**
+     * A charged stack fills a record that lost the charge.
+     *
+     * <p><b>The bug as reported.</b> Load a musket, swap to a sword, come back: the client wiped
+     * its copy on the way out and the server's record was never consulted, so the gun drew empty
+     * and the next shot wanted a firestone that was already spent. The reconciliation existed but
+     * only in {@code resolve()}, which runs on the press -- and picking a gun back up is not a
+     * press.</p>
+     */
+    @Test
+    @DisplayName("a charged stack fills a record that lost the charge")
+    void aChargedStackFillsARecordThatLostTheCharge() {
+        // The scenario: the server's record is stale-empty while the stack says charged. That is
+        // what the swap leaves behind, and it is also what a lost sync looks like.
+        ArcabuzState stale = ArcabuzState.EMPTY;
+        assertFalse(stale.loaded(), "the record is empty, which is what the swap left behind");
+
+        ArcabuzState fixed = stale.withChamber(true);
+        assertTrue(fixed.loaded(),
+                "the stack carries the chamber, so the gun is charged. This one is still empty, "
+                        + "which is the reported bug: the weapon draws unloaded and asks for a "
+                        + "firestone the player already paid");
+        assertTrue(fixed.canLight(), "and it can be lit, which is what a loaded gun is for");
+        assertNotSame(stale, fixed,
+                "a real change returns a different instance, because the caller sends a packet "
+                        + "exactly when this returns something new");
     }
 }

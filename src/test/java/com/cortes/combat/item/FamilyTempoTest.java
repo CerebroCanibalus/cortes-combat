@@ -4,6 +4,7 @@ import com.cortes.combat.attack.AttackTiming;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,8 +43,16 @@ class FamilyTempoTest {
         assertEquals(19, WeaponFamily.MARTILLO.swingInterval(),
                 "the warhammer was 22 and the playtest called it unusable rather than heavy; "
                         + "it is now the second slowest thing in the game, behind the halberd's 18");
-        assertEquals(18, WeaponFamily.ALABARDA.swingInterval(),
-                "the halberd is slow and long");
+        // **Twenty three, and it was eighteen.** "20% more range but 20% slower hits", and the
+        // two halves are one trade: the halberd is the longest weapon in the game and pays for
+        // five blocks of reach with the slowest swing in the game.
+        //
+        // **The number came out of the attribute, not out of the interval.** 1.1 down to 0.88 is a
+        // fifth off the declared speed and `ticksFor` did the rest, which is the whole reason a
+        // family carries an attack speed and has its interval derived from it. A swing interval
+        // written by hand here would be a second copy of a number that already exists.
+        assertEquals(23, WeaponFamily.ALABARDA.swingInterval(),
+                "the halberd is the slowest thing in the game, and it buys its five blocks with it");
         assertEquals(10, WeaponFamily.SHOTEL.swingInterval(),
                 "the sabre matches the ropera on speed and beats it on cone");
     }
@@ -76,7 +85,15 @@ class FamilyTempoTest {
     @DisplayName("nobody is faster than the dagger or slower than the warhammer")
     void theOrderingIsTheCatalogue() {
         int fastest = WeaponFamily.DAGA.swingInterval();
-        int slowest = WeaponFamily.MARTILLO.swingInterval();
+        // **The halberd, and it was the warhammer.** The halberd went from eighteen ticks to
+        // twenty three in the retune -- "20% more range, 20% slower" -- and that made it the
+        // slowest swing in the game. Naming the warhammer here instead of reading the maximum is a
+        // test that was asserting a fact about the design that the design had stopped having, and
+        // it would have kept passing for every weapon slower than nineteen.
+        int slowest = Arrays.stream(WeaponFamily.values())
+                .mapToInt(WeaponFamily::swingInterval)
+                .max()
+                .orElseThrow();
         for (WeaponFamily family : WeaponFamily.values()) {
             int ticks = family.swingInterval();
             assertTrue(ticks >= fastest,

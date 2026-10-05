@@ -117,18 +117,51 @@ REACH.put(WeaponProfile.AXE, new ReachProfile(3.4F, 35.0F, 25.0F));
         // gives it back, and stops it short of the sword's three point six on purpose: the sword is
         // the weapon the design assumes you have, and the ropera being the shortest-ranged of the
         // committed weapons is the reason its speed matters.
-        REACH.put(WeaponProfile.ROPERA, new ReachProfile(3.5F, 12.0F, 15.0F));
-        // Dagger: tiny range, wide cone.
-        REACH.put(WeaponProfile.DAGGER, new ReachProfile(2.4F, 45.0F, 30.0F));
-        // Halberd: widest and longest.
-        REACH.put(WeaponProfile.HALBERD, new ReachProfile(4.2F, 55.0F, 35.0F));
+        // **3.5 -> 3.6, 12 -> 13 and 15 -> 16.** The playtest with a second player asked for "5%
+        // more radius and 15% more range", and three point six is where that lands: the sword is
+        // also three point six, which is not a copy -- the ropera's cone is thirteen degrees wide
+        // against the sword's thirty five, so the two weapons have the same distance and nothing
+        // else in common.
+        //
+        // **It stops exactly at the sword on purpose.** "15% more" off three point five is three
+        // and a quarter, and passing the sword would take away the one thing the ropera's speed
+        // was paying for.
+        REACH.put(WeaponProfile.ROPERA, new ReachProfile(3.6F, 13.0F, 16.0F));
+        // Dagger: tiny range, wide cone. **2.4 -> 2.9, 45 -> 49, 30 -> 31.**
+        //
+        // "20% more radius and 20% less damage", and the two halves are the same trade: a wider
+        // pocket the player cannot miss in, paying for it with every hit landing softer. Two point
+        // nine is a fifth more reach and it puts the dagger past the unarmed hands' two point five
+        // and level with the sabre's two point five -- which is the point, because the dagger is
+        // now the fastest thing that can still hurt *and* it reaches as far as the sabre.
+        REACH.put(WeaponProfile.DAGGER, new ReachProfile(2.9F, 49.0F, 31.0F));
+        // Halberd: widest and longest. **4.2 -> 5.0, 55 -> 60.**
+        //
+        // "20% more range", taken literally: four point two times one point two is five point zero
+        // four, and this is the weapon whose whole argument is standing off. It is now the longest
+        // thing in the game by three quarters of a block over the trident's four -- which is the
+        // price of the slow it is about to pay.
+        REACH.put(WeaponProfile.HALBERD, new ReachProfile(5.0F, 60.0F, 35.0F));
         // 2.6 -> 2.9 and 40/40 -> 30/30. The playtest read the warhammer as a weapon that could
         // never reach anything, and it was right for the wrong reason: the cone was wide enough
         // that at its own range the useful part of it was a wall. Moving the reach out and the
         // angles in is the trade the sabre makes in the other direction.
-        REACH.put(WeaponProfile.WARHAMMER, new ReachProfile(2.9F, 30.0F, 30.0F));
+        //
+        // **2.9 -> 3.4 and 30 -> 36 by 36.** A second playtest, with somebody else swinging at it,
+        // asked for "a bit more radius and 20% more range", and the two halves are the same
+        // observation: it was whiffing, and it was whiffing because the *cone* was too narrow for
+        // how far the arm has to travel. Three point four is a fifth more than two point nine and it
+        // lands just under the sword's three point six -- the warhammer is slower than a sword by
+        // seven ticks, so being a little shorter on reach is the honest cost of that.
+        REACH.put(WeaponProfile.WARHAMMER, new ReachProfile(3.4F, 36.0F, 36.0F));
         // Sabre: the widest cone in the game, shortest range. It pays for that cone with a parry.
-        REACH.put(WeaponProfile.SABRE, new ReachProfile(2.5F, 75.0F, 25.0F));
+        //
+        // **2.5 -> 2.25 and 75 stays at 75.** "-10% of range" on the sabre, which is the one
+        // request here that makes the weapon *worse* to hold and it is still the right call: the
+        // sabre's problem was never the reach on its own, it is that seventy five degrees of cone
+        // at arm's length is a bet, and this makes the bet smaller without touching the payoff.
+        // The parry is what pays for the weapon and it is untouched.
+        REACH.put(WeaponProfile.SABRE, new ReachProfile(2.25F, 75.0F, 25.0F));
         // Arcabuz: the **bayonet**, and it is the melee cone, not the gun's.
         //
         // **Two point six and forty six by thirty five, and it is short on purpose.** The bayonet is

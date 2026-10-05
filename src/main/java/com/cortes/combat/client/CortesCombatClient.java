@@ -44,6 +44,12 @@ public class CortesCombatClient {
         // this class already is the client's subscription list, and a second list is a second
         // place to forget one.
         NeoForge.EVENT_BUS.register(CombatTooltipHandler.class);
+        // **The mod bus and not the game bus, and the difference is not a style choice.**
+        // `ModelEvent.ModifyBakingResult` implements `IModBusEvent`: registering this on
+        // `NeoForge.EVENT_BUS` means the listener never fires, so the arcabuz would keep drawing as
+        // a rotating 3D model in every slot and nothing would say so -- the same shape of silent
+        // failure as the missing `@SubscribeEvent` that cost the arcabuz its fuse frames.
+        modEventBus.addListener(FlatInventoryIcon::onBakingResult);
         modEventBus.addListener(CortesCombatClient::registerParticles);
         modEventBus.addListener(CortesCombatClient::registerLayers);
         modEventBus.addListener(CortesCombatClient::onClientSetup);

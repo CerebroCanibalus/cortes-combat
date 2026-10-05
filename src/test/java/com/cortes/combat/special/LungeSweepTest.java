@@ -169,9 +169,13 @@ class LungeSweepTest {
         assertEquals(half, cube[3] - 10.0, 1.0E-9);
         assertEquals(half, 10.0 - cube[0], 1.0E-9);
         assertEquals(half, cube[5] - 20.0, 1.0E-9);
-        assertEquals(1.75, half, 1.0E-6,
-                "and it follows the weapon: the ropera's reach is three and a half now, so the cube "
-                        + "grew by five hundredths of a block when the cone did");
+        // **One point eight, and it was one point seven five.** The ropera's reach went from three
+        // point five to three point six in a retune that asked for fifteen percent more range, and
+        // this followed. That is the whole reason the cube is derived rather than written: it has
+        // now moved twice, both times because the weapon's own reach moved, and neither time
+        // anybody had to remember to come here and change it.
+        assertEquals(1.8, half, 1.0E-6,
+                "and it follows the weapon, which is the only reason this assertion exists");
 
         // A cube, so all three axes are the same, centred on the player's centre rather than the feet.
         double size = cube[3] - cube[0];

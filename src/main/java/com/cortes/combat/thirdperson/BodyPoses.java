@@ -334,4 +334,129 @@ public final class BodyPoses {
     private static final float SWEEP_ARM_PITCH = -68.0F;
     private static final float SWEEP_ARM_ROLL = -48.0F;
     private static final float SWEEP_BODY_YAW = 14.0F;
+    /**
+     * The shouldered aim, and every number in it is read out of vanilla's crossbow.
+     *
+     * <p><b>{@code AnimationUtils.animateCrossbowHold}, converted.</b> The playtest asked for the
+     * rifle to be aimed forward in both arms "parecido a la ballesta", and the ballesta''s third
+     * person pose is a method in vanilla with its numbers written down:</p>
+     *
+     * <pre>
+     *   animateCrossbowHold(rightArm, leftArm, head, true)
+     *     rightArm.yRot = -0.3F + head.yRot
+     *     leftArm.yRot  =  0.6F + head.yRot
+     *     rightArm.xRot  = -PI/2 + head.xRot + 0.1F
+     *     leftArm.xRot   = -1.5F + head.xRot
+     * </pre>
+     *
+     * <p>In degrees: -17.2 of yaw and -84.3 of pitch on the weapon arm, +34.4 and -85.9 on the
+     * other. A player holding a charged crossbow has both arms out at shoulder height, and that is
+     * the pose that was asked for.</p>
+     *
+     * <p><b>Why the pitches are sixteen degrees shallower than vanilla''s.</b> Vanilla
+     * <em>writes</em> those numbers onto the arm; this file <em>adds</em> to it, because
+     * {@code PlayerModelMixin} sits at the tail of {@code setupAnim} and every other pose here is
+     * an offset from the walk cycle. The arm''s own rest is {@code xRot * 0.5 - PI/10} -- about -18
+     * degrees for a player standing still holding something -- so -84.3 is reached by adding -66.</p>
+     *
+     * <p><b>That coupling to vanilla''s -18 is a real debt and it is stated rather than hidden.</b>
+     * The alternative was a replace, and the guard has one because {@code poseBlockingArm} had
+     * already moved its arm; nothing here has. If a future version changes that idle these three
+     * numbers come with it, and the symptom would be an aiming pose a few degrees off horizontal.</p>
+     *
+     * <p>The yaws need no correction: vanilla''s rest yaw for an item is zero, so adding it and
+     * writing it are the same number.</p>
+     */
+    private static final float AIM_ARM_PITCH = -66.0F;
+    private static final float AIM_ARM_YAW = -17.0F;
+    private static final float AIM_OFF_ARM_PITCH = -68.0F;
+    private static final float AIM_OFF_ARM_YAW = 34.0F;
+
+    /**
+     * The reload, and it only ever lowers the weapon.
+     *
+     * <p><b>Positive, because positive is the way down, and that is the whole reason this file''s
+     * "every pitch is negative" rule had to be split.</b> The convention at the top is that negative
+     * {@code xRot} is the arm coming <em>forward</em>, so an arm the aim has put out at -66 comes
+     * back towards the body''s own rest by adding. The negative rule was not wrong -- it was a rule
+     * about poses that <em>raise</em>, and every pose in the file was one until this.</p>
+     *
+     * <p>The off arm comes down less than the weapon does, which is what a person does: the hand
+     * that holds the barrel stays with the barrel and the hand that fetches the ball comes in
+     * towards the pouch.</p>
+     *
+     * <p><b>No roll anywhere.</b> The first person reload carries fourteen degrees of it and it
+     * would be easy to copy the number across. A roll sign on a shoulder is a guess whose failure
+     * is visible -- the shoulder ends up in the wrong place -- and this file has been bitten by
+     * exactly that once, which is why {@link #STRIKE_ARM_ROLL} cites the vanilla line it came from.
+     * So the pitch does the work until somebody looks at it and can say which way it leans.</p>
+     */
+    private static final float RELOAD_ARM_PITCH = 44.0F;
+    private static final float RELOAD_OFF_ARM_PITCH = 30.0F;
+    private static final float RELOAD_OFF_ARM_YAW = 10.0F;
+
+    /**
+     * The bayonet''s share of the body, and it exists because of arithmetic.
+     *
+     * <p><b>Twelve degrees against the strike''s hundred and four.</b> The aim puts the weapon arm at
+     * -66 and this file''s strike peaks at -104, so a left click on a shouldered gun added up to
+     * -170: past vertical, on the way to pointing backwards. That is the somersault the
+     * {@code PlayerModelMixin} javadoc already documents once, and it arrives the moment a weapon
+     * is given a resting posture -- so the pose and the strike have to be chosen together.</p>
+     *
+     * <p>A weapon held on the shoulder does not get the sword''s strike. It gets a poke, which is
+     * what its viewmodel track has always been: forward a little, and still pointed where it was
+     * aimed.</p>
+     */
+    private static final float BAYONET_ARM_PITCH = -12.0F;
+
+    /**
+     * The body holding a shouldered weapon: both arms out, level, like a charged crossbow.
+     *
+     * @param howFar 0..1, and the arcabuz passes one -- this is a posture, not a motion
+     */
+    public static BodyPose aiming(float howFar) {
+        float how = clamp01(howFar);
+        if (how <= 0.0F) {
+            return BodyPose.NONE;
+        }
+        return new BodyPose(
+                AIM_ARM_PITCH * how, AIM_ARM_YAW * how, 0.0F,
+                AIM_OFF_ARM_PITCH * how, AIM_OFF_ARM_YAW * how, 0.0F,
+                0.0F, 0.0F);
+    }
+
+    /**
+     * The body bringing a shouldered weapon down to reload: the muzzle off the sight line, the off
+     * hand coming in.
+     *
+     * <p>Additive on top of {@link #aiming}, which is why these numbers are positive and small --
+     * they are a displacement from a pose already out at shoulder height, not an absolute.</p>
+     */
+    public static BodyPose reloading(float howFar) {
+        float how = clamp01(howFar);
+        if (how <= 0.0F) {
+            return BodyPose.NONE;
+        }
+        return new BodyPose(
+                RELOAD_ARM_PITCH * how, 0.0F, 0.0F,
+                RELOAD_OFF_ARM_PITCH * how, RELOAD_OFF_ARM_YAW * how, 0.0F,
+                0.0F, 0.0F);
+    }
+
+    /**
+     * The bayonet''s share of the body: a poke, not a swing.
+     *
+     * @see #BAYONET_ARM_PITCH
+     */
+    public static BodyPose bayonet(float howFar) {
+        float how = clamp01(howFar);
+        if (how <= 0.0F) {
+            return BodyPose.NONE;
+        }
+        return new BodyPose(
+                BAYONET_ARM_PITCH * how, 0.0F, 0.0F,
+                0.0F, 0.0F, 0.0F,
+                0.0F, 0.0F);
+    }
 }

@@ -109,10 +109,7 @@ public final class Arcabuz {
         // happens, and asking it once means the two answers cannot disagree about a gun that was
         // just loaded.
         boolean chamber = chamber(player);
-        if (chamber != state.loaded()) {
-            state = new ArcabuzState(state.fuseTicks(), state.reloadTicks(), chamber,
-                    state.reloadHeld());
-        }
+        state = state.withChamber(chamber);
 
         if (state.canLight()) {
             // The firestone is gone on this tick, before the fuse has moved one step. That is the
@@ -351,6 +348,43 @@ public final class Arcabuz {
             player.setData(ModAttachments.ARCABUZ.get(), ArcabuzState.EMPTY);
             ModNetworking.sendArcabuzFuse(player, false, 0, false, 0);
             return;
+        }
+
+        // **The gun came back to the hand, so the client needs telling what it is holding.**
+        //
+        // This is the other half of the snuff above, and it was the half nobody wrote. Swapping to a
+        // sword makes the client's `ItemViewModel` run `clearArcabuz()`, which wipes
+        // `ArcabuzFuseState` -- the countdown, and `loaded`. The gun is drawn empty. Picking the
+        // musket back up changes nothing on the client, because the client has nothing left to
+        // change: `sendArcabuzFuse` only fires when the state *moves* (`Step#tellClient`), and this
+        // gun has not moved. So the player gets a charged weapon drawn as an empty one, and the next
+        // shot asks for a firestone they already spent.
+        //
+        // **The server was right the whole time.** The chamber lives on the stack, so
+        // `chamber(player)` here reads true and the attachment's `loaded` is the stale half. The
+        // same reconciliation `resolve` does on the press, done on the tick instead -- because the
+        // press is not the only event that can leave the client holding a stale answer, and the tick
+        // is the one that always runs.
+        //
+        // **Why this is cheap, which is the only reason to do it here.** It is one boolean compare
+        // per tick against a value already on the stack, and it sends only on the tick where they
+        // disagree. A player holding a musket they just loaded pays this once and never again.
+        ArcabuzState current = player.getData(ModAttachments.ARCABUZ.get());
+        boolean inHand = player.getMainHandItem().is(ModItems.ARCABUZ.get());
+        if (inHand) {
+            ArcabuzState reconciled = current.withChamber(chamber(player));
+            if (reconciled != current) {
+                LOG.info("[arcabuz] resincronizado al retomar el arma: cargada={}",
+                        reconciled.loaded());
+                player.setData(ModAttachments.ARCABUZ.get(), reconciled);
+                // **The countdown goes with it, not just the flag.** A gun picked back up mid-burn
+                // has `fuseTicks > 0` on the server and zero on the client, and the frame comes off
+                // the countdown -- so sending only the flag would draw a gun that is neither lit nor
+                // empty, with a fuse a third spent rendering as its first frame.
+                ModNetworking.sendArcabuzFuse(player, false, reconciled.fuseTicks(),
+                        reconciled.loaded(), reconciled.reloadTicks());
+                return;
+            }
         }
 
         ArcabuzState.Step step = previous.step();

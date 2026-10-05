@@ -22,13 +22,19 @@ import java.util.Random;
  * against the <em>camera's</em> basis -- forward, right and up -- rather than as one distance along
  * one direction. Retuning it is now three numbers that can be read independently.</p>
  *
- * <h2>Why these are not read from the model's vertex</h2>
+ * <h2>Why the first three are not read from the model's vertex</h2>
  *
- * <p>Because the model's transform is not available where a particle would have to be spawned, and
- * that was checked rather than assumed: {@code GameRenderer#renderItemInHand} builds the pose stack
- * it hands to {@code renderHandsWithItems} with only the <em>inverse projection</em> in it, and the
- * camera rotation lives in the modelview stack instead. So a viewmodel vertex cannot be read into
- * world space from inside the item renderer at all.</p>
+ * <p>Because a particle cannot be spawned from inside the item renderer, and that was checked
+ * rather than assumed: {@code GameRenderer#renderItemInHand} builds the pose stack it hands to
+ * {@code renderHandsWithItems} with only the <em>inverse projection</em> in it, and the camera
+ * rotation lives in the modelview stack instead. So there is nowhere inside the renderer to put a
+ * particle.</p>
+ *
+ * <p><b>What that argument did not say is that the two halves cannot be separated in time.</b> The
+ * matrix can be read during the draw and used later on the client's own tick, which is what
+ * {@code ItemViewModel#drawnFrame} and {@link #FUSE_RIGHT} do -- and that is why the fuse stopped
+ * coming out of the camera while the muzzle flash, which is still three numbers against the
+ * camera's basis, has the same weakness it always had.</p>
  *
  * <p>A first person muzzle flash is a view space effect in any engine, and this one is placed in
  * view space against the camera basis. It is a number tuned to the drawn weapon rather than a
@@ -104,28 +110,60 @@ public final class ArcabuzMuzzle {
      * the two points, and four is enough to draw a line and few enough not to be a wall.</p>
      */
     /**
-     * The sparks that come off the fuse on the press.
+     * The smoke that comes off the fuse while it burns.
      *
-     * <p><b>Asked for by name, and the reason it is a burst rather than a particle is that one
-     * spark is invisible.</b> A single electric spark against a lit world lasts one frame and
-     * reads as a glitch; six of them over the same instant read as flint striking steel. The
-     * count is the whole feature.</p>
+     * <p><b>Smoke, and not sparks, and that is the playtest's word.</b> It was {@code ELECTRIC_SPARK}:
+     * a blue-white electric arc is what aenchanted thing throws, and a match on a flintlock throws
+     * a grey thread of smoke that hangs. Sparks were also the wrong <em>shape</em> -- they leave the
+     * point and go, and what the player needs to see is that the fuse is lit for a second.</p>
      *
-     * <p><b>Drawn at the fuse and not at the muzzle.</b> Those are two different points on the
-     * weapon, a hand's width apart, and a burst of sparks coming out of the wrong end of a gun
-     * is worse than no sparks at all: it tells the player the wrong end is the business end.
-     * {@code ClientArcabuzShot#fuseTip} is therefore its own basis point and not the muzzle's.</p>
-     *
-     * <p>The spread is half the muzzle flash's because these come off a slow match, not off a
-     * charge of powder, and the speed is a third of it for the same reason.</p>
+     * <p><b>Six is now the count of puffs, not the count of sparks.</b> The old reason for six was
+     * "one spark is invisible", which was a fact about an electric spark's one-frame life and is not
+     * a fact about smoke: smoke persists, so the count is about how much of a thread there is
+     * rather than about being seen at all.</p>
      */
-    public static final int SPARK_COUNT = 6;
+    public static final int FUSE_SMOKE_COUNT = 6;
 
-    /** How far off the fuse tip each spark starts, in blocks. */
-    public static final double SPARK_SPREAD = 0.012;
+    /** How far off the fuse tip each puff starts, in blocks. */
+    public static final double FUSE_SMOKE_SPREAD = 0.012;
 
-    /** How fast each spark travels, in blocks per tick. */
-    public static final double SPARK_SPEED = 0.05;
+    /** How fast the smoke leaves the fuse, in blocks per tick. */
+    public static final double FUSE_SMOKE_SPEED = 0.05;
+
+    /**
+     * Where the fuse is, in the item's own frame: right, up, and forward from where the hand puts
+     * the weapon.
+     *
+     * <p><b>These three are the numbers to tune, and they are the only ones in this file that were
+     * not checked against something.</b> The rest of it is read off the model or off vanilla; these
+     * three are the distance from the item's root to the {@code mecha} element of
+     * {@code models/item/arcabuz.json}, and the conversion from that element's model units into
+     * this frame could <b>not</b> be derived from the sources: {@code ItemRenderer} applies the
+     * display transform and then {@code translate(-0.5, -0.5, -0.5)} and nothing else, so the
+     * model-to-pose scale is somewhere this reading did not reach.</p>
+     *
+     * <p>They are seeded from where the <em>muzzle</em> already is relative to the same root --
+     * {@link #FORWARD}, {@link #RIGHT} and {@link #UP} are camera-relative and {@code ItemViewModel}
+     * places the root at {@code ITEM_POS}, so the difference between the two is the gun's own
+     * geometry in this frame -- and then pulled back towards the grip and down off the bore,
+     * because a flintlock's pan is behind and below its muzzle.</p>
+     *
+     * <p>What is <em>not</em> a guess is the frame they are used in. That comes from the pose
+     * matrix the renderer hands us, so the sparks leave the drawn weapon rather than the camera, and
+     * moving these three is a retune. Changing the frame would be a rewrite.</p>
+     */
+    public static final double FUSE_RIGHT = -0.15;
+
+    /** How far above the item's root the fuse sits, in the item's frame. */
+    public static final double FUSE_UP = 0.10;
+
+    /**
+     * How far forward of the item's root the fuse sits, in the item's frame.
+     *
+     * <p>Near zero on purpose: the hand is roughly at the middle of a musket and the pan is a
+     * little behind that.</p>
+     */
+    public static final double FUSE_FORWARD = 0.02;
     public static final int LAVA_PER_TARGET = 4;
 
     /**
@@ -209,15 +247,19 @@ public final class ArcabuzMuzzle {
      * @param direction a unit vector, which for the arcabuz is the player's look
      */
     /**
-     * The one burst the fuse makes when it is struck.
+     * The one burst the fuse makes when it is struck: smoke, going up.
      *
      * <p>A {@code Burst} like any other, so the client's drawing code has nothing arcabuz-shaped
      * in it: the weapon decides what a burst is and the client only spawns what it is handed,
      * which is the same split {@link #bursts(double[])} already uses for the shot.</p>
+     *
+     * <p>Up, and that direction is the one thing here that is not a retune: the burst's direction
+     * is a unit vector the caller multiplies by the speed, so {@code {0, 1, 0}} is straight up in
+     * the world's frame -- which is where a thread of smoke off a match goes.</p>
      */
-    public static Burst[] fuseSparks() {
-        return new Burst[]{new Burst(new double[]{0.0, 1.0, 0.0}, SPARK_COUNT, SPARK_SPREAD,
-                SPARK_SPEED)};
+    public static Burst[] fuseSmoke() {
+        return new Burst[]{new Burst(new double[]{0.0, 1.0, 0.0}, FUSE_SMOKE_COUNT,
+                FUSE_SMOKE_SPREAD, FUSE_SMOKE_SPEED)};
     }
     public static Burst[] bursts(double[] direction) {
         return new Burst[]{

@@ -1,0 +1,40 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_gunpowder": {
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:gunpowder"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "advancements.cortescombat.weapon"
+    },
+    "hidden": true,
+    "icon": {
+      "count": 1,
+      "id": "cortescombat:firestone"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "item.cortescombat.firestone"
+    }
+  },
+  "requirements": [
+    [
+      "has_gunpowder"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "cortescombat:firestone"
+    ]
+  }
+}

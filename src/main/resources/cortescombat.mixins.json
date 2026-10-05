@@ -3,7 +3,6 @@
   "minVersion": "0.8",
   "package": "com.cortes.combat.mixin",
   "compatibilityLevel": "JAVA_21",
-  "refmap": "cortescombat.refmap.json",
   "mixins": [],
   "client": [
     "MinecraftAttackMixin",

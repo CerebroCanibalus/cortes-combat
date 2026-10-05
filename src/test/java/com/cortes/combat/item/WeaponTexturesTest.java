@@ -1,14 +1,16 @@
 package com.cortes.combat.item;
 
 import com.cortes.combat.core.weapon.WeaponMaterial;
-import com.cortes.combat.core.weapon.WeaponMaterial;
 import com.cortes.combat.item.WeaponFamily;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 
@@ -147,23 +149,106 @@ class WeaponTexturesTest {
         var expected = everyItemName().collect(java.util.stream.Collectors.toSet());
 
         try (var files = Files.list(TEXTURES)) {
-            // **Regular `.png` files only, and not every entry.**
+            // **A PNG here must be drawn by a MODEL, and not necessarily by an ITEM.**
             //
-            // `textures/item/` is an atlas source directory, so it is now also where the arcabuz's
-            // five fuse frames live -- under an `arcabuz_fuse/` subfolder. A subfolder is not an
-            // item icon, and this test failed on it the first time with "texture arcabuz_fuse.png
-            // has no item", which names neither what it found nor what it wanted.
+            // The rule used to be "a top-level PNG here is an item icon", which held until the
+            // arcabuz needed a flat sprite for the inventory: a two block musket drawn as eight 3D
+            // elements is a grey rectangle in a sixteen pixel slot, so `arcabuz_icon.png` became its
+            // own model file and no item of that name exists. The playtest asked for the sprite and
+            // this test then failed on the very file that answered it.
             //
-            // The distinction is the whole test: a top-level PNG here is an icon and must have an
-            // item, and anything below the top level belongs to a model that is not an icon.
+            // So the question moves one level down, to the one the atlas actually cares about:
+            // does some model name this texture? A texture nothing references is the real defect --
+            // it is stitched into the atlas, sixteen bytes a pixel, for nothing.
+            //
+            // **And the fuse frames still pass for the reason they always did:** they live under
+            // `arcabuz_fuse/`, which is a directory rather than a top-level file, so `isRegularFile`
+            // is false and this loop never sees it. That distinction is not a detail -- the first
+            // version of this test failed on the subfolder with "texture arcabuz_fuse.png has no
+            // item", naming neither what it found nor what it wanted.
+            List<String> drawn = texturesNamedByModels();
+            List<String> orphans = new ArrayList<>();
             files.filter(Files::isRegularFile)
                     .map(p -> p.getFileName().toString().replace(".png", ""))
-                    .filter(name -> !expected.contains(name))
-                    .forEach(name -> fail("texture " + name + ".png has no item: the catalogue says "
-                            + expected.size() + " items and this is not one of them"));
+                    .filter(name -> !drawn.contains("cortescombat:item/" + name))
+                    .forEach(orphans::add);
+
+            assertTrue(orphans.isEmpty(),
+                    "these sit in textures/item/, which the atlas stitches, and no model file "
+                            + "names them, so they are paid for and never drawn: " + orphans);
         } catch (Exception e) {
             fail("could not list " + TEXTURES.toAbsolutePath() + ": " + e.getMessage());
         }
+    }
+
+    /**
+     * Where the models live, in both places they live.
+     *
+     * <p><b>Two roots, and this was a bug in the original version of this test.</b> It asked "is
+     * there an item of this name?" and compared against the catalogue, so it never had to read a
+     * model file and never noticed that thirty of the thirty two models are written by datagen into
+     * {@code src/generated} while only eight are hand drawn in {@code src/main}. Rewriting the
+     * question as "does a model name this texture?" forced the paths to be read, and the first run
+     * reported all thirty two textures as orphans -- because it was looking in one directory and
+     * the answers were in the other.</p>
+     *
+     * <p>The game loads both, in the order its run config states: generated first, then the ones
+     * under {@code src/main} as overrides. So the test has to read both, or it is asking about half
+     * the mod.</p>
+     *
+     * <p><b>And under both namespaces.</b> The third root is the one that surprised me: the copper
+     * ingot has no item of its own -- {@code ModItems} says so at length, it is a reskin of
+     * vanilla's -- so its model lives at {@code assets/minecraft/models/item/copper_ingot.json} and
+     * its texture at ours. Reading only {@code assets/cortescombat} reported it as an orphan on the
+     * first run of the corrected test, which is what a hand written path list does: it encodes the
+     * layout you expected rather than the one there is.</p>
+     */
+    private static final List<java.nio.file.Path> MODEL_ROOTS = List.of(
+            java.nio.file.Path.of("src", "main", "resources", "assets", "cortescombat", "models"),
+            java.nio.file.Path.of("src", "main", "resources", "assets", "minecraft", "models"),
+            java.nio.file.Path.of("src", "generated", "resources", "assets", "cortescombat",
+                    "models"));
+
+    /**
+     * Every texture path any model in this mod names, in the {@code namespace:path} form.
+     *
+     * <p><b>Text and not a JSON parser</b>, for the rule the whole project follows: {@code src/test}
+     * reaches nothing that belongs to Minecraft, and a JSON library would either come from there or
+     * be a new dependency. It looks for one shape and that is enough.
+     *
+     * <p><b>It reads bare paths too</b> -- {@code "item/x"} as well as {@code "cortescombat:item/x"} --
+     * because a model may write either. A model that writes a bare path is naming a vanilla texture
+     * unless it is under our namespace, so those come back as {@code minecraft:item/x} and are not
+     * mistaken for one of ours.
+     */
+    private static List<String> texturesNamedByModels() {
+        List<String> drawn = new ArrayList<>();
+        for (java.nio.file.Path root : MODEL_ROOTS) {
+            if (!Files.isDirectory(root)) {
+                fail("no models at " + root.toAbsolutePath() + ", so this test is asserting "
+                        + "nothing about anything");
+                return drawn;
+            }
+            try (var models = Files.walk(root)) {
+                models.filter(p -> p.toString().endsWith(".json")).forEach(p -> {
+                    try {
+                        String json = Files.readString(p, StandardCharsets.UTF_8);
+                        java.util.regex.Matcher m = java.util.regex.Pattern
+                                .compile("\"([a-z0-9_.-]+:[a-z0-9_/.-]+|[a-z0-9_]+/[a-z0-9_/.-]+)\"")
+                                .matcher(json);
+                        while (m.find()) {
+                            String value = m.group(1);
+                            drawn.add(value.contains(":") ? value : "minecraft:" + value);
+                        }
+                    } catch (java.io.IOException e) {
+                        fail("could not read " + p + ": " + e.getMessage());
+                    }
+                });
+            } catch (java.io.IOException e) {
+                fail("could not walk " + root.toAbsolutePath() + ": " + e.getMessage());
+            }
+        }
+        return drawn;
     }
 
     @Test

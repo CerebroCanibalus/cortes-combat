@@ -4,6 +4,7 @@ import com.cortes.combat.CortesCombat;
 import com.cortes.combat.registry.ModItems;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementType;
+import net.minecraft.advancements.AdvancementRewards;
 import net.minecraft.advancements.Criterion;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.advancements.critereon.InventoryChangeTrigger;
@@ -206,6 +207,12 @@ public final class ArcabuzRecipes implements DataProvider {
                         AdvancementType.TASK,
                         false, false, true))
                 .addCriterion("has_dispenser", has(Items.DISPENSER))
+                // **Names the recipe, which is the whole difference between an entry and nothing.**
+                // See CortesRecipeProvider for the reading behind it: the recipe book gates every
+                // recipe on `RecipeBook#contains`, and `known` is filled from the recipes an
+                // advancement grants. An advancement that names none grants none, so the gun loaded
+                // and crafteable at the table and invisible in the book, with no error anywhere.
+                .rewards(AdvancementRewards.Builder.recipe(id))
                 .build(id)
                 .value();
 

@@ -520,27 +520,33 @@ public final class ViewModelDefaults {
      */
     private static ViewModelProfile arcabuz() {
         return ViewModelProfile.heldAs(
-                // IDLE: a long gun held across the body, muzzle slightly down and forward.
-                new Offset(0.0, -0.06, 0.10, -12.0, 0.0, 0.0),
+                // IDLE: a long gun held across the body, muzzle down at the ground in front of you.
+                //
+                // **The pitch is -20 and it used to be -12, and the reason is a question the
+                // playtest asked: "the loaded pose and the unloaded one point the same way".**
+                // They did, and not by accident -- the LOADED track carried a pitch of exactly zero,
+                // so both states were the rest's own -12 and the only thing that changed between
+                // them was how deep the gun sat. Two poses that differ in depth and not in angle
+                // are one pose.
+                //
+                // The convention, so it does not have to be re-derived: `pitch` becomes a rotateX
+                // in the item's own frame, `-Z` is away from the camera, and a positive rotateX
+                // carries the muzzle up. **Negative is nose down.** So "aim a bit at the ground" is
+                // a more negative number and there is nothing to import from anywhere else.
+                new Offset(0.0, -0.06, 0.10, -20.0, 0.0, 0.0),
                 true,
-                  // LOADED: the gun comes DOWN and forward, and no rotation at all.
+                  // LOADED: the gun comes DOWN and forward, and comes UP level with the sight line.
                   //
-                  // **The pitch is deliberately zero, and that is a decision, not an omission.**
-                  // This axis was flipped once on a convention that had been verified for the
-                  // *third person* body (PlayerModelMixin) and then applied here, in first person,
-                  // without ever checking it in this frame. The playtest answered: the gun now
-                  // aims at the sky. That was the third correction on this number, so it is out.
+                  // **The pitch is +18, and it is positive because the states have to differ.**
+                  // It adds to the rest's -20 and lands the loaded weapon at -2: level, which is
+                  // what "apunta al frente" asks for. Zero here would put it back at -20, which is
+                  // the bug this track was fixed for.
                   //
-                  // **What replaces it is a claim that can be checked by reading.** dy is the
-                  // screen Y axis, so negative is down and positive is up, with no convention to
-                  // import from anywhere. That makes "the flintlock comes down when it is loaded"
-                  // a statement about one number in one direction, which is the only kind this
-                  // project can afford after three playtests went into a sign.
-                  // **And the depth is half of what it was, because the playtest said "too low".**
+                  // **The depth is half of what it was, because the playtest said "too low".**
                   // Ten centimetres down from a rest that is already six is a gun at the player's
                   // knees; five is a gun that has been brought down onto the pan and no further.
                   Track.of(Channel.HELD, Curve.LINEAR,
-                          new Offset(0.0, -0.05, -0.06, 0.0, 0.0, 0.0)),
+                          new Offset(0.0, -0.05, -0.06, 18.0, 0.0, 0.0)),
                   // RELOAD: the hand going to the pan, down and to the side. The only track in
                   // this file that carries roll, because that is what makes it read as *ladeado*
                   // rather than as a weapon that slid sideways.
@@ -578,13 +584,22 @@ public final class ViewModelDefaults {
                 // is a bayonet rather than a metre and a half of rapier. So this is under half
                 // the push and under a quarter of the rotation.
                 //
-                // The pitch is negative because the rest is twelve degrees nose-down and a jab
-                // brings the muzzle level: it is the difference between the size of that change
-                // and nothing more.
+                // **The pitch is negative, and it drives the muzzle DOWN, not up to the sight
+                // line.** The old comment here said the opposite -- that a jab "brings the muzzle
+                // level" -- and that was never true: a track's numbers are *added* to the rest's
+                // (`ViewModelProfile#evaluate` starts at `rest`), so a negative pitch on top of a
+                // nose-down rest is more nose-down. A comment that asserts the wrong sign is worse
+                // than no comment, because the next reader tunes against it.
+                //
+                // What the poke is: the barrel drops as the arm drives it, the point stays roughly
+                // where it was aimed, and the whole thing is a small motion. Which is why this is
+                // mostly the -0.28 of translation and only fourteen degrees of rotation.
                 //
                 // **These numbers are written, not played.** What a bayonet poke should read like
                 // on screen is a playtest question, and it is a short one to answer because the
-                // weapon has a point in frame that moves about a hand's width.
+                // weapon has a point in frame that moves about a hand's width. Note that raising
+                // the rest to -20 also deepens this one by the same eight degrees, because the two
+                // add.
                 Track.of(Channel.STRIKE, Curve.EXPO,
                         new Offset(0.0, -0.02, -0.28, -14.0, 0.0, 0.0)),
                 // And back. The overshoot is what makes it a jab rather than a machine returning

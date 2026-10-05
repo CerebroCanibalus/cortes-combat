@@ -209,24 +209,68 @@ public final class ClientArcabuzShot {
                 .toList();
     }
     /**
-     * The fuse tip, in world space: forward of the camera, down and to the side, which is where a
-     * flintlock's pan actually is.
+     * The fuse tip, in world space: <b>the fuse of the gun that is actually on screen.</b>
      *
-     * <p><b>A second basis point, not a nudge of the muzzle's.</b> Sharing one would put the
-     * sparks at the far end of a gun whose business end is the other end, and that is worse than
-     * drawing nothing: it teaches the player the wrong thing about their own weapon.</p>
+     * <p><b>Read out of the renderer's own matrix, which is the fix for "the sparks come out of
+     * the camera".</b> It used to be three hand-written numbers against the camera basis
+     * ({@code 0.72} forward, {@code 0.22} right, {@code -0.26} up) and it could never be right,
+     * because the gun is drawn through four transforms -- the hand to {@code ITEM_POS}, vanilla's
+     * own rotations, the profile's offset, and the model's own display transform -- and none of them
+     * is the camera's basis. A fixed offset in the camera's frame is a point in front of the
+     * player's face, always, whatever the weapon is doing.</p>
+     *
+     * <p>So it is a point in the <em>item's</em> frame now: {@link ArcabuzMuzzle#FUSE_RIGHT},
+     * {@link ArcabuzMuzzle#FUSE_UP} and {@link ArcabuzMuzzle#FUSE_FORWARD} pushed through the
+     * matrix the viewmodel was drawn with, which puts it on the weapon by construction. Those three
+     * numbers are still a retune; the frame they are used in is not.</p>
+     *
+     * <p><b>The fallback is the old guess and it is only ever a fallback.</b> Before the first frame
+     * is drawn there is no matrix, and returning the camera-relative point keeps a fuse lit on the
+     * very first tick from spawning nothing at all.</p>
      */
     public static Vec3 fuseTip(Minecraft mc) {
-        return inViewSpace(mc, 0.72, 0.22, -0.26);
+        if (!ItemViewModel.drawnFrameIsValid()) {
+            return inViewSpace(mc, FALLBACK_FORWARD, FALLBACK_RIGHT, FALLBACK_UP);
+        }
+        org.joml.Matrix4f frame = ItemViewModel.drawnFrame();
+        double x = ArcabuzMuzzle.FUSE_RIGHT;
+        double y = ArcabuzMuzzle.FUSE_UP;
+        double z = ArcabuzMuzzle.FUSE_FORWARD;
+        double viewX = frame.m00() * x + frame.m10() * y + frame.m20() * z + frame.m30();
+        double viewY = frame.m01() * x + frame.m11() * y + frame.m21() * z + frame.m31();
+        double viewZ = frame.m02() * x + frame.m12() * y + frame.m22() * z + frame.m32();
+
+        // **-Z is away from the camera**, which is the one sign this conversion cannot get wrong by
+        // accident: `ItemInHandRendererMixin`'s frame documents `ITEM_POS = (0.56, -0.52, -0.72)`,
+        // and an item at a negative Z that is not behind the camera is an item in front of it.
+        // `inViewSpace` takes a distance *along the view axis*, so a view-space z of -0.33 is a
+        // third of a block forward and arrives here negated.
+        return inViewSpace(mc, -viewZ, viewX, viewY);
     }
 
     /**
-     * One spark burst when the fuse is struck, and nothing at all the rest of the time.
+     * Where the fuse was drawn, in the camera's own basis, for the frame before any matrix exists.
+     *
+     * <p>The numbers the playtest rejected, kept for exactly one frame's worth of frames. They are
+     * <em>wrong</em> and they are here so that lighting a fuse on the first tick draws something
+     * rather than nothing -- a wrong position for one frame beats a hole.</p>
+     */
+    private static final double FALLBACK_FORWARD = 0.72;
+    private static final double FALLBACK_RIGHT = 0.22;
+    private static final double FALLBACK_UP = -0.26;
+
+    /**
+     * Smoke off the fuse when it is struck, and nothing at all the rest of the time.
+     *
+     * <p><b>Smoke rather than sparks, which is the playtest's word and it is also the right
+     * shape.</b> An electric spark is a blue-white arc that appears for a frame and is gone; a lit
+     * match is a grey thread that hangs there for the second the fuse burns. The old version drew
+     * the wrong thing about the wrong end of the weapon.</p>
      *
      * <p><b>The transition, on the client, with no packet for it.</b> The fuse going from unlit to
      * lit is already a single packet the server sends on the press, and the client was holding
-     * the answer in a field it was not looking at. Detecting the edge here means the sparks cost
-     * nothing on the wire and they land on the same frame the server lit the match.</p>
+     * the answer in a field it was not looking at. Detecting the edge here means the smoke costs
+     * nothing on the wire and it lands on the same frame the server lit the match.</p>
      *
      * <p>Guarded by its own flag rather than by the countdown, because the countdown reaching its
      * top value would be a different edge: a client that joined mid-burn would fire the effect
@@ -241,8 +285,14 @@ public final class ClientArcabuzShot {
         if (!lit || mc == null || mc.level == null) {
             return;
         }
-        spawnBurst(mc.level, net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, fuseTip(mc),
-                ArcabuzMuzzle.fuseSparks()[0]);
+        Vec3 at = fuseTip(mc);
+        spawnBurst(mc.level, ParticleTypes.SMOKE, at, ArcabuzMuzzle.fuseSmoke()[0]);
+        // **The number, not the picture.** "The smoke is not on the fuse" is one observation and it
+        // has three candidate causes -- the frame is not captured, the frame is captured and the
+        // offset is wrong, or the frame is wrong -- and they look identical from outside. One line
+        // per lighting, at debug, separates them without a screenshot.
+        org.slf4j.LoggerFactory.getLogger("cortescombat").debug(
+                "[arcabuz/mecha] fumo en {} (matriz={})", at, ItemViewModel.drawnFrameIsValid());
     }
 
     /** Whether the fuse was lit on the previous call. See the method above. */
@@ -253,5 +303,6 @@ public final class ClientArcabuzShot {
         wasLit = false;
         armedForNothing = false;
         pending = List.of();
+        ItemViewModel.forgetDrawnFrame();
     }
 }

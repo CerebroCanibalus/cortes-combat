@@ -417,11 +417,62 @@ public final class ItemViewModel {
             return;
         }
         Offset offset = profile.evaluate(input(PARTIAL_TICK.get()));
-        if (offset.isZero()) {
-            return;
+        if (!offset.isZero()) {
+            apply(pose, offset);
         }
-        apply(pose, offset);
+        // **Captured after the profile transform, and that ordering is the whole point.**
+        //
+        // The pose stack at this seam is the weapon's own frame -- the hand has been placed and
+        // every rotation that will be drawn has been applied -- so a point in it is a point on the
+        // gun that is on screen this frame. Before `apply`, it is the gun vanilla was going to draw,
+        // which is not the gun the player is looking at.
+        //
+        // Captured on both branches, including the all-zero one: a weapon whose offset happens to
+        // be zero this frame is still drawn, and where it is drawn is still a fact.
+        DRAWN_FRAME.set(pose.last().pose());
+        drawnFrameValid = true;
     }
+
+    /**
+     * The frame the held weapon was last drawn in, in view space, or {@code false} if it has not
+     * been drawn yet.
+     *
+     * <p><b>This exists because {@code ArcabuzMuzzle}'s own javadoc said it could not be done,
+     * and that claim was half right.</b> It said a viewmodel vertex "cannot be read into world
+     * space from inside the item renderer at all", which is true of <em>spawning</em> there: a
+     * particle wants a level and a frame, and the renderer has neither. What the claim missed is
+     * that the two halves can be separated in time. The matrix can be <em>read</em> during the
+     * draw and <em>used</em> later on the client's own tick, which is the same
+     * arm-then-draw split {@code ClientArcabuzShot} already uses for the shot itself.</p>
+     *
+     * <p>So the fuse smoke no longer needs a hand-written offset from the camera, which is what put
+     * it in the middle of the screen. It needs this matrix.</p>
+     *
+     * <p><b>A frame old, and that is free.</b> The capture happens during rendering and the spawn
+     * happens on a tick, so the worst case is the previous frame's pose -- the same one-frame lag
+     * the interpolated channels already have, and invisible on a point that moves with a held
+     * weapon.</p>
+     *
+     * <p>One shared matrix rather than a new one per call, and safe because of who calls it: the
+     * render thread reads it on the same frame it wrote it, and {@code #set} copies.</p>
+     */
+    public static boolean drawnFrameIsValid() {
+        return drawnFrameValid;
+    }
+
+    /** The matrix {@link #drawnFrameIsValid()} vouches for. Never mutate it from outside. */
+    public static org.joml.Matrix4f drawnFrame() {
+        return DRAWN_FRAME;
+    }
+
+    /** Cleared on a world change, so a fuse cannot be drawn from the last world's last frame. */
+    public static void forgetDrawnFrame() {
+        drawnFrameValid = false;
+    }
+
+    private static final org.joml.Matrix4f DRAWN_FRAME = new org.joml.Matrix4f();
+
+    private static boolean drawnFrameValid;
 
     /**
      * The frame to evaluate, interpolated between the last tick and the next one.

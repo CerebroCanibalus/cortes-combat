@@ -6,6 +6,7 @@ import com.cortes.combat.item.WeaponFamily;
 import com.cortes.combat.registry.ModItems;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementType;
+import net.minecraft.advancements.AdvancementRewards;
 import net.minecraft.advancements.Criterion;
 import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.advancements.critereon.InventoryChangeTrigger;
@@ -195,6 +196,25 @@ public class CortesRecipeProvider implements DataProvider {
                 // Unlocked by having the tier's material, never by having the result: a recipe
                 // whose criterion is its own output can never be discovered.
                 .addCriterion("has_material", has(bodyTag))
+                // **THE RECIPE, NAMED. Without this line the recipe book is empty and nothing in
+                // the log says so.**
+                //
+                // Verified against 1.21.1 rather than remembered, because the symptom names nothing.
+                // `RecipeCollection#canCraft` gates every recipe on
+                // `recipe.canCraftInDimensions(w, h) && book.contains(recipeholder)`, and
+                // `RecipeBook#contains` is `known.contains(recipe.id())` -- a set of ids the
+                // server fills from `AdvancementRewards#recipes` when an advancement is granted.
+                //
+                // An advancement that names no recipe grants no recipe. So this file was writing
+                // a perfectly valid recipe advancement -- the right parent, the right category, the
+                // right criterion, the item as the icon -- that granted nothing at all. The recipe
+                // loaded (1290 of them, zero parse errors), it was even in the right tab, and the
+                // book dropped it on the floor one line before drawing it.
+                //
+                // The failure is total and silent: `/give` works, the crafting table works, the
+                // JSON is in the jar, and a player opening the book sees an empty tab and no
+                // error anywhere. Which is why this is a comment rather than a one-liner.
+                .rewards(AdvancementRewards.Builder.recipe(recipeId))
                 // build(ResourceLocation) is the only build on Builder, and it returns the holder.
                 // The holder is what carries the id; value() unwraps the advancement out of it.
                 .build(recipeId)

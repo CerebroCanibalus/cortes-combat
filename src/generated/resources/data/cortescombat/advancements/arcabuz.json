@@ -31,5 +31,10 @@
     [
       "has_dispenser"
     ]
-  ]
+  ],
+  "rewards": {
+    "recipes": [
+      "cortescombat:arcabuz"
+    ]
+  }
 }

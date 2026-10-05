@@ -82,6 +82,15 @@ class BodyPoseTest {
                 BodyPoses.guarding(GuardProfile.SHIELD, 1.0F),
                 BodyPoses.charging(WeaponProfile.WARHAMMER, WARHAMMER_CHARGE, 1.0F),
                 BodyPoses.charging(WeaponProfile.AXE, new ChargeProfile(true, 2.0F, 60), 1.0F),
+                // **The chop was missing from this list for three rounds**, which is the same failure
+                // as the sabre's dead BREAK wearing a different hat: a guard that does not walk the
+                // poses cannot guard them. It is the deepest pitch in the file at -140 and nothing
+                // here was ever looking at it.
+                BodyPoses.chopping(1.0F),
+                // And the shouldered gun's three.
+                BodyPoses.aiming(1.0F),
+                BodyPoses.reloading(1.0F),
+                BodyPoses.bayonet(1.0F),
         };
     }
 
@@ -103,6 +112,28 @@ class BodyPoseTest {
             for (String which : new String[]{"right arm", "left arm"}) {
                 float pitch = which.equals("right arm")
                         ? pose.rightArmPitch() : pose.leftArmPitch();
+                // **And the positive branch is a list, not a hole in the rule.**
+                //
+                // The rule is not "every pitch is negative". The rule is "no pose rotates an arm
+                // *backwards*", and negative pitch happens to be the only shape every pose had
+                // while they were all raises. The arcabuz's reload is the first pose that lowers an
+                // arm, and a lower is positive by arithmetic: the aim has it out at -66 and coming
+                // back towards the body's rest means adding.
+                //
+                // So the assertion splits. A pose that is not on the lowering list must still be
+                // negative, and one that is on it must be *smaller than the aim it lowers from* --
+                // which is what stops a "lower the weapon" pose from swinging the arm up behind the
+                // player's head, which is what the negative rule was actually protecting against.
+                boolean lowers = isLowering(pose);
+                if (lowers) {
+                    assertTrue(pitch < 0.0F || Math.abs(pitch) <= AIM_ARM_PITCH_MAGNITUDE,
+                            which + " pitch is " + pitch + " on a lowering pose, which is further than "
+                                    + "the aim it lowers from (" + -AIM_ARM_PITCH_MAGNITUDE
+                                    + "). A lower that overshoots the aim swings the arm up behind "
+                                    + "the head, which is the same failure as a backwards wind-up "
+                                    + "with the sign flipped");
+                    continue;
+                }
                 assertTrue(pitch <= 0.0F,
                         which + " pitch is " + pitch + ". Negative is the arm coming forward and up; "
                                 + "positive is it going backwards, which is a follow-through and not "
@@ -110,6 +141,22 @@ class BodyPoseTest {
                                 + "playtest called both of them 'backwards'");
             }
         }
+    }
+
+    /** The pitch the aim holds the weapon arm at, read from the pose rather than the constant. */
+    private static final float AIM_ARM_PITCH_MAGNITUDE =
+            Math.abs(BodyPoses.aiming(1.0F).rightArmPitch());
+
+    /**
+     * Whether this pose is one that brings an arm back down.
+     *
+     * <p>Named by identity against {@link #everyPose()}'s order rather than by a field, because
+     * there is no field on a pose that says what it is for -- and a new lowering pose that nobody
+     * adds here would be caught by the negative branch instead, which is the correct direction to
+     * fail in.</p>
+     */
+    private static boolean isLowering(BodyPose pose) {
+        return pose.equals(BodyPoses.reloading(1.0F));
     }
 
     /**
@@ -141,6 +188,74 @@ class BodyPoseTest {
      * and "ending in the resting position" is the bump returning to zero, which the pose already
      * does because it is scaled by the bump.</p>
      */
+    /**
+     * The poses that can be on screen at the same time have to be added before the ceiling means
+     * anything.
+     *
+     * <p><b>This is the guard with teeth, and the per-pose ceiling above it is not.</b> The ceiling
+     * walks one pose at a time, and the somersault was never one pose: the arcabuz aims at -66 and
+     * the strike it would have inherited peaks at -104, and -188 is an arm over the player's head.
+     * Every individual pose was inside 150. The bug lived in the sum, so the sum is what has to be
+     * measured.</p>
+     *
+     * <p>And the second assertion is the reason the bayonet exists at all, stated as a fact about
+     * the numbers rather than as a fact about the code: if someone hands the shouldered weapon the
+     * sword's strike back, this fails before the game does.</p>
+     */
+    @Test
+    @DisplayName("the poses that share a screen add up under the ceiling, and the poke is why")
+    void thePosesThatShareAScreenAddUpUnderTheCeiling() {
+        // **The sum has to clear the ceiling, and the first version of this test did not say
+        // which sum.** It asserted the dispatcher *avoided* the sword's strike, which is a true
+        // fact about the code and no assertion at all: swapping the bayonet for the strike in
+        // `BodyPoses` left this test green with the arm at -126, comfortably inside 150.
+        //
+        // The assertion that has teeth is the arithmetic itself. Aim at -66 plus this file's strike
+        // at -104 is -170: past vertical, past horizontal, the arm pointing down and behind. That
+        // is the somersault `PlayerModelMixin` documents, and it is what a shouldered weapon has to
+        // be protected from. So the strike is added here on purpose, and the ceiling is what
+        // catches it.
+        float somersault = BodyPoses.aiming(1.0F).plus(BodyPoses.striking(1.0F)).rightArmPitch();
+        assertTrue(Math.abs(somersault) > ARM_PITCH_CEILING,
+                "this test is only meaningful while the sword's strike really would throw the arm "
+                        + "past the ceiling of " + ARM_PITCH_CEILING + ". Aim plus strike is "
+                        + somersault + ", which is inside it -- so either the aim or the strike has "
+                        + "moved and the reason this guard exists needs writing down again");
+
+        float aimed = BodyPoses.aiming(1.0F).rightArmPitch();
+        float poked = BodyPoses.bayonet(1.0F).rightArmPitch();
+        float withThePoke = aimed + poked;
+        assertTrue(Math.abs(withThePoke) <= ARM_PITCH_CEILING,
+                "the poke is supposed to replace the strike. Aim plus poke is " + withThePoke
+                        + ", past the ceiling of " + ARM_PITCH_CEILING + ", so the bayonet has "
+                        + "become a second strike");
+        assertTrue(Math.abs(withThePoke) < Math.abs(somersault),
+                "the poke has to be the smaller of the two motions, or it is not a poke: "
+                        + withThePoke + " against " + somersault);
+    }
+
+    /**
+     * A shouldered weapon's arm stays out in front, and lowering it never takes it past vertical.
+     *
+     * <p>Two assertions about one number, and the second is the one that matters. Aiming plus
+     * reloading is the pose a player spends the whole reload looking at, and if the reload were
+     * bigger than the aim it would swing the barrel up and over rather than down.</p>
+     */
+    @Test
+    @DisplayName("a reload lowers the shouldered arm and does not swing it up behind the head")
+    void aReloadLowersTheShoulderedArm() {
+        float aim = BodyPoses.aiming(1.0F).rightArmPitch();
+        float reloading = BodyPoses.reloading(1.0F).rightArmPitch();
+        assertTrue(reloading > 0.0F,
+                "a reload that lowers the weapon is positive by arithmetic -- the aim has the arm "
+                        + "out at " + aim + " and coming back towards the body's rest means adding. "
+                        + "This one is " + reloading);
+        assertTrue(Math.abs(aim + reloading) < Math.abs(aim),
+                "aim plus reload is " + (aim + reloading) + ", which is further from the horizontal "
+                        + "than the aim's own " + aim + ". That is a reload that swings the barrel "
+                        + "up instead of down");
+    }
+
     @Test
     @DisplayName("the strike peaks above the horizontal and returns to rest")
     void theStrikeIsAChopAndNotAStab() {

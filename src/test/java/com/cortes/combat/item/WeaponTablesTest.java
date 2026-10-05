@@ -164,14 +164,54 @@ class WeaponTablesTest {
     @Test
     @DisplayName("the reach numbers are the ones the design settled on")
     void theReachNumbers() {
-        assertEquals(3.5F, WeaponTables.reach(WeaponProfile.ROPERA).distance(), 1.0E-6);
-        assertEquals(12.0F, WeaponTables.reach(WeaponProfile.ROPERA).horizontalAngle(), 1.0E-6);
-        assertEquals(15.0F, WeaponTables.reach(WeaponProfile.ROPERA).verticalAngle(), 1.0E-6);
+        // **Three point six, thirteen and sixteen.** The playtest with a second player asked for
+        // "5% more radius and 15% more range" on the ropera, and three point six is where that
+        // lands -- level with the sword on distance and nothing else in common, since the cone is
+        // thirteen degrees against the sword's thirty five.
+        assertEquals(3.6F, WeaponTables.reach(WeaponProfile.ROPERA).distance(), 1.0E-6);
+        assertEquals(13.0F, WeaponTables.reach(WeaponProfile.ROPERA).horizontalAngle(), 1.0E-6);
+        assertEquals(16.0F, WeaponTables.reach(WeaponProfile.ROPERA).verticalAngle(), 1.0E-6);
         assertEquals(3.6F, WeaponTables.reach(WeaponProfile.SWORD).distance(), 1.0E-6,
                 "the sword outranges the axe, which inverts vanilla on purpose");
-        assertEquals(2.9F, WeaponTables.reach(WeaponProfile.WARHAMMER).distance(), 1.0E-6);
+        // **Three point four, thirty six by thirty six.** "A bit more radius and 20% more range",
+        // and the two halves are one observation: the warhammer whiffed because its cone was too
+        // narrow for how far the arm travels.
+        assertEquals(3.4F, WeaponTables.reach(WeaponProfile.WARHAMMER).distance(), 1.0E-6);
+        assertEquals(36.0F, WeaponTables.reach(WeaponProfile.WARHAMMER).horizontalAngle(), 1.0E-6);
         KnockbackProfile hammer = WeaponTables.knockback(WeaponProfile.WARHAMMER);
         assertTrue(hammer.vertical() > WeaponTables.knockback(WeaponProfile.SWORD).vertical(),
                 "the warhammer lifts, because that is what a warhammer is for");
+
+        // **The other four retunes, as relationships and not as figures.**
+        //
+        // A retune round is about a weapon's place in the table, and a table is relationships.
+        // Asserting the exact number pins the design to today's arithmetic and says nothing about
+        // whether the weapon ended up in the right place; asserting "the halberd outranges
+        // everything by more than half a block" says it and survives the next round.
+        assertTrue(WeaponTables.reach(WeaponProfile.HALBERD).distance()
+                        > WeaponTables.reach(WeaponProfile.TRIDENT).distance() + 0.5F,
+                "the halberd is the longest thing in the game at five blocks, three quarters more "
+                        + "than the trident's four. It is the weapon whose whole argument is "
+                        + "standing off, and it now also pays for it by being the slowest");
+        // **The halberd did NOT take the widest cone, and the retune was not supposed to give it
+        // one.** Sixty against the sabre's seventy five. The first version of this assertion said
+        // the halberd was wider, which is false and which the comment two lines above it also
+        // said was false -- the sabre is the widest cone in the game and stayed that way. A guard
+        // written from memory of the design rather than from the table is the same bug as a number
+        // written from memory.
+        assertTrue(WeaponTables.reach(WeaponProfile.SABRE).horizontalAngle()
+                        > WeaponTables.reach(WeaponProfile.HALBERD).horizontalAngle(),
+                "the sabre keeps the widest cone in the game at seventy five, and the halberd's "
+                        + "sixty is second. The halberd paid for five blocks of reach with the "
+                        + "slowest swing in the game and did not also buy a cone it does not need");
+        assertTrue(WeaponTables.reach(WeaponProfile.DAGGER).distance()
+                        > WeaponTables.reach(WeaponProfile.UNARMED).distance(),
+                "the dagger reaches past a bare hand now. It is the access weapon and it has to beat "
+                        + "what you have with nothing equipped at all");
+        assertTrue(WeaponTables.reach(WeaponProfile.SABRE).distance()
+                        < WeaponTables.reach(WeaponProfile.DAGGER).distance(),
+                "and the sabre is the shortest reach in the game after the retune, which is the "
+                        + "price of a seventy five degree cone at arm's length. The parry is what "
+                        + "pays for the weapon and it is untouched by this");
     }
 }

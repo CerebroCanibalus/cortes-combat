@@ -697,8 +697,26 @@ public final class ViewModelMotion {
 
     /** The weapon is loaded and waiting for a fuse, or it is not. */
     public void observeLoaded(boolean loaded) {
-        held = loaded ? 1.0F : 0.0F;
+        // **The target, and not the value.** It used to write the channel outright, which made
+        // HELD a flag: `held` and `heldPrev` were the same number on every frame and the pose
+        // interpolated between nothing and something inside a single tick.
+        //
+        // That was invisible while the arcabuz's HELD track only moved the gun five centimetres
+        // down and six forward. It is not invisible now that the track carries eighteen degrees of
+        // pitch, because the playtest asked for the two states to point differently -- and a pose
+        // that changes angle has to travel there. A weapon that teleports between "pointing at the
+        // ground" and "pointing at the front" is a bug the moment the difference is visible.
+        //
+        // So the channel ramps. Six ticks, because the gun is being brought up onto the shoulder
+        // rather than teleported, and because it has to finish before the fuse can plausibly be
+        // struck.
+        heldTarget = loaded ? 1.0F : 0.0F;
     }
+
+    /** How many ticks the loaded pose takes to arrive or leave. */
+    private static final float HELD_RAMP = 1.0F / 6.0F;
+
+    private float heldTarget;
 
     /**
      * How far through a reload the client is, 0 to 1, straight from the server's count.
@@ -751,6 +769,11 @@ public final class ViewModelMotion {
     public void clearHeld() {
         held = 0.0F;
         heldPrev = 0.0F;
+        // **The target as well, or the weapon walks back up onto a load that no longer exists.**
+        // This is the held-flag bug the project already paid for once in a different field:
+        // clearing the value and leaving the thing that sets it is how a state outlives the event
+        // that caused it, and with a ramp it would walk all the way back up on its own.
+        heldTarget = 0.0F;
         reload = 0.0F;
         reloadPrev = 0.0F;
         shoot = 0.0F;
@@ -1215,9 +1238,20 @@ public final class ViewModelMotion {
 
         // The arcabuz's three, and they are three different shapes on purpose.
 
-        // HELD is a state, so it is a flag with the same interpolating previous value as everything
-        // else here -- the difference is what feeds it, which is a packet and not a clock.
+        // **HELD walks to its target instead of being told what it is**, and the reason is in
+        // `observeLoaded`: a flag cannot be interpolated, so the pose changed inside one tick.
+        // The previous value is still kept for the render-side interpolation, which is what makes
+        // the ramp smooth rather than a staircase at twenty hertz.
+        //
+        // Clamped with min/max rather than accumulated-and-corrected so that arriving is exact:
+        // a float that approaches 1.0 forever is a channel that is never quite loaded, and every
+        // track multiplied by it is a little short forever.
         float heldBefore = held;
+        if (held < heldTarget) {
+            held = Math.min(heldTarget, held + HELD_RAMP);
+        } else if (held > heldTarget) {
+            held = Math.max(heldTarget, held - HELD_RAMP);
+        }
         heldPrev = heldBefore;
 
         // **RELOAD is the server's now, and this whole block is gone.** It used to be a ten tick

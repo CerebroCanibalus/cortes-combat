@@ -61,6 +61,29 @@ public final class ParryHandler {
         }
 
         float amount = event.getAmount();
+
+        // **The three numbers that decide why a parry does not answer.**
+        //
+        // The playtest says "nothing parries a player, everything parries a mob and an explosion",
+        // and every route in this mod builds its source as `playerAttack(player)`, so
+        // `getEntity()` is a `ServerPlayer` and the `LivingEntity` cast at the top of this method
+        // passes. The remaining suspect is `DamageSource#getSourcePosition`, because
+        // `LivingEntity#isDamageSourceBlocked` -- which runs eleven lines *after* the event this
+        // handler listens to, at 1.21.1's `hurt()` 1164 against this one's 1153 -- decides
+        // "is this hit coming from the front" with it, and a player attacking through
+        // `CombatEngine` may not have one where the melee code would put it.
+        //
+        // So the three things that answer it are printed: who attacked, from where, and how much
+        // arrived. One line at debug, only on the tick a parry is open, which is at most six
+        // lines per press.
+        org.slf4j.LoggerFactory.getLogger("cortescombat").debug(
+                "[parry] golpe={} atacante={} posicion={} cantidad={} bloqueando={}",
+                event.getSource().getMsgId(),
+                attacker.getName().getString(),
+                event.getSource().getSourcePosition(),
+                amount,
+                player.isBlocking());
+
         event.setAmount(0.0F);
         player.setData(ModAttachments.PARRY.get(), state.consume());
         ModNetworking.sendParryState(player, false, state.cooldownTicks());

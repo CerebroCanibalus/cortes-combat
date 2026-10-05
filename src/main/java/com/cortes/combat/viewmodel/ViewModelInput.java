@@ -54,6 +54,19 @@ public record ViewModelInput(float windup, float strike, float recover,
                 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0.0F, 1);
     }
 
+    /**
+     * The same frame with a firestone in the pan, for a test that only cares about a loaded gun.
+     *
+     * <p><b>Built by hand rather than by ticking a motion.</b> The arcabuz's loaded posture is the
+     * one thing {@code ViewModelMotion} ramps, so driving the motion to arrive at a loaded frame
+     * would test the ramp and not the posture. This builds the frame directly, which is what a test
+     * about <em>where the weapon points</em> needs and what a test about the ramp does not.</p>
+     */
+    public static ViewModelInput loaded(float howFar) {
+        return new ViewModelInput(0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,
+                0.0F, 0.0F, 0.0F, 0.0F, howFar, 0.0F, 0.0F, false, 0.0F, 0);
+    }
+
     /** The same frame with the guard up, for a test that only cares about a stance. */
     public static ViewModelInput guarding(float howFar) {
         return new ViewModelInput(0.0F, 0.0F, 0.0F, 0.0F, howFar, 0.0F,

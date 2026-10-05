@@ -300,6 +300,39 @@ serializador. `InventoryChangeTrigger.hasItems` **⊘ tiene overload de `TagKey<
 - Enum que implementa `StringRepresentable` tiene que implementar `getSerializedName()`;
   alcanzar c/ un `id()` ⊘ basta.
 
+**Red y codecs — seis trampas de esta ronda, todas pagadas**
+- **`neoforge-21.1.250-merged.jar` tiene `StreamCodec` y ⊘ tiene `io.netty`.** Netty va aparte
+  (lo baja el launcher). Un test c/ `ByteBuf` necesita `testImplementation 'io.netty:netty-buffer'`,
+  y la versión sale del **manifest de MC**: `4.1.97.Final`, ⊘ el `4.1.118` q también está en el cache.
+- **`StreamEncoder<O, T>` es `encode(O buffer, T value)` — buffer primero.** Al revés ⊘ falla claro:
+  `input` se bindea al buffer y el error es `cannot find symbol` en el **primer campo**, q apunta al
+  dato y ⊘ al orden de los argumentos. Todos los codecs de este proyecto se escriben valor-primero
+  (`composite` los toma separados) → el único lambda es la excepción.
+- **Un `static final StreamCodec` en la clase MATA los tests en `<clinit>`**: `NoClassDefFoundError:
+  StreamEncoder`, q ⊘ parece un test roto. ∴ los codecs son **dos métodos sobre `ByteBuf`** (Netty sí
+  está) y el `StreamCodec.of(...)` vive en el payload.
+- **`writeVarInt` es de `FriendlyByteBuf`, ⊘ de `ByteBuf`.** Friendly es de Minecraft → el codec
+  entero no es testeable. Usar `writeInt`/`readInt` (4 bytes fijos) a cambio, q además deja cada campo
+  en un offset conocido y hace posible el test "leé un float y decime cuál es".
+- **`StreamCodec.composite` toma `StreamCodec<? super B, T>`**, así q un codec sobre `ByteBuf` entra
+  en uno sobre `RegistryFriendlyByteBuf` por widening. Pero el **campo** hay q declararlo sobre
+  `ByteBuf` o no compila.
+- **Enums por ordinal en la red = contrato de cable.** Insertar un valor renumera los siguientes y un
+  cliente viejo lee otra arma. Aceptado y escrito; `byOrdinal` **devuelve null** fuera de rango y el
+  constructor lo baja a `NONE` → un build sin el arma dibuja quieto en vez de reventar el handler.
+- **`sendToPlayersTrackingEntity` ⊘ incluye al propio jugador.** `PacketDistributor:89` →
+  `ServerChunkCache.broadcast:482` → `ChunkMap.broadcast:1185` → `TrackedEntity.broadcast:1302`, q itera
+  `seenBy` pelado. El q lo agrega es `broadcastAndSend`. Y `broadcast` **tampoco filtra por distancia**:
+  "sin distancia" sale de "a quien lo puede ver".
+- **`getCooldownPercent` es la fracción RESTANTE**, 0 cuando está listo. `CooldownState#ratio` es su
+  opuesto (readiness, 1 = listo) → los dos se suman, no se mezclan.
+- ⊘ **No hay flag de 3ª persona por system property en 1.21.1.** La cámara se cambia con **F5** y
+  persiste en `options.txt`. Una flag inventada es no-op silencioso.
+- **Ningún payload tiene test**, antes y después: implementan `CustomPacketPayload`. Un test de un
+  payload **⊘ compila** (`cannot access CustomPacketPayload`). La lógica de red queda verificada por
+  lectura ⊕ compilación, nunca por aserción. ∴ `PlayerCombatState` **sí** es testeable: es un record
+  puro c/ `encode`/`decode` sobre `ByteBuf` y **no** implementa nada de Minecraft. Esa es la línea.
+
 ---
 
 # PARTE 2 — Memoria del proyecto
@@ -447,77 +480,86 @@ ropera de madera en el tick 14 colapsara la tolerancia de un lunge ya legal.
 
 ## Decisiones de alcance
 
-- **Proyectiles** (arco, ballesta, tridente lanzado): fuera del cono, comportamiento actual.
-- **Mobs:** s/ cambios. Candidato nº1 a revisión después del vertical slice, empezando por el zombi.
-- **Third person:** el viewmodel es 1ª persona; el servidor sigue balanceando → los demás
-  jugadores ven el brazo de vanilla. Coherente, pero ⊘ es lo que el framework debería terminar
-  siendo.
-- **El cono lleva correa:** `permitido = max(distancia · tan(ángulo), min(0,65 × semiextensión,
-  0,8))`. Cerca la holgura pasa a ser "el tamaño de lo que golpeás"; el eje **horizontal nunca fue el
-  problema** y el **vertical** se mide desde el horizonte.
-- **Ninguna de las cinco familias nuevas cubre.** La guardia es escudo o espada, y una ropera, una
-  alabarda, un martillo, una daga y un sable no son ninguna de las dos. Doble razón: la daga
-  bloquearía estrictamente mejor que la espada (misma guardia, ataques más rápidos), que es la misma
-  razón por la que un escudo en la off disolvería la guardia unificada; y el martillo es el arma de
-  compromiso — si además bloquea gratis, no queda compromiso.
-- **El click derecho: gana el especial, y sólo si nada puede cubrir.** `SpecialInputHandler` pregunta
-  la guardia **primero y desde cualquiera de las dos manos**; c/ escudo en la off sigue siendo
-  bloqueo.
-- **La alabarda barre lo que hay en el arco, ⊘ lo mejor que haya.** El click izquierdo ya saca un
-  objetivo con todo su daño. El daño por enemigo es el mismo y sin cargar. **Gasta el mismo cooldown
-  duro**, así que un barrido reemplaza un golpe en vez de añadirse. El sonido y la partícula salen
-  **haya o no haya enemigo**: un especial que sólo costara algo al conectar sería gratis practicarlo.
-- **El cobre es el de vanilla con nuestra textura**, y la pepita es nuestra (`minecraft:copper_nugget`
-  ⊘ existe en 1.21.1). El lingote se reskin con `assets/minecraft/models/item/copper_ingot.json` (los
-  packs se apilan).
-- **Los pools de sonido son datos, ⊘ código.** `ModSounds` sólo nombra eventos y calcula pitch.
-- **Partícula de golpe = la del arma; de golpe cargado = `ParticleTypes.CRIT` de vanilla**, que ya
-  es una slash animada grande → el golpe cargado se distingue **por forma**. Nace en el **centro de
-  la AABB** (⊘ `getY()`, que son los pies).
-- **El parry del sable:** 0,6 s, ⊘ se sostiene, 5 s de cooldown. El golpe parriado **se anula Y
-  vuelve** — se devuelve **el mismo número sin modificar**. Y `consume()` cierra la ventana **⊘**
-  reiniciando el cooldown. Se engancha con `LivingIncomingDamageEvent`, ⊘ `LivingDamageEvent`,
-  porque el evento va **antes** del chequeo de `invulnerableTime` (L1165 vs L1190).
-- **Reflejar c/ `playerAttack`, ⊘ una fuente mágica**, para que cuente como ataque de jugador para
-  encantaciones que disparan, las de armadura y el mensaje de muerte.
-- **El martillo: 0,9 → 1,05 (22 → 19 ticks), alcance 2,6 → 2,9, cono 40/40 → 30/30.** El playtest
-  lo llamó *inusable*, ⊘ *pesado*, y esa diferencia importa: "lento" es un costo que el jugador
-  eligió. **Los 30 grados ⊘ pueden bajar más**: la escalera paga sobre una ventana de 4 s de golpes
-  consecutivos.
-- **El hacha = dos damage types, ⊘ una con dos flags.** `warhammer_ignored_armour` (en
+- **Velocidad de ataque dura**: ⊘ atacar a medio cooldown, daño plano (mata el multiplicador de timing
+  de vanilla, que premia spamear más rápido).
+- **Carga** = bonus encima del base. **Nunca resta** — el piso se fuerza **en código**, ⊘ se confía en
+  el dato.
+- **Click derecho**: gana el especial, y **sólo si nada puede cubrir**. `SpecialInputHandler` pregunta
+  la guardia **primero y desde cualquiera de las dos manos**.
+- **Alcance en cono frontal fijo**, c/ distancia y ángulo horizontal y vertical independientes.
+- **Guardia**: 100% excepto explosiones, aguante de **3 golpes**, arco frontal. Agotarse = stun. El
+  hacha stunea de un golpe.
+- **Supervivencia**: la comida deja de ser energía (⊘ `exhaustion`) y es **recurso de curación c/ ciclo
+  cerrado**: se gasta al curar y se regenera sola. Regen 1 hp cada 2 s hasta 6 de comida; comer se
+  interrumpe al recibir daño; líquida 20 ticks.
+- **Aguante unificada escudo/espada**: se gasta **al recibir** un golpe bloqueado, **nunca** por
+  mantener la guardia. ∴ la espada puede cubrirse indefinidamente gratis.
+- **Cubrir y comer es legal, c/ orden fijo**: primero te cubrís, después comés. Sale por construcción
+  (la guardia se lee de las dos manos, comer sale de la principal) y **⊘ por arbitrar**.
+- **El hacha = dos damage types, ⊘ una con dos flags**: `warhammer_ignored_armour` (en
   `bypasses_armor`) vs `axe_charged` (en **ningún** tag, sólo se reconoce). El axe cargado conserva la
   armadura y la destroza al doble.
-- **El desgaste doble de armadura es evento, ⊘ mixin:** NeoForge ya reemplazó el loop de
-  `LivingEntity#doHurtEquipment` por `CommonHooks.onArmorHurt` + `if (true) return;`. El loop original
-  es código muerto. `ArmorHurtEvent.ArmorEntry.newDamage` es mutable.
-- **Cargar ⊘ cambia el tempo**, y un golpe cargado **siempre pierde en DPS** contra tocar rápido
-  (aritmética, ⊘ gusto). ∴ el axe quedó en bonus 2.0 / carga 60 (21 dmg = 3 golpes sin cargar, 86%
-  del tapping), ⊘ en 1.2/70 (44% menos: la carga era una trampa).
-- **El hacha ⊘ lleva `damageScale`**: vanilla ya da 7 dmg a 1.0 → menos de la mitad del throughput de
-  la ropera. El test lo afirma en vez de multiplicar.
-- **Un modelo base por familia** (`models/weapon/alabarda.json`) + item models finos generados, en
-  vez de 6 copias a mano.
+- **Cargar ⊘ cambia el tempo**, y un golpe cargado **siempre pierde en DPS** contra tocar rápido. ∴ el
+  axe quedó en bonus 2.0 / carga 60 (86% del tapping), ⊘ en 1.2/70 (44% menos: era una trampa).
+- **El hacha ⊘ lleva `damageScale`**: vanilla ya da 7 a 1.0 → menos de la mitad del throughput de la
+  ropera. El test lo afirma en vez de multiplicar.
+- **El martillo escala por golpe consecutivo**, ventana 4 s, ⊘ tope. 0.9 → 1.05 (22 → 19 ticks),
+  alcance 2.6 → 2.9, cono 40/40 → 30/30 (el playtest lo llamó *inusable*, ⊘ *pesado*: "lento" es un
+  costo que el jugador eligió).
+- **Shotel**: parry c/ cooldown 5 s que devuelve **sólo** el golpe parriado, s/ buffer. Y **la carga
+  pega DOS golpes reales**, c/ dos cortes separados 8 ticks y medio bloque al costado, y dos sonidos.
+  Playtest: *"perfecto, por fin"*.
+- **El parry ⊘ se puede sostener, y por eso cuesta caro.** 0,6 s (12 ticks), un press dentro **⊘** lo
+  renueva, 5 s de cooldown que arrancan **en el press**. Motivo: el sable tiene el alcance más corto y
+  un bloqueo gratis sería mejor que la ropera.
+- El golpe parriado **se anula Y vuelve** — el mismo número sin modificar. `consume()` cierra la
+  ventana ⊘ reiniciando el cooldown. Se engancha con `LivingIncomingDamageEvent`, ⊘
+  `LivingDamageEvent`, porque va **antes** del chequeo de `invulnerableTime`.
+- **Reflejar c/ `playerAttack`, ⊘ una fuente mágica**, para que cuente como ataque de jugador.
+- **Partícula de golpe = la del arma; de golpe cargado = `ParticleTypes.CRIT`** (ya es una slash
+  animada grande) → se distingue **por forma**. Nace en el **centro de la AABB**, ⊘ `getY()`.
+- **La espada (3.6) alcanza más que hacha/pico/pala (3.0)**: invierte la relación de vanilla a
+  propósito. Las manos desnudas: alcance 1.9, lo más rápido.
+- **El cobre es el de vanilla con nuestra textura**; la pepita es nuestra (`minecraft:copper_nugget` ⊘
+  existe en 1.21.1). El lingote se reskin con `assets/minecraft/models/item/copper_ingot.json`.
+- **5 armas nuevas** (ropera, alabarda, martillo, daga, shotel): sólo alabarda y shotel tienen click
+  derecho; sólo alabarda, martillo y shotel cargan. **Ninguna cubre** — la guardia es escudo o espada.
+- **Los sonidos son datos, ⊘ código.** `ModSounds` sólo nombra eventos y calcula pitch.
+- **El desgaste doble de armadura es evento, ⊘ mixin**: NeoForge ya reemplazó el loop por
+  `CommonHooks.onArmorHurt` + `if (true) return;` → el loop original es **código muerto**.
+  `ArmorHurtEvent.ArmorEntry.newDamage` es mutable.
+- **Proyectiles** (arco, ballesta, tridente lanzado): fuera del cono, comportamiento actual.
+- **Mobs: ⊘ cambios.** Candidato nº1 a revisión después del vertical slice, empezando por el zombi.
+- **Un modelo base por familia** (`models/weapon/alabarda.json`) + item models finos generados.
 
 ### Trampas de diseño marcadas
 
 - **El autoataque carga y dispara** → el ritmo ya es del jugador, lo que **consume** una fuente de
-  profundidad (el timing). La profundidad restante tiene que venir de: elección de arma, momento
-  del click derecho, lectura de la aguante del rival, gestión de la propia aguante. **⊘ reintroducir
-  profundidad metiendo más timing.**
-- El martillo **⊘ resetea** al recibir daño, por decisión. Si queda demasiado fuerte, se cambia c/
-  el dato medido, ⊘ por intuición.
-- Cubrirse ⊘ cuesta aguante (regla del diseño) pero **sí cuesta la opción de golpear**.
-- **`foodRegenInterval` es el número más importante del proyecto.** Rápido → la comida es decorativa.
-  Lento → pelear es un callejón sin salida. Sólo playtest lo resuelve.
+  profundidad (el timing). La restante tiene q venir de: elección de arma, momento del click derecho,
+  lectura de la aguante del rival, gestión de la propia. **⊘ reintroducir profundidad metiendo más
+  timing.**
+- **`foodRegenInterval` es el número más importante del proyecto.** Rápido → la comida es decorativa;
+  lento → pelear es un callejón sin salida. **Sólo playtest lo resuelve.**
 - **`FoodData` es vanilla puro, s/ patch de NeoForge** (verificado). Los umbrales internos hay que
-  leerlos de las fuentes, ⊘ de memoria.
-- **La espada (3.6) alcanza más que hacha/pico/pala (3.0).** Invierte la relación de vanilla a
-  propósito: la espada es el arma que se supone que tenés.
-- **Las manos desnudas:** menor alcance (1.9) y lo más rápido. Cortas, veloces, casi inofensivas.
-- **El `verticalAngle` de cada perfil importa más de lo que parece.** C/ el cono siguiendo la mirada,
-  ese número decide si un swing conecta c/ algo overhead o underfoot.
-- ⊘ **La guardia NO rompe la comida**: en 1.21.1 el daño ⊘ interrumpe comer, así que la regla es
+  leerlos en las fuentes, ⊘ de memoria.
+- El martillo **⊘ resetea** al recibir daño, por decisión. Si queda fuerte, se cambia c/ el dato
+  medido, ⊘ por intuición.
+- Cubrirse ⊘ cuesta aguante, pero **sí cuesta la opción de golpear**.
+- **El `verticalAngle` de cada perfil importa más de lo que parece**: c/ el cono siguiendo la mirada
+  decide si un swing conecta c/ algo overhead o underfoot.
+- ⊘ **La guardia NO rompe la comida**: en 1.21.1 el daño **⊘** interrumpe comer, así q la regla es
   automáticamente cierta. Lo único a cuidar es ⊘ romperlo.
+- **El cono lleva correa**: `permitido = max(distancia · tan(ángulo), min(0,65 × semiextensión, 0,8))`.
+  Cerca la holgura pasa a ser "el tamaño de lo que golpeás". El eje **horizontal nunca fue el
+  problema** y el **vertical** se mide desde el horizonte.
+- **Ninguna de las cinco familias nuevas cubre.** La guardia es escudo o espada. Doble razón: la
+  daga bloquearía estrictamente mejor que la espada (misma guardia, ataques más rápidos), que es la
+  misma razón por la que un escudo en la off disolvería la guardia unificada; y el martillo es el arma
+  de compromiso — si además bloquea gratis, no queda compromiso.
+- **La alabarda barre lo que hay en el arco, ⊘ lo mejor que haya** (el click izquierdo ya saca un
+  objetivo con todo su daño). **Gasta el mismo cooldown duro**, así q un barrido reemplaza un golpe en
+  vez de añadirse. Sonido y partícula salen **haya o no haya enemigo**: un especial q sólo costara
+  algo al conectar sería gratis practicarlo.
 
 ## Lecciones — la parte que más vale
 
@@ -867,6 +909,304 @@ rechazan un press, 6 silenciosos a propósito. **Lee los campos, ⊘ recalcula n
 
 ---
 
-**Compactado desde ~28.000 tokens.** Lo que se movió: las tres cuentas largas (riptide, lunge ×2) y
-las iteraciones al changelog. Lo que se conservó: cada hecho verificado, cada ruta, cada comando, las
-decisiones y las trampas — que es lo que no se vuelve a encontrar solo.
+# PARTE 3 — Animación por formato de pose + multijugador
+
+> **Casi todo lo de esta sección está HECHO y verificado**, no planeado (2026-10-05). Los hechos
+> verificados van como hechos; lo que sigue abierto está marcado como abierto. El detalle de cada
+> ronda está en `CHANGELOG.md`.
+
+## El problema, y las tres decisiones del usuario (2026-10-04)
+
+| Dolor | Causa raíz | Estado |
+|---|---|---|
+| "cambiar una animación duele" | son **4 archivos** y un número mal puesto **⊘ falla el build**: falla en pantalla | **resuelto** → 1 archivo |
+| "adivinar los cardinales es una mierda" | cada eje tiene **otra convención según 1ª o 3ª persona** — le pasó al arcabuz **3 veces** | **resuelto** → `axes` en el archivo |
+| "cuesta sacar rotaciones naturales" | 4 curvas, ninguna modela "un hombro que carga y vuelve" | pendiente |
+| "cuesta separar partes del modelo" | Blockbench exporta un bloque plano **s/ articulaciones** | **resuelto** → `parts` |
+
+| Pregunta | Respuesta | Consecuencia técnica |
+|---|---|---|
+| a) ¿Hasta dónde tiene q verse bien? | **siempre, sin distancia** | un payload por jugador visible; `broadcast` no filtra distancia |
+| b) ¿Los otros necesitan el viewmodel? | **no** | `ItemViewModel` **⊘ se tocó** |
+| c) ¿Cuánto autoritativismo? | **el primero**: el server manda estado, el cliente calcula la pose | ⊘ ángulos por red |
+
+Y la distinción que define el orden: *"lo del jugador queda a segundo plano"* (el PvP como feature)
+**pero** *"siempre se debe ver bien, sin distancia"* (multijugador como infraestructura). PvP
+secundario, **multijugador obligatorio**.
+
+---
+
+## El bug que lo disparaba — y su causa real
+
+**Verificado, leyendo código.** `BodyPoseDispatcher.tick()` recibía **UN** jugador, leía
+`ItemViewModel.frame()` (estado del cliente local) y lo guardaba en un `Map<UUID, BodyPose>` **que ya
+acepta N**. El javadoc lo decía: *"Only the local player is ever asked... a real limitation"*.
+
+**⊘ era bug. Era una consecuencia**, y la redacción lo disfrazaba de decisión. La causa: la pose se
+calculaba desde cosas que **sólo el local tiene**. Arreglar eso, no el `Map`.
+
+---
+
+## 1 · El formato de pose: `pose/WeaponPose.java` — HECHO
+
+Un archivo por arma, escrito a mano. `poses/shotel.json` es el primer caso real (6 tracks).
+
+```json
+{ "id": "cortescombat:shotel", "axes": "first_person",
+  "rest": { "x":0,"y":0,"z":0,"pitch":0,"yaw":0,"roll":0 },
+  "tracks": [ { "channel":"WINDUP", "curve":"LINEAR", "amplitude": {...},
+                "tremor": {...}, "tremor_hz": 17.0, "tremor_weight": "EXPO" }, ... ],
+  "body": { "aim": { "pitch": -96.0, "roll": -22.0 }, "reload": {...} } }
+```
+
+- **`axes` obligatorio, ⊘ con default.** Un default es un guess silencioso, y un guess sobre un signo
+  es **exactamente** el bug que apuntó el arcabuz al cielo tres veces. 1ª persona: `-Z` forward,
+  pitch positivo = morro arriba. Cuerpo: pitch **negativo** = brazo adelante.
+- **Unidades: TODO en metros y grados.** El pivote es punto de pose, ⊘ de modelo → quien convierta un
+  export de Blockbench divide por 16 **una vez**.
+- **`parts` y `body` opcionales** → un JSON de 3 líneas es válido → **no hay que reescribir 31 armas**.
+- **`rotates_on` obligatorio en cada parte**, sin default. Un pivote sin eje es una parte que alguien
+  mueve "a ojo", y ése es el bug que la clase previene.
+- **`tremor`, `tremor_hz` y `tremor_weight` son TRES campos**, no uno. Los descubrió el guard: Java
+  tiene **6 tracks** y el JSON transcrito tenía 5, porque `Track#shaking` es un track de *otro tipo*
+  — amplitud 0 y vibración encima, con frecuencia y curva de peso.
+- **Matching por POSICIÓN, no por nombre de canal.** El sable tiene dos WINDUP (el cock y el
+  temblor); por nombre los cruzabas y ambos comparados pasaban con los númeroswapados.
+
+### `SabrePoseMatchesJavaTest` — el guard que forzo al formato a crecer
+
+**Una copia de un número es una segunda verdad.** El JSON del sable **no** es autoritativo: es
+*transcrito*, y este test es lo que hace segura la transcripción. Compara `rest`, `tracks` (canal,
+curva, amplitud, los tres de temblor) y `body` contra `ViewModelDefaults.shotel()` y
+`BodyPoses.parrying()`.
+
+**Verificado que muerde**: saboteando el signo del CHOP (`-96`→`96`) — el bug exacto del arcabuz —
+mueren **2 tests** por nombre de campo.
+
+- `Track#evaluate` **no** sirve para recuperar la amplitud: devuelve "dónde está el arma *ahora*", que
+  incluye el temblor sembrado por golpe. Un track de amplitud 0 produce `-0.0014` en z. Hay que leer
+  `amplitude()`, el campo.
+- **Un frame por canal**, no todos abiertos a la vez: con cinco canales a 1 la respuesta es la suma y
+  no pertenece a ningún track. Y el frame del chop tiene que abrir **WINDUP ⊕ CHOP**: `chopping(1.0F)`
+  deja windup en 0, y con ambos abiertos es donde "reemplazar" y "sumar" difieren. El guard **no
+  mordía** hasta que encontré eso.
+
+---
+
+## 2 · `estado → pose` como función pura: `PoseState` ⊕ `PoseSolver` — HECHO
+
+`PoseState` = arma, `ChargeProfile`, `GuardProfile`, flag de escudo vanilla, canales,
+`ViewModelProfile`. `PoseSolver.solve(state) → Pose(Offset hand, BodyPose body)`. Sin reloj, sin azar,
+sin `static mutable`.
+
+**Las dos mitades salen de UNA llamada con las MISMAS puertas.** Antes eran dos lugares con dos copias
+de "¿esta puerta responde?" — y ése es el shape del bug que ya costó una vez: el sable tenía el track
+`PARRY` en el viewmodel y el dispatcher **no miraba** `PARRY` → 1ª persona cruzaba, 3ª el brazo quieto.
+Un componente puesto y nadie dibujándolo.
+
+`BodyPoseDispatcher#poseFor`: **103 líneas → 6**. Le pregunta al mundo cuatro cosas y delega.
+
+### Las cuatro puertas, y por qué cada una es pregunta del perfil y no un nombre
+
+| Puerta | Pregunta | Por qué así |
+|---|---|---|
+| chop | `reads(CHOP)` | el bump no se puede hacer caer; hace falta su propio número |
+| hombro | `reads(HELD)` | el arcabuz es el único con HELD → "se puede hombro" tiene respuesta de perfil |
+| bayoneta | `shouldered` | aim(−66) + strike(−104) = **−170**, pasado vertical |
+| parry | `reads(PARRY)` | el canal es global y el estado es del jugador, no del item |
+
+**Las de lunge y sweep pasaron de NOMBRES a capacidad** (`reads(LUNGE)` / `reads(SWEEP)`), verificado
+que hoy es equivalente: ropera lee `LUNGE`, alabarda `SWEEP`, nadie más lee ninguno. **Es el único
+cambio de comportamiento posible de la ronda** → hay que verlo en juego.
+
+### `PoseSolverTest` — 12 tests, y dos guards que **no** mordían
+
+- **El parry no tenía test.** Saboteando la puerta a `false`: **0 fallos en toda la suite**. Una
+  puerta que falta en una reescritura **no falla nada**: dibuja un arma cuyo brazo no se mueve. Ahora
+  hay test, y saboteando la puerta **o borrando la rama entera**, muere.
+- **El chop tampoco.** `chopping(1.0F)` deja windup en 0, así que la rama saboteada daba `NONE` igual.
+- **El techo de 120° me lo inventé**: `CHOP_ARM_PITCH` es **−140**. La aserción correcta no es un
+  techo, es "el pitch **es** el chop, con el 104 del wind-up en ninguna parte".
+- **Dos intentos míos fallaron por asumir**: el lunge de la ropera **sí** mueve la mano (lee LUNGE), y
+  la espada **sí** lee `GUARD` (un scan de 90 líneas cortó antes del fin del método). El caso real de
+  "cuerpo que se mueve y mano que no" es un `ViewModelProfile.NONE`.
+
+---
+
+## 3 · Lo que cruza el cable: **estado, no canales** — HECHO
+
+**El hallazgo que cambió el diseño a mitad de camino.** Los canales **no son estado**: son la salida de
+un reloj, y `ItemViewModel.MOTION` es un singleton del **cliente local**. El server **no tiene
+reloj**, y `ViewModelMotion` (1500 líneas) no tiene un segundo modo de uso.
+
+∴ mandar canales = darle al server **un segundo reloj para la misma animación**, que el proyecto **veta
+por nombre**. Mandar **estado** es lo correcto: es la arquitectura de siempre ("el cliente predice
+para dibujar y nunca decide").
+
+`PlayerCombatState` — **10 campos**: `entityId · weapon · holding · holdTicks · guarding · stagger ·
+parryActive · parryCooldown · lunging · cooldownRatio`.
+
+- **`rawCharge` y `chargedRatio` NO viajan.** Son `holdTicks` leído contra el `ChargeProfile` del arma,
+  y el item del otro **ya está en este cliente** (la hotbar la sincroniza el juego) → se derivan acá con
+  `AttackTiming.chargeRatioFor`, la misma función. Mandar el ratio es mandar un número calculable.
+- **`weapon` sí viaja** aunque el item sea visible: es la **decisión del server**, una arma de otro
+  mod resuelve a algo que sólo el server puede nombrar, y dos clientes con distinto set de mods tienen
+  que coincidir.
+- **No es un detector de flancos.** `holdTicks` sube de a uno: un flanco mandaría dos paquetes y
+  después silencio mientras el brazo vuelve. Va **cada tick si algo pasa** ⊕ **heartbeat de 20 ticks**
+  si no (sin él, el primer frame de un desconocido quieto es nada).
+- **El reloj del temblor NO viaja, a propósito.** Dos clientes ven el mismo movimiento y **distinto
+  temblor**; mandarlo = todos trepan en lockstep y se reconoce a un jugador desde el otro lado del mapa.
+
+`PlayerCombatStateTest` — **5 tests, 4 guards verificados**: swap `holdTicks`↔`parryCooldown` (2
+muertes), sacar el clamp de `parryCooldown` (1), el de `stagger` (1), y `byOrdinal` sin guarda →
+`ArrayIndexOutOfBoundsException: Index -56 out of bounds for length 14`.
+
+---
+
+## 4 · Los tres momentos: `CombatEventPayload` — HECHO
+
+Un chop nace en el **release** (`ViewModelMotion:1002`, `chopAge = 0`) **con la carga con la que se
+soltó**. Ningún estado lo recupera: "el frame del release tiene que mostrar el item atrás" es la razón
+de `pendingStrike`. Estado solo = un strike sin carga = **un tap, siempre**.
+
+| | emisor | reloj |
+|---|---|---|
+| STRIKE | `handleSwing` tras `resolveSwing` | `onStrike(charge, durationTicks)` |
+| SWEEP | `SpecialHandler.resolve:82`, **después** del `sweep()` | `onSweep()` |
+| CANCEL | `handleSwing` con `NO_SWING` | `onCancel()` |
+
+- **Tres y no cuatro.** `ViewModelMotion#onGuardBreak` existe, es público, está en la API del reloj y
+  **no lo llama nadie**: el collapse sale de `observeStagger`, y el `stagger` ya viaja. **Yo lo había
+  listado como cuarto evento en dos javadocs.** Preguntar quién llama qué lo resolvió; diseñar desde
+  cero lo habría inventado.
+- **`resolveSwing` devuelve el ratio que cobró** (`NO_SWING = −1F`). El charge lo decide `CombatEngine`
+  contra el `ChargeState` y el perfil del arma; el que lo necesita iba a recalcularlo → dos copias de
+  una aritmética que decide si un golpe fue cargado.
+- **`NO_SWING` es `−1` y no `0`, porque un whiff es un golpe real sin carga** y se dibuja. Con `0` se
+  leería como "un tap": otra animación a otra longitud.
+
+**Un guard que no muerde, y es coherente**: `NO_SWING = 0` → **0 fallos**; la rama del strike forzada a
+`true` → **compila**. Ningún payload tiene test (implementan `CustomPacketPayload`) y un test de uno
+**no compila**. La lógica de red queda verificada por **lectura ⊕ compilación**.
+
+---
+
+## 5 · El circuito, y el punto donde `BodyPoseDispatcher` se abre
+
+```
+CombatTicker.onPlayerTick  → PlayerStateSync.sync     (10 campos desde los attachments)
+PacketDistributor.sendToPlayersTrackingEntity
+ModNetworking.register     → playToClient
+ModNetworking.handlePlayerCombatState → RemotePoseStates.accept
+ClientTasks.onClientTick   → RemotePoseStates.tick   (UN ViewModelMotion por remoto)
+BodyPoseDispatcher.snapshot → bifurea: local = frame propio, remoto = estado sincronizado
+CombatTicker.onStopTracking → RemotePoseStates.forget
+```
+
+`snapshot` bifurca por `player != Minecraft.getInstance().player`, y **el mismo solver para los dos**.
+
+**Dos bugs que aparecieron al conectar, y los dos son la misma clase de "algo puesto y muerto":**
+
+1. **`RemoteMotion.cooldownRatio` lo usaba `snapshot()` y nadie lo seteaba** → el canal `COOLDOWN` de
+   todo remoto estaba permanentemente en "listo" y un arma con ese track **no se movía nunca, en
+   silencio**. La misma forma del track `BREAK` del sable que llevaba rondas muerto. **Se cazó
+   chequeando campo por campo cuál se seteaba.**
+2. **La interpolación se estiraba con un paquete perdido**: `previous` se empujaba sólo al llegar un
+   paquete → `previous` congelado mientras `current` seguía → extrapolación con ropa de interpolador.
+   Arreglado con `previous = current` en cada tick. Un paquete perdido ahora cuesta **un tick de
+   antigüedad** (paso ≤5% del movimiento), acotado por construcción.
+
+`PlayerStateSync`: el `stagger` es el **cooldown del item de guardia**, no el del arma (dos cooldowns
+distintos → el equivocado hace stunear a quien recién puede pegar). El **lunge server-side** es
+`ModEffects.LUNGE` → `hasEffect`, sin attachment nuevo.
+
+---
+
+## Lo que debería verse con dos jugadores — **lo local, VERIFICADO en cliente**
+
+**Playtest 2026-10-05: "todas las animaciones parecen funcionar tanto en primera como tercera
+persona, perfecto."** Tras la refactorización (103 → 6 líneas en `poseFor` + las dos puertas de
+lunge/sweep de nombre a capacidad). ∴ **el refactor no rompió nada**, que era el riesgo real.
+
+**⊘ Y eso es TODO lo que el singleplayer prueba.** El camino del multijugador **no se ejercitó ni una
+línea**: `PlayerStateSync.sync` corre y `broadcast` no incluye al local → no mandó un solo paquete;
+`RemotePoseStates` quedó con cero relojes; los tres eventos no salieron. El verde dice *"no rompí lo que
+funcionaba"*, y nada más. **Un log de compilación ⊘ es un playtest**, y un playtest en single ⊘ es un
+playtest del multijugador.
+
+### Lo que falta ver, y con quién
+
+**Hacen falta dos jugadores**: con uno, tu clock corre contra el tuyo y el camino nuevo no se toca.
+Uno tiene que **mirar** al otro desde atrás (el que swings lo ve por predicción, como siempre).
+
+Uno con el sable, el otro mirándolo (**F5**; no hay flag de 3ª persona por system property
+en 1.21.1):
+
+| | antes | ahora |
+|---|---|---|
+| wind-up y carga | nada | ✅ el brazo se cockea |
+| **el corte** | **nada** | ✅ **ahora sí** |
+| carga temblorosa | nada | ✅ el temblor del wind-up |
+| parry cruzando | nada | ✅ blade up across, con roll |
+| guardia | nada | ✅ sube con aguante |
+| arco de la alabarda | nada | ✅ el sweep |
+
+**Lo que NO cambia**: el damage ni las decisiones. El server sigue siendo la autoridad; el otro
+cliente calcula una **pose**, no un golpe.
+
+**Tres cosas que pueden verse mal, y el orden de sospecha:**
+1. **Timing a destiempo** → el orden en `ClientTasks`: los relojes remotos tickean **antes** del body
+   local, y **después** de `SwingInputHandler`.
+2. **El primer sighting tarda hasta 1 segundo** (heartbeat). Compromiso escrito, no descuido.
+3. La **bayoneta del arcabuz** (aim + strike) es la aritmética más frágil del solver.
+
+---
+
+## Lecciones de esta ronda
+
+1. **Una copia de un número es una segunda verdad**, y el guard que la ata es lo que la hace segura.
+   Escribí el JSON del sable *sin* él y el formato tenía un campo de menos: los tres del temblor.
+2. **Un guard que no muerde y una aserción que no muerde son el mismo bug.** Uno pide `0.5F` donde la
+   función quiere "la mitad de la bajada"; el otro abre `chopping(1.0F)` y cree que abrió el wind-up.
+   **Probar que un guard muerde tiene que ser parte de escribirlo**, no una labor de QA posterior.
+3. **Nada en `src/test` puede nombrar un tipo de Minecraft**, y eso corta en dos: un record puro con
+   `encode`/`decode` sobre `ByteBuf` **sí** se testea; una clase que implementa una interfaz de
+   Minecraft **no arranca** (`NoClassDefFoundError` en `<clinit>`). La línea es "**¿implementa algo de
+   Minecraft?**", no "¿está en el paquete de red?".
+4. **Un componente puesto y su consumidor muerto se distinguen leyendo**, y el síntoma que lo delata
+   es **código que compila y no hace nada**: un `return 0.0F` de placeholder, un campo que nadie
+   setea. Peor que un error, porque **el build está verde**.
+5. **Dos relojes para una animación, cada uno con su propio archivo.** El local en
+   `ItemViewModel`; el remoto en `RemotePoseStates`. Una instancia por jugador, y el `Map<UUID>` que
+   ya existía era la estructura correcta desde el principio.
+6. **Aseverar sobre "qué se ve en juego" sin abrirlo es cómo se affirmaron 7 canales muertos.** Lo
+   que se puede verificar bare-JVM: el solver (12 guards), el codec (4 guards), el formato (2). El
+   resto se verifica corriendo. **Un log de compilación no es un playtest.**
+7. **Suponer "el más obvio" dos veces seguidas produce el test equivocado.** El lunge de la ropera y
+   el `GUARD` de la espada: los dos parecían casos y los dos eran falsos. La pregunta útil no era
+   "¿este canal se mueve?" sino "**¿quién lo enciende?**".
+
+---
+
+## Abierta, con el log puesto
+
+**El parry contra jugadores.** `"NINGÚN ARMA PARREA. Todas pasan totalmente. Solo parrea daños de
+mobs, explosiones. Pero lo del jugador queda totalmente a segundo plano."` Playtest 2026-10-04.
+
+Descartado **con motivo**: clase de entidad (`Player` **es** `LivingEntity`, el `instanceof` pasa);
+source (las 5 rutas usan `playerAttack(player)` → `getEntity()` **es** el atacante); `invulnerableTime`
+(el attachment `PARRY` **no** tiene `.sync()`, el estado vive sólo en el server); orden de handlers
+(`GuardHandler` **no** escucha `LivingIncomingDamageEvent`); y "caso raro" (con "ningún arma contra
+ningún jugador" es el **100%**).
+
+**Y NO es bug, es diseño**: el puño no puede parrear — `SPECIAL.put(UNARMED, NONE)`. *"Ni con puño
+parrea"* **no prueba nada**.
+
+Sospechoso, marcado como hipótesis: `LivingEntity#hurt` **L1153** emite `onEntityIncomingDamage` (el
+parry escucha ahí), **L1164** corre `onDamageBlock`/`isDamageSourceBlocked`, y
+`isDamageSourceBlocked:1362` decide "¿viene DE FRENTE?" con `damageSource.getSourcePosition()`.
+
+**El log**: `[parry] golpe=<msgId> atacante=<nombre> posicion=<Vec3> cantidad=<float>
+bloqueando=<bool>`, sólo en el tick con ventana abierta. Recoger con compa, `/cc trace`, parreando a
+un jugador. **Sin compa no se cierra, y no se debe escribir el fix a ciegas.**

@@ -68,6 +68,57 @@ public final class SpecialInputHandler {
     }
 
     /**
+     * Whether whatever the crosshair is on has already spent this click.
+     *
+     * <p><b>Both kinds, and the reason is that they cost different things.</b> A block spends the
+     * button by opening a screen; an entity spends it by being interacted with, and a mob that
+     * <em>cannot</em> be interacted with falls through to the item. So the question is not "is the
+     * crosshair on something", it is "is it on something that will consume the action".
+     *
+     * <p>A block is assumed to consume. That is the right assumption for the weapons this mod has:
+     * every block a player stands next to while holding a weapon with a right click -- a table, a
+     * chest, a furnace, a door, a barrel -- consumes, and the one exception is a block whose
+     * {@code use} returns {@code PASS}, which opens nothing and changes nothing and is therefore
+     * indistinguishable from pointing at air. Guessing wrong there costs the player one click.
+     *
+     * <p>An entity is only asked about entities that can be interacted with at all, because that
+     * question has a real answer available on the client and there is no reason to ignore it.
+     *
+     * <p><b>Not a block the player is standing inside.</b> {@code hitResult} can be a block the
+     * player is touching with their own head, and vanilla's own
+     * {@code BlockHitResult#getInside} is what says so; a press in that state is not a click on
+     * anything and should fall through to the weapon.
+     */
+    private static boolean pointsAtSomethingThatTakesTheClick(Minecraft mc) {
+        net.minecraft.world.phys.HitResult hit = mc.hitResult;
+        if (hit == null || hit.getType() == net.minecraft.world.phys.HitResult.Type.MISS) {
+            return false;
+        }
+        if (hit instanceof net.minecraft.world.phys.BlockHitResult block) {
+            return !block.isInside();
+        }
+        if (hit instanceof net.minecraft.world.phys.EntityHitResult entity) {
+            // **`interactAt` and `interact` are NOT called here**, because calling them would
+            // interact twice: once to ask and once for real, and a villager would open its trade
+            // and then immediately accept one. There is no side-effect-free way to ask "would this
+            // entity consume the click" on the client, because vanilla's own answer comes from
+            // running the interaction.
+            //
+            // So this asks the question that *does* have an answer, which is the one vanilla
+            // reaches first: a living entity. `Entity#interact`'s default branch is a leash, and
+            // everything that consumes a click in the world -- a villager, a chest minecart, an
+            // armour stand, a horse -- either is alive or overrides this method to do something.
+            // A mob is the case the report is about, and a player aiming a musket at a wall of
+            // stone is the case the block branch above already covers.
+            //
+            // **And a dead mob does not take the click**, which is right: a player clicking a
+            // corpse is aiming at what is behind it.
+            return entity.getEntity().isAlive();
+        }
+        return false;
+    }
+
+    /**
      * The press, split out so the tick can ask the same question and reach the same answer.
      *
      * <p>{@link #reconcileWithTheButton()} answers "should the server hear about the button" every
@@ -84,6 +135,37 @@ public final class SpecialInputHandler {
         }
         LocalPlayer player = mc.player;
         if (player == null || mc.screen != null || player.isSpectator() || player.isUsingItem()) {
+            return;
+        }
+
+        // **A block under the crosshair wins, and this is the gate that makes the weapon yield.**
+        //
+        // Read out of `Minecraft#startUseItem` in 1.21.1: a right click resolves in three
+        // possible orders and the *first* one that consumes the action ends the click.
+        //
+        //   1. `hitResult.getType() == ENTITY` -> `gameMode.interactAt` / `interact`. Consumes -> done.
+        //   2. `hitResult.getType() == BLOCK`  -> `gameMode.useItemOn`.       Consumes -> done.
+        //   3. and only if neither consumed   -> `gameMode.useItem`, which is the item's own use.
+        //
+        // So a crafting table, a chest, a door, a lever and a mob all take the button before the
+        // item ever gets asked, and a weapon with a right click that fires anyway is spending the
+        // same press twice: once on the table and once on the sword. Which is what the playtest
+        // reported as "every right click weapon action fires at the same time as using a block".
+        //
+        // **And this is checked on the client, before the packet, rather than on the server after
+        // it.** The server already has a gate -- `SpecialHandler#resolve` refuses a press whose
+        // held stack is not the claimed one -- and it cannot have this one, because by the time a
+        // packet arrives the player has no longer said what they were pointing at. `hitResult` is
+        // a client-side fact that exists for exactly one tick and is gone by the time the packet
+        // lands. Asking on the server would be asking about a world the client is the only one that
+        // still remembers.
+        //
+        // **Sneaking is the escape, and it is vanilla's own rule rather than ours.** A player who
+        // wants the weapon instead of the block holds shift, which is `doesSneakBypassUse` -- the
+        // same flag `startUseItem` reads before it calls `useItemOn`. Without it, every weapon with
+        // a right click would be unusable next to a wall of blocks, and the weapon would be the
+        // one that has to be adjusted rather than the world.
+        if (!player.isShiftKeyDown() && pointsAtSomethingThatTakesTheClick(mc)) {
             return;
         }
 
