@@ -24,7 +24,7 @@ import java.util.Set;
  * <p>The {@code *} ingredient is per family and not per material, because both families that use
  * it have a rule rather than a list. The ropera's extra is a nugget on every metal, a flint on
  * stone and a gold ingot on netherite, and that rule is the reason the ropera recipe is written
- * by hand rather than coming out of a tag. The warhammer's extra is an iron ingot everywhere and
+ * by hand rather than coming out of a tag. The warhammer's extra is an iron block everywhere and
  * gold on netherite.</p>
  */
 public enum WeaponFamily {
@@ -41,7 +41,8 @@ public enum WeaponFamily {
             5.0F, 2.0F),
 
     /**
-     * The halberd: the longest reach and the widest cone of the four that are not the sabre.
+     * The halberd: the widest cone in the game after the sabre's, and a long reach paid for
+     * with it. It is no longer the longest -- the trident is, on a fifteen degree corridor.
      *
      * <p>Its right click is the multi-hit, and the shape is the most expensive grid in the mod on
      * purpose -- four material pieces and three sticks for the weapon that covers a crowd.</p>
@@ -340,15 +341,6 @@ public enum WeaponFamily {
         }
     }
 
-    /**
-     * The tag the ropera's metal tip reads.
-     *
-     * <p>Ours, because the tip is our own thing: copper nuggets on copper, iron nuggets on iron.
-     * The tag provider adds the members. Reading a tag rather than naming an item is what lets a
-     * datapack that adds a metal have its metal tipped too.</p>
-     */
-    public static final String ROPERA_TIP_TAG = "cortescombat:ropera_tips";
-
     /** The body ingredient: anything in the material's tool-material tag. */
     public IngredientRef bodyIngredient(WeaponMaterial material) {
         return IngredientRef.tag(material.repairTag());
@@ -361,12 +353,13 @@ public enum WeaponFamily {
      * down instead of the eleven answers is what makes it checkable:</p>
      *
      * <ul>
-     *   <li>The ropera's tip is a nugget on every metal, a flint on stone and a gold ingot on
-     *       netherite. It is not the tier's own material, and that is the whole reason these six
-     *       recipes are written by hand instead of falling out of a tag: a grid whose two metal
-     *       cells want different things cannot be a tag.</li>
-     *   <li>The warhammer's core is an iron ingot on every tier except netherite, which takes
-     *       gold, because the head has to be one piece denser than the haft.</li>
+     *   <li>The ropera's tip is <b>the tier's own nugget</b> on every metal -- a copper nugget on
+     *       copper, an iron nugget on iron, a gold one on gold -- plus a flint on stone and a gold
+     *       ingot on netherite. It is not the tier's own <em>ingot</em>, which is why the two metal
+     *       cells of one grid want different things and the recipe cannot fall out of a single
+     *       tag.</li>
+     *   <li>The warhammer's core is an iron <b>block</b> on every tier except netherite, which
+     *       takes gold, because the head has to be one piece denser than the two ends.</li>
      * </ul>
      *
      * <p>The diamond tier is the interesting case in both and is deliberate: a diamond ropera is
@@ -383,13 +376,28 @@ public enum WeaponFamily {
                 case STONE -> IngredientRef.item("minecraft:flint");
                 case NETHERITE -> IngredientRef.item("minecraft:gold_ingot");
                 case DIAMOND -> IngredientRef.item("minecraft:emerald");
-                case WOODEN, COPPER, IRON, GOLDEN -> IngredientRef.tag(ROPERA_TIP_TAG);
+                // **The tier's own nugget, per tier.** These three shared one tag
+                // (`cortescombat:ropera_tips`) whose only member was our copper nugget, so an iron
+                // ropera and a golden one both wanted copper. One tag is one set, and a set cannot
+                // say "the metal's own nugget"; three tiers that want three different things are
+                // three ingredients. The rule reads as a rule again.
+                case COPPER -> IngredientRef.item("cortescombat:copper_nugget");
+                case IRON -> IngredientRef.item("minecraft:iron_nugget");
+                case GOLDEN -> IngredientRef.item("minecraft:gold_nugget");
+                // No ropera exists in wood -- see WeaponMaterial#isRapierMaterial -- so this arm is
+                // unreachable. It is here because the switch has to name every constant, and it
+                // throws rather than inventing a tip, so a ropera in wood fails loudly if the
+                // material set ever changes.
+                case WOODEN -> throw new IllegalStateException("no wooden ropera: " + material);
             };
         }
         if (profile == WeaponProfile.WARHAMMER) {
+            // **A block, not an ingot**, and the change is the design's: the head is one solid
+            // piece, and a block says that in the recipe where an ingot did not. Iron at every
+            // tier except netherite, which takes gold.
             return material == WeaponMaterial.NETHERITE
-                    ? IngredientRef.item("minecraft:gold_ingot")
-                    : IngredientRef.item("minecraft:iron_ingot");
+                    ? IngredientRef.item("minecraft:gold_block")
+                    : IngredientRef.item("minecraft:iron_block");
         }
         throw new IllegalStateException(shape.id() + " has a '*' cell and no rule for it");
     }

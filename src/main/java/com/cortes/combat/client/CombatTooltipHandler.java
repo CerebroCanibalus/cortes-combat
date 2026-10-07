@@ -4,6 +4,7 @@ import com.cortes.combat.CortesCombat;
 import com.cortes.combat.attack.AttackTiming;
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.core.weapon.WeaponProfile;
+import com.cortes.combat.item.tooltip.TooltipColor;
 import com.cortes.combat.item.tooltip.TooltipLine;
 import com.cortes.combat.item.tooltip.WeaponTooltip;
 import net.minecraft.ChatFormatting;
@@ -81,12 +82,22 @@ public final class CombatTooltipHandler {
      * inventory is how a tooltip becomes wallpaper the player stops reading. {@code NONE} is the
      * profile that exists precisely because "we do not recognise it" must not mean "treat it as a
      * sword", and a tooltip is where that mistake becomes visible on every single item.</p>
+     *
+     * <p><b>It asks {@link com.cortes.combat.item.WeaponKinds#fights}, not "is it NONE".</b> Those
+     * were the same question until the rework decided they are not: a pickaxe has a profile, so it
+     * passed, and it printed a reach and a cone for a profile that no longer swings. The tooltip is
+     * where this shows -- the player reads a number off an item and believes it.</p>
+     *
+     * <p><b>Which puts vanilla's two numbers back on the pickaxe</b>, and that is the point rather
+     * than a side effect. {@link #onGatherSkippedAttributeTooltips} hides them only for the items
+     * whose numbers we replace, so a pickaxe goes back to saying what a pickaxe says. A tool that
+     * does not fight should look like the tool it is.</p>
      */
     private static boolean showsTooltip(ItemStack stack) {
         if (stack == null || stack.isEmpty()) {
             return false;
         }
-        return WeaponStats.of(stack).profile() != WeaponProfile.NONE;
+        return com.cortes.combat.item.WeaponKinds.fights(WeaponStats.of(stack).profile());
     }
 
     /** Hide vanilla's two numbers for exactly the items whose numbers we are replacing. */
@@ -115,7 +126,11 @@ public final class CombatTooltipHandler {
                 stats.reach(),
                 stats.charge(),
                 stats.special(),
-                stack.getMaxDamage());
+                stats.knockback(),
+                com.cortes.combat.item.WeaponTables.maxTargets(stats.profile()),
+                stack.getMaxDamage() - stack.getDamageValue(),
+                stack.getMaxDamage(),
+                stats.hasOwnShotCone());
 
         List<Component> tooltip = event.getToolTip();
         if (lines.isEmpty()) {
@@ -126,8 +141,37 @@ public final class CombatTooltipHandler {
         }
         for (TooltipLine line : lines) {
             tooltip.add(Component.translatable(line.key(), line.args().toArray())
-                    .withStyle(ChatFormatting.GRAY));
+                    .withStyle(formatFor(line.color())));
         }
+    }
+
+    /**
+     * The {@code ChatFormatting} for a colour, in one place.
+     *
+     * <p><b>The mapping lives here and the decision lives in {@code TooltipColor}.</b> This is the
+     * only line in the whole tooltip that has to name a Minecraft type to say what a colour is, and
+     * keeping it to one switch is what lets the entire layer above be checked in a bare JVM --
+     * including "is the category blue", which is a question a test can ask of the enum and cannot
+     * ask of this.</p>
+     *
+     * <p>{@code BLUE} for the category is vanilla's own choice, copied: a player has read "Food" in
+     * blue since they started playing, so the line reads as the same kind of fact without a legend.
+     * {@code RED} for a nearly-broken weapon is the same colour vanilla uses for a curse, which is
+     * the right alarm for it.</p>
+     */
+    private static ChatFormatting formatFor(TooltipColor color) {
+        return switch (color) {
+            case DAMAGE -> ChatFormatting.RED;
+            case CHARGED -> ChatFormatting.DARK_RED;
+            case SPEED -> ChatFormatting.YELLOW;
+            case RANGE -> ChatFormatting.AQUA;
+            case SIZE -> ChatFormatting.GRAY;
+            case SPECIAL -> ChatFormatting.GOLD;
+            case DURABILITY -> ChatFormatting.GREEN;
+            case DURABILITY_LOW -> ChatFormatting.RED;
+            case CATEGORY -> ChatFormatting.BLUE;
+            case NOTE -> ChatFormatting.DARK_GRAY;
+        };
     }
 
     /**
@@ -146,21 +190,28 @@ public final class CombatTooltipHandler {
     /**
      * What this item alone adds to an attribute, in the main hand.
      *
-     * <p><b>Read off the component and matched by id, not through {@code forEachModifier}.</b>
-     * That convenience walks enchantment modifiers too, so a Sharpness sword would report a
-     * higher damage than the weapon it is -- the enchantment is already a line of its own, and the
-     * two numbers would disagree on screen. Matching the two {@code base_} ids is also exactly
-     * what vanilla's own attribute tooltip calls a "base" modifier, so this and the event that
-     * hides the line are the same question asked twice and cannot drift.</p>
+     * <p><b>Through {@code forEachModifier}, and the maza is why this changed.</b> It used to read
+     * the {@code ATTRIBUTE_MODIFIERS} component directly, which was correct for every weapon whose
+     * numbers are baked at registration -- and wrong for the one whose numbers are not. The maza's
+     * damage and speed are swapped by {@code MaceRebalance} through
+     * {@code ItemAttributeModifierEvent}, which fires when the attributes are <em>asked for</em>;
+     * the component still holds vanilla's five, so the tooltip said "6 de daño" on a weapon that
+     * hits for fifteen. The playtest caught it by reading the line and knowing the number was
+     * wrong, which is the worst way for a tooltip to fail.</p>
+     *
+     * <p><b>Matching the two {@code base_} ids still excludes the enchantments.</b>
+     * {@code forEachModifier} walks them too -- that was the original reason for reading the
+     * component instead -- but a Sharpness modifier has its own id, so filtering by id keeps the
+     * exclusion and gains the event's modifiers. The two numbers can no longer disagree with the
+     * swing, because they are now read through the same door the swing's {@code getAttributeValue}
+     * goes through.</p>
      *
      * <p>The array exists because the callback is a lambda and a lambda cannot assign to a local.
      * There is exactly one element and it is read on the line after.</p>
      */
     private static double baseModifier(ItemStack stack, ResourceLocation id) {
         double[] total = {0.0};
-        ItemAttributeModifiers modifiers = stack.getOrDefault(
-                DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY);
-        modifiers.forEach(EquipmentSlotGroup.MAINHAND, (attribute, modifier) -> {
+        stack.forEachModifier(EquipmentSlotGroup.MAINHAND, (attribute, modifier) -> {
             if (id.equals(modifier.id())
                     && modifier.operation() == AttributeModifier.Operation.ADD_VALUE) {
                 total[0] += modifier.amount();

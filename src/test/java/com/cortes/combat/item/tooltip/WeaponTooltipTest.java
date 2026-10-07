@@ -37,7 +37,9 @@ class WeaponTooltipTest {
                                              int intervalTicks, int maxDamage) {
         return WeaponTooltip.linesFor(profile, attackDamage, intervalTicks,
                 WeaponTables.reach(profile), WeaponTables.charge(profile),
-                WeaponTables.special(profile), maxDamage);
+                WeaponTables.special(profile), WeaponTables.knockback(profile),
+                WeaponTables.maxTargets(profile), maxDamage, maxDamage,
+                !WeaponTables.shotReach(profile).isNone());
     }
 
     /**
@@ -55,7 +57,8 @@ class WeaponTooltipTest {
                 WeaponTooltip.linesFor(WeaponProfile.NONE, 1.0F, 20,
                         WeaponTables.reach(WeaponProfile.NONE),
                         WeaponTables.charge(WeaponProfile.NONE),
-                        SpecialType.NONE, 0),
+                        SpecialType.NONE, WeaponTables.knockback(WeaponProfile.NONE),
+                        1, 0, 0, false),
                 "NONE is not a weapon. Printing numbers on it is the tooltip form of the bug that "
                         + "made a dirt block inherit a sword's charge");
 
@@ -178,7 +181,7 @@ class WeaponTooltipTest {
      * and a set cannot tell an order change from a reorder.</p>
      */
     @Test
-    @DisplayName("a fully-loaded weapon reads damage, charge, speed, range, size, special, durability")
+    @DisplayName("a full weapon reads category, damage, charge, speed, range, size, special, durability")
     void theLinesAreInReadingOrder() {
         // **The halberd, and picking the wrong weapon here cost a round.** It was written with the
         // ropera, which turns out to be the second weapon in the set that does not charge and
@@ -186,19 +189,26 @@ class WeaponTooltipTest {
         // "very_small", and the expected list was wrong twice in the two places that mattered.
         //
         // The halberd is the fullest case: it charges, it has a right button, it has durability,
-        // and its 55 degrees put it in "very wide".
+        // its 55 degrees put it in "very wide", and its five block reach makes it a long weapon.
         assertEquals(List.of(
+                        "tooltip.cortescombat.category.long",
                         "tooltip.cortescombat.damage",
                         "tooltip.cortescombat.charged_damage",
                         "tooltip.cortescombat.attack_speed",
                         "tooltip.cortescombat.range",
                         "tooltip.cortescombat.size.very_wide",
+                        "tooltip.cortescombat.knockback",
+                        "tooltip.cortescombat.charged_knockback",
                         "tooltip.cortescombat.special.multi_hit",
-                        "tooltip.cortescombat.durability"),
+                        "tooltip.cortescombat.durability",
+                        "tooltip.cortescombat.mechanic.halberd"),
                 linesFor(WeaponProfile.HALBERD, 8.0F, 18, 250).stream()
                         .map(TooltipLine::key).toList(),
-                "the reading order is how much, how fast, how far, how wide, what the button "
-                        + "does, how long it lasts");
+                "the reading order is what it is, how much, how fast, how far, how wide, what the "
+                        + "button does, how long it lasts -- **and the category first**, because "
+                        + "that is where vanilla puts its own and because it frames every line "
+                        + "under it: 'long weapon' is what tells the player that a five block "
+                        + "reach is the weapon working as intended");
     }
 
     /**
@@ -232,8 +242,12 @@ class WeaponTooltipTest {
     @Test
     @DisplayName("durability appears only for an item that can break")
     void durabilityOnlyWhenThereIsSome() {
-        assertEquals("250", argumentOf(linesFor(WeaponProfile.ROPERA, 6.0F, 10, 250),
-                "tooltip.cortescombat.durability"));
+        assertEquals("250/250", argumentOf(linesFor(WeaponProfile.ROPERA, 6.0F, 10, 250),
+                "tooltip.cortescombat.durability"),
+                "**a counter, not a maximum.** The playtest asked for 'DUR. ACTUAL/Max.' and the "
+                        + "reason is that a number which never changes is not a stat: a sword at "
+                        + "190/250 and one at 4/250 printed the same line, and the one moment the "
+                        + "number matters is the moment it is nearly gone");
 
         for (TooltipLine line : linesFor(WeaponProfile.ROPERA, 6.0F, 10, 0)) {
             assertFalse(line.key().endsWith("durability"),
@@ -329,7 +343,8 @@ class WeaponTooltipTest {
         assertEquals(List.of(),
                 WeaponTooltip.linesFor(WeaponProfile.SWORD, 6.0F, 10, null,
                         WeaponTables.charge(WeaponProfile.SWORD),
-                        WeaponTables.special(WeaponProfile.SWORD), 250),
+                        WeaponTables.special(WeaponProfile.SWORD),
+                        WeaponTables.knockback(WeaponProfile.SWORD), 1, 250, 250, false),
                 "the reach comes off a component any mod can write; a null one must not take the "
                         + "render thread down");
     }

@@ -107,19 +107,20 @@ class ChopVersusThrustTest {
                                 + "forward, not down");
                 continue;
             }
-            // **The four vanilla tools that have no viewmodel profile at all.**
+            // **The vanilla tools that have no viewmodel profile at all.**
             //
-            // The pickaxe, the shovel, the mace and the trident are a documented gap, not an
-            // oversight: a hand-drawn motion over a silhouette nobody in this project drew fights
-            // with the model, so they are left on vanilla's exact pose and get vanilla's swing.
-            // The axe is NOT in this group -- it has a profile, and it chops.
+            // The pickaxe, the shovel and the hoe are a documented gap, not an oversight: a
+            // hand-drawn motion over a silhouette nobody in this project drew fights with the
+            // model, so they are left on vanilla's exact pose and get vanilla's swing. The axe is
+            // NOT in this group -- it has a profile, and it chops. Neither is the mace any more:
+            // it has a smash now, and it is in the chop group below.
             //
             // They are named one by one rather than skipped by a predicate, because "every profile
             // that has a profile reads one of the two" is a rule that passes while the list of
             // profiles quietly shrinks. This way the day one of them gets a profile, the test says
-            // so.
+            // so -- which is exactly what happened to the mace.
             if (profile == WeaponProfile.PICKAXE || profile == WeaponProfile.SHOVEL
-                    || profile == WeaponProfile.MACE || profile == WeaponProfile.TRIDENT) {
+                    || profile == WeaponProfile.HOE) {
                 assertFalse(of(profile).reads(Channel.CHOP) || of(profile).reads(Channel.STRIKE),
                         profile + " has a swing channel now, so it is no longer a vanilla tool with "
                                 + "no profile. Either this line or the entry above is wrong, and "
@@ -127,12 +128,16 @@ class ChopVersusThrustTest {
                 continue;
             }
 
-            assertTrue(of(profile).reads(Channel.CHOP),
+            // **The first of these asked only for a chop, while its own message said "neither a
+            // chop nor a thrust".** The two are different questions and the second assert -- no
+            // STRIKE -- made them contradictory: a weapon that thrusts and does not chop, which is
+            // what a spear is, could not pass. The trident found it by being the first one.
+            assertTrue(of(profile).reads(Channel.CHOP) || of(profile).reads(Channel.STRIKE),
                     profile + " has neither a chop nor a thrust, so its swing is nothing. The "
                             + "normal hit on this weapon was reported as starting from below and "
                             + "going up, and a missing track is the quietest way to still have "
                             + "that");
-            assertFalse(of(profile).reads(Channel.STRIKE),
+            assertFalse(of(profile).reads(Channel.CHOP) && of(profile).reads(Channel.STRIKE),
                     profile + " reads both the strike and the chop. The bump and the fall drive the "
                             + "same arm, and whichever one is larger wins -- so the motion a weapon "
                             + "actually gets is whichever track happens to be bigger, and not "

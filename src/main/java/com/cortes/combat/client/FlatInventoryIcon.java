@@ -90,6 +90,31 @@ public final class FlatInventoryIcon {
     private static final ModelResourceLocation ICON = new ModelResourceLocation(
             ResourceLocation.fromNamespaceAndPath("cortescombat", "arcabuz_icon"), "inventory");
 
+    /**
+     * Ask for the icon, because nothing else does.
+     *
+     * <p><b>This is the fix, and it came out of the log rather than out of reasoning.</b> The
+     * handler above has been correct the whole time: the model is right, the wrapper is right, and
+     * the game's own line said so every launch &mdash;</p>
+     *
+     * <pre>[arcabuz/inventario] no se aplico el icono plano: icono=false arcabuz=true</pre>
+     *
+     * <p><b>The musket was in the map and the icon was not.</b> A model is only baked when something
+     * asks for it, and the only thing that referenced {@code arcabuz_icon} was this class, which
+     * then looked in the map and found nothing &mdash; because it had not put itself there. The file
+     * sat on disk, correct, and the game never looked at it.</p>
+     *
+     * <p><b>That is the third time this shape has cost the project something</b> (see the atlas note
+     * in the design docs: an atlas built from {@code block/} and {@code item/} does not read
+     * {@code models/}; the particle folder is singular; {@code sounds/} is plural). A file that
+     * exists is not a file the game reads, and the question a test has to ask is <em>"does
+     * anything reference this?"</em> &mdash; not "is it there?".</p>
+     */
+    @SubscribeEvent
+    public static void onRegisterAdditional(ModelEvent.RegisterAdditional event) {
+        event.register(ICON);
+    }
+
     @SubscribeEvent
     public static void onBakingResult(ModelEvent.ModifyBakingResult event) {
         Map<ModelResourceLocation, BakedModel> models = event.getModels();

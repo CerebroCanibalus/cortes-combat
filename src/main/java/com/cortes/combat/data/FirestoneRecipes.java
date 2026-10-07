@@ -92,7 +92,7 @@ public final class FirestoneRecipes implements DataProvider {
             return CompletableFuture.allOf(
                     DataProvider.saveStable(cached, provider, Recipe.CONDITIONAL_CODEC,
                             Optional.of(new WithConditions<>(recipe)),
-                            output.createPathProvider(PackOutput.Target.DATA_PACK, "recipes")
+                            output.createPathProvider(PackOutput.Target.DATA_PACK, "recipe")
                                     .json(id)),
                     advancement(cached, provider, id));
         });
@@ -134,7 +134,7 @@ public final class FirestoneRecipes implements DataProvider {
 
         return DataProvider.saveStable(cached, registries, Advancement.CONDITIONAL_CODEC,
                 Optional.of(new WithConditions<>(advancement)),
-                output.createPathProvider(PackOutput.Target.DATA_PACK, "advancements").json(id));
+                output.createPathProvider(PackOutput.Target.DATA_PACK, "advancement").json(id));
     }
 
     @Override

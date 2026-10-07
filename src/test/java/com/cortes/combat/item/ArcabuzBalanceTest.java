@@ -168,18 +168,32 @@ class ArcabuzBalanceTest {
     }
 
     @Test
-    @DisplayName("the shove is the hardest in the game, and it comes from the table")
+    @DisplayName("the blast is the hardest shove of any weapon except the shovel")
     void theRecoilIsTheHardestShove() {
         KnockbackProfile arcabuz = WeaponTables.knockback(WeaponProfile.ARCABUZ);
-        assertEquals(0.70F, arcabuz.horizontal(), 1.0E-6);
+        assertEquals(1.10F, arcabuz.horizontal(), 1.0E-6);
         assertEquals(0.18F, arcabuz.vertical(), 1.0E-6);
 
         for (WeaponProfile profile : WeaponProfile.values()) {
-            assertTrue(arcabuz.horizontal() > WeaponTables.knockback(profile).horizontal()
-                            || profile == WeaponProfile.ARCABUZ,
-                    "nothing pushes harder than a musket blast, but " + profile + " reaches "
-                            + WeaponTables.knockback(profile).horizontal());
+            if (profile == WeaponProfile.ARCABUZ || profile == WeaponProfile.SHOVEL) {
+                continue;
+            }
+            assertTrue(arcabuz.horizontal() > WeaponTables.knockback(profile).horizontal(),
+                    "nothing but the pala pushes harder than a musket blast, but " + profile
+                            + " reaches " + WeaponTables.knockback(profile).horizontal());
         }
+
+        // **And the pala is above it, which is the design's own claim and not a surprise.**
+        // KnockbackProfile's javadoc has said since it was written that the shovel has "the hardest
+        // shove in the game", with the argument that its use is putting something off a cliff -- and
+        // the +30% the playtest asked for is what finally puts it there. The blast is the hardest
+        // push from a *weapon*; the pala is the exception that sentence always had.
+        assertTrue(WeaponTables.knockback(WeaponProfile.SHOVEL).horizontal()
+                        > arcabuz.horizontal(),
+                "the pala is the hardest shove in the game. If this ever flips back, either the "
+                        + "shovel's 30% was undone or the blast was raised past it -- and those are "
+                        + "two different decisions that must not be made by accident");
+
         // Vertical sits between the halberd's and the warhammer's rather than at either end.
         assertTrue(arcabuz.vertical() > WeaponTables.knockback(WeaponProfile.HALBERD).vertical());
         assertTrue(arcabuz.vertical() < WeaponTables.knockback(WeaponProfile.WARHAMMER).vertical(),

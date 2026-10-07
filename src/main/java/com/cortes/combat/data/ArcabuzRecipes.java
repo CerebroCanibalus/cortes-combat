@@ -132,7 +132,7 @@ public final class ArcabuzRecipes implements DataProvider {
  * strings fails here with Minecraft's message instead of shipping a recipe the player cannot
  * make.</p>
      */
-    private static final List<String> PATTERN = List.of(" /V", " O ", " MM");
+    private static final List<String> PATTERN = List.of("/ V", " O ", " MM");
 
     private final PackOutput output;
     private final CompletableFuture<HolderLookup.Provider> registries;
@@ -177,7 +177,7 @@ public final class ArcabuzRecipes implements DataProvider {
         // DATA_PACK, and not RESOURCE_PACK, for the reason the other two give: the two write to
         // different roots and a recipe under assets/ is a file the loader never reads. It parses,
         // it exists, and no recipe appears in game.
-        return output.createPathProvider(PackOutput.Target.DATA_PACK, "recipes")
+        return output.createPathProvider(PackOutput.Target.DATA_PACK, "recipe")
                 .json(ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "arcabuz"));
     }
 
@@ -223,7 +223,7 @@ public final class ArcabuzRecipes implements DataProvider {
 
         return DataProvider.saveStable(cached, registries, Advancement.CONDITIONAL_CODEC,
                 Optional.of(new WithConditions<>(advancement)),
-                output.createPathProvider(PackOutput.Target.DATA_PACK, "advancements").json(id));
+                output.createPathProvider(PackOutput.Target.DATA_PACK, "advancement").json(id));
     }
 
     /**

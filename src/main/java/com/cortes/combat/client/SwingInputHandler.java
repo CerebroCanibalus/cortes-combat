@@ -154,14 +154,46 @@ public final class SwingInputHandler {
         //
         // Vanilla owns the click while a screen is open, which is exactly what "menus block
         // attacks completely" means and also what vanilla would have done on its own.
+        // **Is this thing in my hand a weapon.**
+        //
+        // **This is the gate that was missing.** Everything below asks whether there is a target
+        // in the cone and never what is in the hand, so a block, a potion or a pickaxe claimed
+        // the whole click: the swing, the charge, the wind-up and a hit at 3.0 of reach, which is
+        // longer than a bare fist's 2.5. The half of "every object I hit with can charge" that
+        // got fixed was `deriveProfile` answering NONE for the unknown; the half that stayed is
+        // the door in front of it.
+        //
+        // **It asks about the profile and not about the item**, and that is not a style choice:
+        // there is no item-shaped question that answers it. `DiggerItem` groups the axe with the
+        // pickaxe and the shovel, and the pickaxe is the one that must not fight; "has attack
+        // damage" misses the shovel and the trident. The profile is the capability, and it is
+        // also what makes a foreign mod's sword work without anybody listing its id here.
+        //
+        // **First thing in the press, before the screen check.** Not for speed: a screen swallows
+        // the click either way, so the order only decides which line the debug print names, and
+        // "it is not a weapon" is the more useful of the two when both are true.
+        com.cortes.combat.core.weapon.WeaponProfile held =
+                com.cortes.combat.attack.WeaponStats.of(player.getMainHandItem()).profile();
+        if (!com.cortes.combat.item.WeaponKinds.fights(held)) {
+            debug("press NO NUESTRO: " + held + " no es un arma");
+            return;
+        }
+
         if (mc.screen != null) {
             debug("press NO NUESTRO: pantalla abierta ("
                     + mc.screen.getClass().getSimpleName() + ")");
             return;
         }
-        // A bow, a crossbow and a trident are not ours. Letting vanilla own the whole press is
-        // not a fallback: the cone deliberately does not contain projectiles, so there is no
-        // target to find and nothing for this system to decide.
+        // A bow and a crossbow are not ours. Letting vanilla own the whole press is not a
+        // fallback: the cone deliberately does not contain projectiles, so there is no target to
+        // find and nothing for this system to decide.
+        //
+        // **And the trident is deliberately absent, because it was here and that was the bug.**
+        // It is a projectile weapon in vanilla, so `isRanged` reading `instanceof TridentItem`
+        // looked right -- but in this system the trident is a melee weapon at five point three
+        // blocks, and this gate runs *after* the profile question, so it took the whole left click
+        // away from a profile that had already said it fights. The report was "the trident is
+        // still full vanilla": the same shape as the tag that never existed, one layer up.
         if (CombatAim.isRanged(player.getMainHandItem())) {
             debug("press NO NUESTRO: ranged");
             return;
@@ -277,6 +309,27 @@ public final class SwingInputHandler {
         if (!holding) {
             // Nothing was open, so this release is not ours. Vanilla keeps its own handling for
             // bows, for mining, and for a press that died on the cooldown.
+            return;
+        }
+        // **And the cooldown, which this did not used to ask.**
+        //
+        // <p>Releasing inside a cooldown used to swing anyway: `ready()` was checked on the press
+        // and never here, so the button could be tapped faster than the weapon's own interval and
+        // the client would keep sending.</p>
+        //
+        // <p>That was survivable while every swing came from a press. It is not survivable now,
+        // because a held button on a weapon that may be held down has already paid several:
+        // <b>the automatic strike moved `readyAtTick`, and letting the release through on top of
+        // it is a second hit from one press</b> -- the one the player never asked for, arriving
+        // when they let go.</p>
+        //
+        // <p>Closing the swing without paying is the whole of the fix. The charge is discarded,
+        // the wind-up stops, and nothing is sent.</p>
+        if (!ready()) {
+            debug("release ABANDONADO: cooldown, ya cobro un golpe automatico");
+            predictedTicks = 0;
+            holding = false;
+            ItemViewModel.onCancel();
             return;
         }
         // The classification is read HERE, with `holding` still true, and not one line later.
@@ -569,6 +622,18 @@ public final class SwingInputHandler {
         if (holding) {
             predictedTicks++;
             playChargeSoundOnceItIsACharge(player);
+            // Holding the button is one strike repeated, for the weapons that can be held down.
+            //
+            // **It does not touch `holding`, and that is load-bearing.** The ropera and the dagger
+            // cannot be charged, and their viewmodel profiles are the ones that read the wind-up --
+            // closing the swing here is what made them never render once, because their whole
+            // animation hangs off `holding` being true. So the swing stays open and the strike is
+            // emitted underneath it.
+            //
+            // **Which means the release has to be stopped from paying twice.** It is, one guard
+            // down in `release`: by the time the button comes up the automatic strike already moved
+            // `readyAtTick`, and a release inside the cooldown cannot swing.
+            autoStrikeWhileHeld(mc, player);
         } else {
             chargeSoundPlayed = false;
         }
@@ -597,6 +662,60 @@ public final class SwingInputHandler {
         // so it gets the thresholded one, and a tap moves nothing at all.
         ItemViewModel.tick(holding, predictedRatio(player), chargedRatio(player),
                 ClientCombatState.guardHeld());
+    }
+
+    /**
+     * One strike, emitted underneath a swing that is still open, for a weapon that is held down.
+     *
+     * <h2>Why this is a separate path and not a {@code release()}</h2>
+     *
+     * <p>Because {@code release} pays a charge, and a weapon that can be held down cannot be
+     * charged: its charge profile is NONE, so the ratio it would pay is zero and the whole call
+     * exists to close a swing. Sending the same message with a zero is a second copy of the
+     * release, and the two would drift the first time either changed.</p>
+     *
+     * <h2>And why it leaves {@code holding} alone</h2>
+     *
+     * <p>The ropera and the dagger are the two weapons this serves most, and both draw their
+     * wind-up off {@code holding}. Closing the swing to send a strike is what made them fail to
+     * render once. So the swing stays open, the strike goes underneath, and the release is stopped
+     * from paying a second one by its own cooldown guard.</p>
+     */
+    private static void autoStrikeWhileHeld(Minecraft mc, LocalPlayer player) {
+        if (!buttonIsPhysicallyDown()
+                || mc.screen != null
+                || player.isUsingItem()
+                || !com.cortes.combat.item.WeaponTables.autoRepeats(
+                        com.cortes.combat.attack.WeaponStats.of(player.getMainHandItem()).profile(),
+                        // **The wind-up is the second half of the question, asked here because
+                        // it is the only place that knows about it.** A weapon that cocks a thrust
+                        // does not get a loop: the loop restarts the cock every strike, so the
+                        // ropera, the dagger and the arcabuz played one motion over and over
+                        // instead of once. A preparation that restarts is not a preparation.
+                        ItemViewModel.ownsSwing(player.getMainHandItem())
+                                && com.cortes.combat.viewmodel.ViewModelDefaults
+                                        .of(com.cortes.combat.attack.WeaponStats
+                                                .of(player.getMainHandItem()).profile())
+                                        .reads(com.cortes.combat.viewmodel.Channel.WINDUP))
+                || !ready()) {
+            return;
+        }
+
+        // A tap on a weapon with no charge profile is a tap at zero, and the swing animation gets
+        // the same zero it gets from a click on a fist.
+        float charge = 0.0F;
+        int interval = WeaponStats.attackInterval(player);
+        readyAtTick = tick + interval;
+
+        send(new SwingPayload(resolveTargetId(player), false));
+        ItemViewModel.onStrike(charge, interval);
+        if (!ItemViewModel.ownsSwing(player.getMainHandItem())) {
+            player.swing(InteractionHand.MAIN_HAND);
+        }
+        // Restarted, not cleared. It is what makes the next wind-up begin at zero instead of
+        // arriving at the strike already halfway through a swing the player has held for a second.
+        predictedTicks = 0;
+        debug("autohit: golpe automatico interval=" + interval);
     }
 
     /**

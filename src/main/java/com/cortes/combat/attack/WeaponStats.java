@@ -189,8 +189,23 @@ public final class WeaponStats {
         VANILLA_TAGS.put(itemTag("axes"), WeaponProfile.AXE);
         VANILLA_TAGS.put(itemTag("pickaxes"), WeaponProfile.PICKAXE);
         VANILLA_TAGS.put(itemTag("shovels"), WeaponProfile.SHOVEL);
-        VANILLA_TAGS.put(itemTag("maces"), WeaponProfile.MACE);
-        VANILLA_TAGS.put(itemTag("tridents"), WeaponProfile.TRIDENT);
+        // **There is no `#maces` and there is no `#tridents` in 1.21.1.** Verified in the sources:
+        // `ItemTags` declares SWORDS, AXES, HOES, PICKAXES and SHOVELS and declares no MACES or
+        // TRIDENTS at all; the only mace and trident tags the game publishes are the enchantable
+        // ones. A `TagKey` for a path nothing fills simply never matches, so those two lines
+        // resolved every maza and every trident to NONE -- and NONE does not fight. The playtest
+        // reported both as full vanilla, with a green build and no error anywhere, because a tag
+        // that matches nothing is not an error: it is a silent no.
+        //
+        // The enchantable tag is also the better question on its own terms. It is "whatever the
+        // game treats as a mace for its combat enchantment", which is a capability, so another
+        // mod's mace is one line away from working instead of being a name somebody has to know.
+        VANILLA_TAGS.put(itemTag("enchantable/mace"), WeaponProfile.MACE);
+        VANILLA_TAGS.put(itemTag("enchantable/trident"), WeaponProfile.TRIDENT);
+    // The hoe, which vanilla makes a penalty: its offsets run 0, -1, -2, -3, -4 by material, so a
+    // netherite hoe removes three points of damage and a diamond one swings four times a second.
+    // The tag was already missing, which meant a hoe resolved to NONE and did not fight at all.
+    VANILLA_TAGS.put(itemTag("hoes"), WeaponProfile.HOE);
     }
 
     private static TagKey<net.minecraft.world.item.Item> itemTag(String path) {

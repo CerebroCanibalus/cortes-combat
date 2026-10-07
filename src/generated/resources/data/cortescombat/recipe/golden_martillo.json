@@ -3,7 +3,7 @@
   "category": "equipment",
   "key": {
     "*": {
-      "tag": "cortescombat:ropera_tips"
+      "item": "minecraft:iron_block"
     },
     "/": {
       "item": "minecraft:stick"
@@ -13,12 +13,12 @@
     }
   },
   "pattern": [
-    "*  ",
-    " X ",
-    "  /"
+    "X*X",
+    " / ",
+    " / "
   ],
   "result": {
     "count": 1,
-    "id": "cortescombat:golden_ropera"
+    "id": "cortescombat:golden_martillo"
   }
 }

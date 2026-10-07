@@ -59,7 +59,7 @@ public enum WeaponShape {
     ALABARDA("alabarda", List.of("XX/", "X/X", "/##"), 4, 3, 0),
 
     /**
-     * The warhammer: a head across the top, a two-stick haft, a metal core.
+     * The warhammer: a head across the top with a block at its centre, on a two-stick haft.
      *
      * <pre>
      * X*X
@@ -67,10 +67,16 @@ public enum WeaponShape {
      * #/#
      * </pre>
      *
-     * <p>The core is the interesting cell. It is not the tier's own material -- an iron ingot at
-     * every tier except netherite, which takes gold -- because the head has to be a single solid
-     * piece of something denser than the haft, and expressing that with a different ingredient
-     * is how the recipe says so.</p>
+     * <p><b>The core is the interesting cell, and it is a BLOCK.</b> Not the tier's own material:
+     * an iron block at every tier except netherite, which takes a gold block, because the head has
+     * to be a single solid piece of something denser than the two ends, and a block says "denser"
+     * with an item rather than with a number.</p>
+     *
+     * <p><b>And the block is what tells the head apart from a pickaxe's.</b> The three-wide head
+     * over a vertical haft is the pickaxe's own silhouette, so the shape alone cannot be the
+     * difference -- what makes it the warhammer's is the centre cell, and a block reads as a block
+     * where an ingot read as one more of the same three. The playtest found it at the table: an
+     * ingot in the middle is a pickaxe with a shorter haft.</p>
      */
     MARTILLO("martillo", List.of("X*X", "#/#", "#/#"), 2, 2, 1),
 

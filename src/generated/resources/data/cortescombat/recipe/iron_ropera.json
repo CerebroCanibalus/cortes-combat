@@ -3,7 +3,7 @@
   "category": "equipment",
   "key": {
     "*": {
-      "item": "minecraft:iron_ingot"
+      "item": "minecraft:iron_nugget"
     },
     "/": {
       "item": "minecraft:stick"
@@ -13,12 +13,12 @@
     }
   },
   "pattern": [
-    "X*X",
-    " / ",
-    " / "
+    "*  ",
+    " X ",
+    "  /"
   ],
   "result": {
     "count": 1,
-    "id": "cortescombat:iron_martillo"
+    "id": "cortescombat:iron_ropera"
   }
 }

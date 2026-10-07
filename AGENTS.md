@@ -857,6 +857,95 @@ rechazan un press, 6 silenciosos a propósito. **Lee los campos, ⊘ recalcula n
 7. **El `arcabuz.png` original se queda en `textures/models/`** (donde fue dibujado) **y los cinco
    frames en `textures/item/arcabuz_fuse/`** (que es lo que el atlas lee). Duplicado a propósito; el
    test lo afirma.
+8. **Rework de oro y cobre** — ver sección abajo.
+
+---
+
+## Rework de ORO y COBRE — diseño cerrado, pendiente de implementación
+
+**Decisión del usuario (2026-10-07):** el oro y el cobre pasan de "versiones peores del hierro" a
+materiales con **nicho de gameplay** propio. Mantienen su identidad de durabilidad baja, pero ganan
+mecánicas que el hierro no cubre.
+
+### ORO — "El material de encantamientos"
+
+**Identidad:** Armas frágiles, velocidad de ataque alta, daño bajo por golpe. No son para pegar
+fuerte, son para pegar **mucho** y **robar recursos**.
+
+#### Encantamientos únicos de combate
+
+| Encantamiento | Niveles | Efecto |
+|---|---|---|
+| **Toque de Midas** | 3 | Al matar un enemigo, suelta oro: N1 = 2-4 nuggets (100%), N2 = 1-2 lingotes + 1-5 nuggets (50% ambos), N3 = 1 manzana dorada (10%) + 1-3 zanahorias doradas (20%) + 1-4 lingotes (100%) + 1 manzana dorada encantada (2%) |
+| **Eco de Oro** | 1 | Marca al enemigo con **Glowing** + **"Marcado de muerte"** (+20% daño recibido) |
+| **Robo de Vida** | 3 | 5% del daño infligido como curación por nivel |
+| **Velocidad del Viento** | 5 | +5% velocidad de movimiento por nivel (máx +25%) |
+| **Peso Pluma** | 3 | **-10% velocidad de ataque** por nivel (el oro es ligero pero frágil) |
+| **Golpe Fantasma** | 1-2 | 15% por nivel de probabilidad de ignorar armadura |
+
+#### Encantamientos únicos de HERRAMIENTAS (sólo pico/pala/hacha de oro)
+
+| Encantamiento | Niveles | Efecto |
+|---|---|---|
+| **Toque de Midas (Herramienta)** | 3 | Al picar un bloque con drop de mineral, convierte el drop en su versión de oro (carbón → oro, hierro → oro, etc.). N1 = 25% probabilidad, N2 = 50%, N3 = 75% + 1 nugget extra |
+| **Velocidad del Viento (Herramienta)** | 3 | +10% velocidad de minería por nivel (máx +30%) |
+| **Golpe Fantasma (Herramienta)** | 1 | 10% de probabilidad de que el bloque picado suelte el doble de drops |
+
+**Razón de ser:** El oro es el material de **control del enemigo** y **ventaja económica**, no de
+daño bruto. Las herramientas de oro son para **mineros que quieren oro**, no para mineros que
+quieren minerales.
+
+---
+
+### COBRE — "El material antiséptico"
+
+**Identidad:** Tier intermedio entre piedra y hierro, durabilidad media, pero con una mecánica
+única de **purificación** y **resistencia a efectos**.
+
+#### Mecánica 1: Armadura antiséptica
+
+- Cada pieza de armadura de cobre equipada reduce la duración de **todos los efectos negativos**
+  un **5%**.
+- Las 4 piezas acumulan **20% de reducción** de efectos negativos (veneno, wither, hambre, etc.).
+- **No reduce efectos positivos** (velocidad, fuerza, etc.).
+
+#### Mecánica 2: Armas purificadoras
+
+- Las armas de cobre dan un nuevo efecto al golpear: **"Purificación"**.
+- **Purificación** hace daño pequeño pero muy rápido a:
+  - **Enemigos no muertos** (zombis, esqueletos, etc.)
+  - **Jugadores que lleven armadura de netherite**
+- Es **daño puro** (atraviesa armaduras).
+- Además **reduce su daño un 30%** (debuff temporal).
+
+**Razón de ser:** El cobre pasa de "no tiene uso" a ser el arma de **control de no muertos** y
+**anti-netherite**, con una mecánica de **sostenimiento** (armadura) que añade profundidad sin
+complicar el combate.
+
+#### Sinergia con Redstone (sutil, pendiente de decidir)
+
+- El arma **detecta señales de redstone** en un radio de 4 bloques.
+- Si hay una fuente de redstone activa cerca del enemigo, el arma gana **+10% daño por nivel de
+  señal** (máx +150% con señal 15).
+- El especial (click derecho) es **"Pulso de cobre"**: emite una **señal de redstone temporal**
+  (2 segundos) en un radio de 3 bloques, activando mecanismos cercanos.
+- **En combate puro (sin redstone), el cobre es ligeramente peor que el hierro**, manteniendo su
+  identidad.
+
+---
+
+### Notas de implementación
+
+- **Toque de Midas** necesita un hook en `LivingDeathEvent` o `PlayerEvent.PlayerKill` para
+  modificar los drops.
+- **Purificación** necesita un efecto nuevo (MobEffect) y un hook en `LivingIncomingDamageEvent` o
+  `LivingHurtEvent` para aplicar el daño puro y el debuff.
+- **Armadura antiséptica** necesita un hook en `MobEffectEvent` o `LivingUpdateEvent` para reducir
+  la duración de efectos negativos.
+- **Encantamientos de herramientas** necesitan registrarse como `Enchantment` con `EnchantmentCategory`
+  específico para herramientas de oro.
+- **Sinergia con redstone** necesita leer `Level.getBestNeighborSignal()` o similar en el bloque
+  adyacente al enemigo.
 
 ### La ronda del arcabuz + tooltips — las cuatro cosas que costaron
 
@@ -1189,6 +1278,115 @@ cliente calcula una **pose**, no un golpe.
 
 ---
 
+## El rework de las armas vanilla — la lista, y lo que ya está hecho
+
+**Decisión del usuario (2026-10-05):** las herramientas de vanilla entran al combate y se
+reworkean, **menos el pico**. Y **todo ítem que no sea un arma —ni el puño— pierde el combate.**
+
+### Paso 1 — la pregunta de capacidad: `WeaponKinds` — HECHO
+
+**`press()` no chequeaba el ítem en absoluto.** `MinecraftAttackMixin` cancela el click y
+`SwingInputHandler.claim()` devuelve `OURS` si hay un objetivo en el cono, sin preguntar qué llevás
+en la mano. Combinado con `deriveProfile` → `NONE` para lo desconocido y
+`REACH.put(NONE, new ReachProfile(3.0F, 25, 20))`:
+
+**un bloque, una poción o una herramienta desconocida clavaban a 3.0 de alcance** — más que el puño
+(2.5) y casi como la espada (3.6), con wind-up, carga y cono propios. Es la mitad que faltaba de
+*"todo objeto que golpeo puede cargar"*: la otra mitad se había arreglado en `deriveProfile`, y la
+puerta nunca se puso.
+
+∴ **`WeaponKinds.fights(perfil)`**, y es una lista de **perfiles**, ⊘ una pregunta sobre el ítem:
+
+| intento | por qué no contesta |
+|---|---|
+| `instanceof DiggerItem` | agrupa hacha, pico **y pala** — y el pico es justo el que no debe pelear |
+| "tiene daño de ataque" | cubre espada/hacha/pico/maza y **se pierde la pala y el tridente** |
+| `WeaponItem` | **⊘ existe en 1.21.1** (verificado: sólo `ProjectileWeaponItem`, arco y ballesta) |
+| tag vanilla | es lo que ya hacía `deriveProfile`, y responde *qué es* y no *debe pelear* |
+
+**12 pelean, 2 no:** `UNARMED`, las 5 vanilla que entran, las 6 nuestras. **⊘ `NONE`** (es lo que
+resuelve lo desconocido) y **`PICKAXE`** (decisión explícita del usuario).
+
+### Paso 2 — las especiales inventadas: las 6 vanilla a `NONE` — HECHO
+
+El hallazgo que hacía el paso 1 urgente: **las especiales de las herramientas estaban copiadas y
+nadie las decidió.**
+
+| Perfil | Item | Especial ANTES | Ahora |
+|---|---|---|---|
+| `SWORD` | espada | `NONE` | `NONE` |
+| `AXE` | hacha | `SLAM` | **`NONE`** |
+| `SHOVEL` | pala | **`SWEEP`** ← el de la alabarda | **`NONE`** |
+| `MACE` | maza | `THROW` | **`NONE`** |
+| `TRIDENT` | tridente | `THROW` | **`NONE`** |
+| **`PICKAXE`** | **pico** | **`LUNGE`** ← el de la ropera | **`NONE`** |
+
+**Una especial copiada es peor que `NONE`**: un `NONE` es una ausencia y una copiada es una decisión
+tomada por omisión que **parece elegida**. Y la del pico era literalmente el paso de la ropera.
+
+**Efecto colateral correcto:** `SpecialInputHandler:173` devuelve sin cancelar cuando la especial es
+`NONE` → **la maza y la tridente vuelven a lanzar como vanilla** (`THROW` era el nuestro, no el de
+Minecraft). La pala, la hacha y la espada no tienen click derecho, así que no cambia nada.
+
+**Lo que cada una le debe al diseño — sigue sin decidirse:**
+
+- **hacha** — el arma más rápida del juego cerca. No debería pagar su velocidad dos veces.
+- **pala** — le queda bien un arco ancho y barato, **pero una pala no es una alabarda**: ¿en qué se
+  se diferencia? Es la que más $.
+- **maza** — el lanzamiento de vanilla es real. ¿Cuánto cuesta acá?
+- **tridente** — 3 proyectiles, y **ninguno está en el cono**.
+- **espada** — el rework más chico: ya es una espada.
+
+### La segunda puerta: el tooltip — HECHO
+
+`CombatTooltipHandler.showsTooltip` preguntaba `profile() != NONE`, o sea **otra pregunta** por el
+mismo hecho, y el pico pasaba: imprimía alcance y cono de un perfil que ya no pelea. **El jugador se
+lee un número de un ítem y se lo cree** — ahí es donde el error se ve, no donde se oculta.
+
+Ahora pregunta `WeaponKinds.fights()`, y eso **devuelve los números de vanilla al pico**, que es lo
+correcto: una herramienta que no pelea tiene que **parecer** la herramienta que es.
+
+### La invariante que faltaba, y que el test afirma
+
+**"Lo que no pelea no puede contestar un botón."** `SpecialInputHandler` **no** pregunta `fights()`,
+pregunta si la especial es `NONE` → el pico era seguro por **dos razones sin relación**. Cualquiera
+de las dos lo cierra y las dos son una línea. Afirmado cruzando las dos tablas
+(`WeaponTablesTest.notFightingMeansNoSpecial`), porque un test de cada mitad separada es una
+aserción sobre un offset compuesto del invariante que importa.
+
+### Los guards de esta ronda, todos verificados mordiendo
+
+Saboteados a propósito, uno por uno. **6 sabotajes → 6 muertes por su razón:**
+
+| sabotaje | muere |
+|---|---|
+| el pico entra a `COMBAT` | 3 tests |
+| `NONE` entra a `COMBAT` | 3 tests |
+| la puerta de `press()` → `if (false)` | `thePressAsksTheQuestion` |
+| la puerta **después** del guard de pantalla | `thePressAsksTheQuestion` |
+| `combatProfiles` devuelve el set mutable | 2 tests |
+| la pala recupera el `SWEEP` | `theVanillaSixHaveNoSpecial` |
+| el pico recupera el `LUNGE` | **2** tests — el de la especial **y** el de la invariante |
+| el tooltip vuelve a `!= NONE` | `theTooltipAsksTheSameQuestion` |
+
+> **Y una aserción que escribí y que era basura**, anotada porque es la clase exacta de aserción
+> que no muerde: puse `assertTrue(handed.add(PICKAXE) == false || true)` para afirmar que el set
+> es inmutable. **Es verdadero pase lo que pase.** Lo correcto era `assertThrows
+> (UnsupportedOperationException.class, ...)`, que además dice qué pasa. Escribí la versión
+> débil porque "afirmar que algo es inmutable" sonaba a que no hacía falta pensarlo.
+
+### Lo que sigue
+
+1. **Decidir cada especial** (las 5 preguntas de arriba). Es lo único del rework que es diseño puro.
+2. **`REACH.put(NONE, 3.0F)` sigue mintiendo** — ya no se alcanza desde el click, pero un perfil sin
+   combate no debería tener número de alcance. Queda pendiente de decidir.
+3. El pico conserva sus filas de alcance/carga/knockback: ya no se leen desde el click, pero siguen
+   ahí. **Los getters devuelven `null` si falta la fila** → borrarlas es un NPE esperando.
+4. **Vanilla armas y herramientas fuera del alcance de `mods.toml`:** las 5 que vuelven a pelear son
+   ítems de vanilla, no nuestros, así que `/cc weapons` no las lista.
+
+---
+
 ## Abierta, con el log puesto
 
 **El parry contra jugadores.** `"NINGÚN ARMA PARREA. Todas pasan totalmente. Solo parrea daños de
@@ -1210,3 +1408,55 @@ parry escucha ahí), **L1164** corre `onDamageBlock`/`isDamageSourceBlocked`, y
 **El log**: `[parry] golpe=<msgId> atacante=<nombre> posicion=<Vec3> cantidad=<float>
 bloqueando=<bool>`, sólo en el tick con ventana abierta. Recoger con compa, `/cc trace`, parreando a
 un jugador. **Sin compa no se cierra, y no se debe escribir el fix a ciegas.**
+---
+
+## Ronda del tooltip, la durabilidad y las categorias (2026-10-07)
+
+**Cerro con 841 tests y 1 rojo**, y el rojo es el guard de texturas: son los assets de cobre del
+usuario (`copper_axe/boots/chestplate/helmet/leggings/pickaxe/shovel/sword`, `trial_hoe`,
+`textures/entity/equipment/armor/copper*`) esperando el rework de oro/cobre. **No se commitean**: son
+staging, y en un checkout limpio el guard pasa.
+
+### Lo que entro
+
+- **Tooltip reescrito**: categoria en azul (como vanilla), color por linea, durabilidad como
+  contador `actual/max`, empuje base + cargado, numero de objetivos, y la mecanica de cada arma.
+  Todo leido del codigo: `WeaponTables`, `Knockback`, `DamageResolver`, `MaceFall`, `ParryState`,
+  `StreakState`, `ArcabuzState`, `ArcabuzStats`. Rebalancear = cambiar la tabla.
+- **Durabilidad real**: `Item.postHurtEnemy` vive en el item y el flujo de ataque reemplazado nunca
+  lo llama -> ninguna arma perdia un punto. 1 punto por golpe aterrizado.
+- **Curva de durabilidad nueva**: oro 32 -> **190** (entre piedra y hierro), cobre 190 -> **320**
+  (arriba del hierro). El resto en Mojang. Mixin `GoldDurabilityMixin` para el oro de vanilla.
+- **Cobre**: dano 1,0 -> **0,5**, por debajo de piedra. Identidad: aguanta y no pega.
+- **Maza**: base 10 -> **15**, techo 22 -> **50**, altura 8 -> **31** (derivada), velocidad -10%
+  (0,54). El `SCALE` estaba soldado al techo y eso mantenia el tope en 8 bloques.
+- **Coyote time**: `resetFallDistance()` en el golpe (lo de vanilla, perdido) + 8 ticks de ventana.
+- **Maza en el aire**: `MaceAir.airborne` -- nadar, lava y elytra NO son aire.
+- **Pala**: +30% de empuje (1,365), y ahora empuja mas que el arcabuz -- que es lo que
+  `KnockbackProfile` decia desde siempre.
+- **Categoria** (`WeaponCategory`): por capacidad, no por nombre. "Pesada" pregunta intervalo Y
+  alcance, porque la pala de vanilla (20 ticks) es mas lenta que el martillo (19).
+
+### Las tres trampas de esta ronda
+
+1. **`javap` antes de un mixin, siempre.** Me fie de las fuentes decompiladas (`Item.getMaxDamage`)
+   y el runtime tiene `ItemStack.getMaxDamage()`. Crash duro en el bootstrap.
+2. **Nunca corri `runData`** despues de agregar claves de idioma -> el juego imprime la clave. Un
+   `LanguageFilesTest` que lee el *provider* no ve el `.json` generado.
+3. **Un tooltip que lee el componente miente sobre lo que el evento cambia.** El mazo decia 6 porque
+   `MaceRebalance` mete su 14 por `ItemAttributeModifierEvent`, y el tooltip leia el componente.
+   `forEachModifier` es la misma puerta que `getAttributeValue`.
+
+### Los guards que mordieron solos
+
+- `no number carries more than one decimal` cazo `"50.0/31.0"` en un argumento -> partido en dos, que
+  ademas es lo correcto: un valor compuesto congela el orden, que es gramatica.
+- `the shove is the hardest` cazo que la pala paso al arcabuz -> el test estaba mal, no el +30%.
+- `TheCrosshairMeasuresTheSwingTest` (nuevo) lee los 4 sitios de dibujo: si uno vuelve a
+  `displayedReach()`, muere.
+
+### Pendiente
+
+- **Rework de oro/cobre** (diseno cerrado, ver seccion propia): sin implementar.
+- **Feedback por objetivo del arcabuz**, y el flash a 1,7 m.
+- **Paso 11: supervivencia (`FoodData`)**.

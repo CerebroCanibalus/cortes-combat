@@ -58,10 +58,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class RecipeBookEntryTest {
 
     private static final Path ADVANCEMENTS =
-            Path.of("src", "generated", "resources", "data", "cortescombat", "advancements");
+            Path.of("src", "generated", "resources", "data", "cortescombat", "advancement");
 
     private static final Path RECIPES =
-            Path.of("src", "generated", "resources", "data", "cortescombat", "recipes");
+            Path.of("src", "generated", "resources", "data", "cortescombat", "recipe");
 
     /** The two conversions vanilla also hides, hidden here on purpose and by name. */
     private static final List<String> DELIBERATELY_HIDDEN =

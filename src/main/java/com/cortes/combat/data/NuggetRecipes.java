@@ -60,10 +60,16 @@ public final class NuggetRecipes implements DataProvider {
         return registries.thenCompose(provider -> {
             // One ingot spreads into nine, and nine go back into one. Written here rather than by
             // hand in data/ so runData validates them like every other recipe in the mod.
-            CompletableFuture<?> down = spread(cached, provider,
+            //
+            // **The count is a parameter and it used to be hardcoded at nine for both**, so the
+            // nugget recipe asked for nine ingots and produced nine nuggets -- which is a recipe
+            // nobody would ever make and, worse, one a player reads as a bug the first time they
+            // try it. Vanilla's own nugget conversions are one ingot to nine, and the return trip
+            // is the one that takes nine.
+            CompletableFuture<?> down = spread(cached, provider, 1,
                     new ItemStack(Items.COPPER_INGOT),
                     new ItemStack(ModItems.COPPER_NUGGET.get(), 9), "copper_nugget");
-            CompletableFuture<?> up = spread(cached, provider,
+            CompletableFuture<?> up = spread(cached, provider, 9,
                     new ItemStack(ModItems.COPPER_NUGGET.get()),
                     new ItemStack(Items.COPPER_INGOT), "copper_ingot_from_nuggets");
             // Both writes have to be waited for. saveStable does not write when it returns, it
@@ -75,8 +81,8 @@ public final class NuggetRecipes implements DataProvider {
     }
 
     private CompletableFuture<?> spread(CachedOutput cached, HolderLookup.Provider registries,
-                                   ItemStack input, ItemStack result, String name) {
-        NonNullList<Ingredient> ingredients = NonNullList.withSize(9,
+                                   int inputCount, ItemStack input, ItemStack result, String name) {
+        NonNullList<Ingredient> ingredients = NonNullList.withSize(inputCount,
                 Ingredient.of(input));
 
         ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, name);
@@ -87,7 +93,7 @@ public final class NuggetRecipes implements DataProvider {
         // with. The plain codec works today and stops working the day a recipe needs a loader.
         return DataProvider.saveStable(cached, registries, Recipe.CONDITIONAL_CODEC,
                 Optional.of(new WithConditions<>(recipe)),
-                output.createPathProvider(PackOutput.Target.DATA_PACK, "recipes").json(id));
+                output.createPathProvider(PackOutput.Target.DATA_PACK, "recipe").json(id));
     }
 
     @Override

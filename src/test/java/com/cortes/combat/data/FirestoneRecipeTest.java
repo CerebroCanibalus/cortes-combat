@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FirestoneRecipeTest {
 
     private static final Path RECIPES =
-            Path.of("src", "generated", "resources", "data", "cortescombat", "recipes");
+            Path.of("src", "generated", "resources", "data", "cortescombat", "recipe");
 
     private static final Path RECIPE = RECIPES.resolve("firestone.json");
 
@@ -127,13 +127,16 @@ class FirestoneRecipeTest {
         // And it cannot be "#": that symbol has no entry in the key and the generator rejects it
         // by name before it ever writes a file.
         assertTrue(json.contains("\"pattern\""), json + "\n\nno pattern block");
-        assertTrue(json.contains("\" /V\""), json
+        assertTrue(json.contains("\"/ V\""), json
                 + "\n\nthe top row is the ramrod on one shoulder and the firer on the other, with "
-                + "air between them: the asymmetry is the shape");
+                + "air between them: the asymmetry is the shape. **The bamboo is in the FIRST "
+                + "column**, which is where the design drew it (`/#V`) and where the code did not "
+                + "put it for two rounds -- the pattern on disk and the pattern in the design "
+                + "document disagreed quietly until a playtest image showed it");
         assertTrue(json.contains("\" O \""), json
                 + "\n\nthe body is alone on its own row, air either side");
         assertTrue(json.contains("\" MM\""), json + "\n\nand the stock is two planks wide");
-        assertEquals(3, countOccurrences(json, "\" /V\"")
+        assertEquals(3, countOccurrences(json, "\"/ V\"")
                         + countOccurrences(json, "\" O \"")
                         + countOccurrences(json, "\" MM\""),
                 "three rows of three, and the vertical silhouette is the recipe:\n" + json);
@@ -149,7 +152,7 @@ class FirestoneRecipeTest {
     @Test
     @DisplayName("and its recipe book entry exists, which the firestone's deliberately does not")
     void theArcabuzHasAnAdvancement() {
-        Path advancement = RECIPES.resolve("..").resolve("advancements").resolve("arcabuz.json");
+        Path advancement = RECIPES.resolve("..").resolve("advancement").resolve("arcabuz.json");
         assertTrue(Files.isRegularFile(advancement),
                 "missing: " + advancement + " -- a weapon with a recipe and no entry appears in "
                         + "the book as something already discovered, which teaches nothing. The "

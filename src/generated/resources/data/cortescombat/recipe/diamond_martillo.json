@@ -3,13 +3,13 @@
   "category": "equipment",
   "key": {
     "*": {
-      "item": "minecraft:iron_ingot"
+      "item": "minecraft:iron_block"
     },
     "/": {
       "item": "minecraft:stick"
     },
     "X": {
-      "tag": "minecraft:gold_tool_materials"
+      "tag": "minecraft:diamond_tool_materials"
     }
   },
   "pattern": [
@@ -19,6 +19,6 @@
   ],
   "result": {
     "count": 1,
-    "id": "cortescombat:golden_martillo"
+    "id": "cortescombat:diamond_martillo"
   }
 }

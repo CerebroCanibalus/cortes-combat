@@ -81,8 +81,12 @@ class ModSoundsTest {
     @Test
     @DisplayName("borrowing vanilla is one shared recording, dropped a fifth when charged")
     void theVanillaBorrow() {
+        // **The maza is not in this set any more, and that is the borrowing that changed.** It used
+        // to borrow vanilla like the pickaxe and the shovel; it now borrows the warhammer and is
+        // played down at MaceFallMeterTest's half pitch, which is the same move the shotel makes off
+        // the sword. A profile with art of its own cannot also be one of "the ones with none".
         for (WeaponProfile profile : EnumSet.of(WeaponProfile.UNARMED, WeaponProfile.PICKAXE,
-                WeaponProfile.SHOVEL, WeaponProfile.MACE, WeaponProfile.TRIDENT, WeaponProfile.NONE)) {
+                WeaponProfile.SHOVEL, WeaponProfile.TRIDENT, WeaponProfile.NONE)) {
             assertEquals(ModSounds.VANILLA_HIT, ModSounds.of(profile, ModSounds.Kind.HIT),
                     profile + " borrows vanilla for the ordinary swing");
             assertEquals(ModSounds.VANILLA_CHARGED_HIT,

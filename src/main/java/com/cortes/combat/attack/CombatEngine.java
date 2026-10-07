@@ -1,5 +1,7 @@
 package com.cortes.combat.attack;
 
+import java.util.List;
+
 import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.CombatTrace;
 import com.cortes.combat.core.weapon.ChargeProfile;
@@ -140,7 +142,7 @@ public final class CombatEngine {
         // checked again here rather than trusted: a client that sends an id from outside its own
         // reach gets a swing that visibly happens and does nothing, which is worse than a wrong
         // number, because it looks like lag.
-        if (!Reach.inCone(player, target, stats.reach())) {
+        if (!Reach.inCone(player, target, com.cortes.combat.attack.MaceAir.reachFor(stats, player))) {
             debug(player, "objetivo " + targetId + " (" + target.getName().getString()
                     + ") FUERA del cono, alcance=" + stats.reach().distance());
             swingArm(player);
@@ -156,8 +158,46 @@ public final class CombatEngine {
                 stats.charge(),
                 stats.profile(),
                 chargeRatio,
-                player.getData(ModAttachments.HAMMER_STREAK.get()));
+                player.getData(ModAttachments.HAMMER_STREAK.get()),
+                // The maza's other half. Zero for every weapon but one, and it is the player's
+                // fall rather than the weapon's -- which is why it is an argument here and not a
+                // row in WeaponTables.
+                player.fallDistance);
+
+        // **The one the player was aiming at pays first, and the area weapons add the rest.**
+        //
+        // <p>Order is the whole decision here and it is not "nearest first". The client sent one
+        // id: that is the player's intent, and it is the one thing the server cannot reconstruct on
+        // its own. So the aimed target is resolved and applied exactly as before, and the
+        // additional targets are appended <em>after</em> it &mdash; nearest first among themselves,
+        // because between two things nobody chose, the closer one is the better guess.</p>
+        //
+        // <p><b>The reverse would be wrong in a way that shows.</b> If the sweep ran first, a player
+        // aiming at the mob behind the crowd would watch the mob in front take the hit, and the
+        // damage would look like it went to the wrong target -- which is the exact symptom of the
+        // cone and reach bugs this project has already chased down twice.</p>
         apply(player, target, stats, result, chargeRatio);
+
+        int extra = com.cortes.combat.item.WeaponTables.maxTargets(stats.profile()) - 1;
+        if (extra > 0) {
+            // **The weapon's own cone, not a derived one.** The halberd's sweep deliberately reads a
+            // wider and longer reach because it costs four swings; this costs one, and a weapon that
+            // is also the strongest in the game does not need reach on top of six targets.
+            List<LivingEntity> others = com.cortes.combat.reach.ConeTargets.nearestInCone(
+                    player.level(), player, com.cortes.combat.attack.MaceAir.reachFor(stats, player), extra);
+            int landed = 0;
+            for (LivingEntity other : others) {
+                // Skipped, never re-resolved: the aimed mob has already paid and paying it twice
+                // would be a hit the player cannot see the second half of.
+                if (other == target) {
+                    continue;
+                }
+                apply(player, other, stats, result, chargeRatio);
+                landed++;
+            }
+            debug(player, "area: " + landed + "/" + extra + " objetivos extra (tope "
+                    + com.cortes.combat.item.WeaponTables.maxTargets(stats.profile()) + ")");
+        }
     }
 
     /**
@@ -218,6 +258,15 @@ public final class CombatEngine {
             if (hurt) {
                 landed++;
                 anyLanded = true;
+                // **The wear the replaced flow dropped, and the reason nothing in this game has
+                // ever lost a point of durability.** Vanilla's own `postHurtEnemy` calls
+                // `hurtAndBreak(1, attacker, MAINHAND)` on a landed hit, and it lives on the item
+                // -- which this mod never calls, because the entire attack flow is replaced. One
+                // point per landed hit for every weapon, which is vanilla's sword rule generalised,
+                // and per HIT rather than per swing so the sabre's double cut is paid for twice:
+                // it lands twice.
+                player.getMainHandItem().hurtAndBreak(1, player,
+                        net.minecraft.world.entity.EquipmentSlot.MAINHAND);
                 // The knockback goes on the first cut only. Twice the push would throw a mob
                 // across the room, and a second cut that shoves is not a second cut.
                 if (i == 0) {
@@ -265,6 +314,13 @@ public final class CombatEngine {
         }
         if (anyLanded) {
             notifyHit(player, target, healthBefore);
+            // **The fall is cancelled here and not in `onHit`, because the smash's sound reads it.**
+            // `spawnSlash` above chose the anvil's pitch from `player.fallDistance`; zeroing it any
+            // earlier would make the biggest hit in the game sound like the smallest. And only for
+            // the maza: vanilla resets the fall on its own smash and on nothing else.
+            if (com.cortes.combat.weapon.MaceFall.reads(stats.profile())) {
+                FallCoyote.landed(player);
+            }
         }
         // One line per landed swing, and only when the count is not the ordinary one. The sabre's
         // doubling has been reported broken twice while this file said it worked, and both times the
@@ -326,6 +382,17 @@ public final class CombatEngine {
         // the two must never disagree about which happened.
         com.cortes.combat.sound.CombatSounds.play(level, player, stats.profile(),
                 charged ? ModSounds.Kind.CHARGED_HIT : ModSounds.Kind.HIT);
+
+        // **The fall's own voice, and only when there was one.** The hit above is the same
+        // recording at every height, so a two block drop and an eight block one sounded identical
+        // while doing twice the damage. The anvil is what tells them apart, and the pitch falls as
+        // the damage climbs: more damage, lower note. Zero below the threshold, so an ordinary
+        // grounded swing is unchanged.
+        float fall = com.cortes.combat.weapon.MaceFall.progressFor(
+                stats.profile(), player.fallDistance, com.cortes.combat.attack.MaceAir.airborne(player));
+        if (fall > 0.0F) {
+            com.cortes.combat.sound.CombatSounds.playMaceSmash(level, target, fall);
+        }
     }
 
     /**
@@ -367,6 +434,12 @@ public final class CombatEngine {
 
     private static void onHit(Player player, Entity target, WeaponStats stats,
                               AttackResult result, float chargeRatio) {
+        // **Vanilla's damage indicator, which the replaced attack flow dropped.** It lives here
+        // and not in `spawnSlash` because this is the once-per-target call -- the slash is per
+        // swing and the number is per body that took the hit.
+        if (player.level() instanceof net.minecraft.server.level.ServerLevel level) {
+            com.cortes.combat.particle.SlashParticles.damageIndicator(level, target, result.damage());
+        }
         if (stats.profile() == WeaponProfile.WARHAMMER) {
             StreakState streak = player.getData(ModAttachments.HAMMER_STREAK.get()).onHit();
             player.setData(ModAttachments.HAMMER_STREAK.get(), streak);
@@ -380,8 +453,20 @@ public final class CombatEngine {
         // The weapon's own push, not a number from the damage result. Knockback is what the
         // weapon does, not a by-product of how hard it hit, and folding it into the damage
         // result is what made every item in the game shove a mob equally far.
-        Knockback.apply(player, target, stats.knockback(),
-                DamageResolver.knockbackFor(chargeRatio));
+        //
+        // **And the trident does the opposite instead, when the charge is real.**
+        //
+        // <p>The gate is the same {@code FULL_CHARGE} the damage reads, and not "any charge at
+        // all": a tap on the trident has to shove like everything else, or the weapon has two
+        // behaviours and no way to ask for one of them. It is the charged thrust that brings the
+        // target in, and that is the half of the weapon the range is built around.</p>
+        float pull = com.cortes.combat.item.WeaponTables.pullFor(stats.profile());
+        if (pull > 0.0F && chargeRatio >= DamageResolver.FULL_CHARGE) {
+            Knockback.pull(player, target, pull);
+        } else {
+            Knockback.apply(player, target, stats.knockback(),
+                    DamageResolver.knockbackFor(chargeRatio));
+        }
     }
 
     /**

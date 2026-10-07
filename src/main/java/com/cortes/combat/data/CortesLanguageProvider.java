@@ -103,13 +103,47 @@ public class CortesLanguageProvider extends LanguageProvider {
         add("tooltip.cortescombat.attack_speed", "%s golpes por segundo");
         add("tooltip.cortescombat.range", "%s de alcance");
         add("tooltip.cortescombat.durability", "Durabilidad: %s");
+        // El empuje, base y cargado, igual que el daño tiene dos lineas. Ver WeaponTooltip.
+        add("tooltip.cortescombat.knockback", "Empuje: %s");
+        add("tooltip.cortescombat.charged_knockback", "Empuje cargado: %s");
+        add("tooltip.cortescombat.targets", "Objetivos: %s");
 
-        add("tooltip.cortescombat.size.very_small", "Muy pequeño");
-        add("tooltip.cortescombat.size.small", "Pequeño");
-        add("tooltip.cortescombat.size.medium", "Medio");
-        add("tooltip.cortescombat.size.wide", "Ancho");
-        add("tooltip.cortescombat.size.very_wide", "Muy ancho");
-        add("tooltip.cortescombat.size.maximum", "Máximo");
+        // **La mecanica de cada arma, para las siete que tienen una.** La prosa es prosa; los
+        // numeros dentro de ella salen de MaceFall, ParryState, StreakState, ArcabuzState y
+        // ArcabuzStats. Ver WeaponTooltip.mechanicLines.
+        add("tooltip.cortescombat.mechanic.mace",
+                "El daño es la caída: hasta %s, cayendo %s bloques. Pegar cancela el daño de caída");
+        add("tooltip.cortescombat.mechanic.trident",
+                "Click derecho lo lanza; cargado, trae al objetivo hacia ti");
+        add("tooltip.cortescombat.mechanic.sabre",
+                "Click derecho: parry. Ventana de %s s, cooldown de %s s");
+        add("tooltip.cortescombat.mechanic.halberd",
+                "Click derecho: barre todo el arco, y gasta el mismo cooldown que un golpe");
+        add("tooltip.cortescombat.mechanic.ropera",
+                "Click derecho: embestida hacia adelante, y atraviesa a varios");
+        add("tooltip.cortescombat.mechanic.warhammer",
+                "Escala con cada golpe seguido; la racha dura %s s");
+        add("tooltip.cortescombat.mechanic.arcabuz",
+                "Gasta una Firestone del inventario: click derecho recarga, click izquierdo dispara");
+        add("tooltip.cortescombat.arcabuz.reload", "Recarga: %s s");
+        add("tooltip.cortescombat.arcabuz.shot", "Disparo: %s de daño");
+
+        // **La categoría, en azul, como la de vanilla.** Va primera en el bloque porque es la que
+        // enmarca todas las de abajo: quien lee "Arma corta" sabe cómo leer el alcance que viene
+        // después. Ver WeaponCategory para la taxonomía y por qué se clasifica por capacidad.
+        add("tooltip.cortescombat.category.ranged", "Arma a distancia");
+        add("tooltip.cortescombat.category.long", "Arma larga");
+        add("tooltip.cortescombat.category.heavy", "Arma pesada");
+        add("tooltip.cortescombat.category.short", "Arma corta");
+        add("tooltip.cortescombat.category.medium", "Arma media");
+        add("tooltip.cortescombat.category.natural", "Arma natural");
+
+        add("tooltip.cortescombat.size.very_small", "Radio muy pequeño");
+        add("tooltip.cortescombat.size.small", "Radio pequeño");
+        add("tooltip.cortescombat.size.medium", "Radio medio");
+        add("tooltip.cortescombat.size.wide", "Radio ancho");
+        add("tooltip.cortescombat.size.very_wide", "Radio muy ancho");
+        add("tooltip.cortescombat.size.maximum", "Radio máximo");
 
         add("tooltip.cortescombat.special.multi_hit",
                 "Click derecho: golpea a todo lo que hay en el cono");
@@ -153,13 +187,42 @@ public class CortesLanguageProvider extends LanguageProvider {
         add("tooltip.cortescombat.attack_speed", "%s Attacks per Second");
         add("tooltip.cortescombat.range", "%s Reach");
         add("tooltip.cortescombat.durability", "Durability: %s");
+        add("tooltip.cortescombat.knockback", "Knockback: %s");
+        add("tooltip.cortescombat.charged_knockback", "Charged Knockback: %s");
+        add("tooltip.cortescombat.targets", "Targets: %s");
 
-        add("tooltip.cortescombat.size.very_small", "Very Small");
-        add("tooltip.cortescombat.size.small", "Small");
-        add("tooltip.cortescombat.size.medium", "Medium");
-        add("tooltip.cortescombat.size.wide", "Wide");
-        add("tooltip.cortescombat.size.very_wide", "Very Wide");
-        add("tooltip.cortescombat.size.maximum", "Maximum");
+        // The mechanic of each weapon, for the seven that have one. See the Spanish block.
+        add("tooltip.cortescombat.mechanic.mace",
+                "The damage is the fall: up to %s, falling %s blocks. Landing a hit cancels the fall");
+        add("tooltip.cortescombat.mechanic.trident",
+                "Right click throws it; charged, it pulls the target in");
+        add("tooltip.cortescombat.mechanic.sabre",
+                "Right click: parry. A %s s window, a %s s cooldown");
+        add("tooltip.cortescombat.mechanic.halberd",
+                "Right click: sweeps the whole arc, and costs the same cooldown as a hit");
+        add("tooltip.cortescombat.mechanic.ropera",
+                "Right click: forward lunge, and it passes through several");
+        add("tooltip.cortescombat.mechanic.warhammer",
+                "Escalates with each consecutive hit; the streak lasts %s s");
+        add("tooltip.cortescombat.mechanic.arcabuz",
+                "Spends a Firestone from the inventory: right click reloads, left click fires");
+        add("tooltip.cortescombat.arcabuz.reload", "Reload: %s s");
+        add("tooltip.cortescombat.arcabuz.shot", "Shot: %s damage");
+
+        // The category, in vanilla's own blue. See the Spanish block for why it goes first.
+        add("tooltip.cortescombat.category.ranged", "Ranged Weapon");
+        add("tooltip.cortescombat.category.long", "Long Weapon");
+        add("tooltip.cortescombat.category.heavy", "Heavy Weapon");
+        add("tooltip.cortescombat.category.short", "Short Weapon");
+        add("tooltip.cortescombat.category.medium", "Medium Weapon");
+        add("tooltip.cortescombat.category.natural", "Natural Weapon");
+
+        add("tooltip.cortescombat.size.very_small", "Very Small Radius");
+        add("tooltip.cortescombat.size.small", "Small Radius");
+        add("tooltip.cortescombat.size.medium", "Medium Radius");
+        add("tooltip.cortescombat.size.wide", "Wide Radius");
+        add("tooltip.cortescombat.size.very_wide", "Very Wide Radius");
+        add("tooltip.cortescombat.size.maximum", "Maximum Radius");
 
         add("tooltip.cortescombat.special.multi_hit",
                 "Right Click: hits everything in the cone");

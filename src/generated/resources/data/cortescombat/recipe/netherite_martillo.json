@@ -3,22 +3,22 @@
   "category": "equipment",
   "key": {
     "*": {
-      "tag": "cortescombat:ropera_tips"
+      "item": "minecraft:gold_block"
     },
     "/": {
       "item": "minecraft:stick"
     },
     "X": {
-      "tag": "minecraft:copper_tool_materials"
+      "tag": "minecraft:netherite_tool_materials"
     }
   },
   "pattern": [
-    "*  ",
-    " X ",
-    "  /"
+    "X*X",
+    " / ",
+    " / "
   ],
   "result": {
     "count": 1,
-    "id": "cortescombat:copper_ropera"
+    "id": "cortescombat:netherite_martillo"
   }
 }

@@ -3,22 +3,22 @@
   "category": "equipment",
   "key": {
     "*": {
-      "item": "minecraft:gold_ingot"
+      "item": "minecraft:gold_nugget"
     },
     "/": {
       "item": "minecraft:stick"
     },
     "X": {
-      "tag": "minecraft:netherite_tool_materials"
+      "tag": "minecraft:gold_tool_materials"
     }
   },
   "pattern": [
-    "X*X",
-    " / ",
-    " / "
+    "*  ",
+    " X ",
+    "  /"
   ],
   "result": {
     "count": 1,
-    "id": "cortescombat:netherite_martillo"
+    "id": "cortescombat:golden_ropera"
   }
 }

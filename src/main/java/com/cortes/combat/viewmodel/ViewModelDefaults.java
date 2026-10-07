@@ -31,11 +31,23 @@ public final class ViewModelDefaults {
         TABLE.put(WeaponProfile.WARHAMMER, warhammer());
     TABLE.put(WeaponProfile.ARCABUZ, arcabuz());
     TABLE.put(WeaponProfile.AXE, axe());
-        // Vanilla's axe, pickaxe, shovel, mace and trident are deliberately absent. They are
-        // vanilla items: a hand-drawn motion on an item whose silhouette we did not draw would
-        // fight the model, and a viewmodel that is subtly wrong is worse than none, because a
-        // player cannot tell that a motion was meant to be there. A weapon with no entry gets the
-        // exact vanilla pose, which is the correct default.
+        // The trident is the fifth vanilla tool to get a profile, and the only one whose strike is
+        // copied from another weapon rather than drawn. The hoe is the one that stays without: it
+        // is an area weapon whose motion would be a loop, and vanilla's swing already is one.
+        TABLE.put(WeaponProfile.TRIDENT, trident());
+        // **The maza, which used to be absent on the "vanilla art" argument and is the exception
+        // to it.** The argument was that a hand-drawn motion on an item whose silhouette we did
+        // not draw fights the model -- true of the shovel and the pickaxe, which are tools whose
+        // vanilla swing is already correct. The maza is not a tool: it is a weapon whose whole
+        // identity is the fall, and a smash that plays the vanilla swing says nothing about it.
+        // The playtest asked for the motion, which is the only test that settles an argument about
+        // what a player can read off a screen.
+        TABLE.put(WeaponProfile.MACE, mace());
+        // Vanilla's axe, pickaxe and shovel are deliberately absent. They are tools: a hand-drawn
+        // motion on an item whose silhouette we did not draw would fight the model, and a viewmodel
+        // that is subtly wrong is worse than none, because a player cannot tell that a motion was
+        // meant to be there. A weapon with no entry gets the exact vanilla pose, which is the
+        // correct default.
     }
 
     private ViewModelDefaults() {
@@ -245,6 +257,62 @@ public final class ViewModelDefaults {
      * <p><b>These numbers are written, not played.</b> The axes are derived from the frame and the
      * ninety is derived from the art; how hard the push reads on screen is a playtest question.</p>
      */
+    /**
+     * The trident: the ropera's thrust on a longer shaft.
+     *
+     * <p><b>The strike is the ropera's, unchanged, and that is the point.</b> The design says the
+     * trident uses the ropera's motion and the dagger's, and a weapon at five and a half blocks of
+     * reach is a thrust and not a pick &mdash; so the thrust is the ropera's and the dagger's
+     * contribution is what happens around it. {@code TridentPoseReuseTest} asserts the numbers are
+     * <em>identical</em>, because a profile that reuses a motion and then quietly retunes it is a
+     * copy, and a copy is a second thing to forget.</p>
+     *
+     * <p><b>Two things are its own, and both are the length.</b> The rest sits at
+     * {@code -28} rather than the ropera's {@code -58}: a spear is carried nearer the horizontal,
+     * and a shaft two and a half blocks long held at fifty eight degrees up is pointing at the
+     * ceiling. <b>That rest pose was wrong and is gone</b> -- see the note at the factory call. What
+     * is the trident's own is the cock: four tenths of a unit back against the ropera's thirteen
+     * hundredths, because a long shaft takes the space behind the hand with the twenty five ticks
+     * it is given.</p>
+     *
+     * <p>Nothing here is a charged variant. <b>The charge is the {@code WINDUP} channel</b>, which
+     * is the raw hold for every weapon in the game, so a tap reads almost nothing here and a full
+     * charge reads all of it &mdash; and the charged thrust that drags the target in is
+     * {@code Knockback.pull}, not a second animation. One channel, one meaning.</p>
+     */
+    private static ViewModelProfile trident() {
+        return ViewModelProfile.owningSwing(
+                // **No rest pose, and the first version of this had one at -28.**
+                //
+                // <p>The ropera is the only weapon in the game with a rest pose, and it is not a
+                // style: its art is drawn with the blade standing vertical, so the vanilla grip
+                // holds a rapier pointing at the ceiling and fifty eight degrees is what turns it
+                // into a thrust. A rest pose is a correction for art that was drawn wrong for the
+                // weapon's job.</p>
+                //
+                // <p><b>The trident's art is vanilla's and it is drawn the way a trident is
+                // held.</b> Rotating it twenty eight degrees puts the point at the floor when the
+                // player is standing still, which is the version of this that compiles, passes
+                // every test, and looks broken on the first frame of every idle.</p>
+                // **Nearly three times the ropera's cock**, and it is the only number here that is
+                // genuinely the trident's own. It is what a long shaft does with the twenty five
+                // ticks it is given: it goes back further, because going back further is all it can
+                // do without the tip leaving the screen.
+                Track.of(Channel.WINDUP, Curve.LINEAR,
+                        new Offset(0.0, 0.02, 0.38, 22.0, 0.0, 0.0)),
+                // **The ropera's thrust, verbatim.** Sixty degrees and most of a unit into the
+                // screen, EXPO so the shaft LEAVES rather than easing out, and it rotates past
+                // level so the point ends eight degrees under the line. Not retuned: at five and a
+                // half blocks this is the motion that reads as a spear reaching something, and a
+                // different number would be a guess about a weapon nobody has drawn.
+                Track.of(Channel.STRIKE, Curve.EXPO,
+                        new Offset(0.0, -0.06, -0.62, -60.0, 0.0, 0.0)),
+                // And the ropera's recovery, verbatim, for the same reason: a thrust that
+                // stops where it started is a machine returning to a position.
+                Track.of(Channel.RECOVER, Curve.SMOOTH,
+                        new Offset(0.0, 0.02, 0.21, 14.0, 0.0, 0.0)));
+    }
+
     private static ViewModelProfile ropera() {
         return ViewModelProfile.heldAs(
                 // **The rest pose is the fix, and it is a field rather than a channel.** The art
@@ -641,5 +709,44 @@ public final class ViewModelDefaults {
     /** The viewmodel for a weapon profile, or {@link ViewModelProfile#NONE} if it has none yet. */
     public static ViewModelProfile of(WeaponProfile profile) {
         return TABLE.getOrDefault(profile, ViewModelProfile.NONE);
+    }
+
+    /**
+     * The maza: the heaviest motion in the game, and the only one that comes from above.
+     *
+     * <p><b>A smash, not a swing, and the difference is where it starts.</b> Every other chop in
+     * this file lifts the weapon back and brings it down; this one lifts it <em>over the head</em>
+     * -- the wind-up carries the largest upward travel of any profile, because a maza is raised and
+     * dropped rather than wound and cut. The chop then carries the largest pitch of any profile
+     * here, past the warhammer's, because the weapon has the most mass to bring down and the
+     * slowest swing in the game to spend doing it.</p>
+     *
+     * <p><b>The tremble is on SMOOTH and slow.</b> The maza cannot be charged -- its charge
+     * profile is NONE -- so the wind-up is short and the shake is a weight rather than a build-up.
+     * A fast shake on a weapon that is about to land would read as the item vibrating rather than
+     * as something heavy being held up.</p>
+     *
+     * <p>The recovery is long and stays low, like the warhammer's, for the same reason: a weapon
+     * whose damage is the fall has to look like it is being hauled back up.</p>
+     */
+    private static ViewModelProfile mace() {
+        return ViewModelProfile.owningSwing(
+                // Raised, and further up than anything else in the file: the maza is hoisted.
+                Track.of(Channel.WINDUP, Curve.LINEAR,
+                        new Offset(-0.02, 0.36, -0.08, -40.0, 0.0, 0.0)),
+                // A slow, heavy shake. SMOOTH so it grows through the short wind-up rather than
+                // snapping on, which is what a weight under load looks like.
+                Track.shaking(Channel.WINDUP, Curve.LINEAR, Offset.ZERO,
+                        new Offset(0.0, 0.0, 0.011, 1.5, 0.0, 0.6),
+                        8.0F, Curve.SMOOTH),
+                // The smash. The largest pitch in the file, and almost no lateral: the crosshair is
+                // what the player is aiming with, and a maza that lands off to the side has spent
+                // its weight on decoration.
+                Track.of(Channel.CHOP, Curve.LINEAR,
+                        new Offset(0.0, -0.34, -0.08, -204.0, 0.0, -3.0)),
+                // Hauled back up, and it stays low: the weapon is heavy and does not recover like a
+                // sword.
+                Track.of(Channel.RECOVER, Curve.SMOOTH,
+                        new Offset(0.0, -0.30, 0.12, 96.0, 0.0, 2.0)));
     }
 }

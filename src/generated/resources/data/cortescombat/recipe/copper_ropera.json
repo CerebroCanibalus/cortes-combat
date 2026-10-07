@@ -3,13 +3,13 @@
   "category": "equipment",
   "key": {
     "*": {
-      "tag": "cortescombat:ropera_tips"
+      "item": "cortescombat:copper_nugget"
     },
     "/": {
       "item": "minecraft:stick"
     },
     "X": {
-      "tag": "minecraft:iron_tool_materials"
+      "tag": "minecraft:copper_tool_materials"
     }
   },
   "pattern": [
@@ -19,6 +19,6 @@
   ],
   "result": {
     "count": 1,
-    "id": "cortescombat:iron_ropera"
+    "id": "cortescombat:copper_ropera"
   }
 }

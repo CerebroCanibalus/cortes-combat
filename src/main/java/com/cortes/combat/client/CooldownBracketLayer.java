@@ -63,10 +63,26 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
             return;
         }
 
+        // **Is this a weapon at all, and it is the door the click asks.**
+        //
+        // <p>This layer did not ask, and the playtest reported the consequence exactly: holding a
+        // block, a potion or a piece of food drew a cooldown bracket and a bar, because
+        // {@code NONE} still has a reach row -- three and a half degrees of cone and three
+        // blocks of distance -- and the geometry does not care what it is measuring.</p>
+        //
+        // Same door, same reason, third time. The press asks it, the tooltip asks it, and
+        // now the HUD asks it. A widget that reports "what your button will do" for an item that
+        // has no button is not showing a wrong number, it is inventing one.</p>
+        if (!com.cortes.combat.item.WeaponKinds.fights(
+                WeaponStats.of(player.getMainHandItem()).profile())) {
+            return;
+        }
+
         int centreX = HudAnchor.centreX(graphics);
         int centreY = HudAnchor.centreY(graphics);
         // **displayedReach and not reach.** The brackets measure what the player's button will do, and on the arcabuz that is the barrel: six and a half blocks at thirty two degrees, while the left click is a two and a half block bayonet at fifty. A crosshair that described the bayonet while the player is aiming the gun is a marker lying about the thing they are about to do.
-        ReachProfile reach = WeaponStats.of(player.getMainHandItem()).displayedReach();
+        ReachProfile reach = com.cortes.combat.attack.MaceAir.displayedFor(
+                WeaponStats.of(player.getMainHandItem()), player);
 
         // One geometry, computed once, and the same one the /cc hud diagnostic prints. The bar
         // and the brackets both measure from it, and a second copy of it is a second chance to

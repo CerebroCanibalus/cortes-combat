@@ -48,17 +48,22 @@ public record CortesTier(WeaponMaterial material) implements Tier {
     /**
      * The material's damage bonus, on vanilla's own scale.
      *
-     * <p>Stone and copper share 1.0, which is the one place the table departs from vanilla and the
-     * place it has to: copper sits between stone and iron on durability and enchantability, and a
-     * bonus of 2 would make a copper weapon hit like an iron one while lasting less. The copper
-     * weapon with the highest damage ceiling in the set earns that from escalation, not from its
-     * material.</p>
+     * <p><b>Copper sits below stone, and that is the price of its durability.</b> It used to share
+     * stone's 1.0, which made it strictly better than stone -- same damage, three hundred and
+     * twenty uses against a hundred and thirty one -- and the playtest asked for the trade to be
+     * real: copper lasts and does not hit. At 0.5 the copper weapon is weaker than the stone one
+     * and outlives it by nearly two and a half times, and the choice between them is a choice.</p>
+     *
+     * <p><b>Which is why the copper weapon with the highest ceiling earns it from escalation.</b>
+     * The warhammer's streak is the only damage in the game that grows with use, and a tier whose
+     * base is the lowest in the set is exactly the tier that needs it.</p>
      */
     @Override
     public float getAttackDamageBonus() {
         return switch (material) {
             case WOODEN, GOLDEN -> 0.0F;
-            case STONE, COPPER -> 1.0F;
+            case COPPER -> 0.5F;
+            case STONE -> 1.0F;
             case IRON -> 2.0F;
             case DIAMOND -> 3.0F;
             case NETHERITE -> 4.0F;

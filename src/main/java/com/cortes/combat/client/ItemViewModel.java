@@ -192,9 +192,19 @@ public final class ItemViewModel {
         }
         lastGuarding = guarding;
         lastStagger = stagger;
+        // **The maza's fall, which is its wind-up.** See `ViewModelMotion.targetWindup`: the maza
+        // cannot be charged, so its WINDUP track -- the hoist and the tremble -- had nothing that
+        // could ever move it, and the fall is what it was written for. It doubles as the meter the
+        // design asks for: the cock grows with the bonus, so the player can read how much the swing
+        // is worth on the way down. Zero for every weapon but the maza, asked of the profile.
+        float fall = held == null ? 0.0F
+                : com.cortes.combat.weapon.MaceFall.progressFor(
+                        WeaponStats.of(held.getMainHandItem()).profile(), held.fallDistance,
+                        com.cortes.combat.attack.MaceAir.airborne(held));
         MOTION.tick(holding, rawCharge, chargedRatio, guarding, stagger,
                 parryWeapon && ClientCombatState.parryActive(),
-                lungeWeapon && ClientCombatState.lungeActive());
+                lungeWeapon && ClientCombatState.lungeActive(),
+                fall);
     }
 
     /**
@@ -645,6 +655,7 @@ public final class ItemViewModel {
         return String.format(
                 "item=%s perfil=%s vacio=%s ownsSwing=%s ESTADO=%s | windup=%.2f strike=%.2f "
                         + "recover=%.2f rotura=%.2f guard=%.2f holding=%s carga=%.2f | "
+                        + "caida=%.2f aire=%s | "
                         + "offset=(%.3f, %.3f, %.3f | %.1f, %.1f, %.1f) cero=%s",
                 stack.getItem().getDescription().getString(),
                 profile == ViewModelProfile.NONE ? "NONE" : "ok",
@@ -654,6 +665,10 @@ public final class ItemViewModel {
                 frame.windup(), frame.strike(), frame.recover(),
                 frame.guardBreak(), frame.guard(),
                 frame.holding(), currentCharge(),
+                // **The fall, printed because "the animation does not appear" is two bugs wearing
+                // one sentence**: the client's `fallDistance` never moving, or the channel being
+                // driven and the profile not drawing it. One number tells them apart.
+                player.fallDistance, com.cortes.combat.attack.MaceAir.airborne(player),
                 offset.x(), offset.y(), offset.z(),
                 offset.pitch(), offset.yaw(), offset.roll(),
                 offset.isZero());

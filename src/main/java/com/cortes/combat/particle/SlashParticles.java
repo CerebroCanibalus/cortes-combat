@@ -58,6 +58,28 @@ public static void hit(ServerLevel level, WeaponProfile profile, Entity target, 
     }
 
     /**
+     * Vanilla's damage indicator, which the replaced attack flow had been dropping.
+     *
+     * <p>Vanilla spawns this in {@code Player#attack} and this mod replaces that method, so the
+     * little dark hearts that say "that landed" have never once appeared in this game. The count
+     * and the position are vanilla's own -- {@code getY(0.5)} rather than the feet, and a tenth of
+     * a block of spread -- so a player who has played vanilla reads it without being told.</p>
+     *
+     * <p>Separate from {@link #hit} and not folded into it: a slash is a flourish this mod drew
+     * and this is a number the game already had. The two answer different questions and a caller
+     * that wants one does not always want the other.</p>
+     */
+    public static void damageIndicator(ServerLevel level, Entity target, float damage) {
+        int count = DamageParticles.countFor(damage);
+        if (count <= 0) {
+            return;
+        }
+        level.sendParticles(ParticleTypes.DAMAGE_INDICATOR,
+                target.getX(), target.getY(0.5), target.getZ(),
+                count, 0.1, 0.0, 0.1, 0.2);
+    }
+
+    /**
      * The sabre's full charge: the same slash, twice, a beat apart.
      *
      * <p>Used instead of {@link #hit} for a weapon whose full charge is a <b>double</b> rather

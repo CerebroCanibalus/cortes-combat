@@ -151,6 +151,55 @@ public final class ModSounds {
      */
     public static final float ARCABUZ_FUSE_PITCH = 1.5F;
 
+    /**
+     * How low the maza plays the warhammer's recordings.
+     *
+     * <p><b>0.5, and it is the floor of the engine's own clamp.</b> Verified in the 1.21.1 sources:
+     * {@code SoundEngine} clamps a played pitch to {@code [0.5, 2.0]}, so anything below half is
+     * half -- writing 0.35 would be a number that reads as a decision and behaves as a constant.
+     * An octave down is also all the pitch can say before it stops being the same impact dropped
+     * and starts being a different recording.</p>
+     */
+    public static final float MACE_PITCH = 0.5F;
+
+    /**
+     * The maza's air smash, and it is vanilla's anvil landing.
+     *
+     * <p><b>Not one of ours, and for the reason the warhammer's streak is a note block.</b> The
+     * fall is the maza's whole argument and it had no voice of its own: the hit was the hammer's
+     * recording at half pitch, identical at two blocks and at eight, while the damage doubled.
+     * {@code block.anvil.land} is a boom with a metal ring inside it, it is a sound every player
+     * has heard a hundred times, and it is the loudest heavy thing in the vanilla library.</p>
+     *
+     * <p>Written as a name here and played by {@code CombatSounds#playMaceSmash}, which is
+     * <b>deliberately not a {@link Kind}</b>: this sound is pitched by how far the player fell, and
+     * the pitch ladder in {@link #pitch} answers only "which weapon". A {@code Kind} for it would
+     * go into that ladder, find no branch, and come out at 1.0 -- the failure this file already
+     * documents twice.</p>
+     */
+    public static final String SMASH = "minecraft:block.anvil.land";
+
+    /** Where a smash's pitch starts: a short drop is a sharp anvil. */
+    public static final float SMASH_PITCH_HIGH = 1.4F;
+
+    /** And where a full drop lands: the same anvil an octave and a half down. The engine's floor. */
+    public static final float SMASH_PITCH_LOW = 0.5F;
+
+    /**
+     * The pitch a smash is played at, which falls as the fall grows.
+     *
+     * <p><b>The ladder is the mechanic's own readout.</b> "The higher you were, the more it hurts"
+     * is invisible in a hit that looks and sounds the same at every height, so the pitch is what
+     * the ear uses to tell a two block drop from an eight block one -- and it moves in the same
+     * direction as the damage, because a lower note is what weight sounds like.</p>
+     *
+     * @param fallRatio how much of the fall's bonus was earned, 0..1
+     */
+    public static float smashPitch(float fallRatio) {
+        float ratio = Math.max(0.0F, Math.min(1.0F, fallRatio));
+        return SMASH_PITCH_HIGH + (SMASH_PITCH_LOW - SMASH_PITCH_HIGH) * ratio;
+    }
+
     static {
         HIT.put(WeaponProfile.SWORD, "cortescombat:sword_hit");
         MISS.put(WeaponProfile.SWORD, "cortescombat:sword_miss");
@@ -173,6 +222,13 @@ public final class ModSounds {
         HIT.put(WeaponProfile.WARHAMMER, "cortescombat:martillo_hit");
         MISS.put(WeaponProfile.WARHAMMER, "cortescombat:martillo_miss");
         CHARGED_HIT.put(WeaponProfile.WARHAMMER, "cortescombat:martillo_charged_hit");
+
+        // The maza borrows the warhammer's recordings and is played back far lower -- the same
+        // borrowing the sabre does off the sword, and for the same reason: it is the same shape of
+        // impact, a head on a haft, and the hammer's art is the only one in the jar that is.
+        HIT.put(WeaponProfile.MACE, "cortescombat:martillo_hit");
+        MISS.put(WeaponProfile.MACE, "cortescombat:martillo_miss");
+        CHARGED_HIT.put(WeaponProfile.MACE, "cortescombat:martillo_charged_hit");
 
         // The shotel borrows the sword's recordings and is played back sharper. The charge is
         // deliberately NOT sharpened: it is the same file for every weapon in the game, and a
@@ -232,6 +288,14 @@ public final class ModSounds {
         }
         if (kind == Kind.LUNGE) {
             return LUNGE_PITCH;
+        }
+        // The maza borrows the hammer's three recordings, so it needs a branch here for the same
+        // reason the shotel does: `hasOwnArt` is now true for it, which means the vanilla-charged
+        // fallback below no longer applies and the default would have played them at 1.0 -- the
+        // hammer's own sound, and the borrowing would have been invisible.
+        if (resolved == WeaponProfile.MACE
+                && (kind == Kind.HIT || kind == Kind.MISS || kind == Kind.CHARGED_HIT)) {
+            return MACE_PITCH;
         }
         // The arcabuz is the one weapon whose blast is a vanilla recording nobody else plays, so
         // it is the only one whose blast is dropped. Same reasoning as VANILLA_CHARGED_PITCH,

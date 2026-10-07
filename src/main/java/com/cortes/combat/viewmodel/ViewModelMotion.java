@@ -1037,9 +1037,20 @@ public final class ViewModelMotion {
      * @param stagger      the held item's remaining cooldown, 0 when ready. Only decides whether the
      *                     guard is up, because that is the one thing the stagger and the stance
      *                     have to agree about
+     * @param fall         the maza's fall, 0..1, and zero for every other weapon. See
+     *                     {@link #targetWindup}
      */
     public void tick(boolean holding, float rawCharge, float chargedRatio, boolean guarding,
                      float stagger, boolean parrying, boolean lunging) {
+        // The seven argument entry point, and it forwards rather than duplicating. The fall belongs
+        // to exactly one weapon, so every other caller -- every test, and anything that has no
+        // player in hand -- would otherwise have to write a zero it does not mean.
+        tick(holding, rawCharge, chargedRatio, guarding, stagger, parrying, lunging, 0.0F);
+    }
+
+    /** {@link #tick(boolean, float, float, boolean, float, boolean, boolean)} with the maza's fall. */
+    public void tick(boolean holding, float rawCharge, float chargedRatio, boolean guarding,
+                     float stagger, boolean parrying, boolean lunging, float fall) {
         ticks++;
         this.stagger = clamp01(stagger);
         // Its own clock, not the item's. See BREAK_TICKS: tying the collapse to the stagger made
@@ -1053,14 +1064,25 @@ public final class ViewModelMotion {
         if (parryBreakAge >= 0 && ++parryBreakAge >= parryBreakTicks) {
             parryBreakAge = -1;
         }
-        if (holding) {
+        // **The reset is on the PRESS EDGE and not on every held tick, and that is the fix for
+        // "the automatic strike never animates".** `autoStrikeWhileHeld` calls `onStrike` from the
+        // tick, which sets `pendingStrike`; the old branch ran on every tick the button was down
+        // and cleared it on the very next frame, so every weapon that is held -- the sword, the
+        // axe, the hoe, the shovel, the arcabuz -- produced no motion at all while held. The
+        // one-shot bump was erased before it could start: the code was there and the animation was
+        // not, which is the same shape as the tag that never matched.
+        //
+        // `this.holding` is still the PREVIOUS tick's value here (it is assigned further down), so
+        // this is exactly the frame the button went down.
+        boolean pressedNow = holding && !this.holding;
+        if (pressedNow) {
             // A new press abandons whatever the last one was doing, and zeroes the charge it
             // released with. Otherwise a fast second click would inherit the first one's charge
             // and the wind-up would jump to a value the player never charged to.
             strikeAge = -1;
             pendingStrike = false;
             released = 0.0F;
-        chopAge = -1;
+            chopAge = -1;
             classified = 0.0F;
         } else if (pendingStrike) {
             strikeAge = 0;
@@ -1078,7 +1100,7 @@ public final class ViewModelMotion {
         chopAge = -1;
             classified = 0.0F;
         }
-        float next = targetWindup(holding, rawCharge);
+        float next = targetWindup(holding, rawCharge, fall);
         // The hold's two ends, so the frame between them can be interpolated. Without this the
         // draw-back is a twenty-hertz staircase, which is what the fist's "shakes strangely"
         // turned out to be. See windupPrev.
@@ -1296,7 +1318,25 @@ public final class ViewModelMotion {
         shootPrev = shootBefore;
     }
 
-    private float targetWindup(boolean holding, float charge) {
+    /**
+     * What the wind-up channel is at this tick.
+     *
+     * @param fall the maza's fall, 0..1, or zero for every other weapon
+     */
+    private float targetWindup(boolean holding, float charge, float fall) {
+        // **The fall comes first, because on the maza it is the wind-up and not a hold.** The maza
+        // cannot be charged -- its charge profile is NONE -- so `charge` is always zero for it and
+        // its WINDUP track, the hoist and the tremble, had never once been drawn: a channel written,
+        // registered, and with nothing that could move it, which is the sabre's dead BREAK track in
+        // a different weapon. The fall is what that channel was always for.
+        //
+        // It goes before the button because it is not the button: the cock has to grow while the
+        // player is falling whether or not they are holding, and it has to keep showing while an
+        // automatic strike runs underneath, or a held swing would erase the meter the player is
+        // reading on the way down.
+        if (fall > 0.0F) {
+            return fall;
+        }
         if (holding) {
             return charge;
         }

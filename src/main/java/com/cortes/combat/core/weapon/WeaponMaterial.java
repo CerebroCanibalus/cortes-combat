@@ -24,8 +24,20 @@ import java.util.Locale;
  * <p><b>The uses and enchantment numbers are Mojang's for the six vanilla tiers, copied from the
  * 1.21.1 sources so a player repairing an item at an anvil gets the number they expect.</b> They
  * were copied rather than invented because there is no design reason for our iron to survive a
- * different number of hits than vanilla's iron. Copper's two numbers are Mojang's 1.21.9 values
- * and were not playable, for the same reason.</p>
+ * different number of hits than vanilla's iron.</p>
+ *
+ * <h2>And the two that are not Mojang's, on purpose</h2>
+ *
+ * <p><b>Gold and copper, and the playtest asked for both.</b> Vanilla's gold is thirty two uses,
+ * which is a joke with a durability bar attached: a golden sword breaks in the time it takes to
+ * notice it works. The design's gold is <em>between stone and iron</em>, which is where a fragile
+ * material with the best enchantability in the game belongs -- it still dies first of the metals,
+ * but it dies after a fight instead of during one.</p>
+ *
+ * <p>Copper goes <em>above</em> iron, and the price is on its damage: see
+ * {@code CortesTier#getAttackDamageBonus}, where copper sits below stone. The identity that falls
+ * out is legible -- <b>copper lasts and does not hit</b> -- and it is the one arrangement where
+ * the warhammer's first tier is a commitment rather than a free upgrade.</p>
  */
 public enum WeaponMaterial {
 
@@ -35,17 +47,26 @@ public enum WeaponMaterial {
     STONE("stone", 1, 131, 5, "stone_tool_materials"),
 
     /**
-     * Ours, and between stone and iron rather than beside them.
+     * Ours, and above iron rather than between it and stone.
      *
-     * <p>1.21.9's copper is 190 uses against iron's 250 and stone's 131. The design makes copper
-     * the warhammer's first tier, so a player has to commit to smelting before they can own the
-     * weapon with the highest damage ceiling, and that only reads as a decision if copper is
-     * visibly a step.</p>
+     * <p>Three hundred and twenty against iron's two hundred and fifty. It pays for that with the
+     * lowest damage bonus in the set -- below stone -- so the tier reads as "the durable one" and
+     * not as a free step up. See the class comment.</p>
      */
-    COPPER("copper", 2, 190, 13, "copper_tool_materials"),
+    COPPER("copper", 2, 320, 13, "copper_tool_materials"),
 
     IRON("iron", 3, 250, 14, "iron_tool_materials"),
-    GOLDEN("golden", 4, 32, 22, "gold_tool_materials"),
+
+    /**
+     * Between stone and iron, which vanilla never was.
+     *
+     * <p>One hundred and ninety against vanilla's thirty two, and the enchantability stays at
+     * Mojang's twenty two -- the highest of any tier. <b>Gold is the material you enchant, not the
+     * one you fight with</b>, and a material with the best enchantability in the game cannot also
+     * break before the enchantment pays for itself.</p>
+     */
+    GOLDEN("golden", 4, 190, 22, "gold_tool_materials"),
+
     DIAMOND("diamond", 5, 1561, 10, "diamond_tool_materials"),
     NETHERITE("netherite", 6, 2031, 15, "netherite_tool_materials");
 

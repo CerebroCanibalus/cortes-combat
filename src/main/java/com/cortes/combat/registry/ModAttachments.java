@@ -5,6 +5,8 @@ import com.cortes.combat.state.ArcabuzState;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
 import com.cortes.combat.state.GuardState;
+import com.cortes.combat.guard.GuardStamp;
+import com.cortes.combat.state.FallDeferral;
 import com.cortes.combat.state.ParryState;
 import com.cortes.combat.state.LungeState;
 import com.cortes.combat.state.StreakState;
@@ -59,6 +61,11 @@ public final class ModAttachments {
             ATTACHMENT_TYPES.register("guard_stamina", () -> AttachmentType.builder(() -> GuardState.EMPTY)
                     .serialize(GuardState.CODEC)
                     .build());
+    /** Who was blocked and when, so one swing spends one point. See {@link GuardStamp}. */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<GuardStamp>> GUARD_LAST_BLOCK =
+      ATTACHMENT_TYPES.register("guard_last_block", () -> AttachmentType.builder(() -> GuardStamp.NONE)
+      .serialize(GuardStamp.CODEC)
+      .build());
 
     /** Server-authoritative attack cooldown. The permission to attack. */
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<CooldownState>> COOLDOWN =
@@ -147,6 +154,19 @@ public final class ModAttachments {
             ATTACHMENT_TYPES.register("arcabuz", () -> AttachmentType
                     .<ArcabuzState>builder(() -> ArcabuzState.EMPTY)
                     .serialize(ArcabuzState.CODEC)
+                    .build());
+
+    /**
+     * A fall's damage, held for the coyote window. See {@link FallDeferral}.
+     *
+     * <p><b>No {@code copyOnDeath}.</b> A fall being deferred is a moment and not a state, and
+     * dying ends it: inheriting one would hand the respawned player a debt they no longer owe,
+     * which is the guard's held-button bug in a different currency.</p>
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<FallDeferral>> FALL_DEFERRAL =
+            ATTACHMENT_TYPES.register("fall_deferral", () -> AttachmentType
+                    .<FallDeferral>builder(() -> FallDeferral.NONE)
+                    .serialize(FallDeferral.CODEC)
                     .build());
 
     private ModAttachments() {

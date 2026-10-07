@@ -9,7 +9,6 @@ import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -110,16 +109,19 @@ public final class CombatAim {
 
         ItemStack held = player.getMainHandItem();
         if (isRanged(held)) {
-            // A projectile is aimed with the crosshair, not with the cone, so there is nothing
-            // to scan for and the melee cache is dropped rather than kept: swapping to a bow and
-            // back should not resurrect whoever happened to be standing in front of the sword.
+            // A bow and a crossbow are aimed with the crosshair, not with the cone, so there is
+            // nothing to scan for and the melee cache is dropped rather than kept: swapping to a
+            // bow and back should not resurrect whoever happened to be standing in front of the
+            // sword. The trident is not here -- see isRanged.
             forget();
             ClientCombatState.setAiming(isDrawingRanged(player, held));
             return;
         }
 
-        // displayedReach, like the brackets it sits next to: the aim marker's job is to say where the shot goes.
-        ClientCombatState.setAiming(stillAiming(player, held, WeaponStats.of(held).displayedReach()));
+        // The displayed cone with the air bonus applied, like the brackets it sits next to: the aim
+        // marker's job is to say where the swing goes, and the maza's cone grows while it falls.
+        ClientCombatState.setAiming(stillAiming(player, held,
+                com.cortes.combat.attack.MaceAir.displayedFor(WeaponStats.of(held), player)));
     }
 
     /**
@@ -134,9 +136,15 @@ public final class CombatAim {
         // to learn what three references already answer; comparing only the item would miss a
         // mod rewriting a component on that same item, and the profile is a record held by the
         // component, so an unchanged value is the same instance.
+        // **By value and not by reference, which is the change the air bonus forced.** The reach
+        // used to be a record held by the component, so an unchanged cone was the same instance and
+        // `!=` answered "did the cone change" in one compare. A maza in the air gets a freshly
+        // scaled profile every tick, so `!=` would be true forever: the throttle would never
+        // throttle, and the scan would run twenty times a second on a weapon that just happens to
+        // be falling. Three floats, compared only when the player and the item are unchanged.
         boolean contextChanged = player != tracked
                 || held.getItem() != trackedItem
-                || reach != trackedReach;
+                || !reach.equals(trackedReach);
         if (contextChanged) {
             tracked = player;
             trackedItem = held.getItem();
@@ -197,28 +205,49 @@ public final class CombatAim {
     }
 
     /**
-     * Whether the held item is a projectile weapon at all.
+     * Whether the held item is a ranged <b>only</b> weapon: a bow or a crossbow.
      *
-     * <p>Checked by class rather than by a list of items, so a mod's own bow is a bow without
-     * this project knowing the mod exists. That is the same capability-not-name rule the rest of
-     * the compat layer follows.</p>
+     * <p><b>A trident is deliberately not one, and it used to be.</b> The check read
+     * {@code instanceof TridentItem} too, which is true and reads as "a projectile weapon" --
+     * correct about the item and wrong about the question. This answer is asked in two places and
+     * the trident is the one item where they disagree:</p>
+     *
+     * <ul>
+     *   <li><b>The crosshair.</b> In this system a trident is a melee weapon at five point three
+     *       blocks on a fifteen degree cone, so its crosshair has to read the melee cone like every
+     *       other weapon's. Answering "ranged" here left it permanently unlit unless the player was
+     *       drawing a throw.</li>
+     *   <li><b>The press gate in {@code SwingInputHandler}, and this is the bug.</b> That gate runs
+     *       <em>after</em> the profile question, so a bow and a crossbow are already refused there
+     *       -- neither sits in a weapon tag, so both derive to {@code NONE} and
+     *       {@code WeaponKinds.fights} says no. For those two this is a redundant second answer;
+     *       <b>for the trident it was the one that decided</b>, and it handed the whole left click
+     *       back to vanilla. The report was "the trident is still full vanilla" with a green build,
+     *       which is the same shape as the {@code #tridents} tag that never existed.</li>
+     * </ul>
+     *
+     * <p>The right button is untouched: the trident's special is {@code NONE}, so vanilla still
+     * throws it, and a thrown trident is a projectile and stays outside the cone by design.</p>
+     *
+     * <p>Checked by class rather than by a list of items, so a mod's own bow is a bow without this
+     * project knowing the mod exists. That is the same capability-not-name rule the rest of the
+     * compat layer follows.</p>
      */
     public static boolean isRanged(ItemStack stack) {
         if (stack == null || stack.isEmpty()) {
             return false;
         }
         return stack.getItem() instanceof BowItem
-                || stack.getItem() instanceof CrossbowItem
-                || stack.getItem() instanceof TridentItem;
+                || stack.getItem() instanceof CrossbowItem;
     }
 
     /**
-     * Bow and trident charge while the button is held; the crossbow is charged by a previous
-     * shot and stays loaded whether or not the button is down.
+     * A bow charges while the button is held; the crossbow is charged by a previous shot and stays
+     * loaded whether or not the button is down.
      *
-     * <p>Those are three different questions, so they are three different checks. Treating a
-     * loaded crossbow as "not aiming" would make the crosshair blink out the instant the player
-     * released the fire button, which is the exact moment they are lining up the next shot.</p>
+     * <p>Those are two different questions, so they are two different checks. Treating a loaded
+     * crossbow as "not aiming" would make the crosshair blink out the instant the player released
+     * the fire button, which is the exact moment they are lining up the next shot.</p>
      */
     private static boolean isDrawingRanged(LocalPlayer player, ItemStack held) {
         if (held.getItem() instanceof CrossbowItem) {

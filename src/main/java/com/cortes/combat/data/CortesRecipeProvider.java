@@ -111,7 +111,16 @@ public class CortesRecipeProvider implements DataProvider {
 
         Map<Character, Ingredient> key = new LinkedHashMap<>();
         key.put('X', ingredient(family.bodyIngredient(material)));
-        key.put('/', Ingredient.of(Items.STICK));
+        // **The stick goes in only when the grid uses one.**
+        //
+        // `ShapedRecipePattern.of` rejects a key symbol the pattern never mentions --
+        // "Key defines symbols that aren't used in pattern: {/}" -- and the warhammer's column is
+        // material, core, material with no stick in it. So an unconditional `key.put('/', ...)` is
+        // a datagen failure the moment a grid drops the haft, which is exactly what the martillo's
+        // correction did. The `*` below is conditional for the same reason and always was.
+        if (family.shape().sticks() > 0) {
+            key.put('/', Ingredient.of(Items.STICK));
+        }
         WeaponFamily.IngredientRef extra = family.extraIngredient(material);
         if (extra != null) {
             key.put('*', ingredient(extra));
@@ -154,7 +163,15 @@ public class CortesRecipeProvider implements DataProvider {
         // DATA_PACK and not RESOURCE_PACK. The two targets write to different roots -- data/ and
         // assets/ -- and a recipe emitted into assets/ is a file the recipe loader never reads. It
         // is a silent failure: the file exists, it parses, and no recipe appears in game.
-        return output.createPathProvider(PackOutput.Target.DATA_PACK, "recipes").json(id);
+        //
+        // **And `"recipe"` singular, because 1.21 renamed every datapack folder.** The vanilla jar
+        // carries `data/minecraft/recipe/` and `data/minecraft/advancement/` and the plural of
+        // neither, and a folder the loader does not read is that same silent nothing one layer up.
+        // This line and the one in `advancement` were `"recipes"` and `"advancements"`, so the mod
+        // shipped thirty-four recipes and thirty-four advancements that <b>never loaded once</b> --
+        // and `Loaded 1290 recipes` in the log was vanilla's own count, which is why it read as
+        // proof they had. The names the game reads are pinned in `DataFolderNamesTest`.
+        return output.createPathProvider(PackOutput.Target.DATA_PACK, "recipe").json(id);
     }
 
     /**
@@ -171,9 +188,11 @@ public class CortesRecipeProvider implements DataProvider {
     private CompletableFuture<?> advancement(CachedOutput cached, HolderLookup.Provider registries,
                                              ResourceLocation recipeId,
                                              Item result, WeaponMaterial material) {
-        // DATA_PACK for the same reason as the recipe: advancements live under data/, and a file
-        // written into assets/ is one the loader never looks for.
-        Path path = output.createPathProvider(PackOutput.Target.DATA_PACK, "advancements")
+        // DATA_PACK for the same reason as the recipe, and `"advancement"` singular for the same
+        // reason too -- see recipePath. An advancement in `advancements/` is one the game never
+        // loads, and without it the recipe never enters the book even when the recipe itself is
+        // fine.
+        Path path = output.createPathProvider(PackOutput.Target.DATA_PACK, "advancement")
                 .json(recipeId);
 
         TagKey<Item> bodyTag = TagKey.create(Registries.ITEM,

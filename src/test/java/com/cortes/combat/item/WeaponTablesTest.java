@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -153,8 +154,8 @@ class WeaponTablesTest {
     @Test
     @DisplayName("and the profiles are all there in the first place")
     void theProfileListIsComplete() {
-        assertEquals(14, EnumSet.allOf(WeaponProfile.class).size(),
-                "a profile was added and the tables were not told. Fourteen is NONE, UNARMED, the "
+        assertEquals(15, EnumSet.allOf(WeaponProfile.class).size(),
+                "a profile was added and the tables were not told. Fifteen is NONE, UNARMED, the "
                         + "six vanilla, the five new families, and the arcabuz -- which is a "
                         + "profile and NOT a family, because a firearm is one item rather than a "
                         + "(family, material) pair, and the tables are keyed by profile");
@@ -188,11 +189,33 @@ class WeaponTablesTest {
         // Asserting the exact number pins the design to today's arithmetic and says nothing about
         // whether the weapon ended up in the right place; asserting "the halberd outranges
         // everything by more than half a block" says it and survives the next round.
-        assertTrue(WeaponTables.reach(WeaponProfile.HALBERD).distance()
-                        > WeaponTables.reach(WeaponProfile.TRIDENT).distance() + 0.5F,
-                "the halberd is the longest thing in the game at five blocks, three quarters more "
-                        + "than the trident's four. It is the weapon whose whole argument is "
-                        + "standing off, and it now also pays for it by being the slowest");
+        // **The trident is the longest thing in the game, and the assertion changed sides.**
+        //
+        // It used to say the halberd outranges the trident by more than half a block, and it was
+        // written that way deliberately -- relationships, not figures, so it survives a retune.
+        //
+        // <p>It also went stale the moment the design gave the trident the longest reach, and a
+        // stale relationship reads exactly like a design that was never revisited: the number in
+        // the message still said "the trident's four" long after it stopped being four.</p>
+        //
+        // <p><b>The new one is a relationship in the other direction and says why both are
+        // right.</b> The halberd's five is paid for with a sixty degree cone that catches what is
+        // beside you; the trident's five and a half is paid for with fifteen degrees, which at
+        // that length is a spear. Asserting only "the trident is longest" would have let the
+        // fifteen widen to sixty without a word, and that is the pair of numbers that has to move
+        // together.</p>
+        assertTrue(WeaponTables.reach(WeaponProfile.TRIDENT).distance()
+                        > WeaponTables.reach(WeaponProfile.HALBERD).distance(),
+                "the trident is the longest thing in the game at five and a half, over the "
+                        + "halberd's five. The design says so, and it is not a demotion for the "
+                        + "halberd: its reach is paid for with a cone and the trident's is paid "
+                        + "for with a corridor");
+        assertTrue(WeaponTables.reach(WeaponProfile.TRIDENT).horizontalAngle()
+                        <= WeaponTables.reach(WeaponProfile.HALBERD).horizontalAngle() * 0.5F,
+                "**and the fifteen degrees is the half of it that has to move with it.** A "
+                        + "five-and-a-half reach on a sixty degree cone is a long sword, and the "
+                        + "trident's argument is that it is a spear: it has to be aimed, or the "
+                        + "reach is free. The pair is the weapon");
         // **The halberd did NOT take the widest cone, and the retune was not supposed to give it
         // one.** Sixty against the sabre's seventy five. The first version of this assertion said
         // the halberd was wider, which is false and which the comment two lines above it also
@@ -213,5 +236,215 @@ class WeaponTablesTest {
                 "and the sabre is the shortest reach in the game after the retune, which is the "
                         + "price of a seventy five degree cone at arm's length. The parry is what "
                         + "pays for the weapon and it is untouched by this");
+    }
+
+    /**
+     * The vanilla six answer NONE, and that has to be deleted by hand.
+     *
+     * <h2>Why a test insists on an absence</h2>
+     *
+     * <p>Because the absence is the finding. The vanilla arms did not all read NONE before the
+     * rework: the shovel carried the halberd's sweep and the pickaxe the ropera's lunge, both
+     * copied without anybody deciding them, and "vanilla throws the mace" is an argument about how
+     * vanilla works rather than about what these should do here.</p>
+     *
+     * <p>So this is deliberately annoying in the good way. <b>Giving the shovel its special back
+     * has to be the deletion of one line in {@link WeaponTables} and of one name here</b> &mdash;
+     * which means the diff that introduces it says "the shovel sweeps now, on purpose", next to
+     * the number it is using. A copied special is the expensive kind: a NONE is an absence and a
+     * copy looks chosen.</p>
+     */
+    @Test
+    @DisplayName("the vanilla six have no special, and that has to be deleted by hand")
+    void theVanillaSixHaveNoSpecial() {
+        for (WeaponProfile profile : new WeaponProfile[]{
+                WeaponProfile.SWORD, WeaponProfile.AXE, WeaponProfile.PICKAXE,
+                WeaponProfile.SHOVEL, WeaponProfile.MACE, WeaponProfile.TRIDENT}) {
+            assertSame(SpecialType.NONE, WeaponTables.special(profile),
+                    profile + " has a special again: " + WeaponTables.special(profile)
+                            + ". **If this is the decision, it has to cost a line in WeaponTables "
+                            + "and a name here**, so the diff says it was chosen. What it had "
+                            + "before was a copy -- the shovel had the halberd's sweep, the "
+                            + "pickaxe the ropera's lunge -- and a copy looks like a decision "
+                            + "nobody took");
+        }
+    }
+
+    /**
+     * Not fighting and having a special are the same fact stated twice, so the test says so.
+     *
+     * <h2>Why this is not redundancy</h2>
+     *
+     * <p>{@code WeaponKinds} says the pickaxe does not fight and this file says its special is
+     * NONE, and <b>right now the pickaxe is safe for two unrelated reasons</b>.
+     * {@code SpecialInputHandler} does not ask {@code fights()} -- it asks whether the special is
+     * NONE and otherwise claims the right button. So a pickaxe that had its LUNGE back would not
+     * swing on the left any more and would still step on the right.</p>
+     *
+     * <p>Either fix closes it and both are one line. The invariant that matters is <b>"what does
+     * not fight cannot answer a button"</b>, and a test of each half separately asserts an offset
+     * compound of it.</p>
+     */
+    @Test
+    @DisplayName("whatever does not fight cannot answer the right button either")
+    void notFightingMeansNoSpecial() {
+        for (WeaponProfile profile : WeaponProfile.values()) {
+            if (!WeaponKinds.fights(profile)) {
+                assertSame(SpecialType.NONE, WeaponTables.special(profile),
+                        profile + " does not fight and yet answers the right button with "
+                                + WeaponTables.special(profile) + ". **SpecialInputHandler does "
+                                + "not ask WeaponKinds**, it asks whether the special is NONE -- so "
+                                + "this is the only thing saying a tool that stopped being a "
+                                + "weapon also stopped answering the button");
+            }
+        }
+    }
+
+    /**
+     * Holding the button is one strike repeated &mdash; with one real exception.
+     *
+     * <h2>Why this test lives here and not beside the weapon set</h2>
+     *
+     * <p>Because it was there, in {@link WeaponKinds}, and it was wrong there.</p>
+     *
+     * <p>Answered from the wrong table it said <b>the bare fist repeats</b> &mdash; and the fist
+     * charges, 0.3 over twelve ticks. The rule is not "the ones that fight" and it is not "the
+     * ones without a charge": it is the second, which is narrower. A weapon that charges is not a
+     * weapon you hold down, and the fist is the cheapest proof of it in the game.</p>
+     *
+     * <p>It also sat beside a set of profiles, which is exactly why it could not see a charge. It
+     * reads {@link WeaponTables#charge(WeaponProfile)} now, which is the table the question was
+     * always about.</p>
+     */
+    @Test
+    @DisplayName("the bare fist does not repeat, and the sword does not either")
+    void theWeaponsThatChargeDoNotRepeat() {
+        // **The first version of this asserted "everything that fights repeats except the maza",
+        // and the sword failed it.** The sword charges at 0.5 over twenty five ticks, so holding
+        // it is a charge -- and the version that passed it was the one reading the wrong table,
+        // where "does it charge" was not answerable at all.
+        //
+        // The rule is the whole design: **no charge means it repeats.** The maza is the exception
+        // and it is named. Everything that charges -- sword, axe, shovel, trident, halberd,
+        // warhammer, sabre, and the fist -- does not repeat, because a tap on any of them is
+        // already a charge in progress.
+        assertFalse(WeaponTables.canHoldDown(WeaponProfile.UNARMED),
+                "**the bare fist does not repeat.** It charges -- 0.3 over twelve ticks -- so "
+                        + "holding it is a charge, and this is the case the first version got "
+                        + "wrong by answering from the wrong table");
+        assertFalse(WeaponTables.canHoldDown(WeaponProfile.SWORD),
+                "and the sword does not either, which is the case that broke the first version's "
+                        + "assertion: charging is not a subset of not repeating, it is the reason "
+                        + "for it");
+        assertFalse(WeaponTables.canHoldDown(WeaponProfile.PICKAXE),
+                "and a pickaxe does not repeat, but for the first reason: it does not fight");
+        assertTrue(WeaponTables.canHoldDown(WeaponProfile.DAGGER),
+                "**the dagger repeats**, which is the decision: holding the button is a "
+                        + "convenience and not a commitment. It is the fastest weapon in the game "
+                        + "and it cannot be charged, so without this a player mashes anyway");
+        assertTrue(WeaponTables.canHoldDown(WeaponProfile.ROPERA),
+                "and so does the ropera, by the same decision");
+        assertFalse(WeaponTables.canHoldDown(WeaponProfile.MACE),
+                "**and the maza is the one that neither charges nor repeats.** Vanilla reads "
+                        + "fallDistance and resets it in postHurtEnemy, so a repeated strike pays "
+                        + "the cost without collecting the damage");
+    }
+
+    /**
+     * The exclusion is one weapon, and it is named rather than derived.
+     *
+     * <p><b>An empty list would have been defensible and would have meant "nobody thought about
+     * the maza"</b> &mdash; the same shape as the copied specials, one level down.</p>
+     */
+    @Test
+    @DisplayName("the exclusion list is exactly the maza, not an oversight")
+    void theExclusionIsNamed() {
+        assertEquals(1,
+                WeaponKinds.combatProfiles().size() - WeaponTables.repeatingProfiles().size(),
+                "one weapon fights and cannot be held down. If this number changes somebody "
+                        + "decided something, and the reason belongs in the new one's name the "
+                        + "way the maza's is");
+        assertFalse(WeaponTables.repeatingProfiles().contains(WeaponProfile.PICKAXE),
+                "sanity: the pickaxe is absent because it never entered, so adding it to the "
+                        + "exclusion list would change nothing and would look like a decision");
+    }
+
+    /**
+     * Three facts per profile, in two places, and they have to agree.
+     *
+     * <h2>The one that was missing, and the two sabotages that found it</h2>
+     *
+     * <p>Nothing asserted that {@code fights} and the charge table were consistent, and
+     * <b>both sabotage attempts passed</b>: giving the maza a charge profile again, and giving the
+     * pickaxe one.</p>
+     *
+     * <p>What they produced is worse than either bug alone. A maza with a charge profile is a
+     * <b>third state nobody decided</b>: it charges, it does not repeat, and no rule in the
+     * project says what that is. It is not "no charge" and it is not "holds down".</p>
+     *
+     * <p><b>The rule in one sentence:</b> a weapon that does not charge may be held down, except
+     * the maza; and a profile that does not fight has no opinion on either.</p>
+     */
+    @Test
+    @DisplayName("no charge means it repeats, the maza aside, and nothing is a third state")
+    void chargeAndRepetitionAgree() {
+        for (WeaponProfile profile : WeaponProfile.values()) {
+            boolean fights = WeaponKinds.fights(profile);
+            boolean charges = WeaponTables.charge(profile).canCharge();
+            boolean repeats = WeaponTables.canHoldDown(profile);
+
+            if (!fights) {
+                assertFalse(repeats, profile + " does not fight and yet repeats");
+                continue;
+            }
+            if (charges) {
+                assertFalse(repeats, profile + " charges and also repeats. **That is a third state "
+                        + "nobody decided**: a tap is already a charge on a weapon that charges, "
+                        + "so holding the button would mean two things at once");
+            } else {
+                assertEquals(profile != WeaponProfile.MACE, repeats,
+                        profile + " cannot be charged, so holding it is "
+                                + (profile == WeaponProfile.MACE
+                                        ? "**not** one strike repeated -- and the maza's reason "
+                                                + "is that its damage is the fall, which every "
+                                                + "strike spends"
+                                        : "one strike repeated"));
+            }
+        }
+    }
+
+    /**
+     * The two charge rows that had to go, and the reason each one went.
+     *
+     * <h2>The test above could not catch this, and that is the interesting part</h2>
+     *
+     * <p>Giving the maza a charge profile back <b>passed every test in the class</b>, and it should
+     * have: with {@code NEVER_REPEATS} still holding the maza, a maza that charges is internally
+     * consistent. It charges, and it does not repeat, and both of those follow from rules that are
+     * each true.</p>
+     *
+     * <p>So the shape of the hole is: <b>two rules that are each right compose into a weapon
+     * nobody chose.</b> "Charging weapons do not repeat" is true. "The maza does not repeat" is
+     * true. Nothing said the maza cannot be charged &mdash; and its charge row, 0.7 over forty
+     * ticks, was invented: nothing in vanilla's maza charges, because vanilla's maza does not need
+     * to, since its damage is the fall.</p>
+     *
+     * <p><b>A composition of correct rules is not a proof that the result was chosen.</b></p>
+     */
+    @Test
+    @DisplayName("the maza and the pickaxe cannot be charged, and the maza's row was invented")
+    void theTwoChargeRowsThatWent() {
+        assertFalse(WeaponTables.charge(WeaponProfile.MACE).canCharge(),
+                "**the maza cannot be charged: it is too heavy.** Its row was 0.7 over forty "
+                        + "ticks and nothing invented it -- vanilla's maza does not charge either, "
+                        + "because vanilla's maza does not need to, since its damage is the fall. "
+                        + "The axe is the slow charge in this game at sixty ticks; the maza is not "
+                        + "a slow charge, it is not a charge at all");
+        assertFalse(WeaponTables.charge(WeaponProfile.PICKAXE).canCharge(),
+                "**and the pickaxe does not either.** It is not a weapon -- it lost combat at "
+                        + "WeaponKinds -- and this row is what it looked like while that was still "
+                        + "undecided: a charge the press could never reach, bought by a profile it "
+                        + "now refuses before it reads one. NONE so that nothing anywhere can find "
+                        + "a charge on a shovel-shaped lie");
     }
 }

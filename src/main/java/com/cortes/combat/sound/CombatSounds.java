@@ -75,6 +75,33 @@ public final class CombatSounds {
     }
 
     /**
+     * The maza's air smash, played at the thing it landed on.
+     *
+     * <p><b>Its own method and not a {@link ModSounds.Kind}, and the pitch is the whole reason.</b>
+     * Every other sound here is pitched by the weapon and nothing else, which is what
+     * {@code ModSounds#pitch} answers. This one is pitched by <em>how far the player fell</em>, and
+     * a {@code Kind} would have gone into that ladder, found no branch for itself, and come out at
+     * 1.0 -- the exact failure this project documents twice: a sound declared, registered and
+     * played, with the pitch quietly the default.</p>
+     *
+     * <p>Played at the <b>target</b> and not at the attacker, unlike every other hit sound. The
+     * anvil is describing the impact, and the impact happened where the weapon landed.</p>
+     *
+     * @param fallRatio how much of the fall's bonus was earned, 0..1. Zero never reaches here
+     */
+    public static void playMaceSmash(ServerLevel level, Entity at, float fallRatio) {
+        var log = org.slf4j.LoggerFactory.getLogger("cortescombat");
+        if (REPORTED.add(ModSounds.SMASH)) {
+            log.info("[sonido] '{}' pedido, pitch {} por caida ({} .. {})",
+                    ModSounds.SMASH, ModSounds.smashPitch(fallRatio),
+                    ModSounds.SMASH_PITCH_HIGH, ModSounds.SMASH_PITCH_LOW);
+        }
+        level.playSound(null, at.getX(), at.getY(), at.getZ(),
+                SoundEvents.ANVIL_LAND, SoundSource.PLAYERS, 1.0F,
+                ModSounds.smashPitch(fallRatio));
+    }
+
+    /**
      * The warhammer streak's own voice, and it is vanilla's.
      *
      * <p><b>Not one of ours, and that is the point.</b> The escalation is a bare multiplier with no

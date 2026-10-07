@@ -52,6 +52,23 @@ public final class Knockback {
     public static final float TAP_PUSH = 0.55F;
 
     /**
+     * The push multiplier a charge buys, 0..1.
+     *
+     * <p><b>Public because the tooltip reads it and must not be a second copy of it.</b> The
+     * knockback line shows a base and a charged number exactly the way the damage line does, and
+     * the only way those two can be guaranteed to be the numbers the swing uses is for both to come
+     * out of this one function -- {@link #apply} for the swing, the tooltip for the readout. A
+     * tooltip that wrote {@code TAP_PUSH} itself would be right today and wrong the first time the
+     * ramp is retuned, which is the failure this project has paid for three times.</p>
+     *
+     * @param charge 0 for a tap, 1 for a full charge, clamped
+     */
+    public static float pushFor(float charge) {
+        float scaled = Math.max(0.0F, Math.min(1.0F, charge));
+        return TAP_PUSH + (1.0F - TAP_PUSH) * scaled;
+    }
+
+    /**
      * @param source  the attacker
      * @param target  who was hit
      * @param profile the attacker's per-weapon push, already resolved
@@ -62,8 +79,7 @@ public final class Knockback {
         if (profile == null || !(target instanceof LivingEntity living)) {
             return;
         }
-        float scaled = Math.max(0.0F, Math.min(1.0F, charge));
-        float push = TAP_PUSH + (1.0F - TAP_PUSH) * scaled;
+        float push = pushFor(charge);
         float horizontal = profile.clampedHorizontal() * push;
         float vertical = profile.clampedVertical() * push;
         if (horizontal <= 0.0F && vertical <= 0.0F) {
@@ -86,6 +102,44 @@ public final class Knockback {
                 motion.x + pushX,
                 motion.y + vertical,
                 motion.z + pushZ);
+        living.hasImpulse = true;
+    }
+
+    /**
+     * The other direction: a strike that brings the target in.
+     *
+     * <h2>Why this is not a negative number in the same field</h2>
+     *
+     * <p>Because {@link KnockbackProfile#clampedHorizontal()} clamps to {@code [0, MAX]}, and a
+     * negative lands on zero. That clamp is not incidental &mdash; it is what stops a config
+     * override from pulling anybody through the floor &mdash; so loosening it to allow a negative
+     * would trade one bound for another on every weapon in the game to serve one.</p>
+     *
+     * <h2>And why it does not go through the tap ramp</h2>
+     *
+     * <p>A pull is <b>the charged half of the trident</b>, so the charge has already gated it by the
+     * time it is called. Running it through {@code TAP_PUSH} as well would mean a tap pulls at
+     * three fifths of the strength, which turns the weapon's whole argument into a rounding
+     * difference nobody has to aim for.</p>
+     *
+     * <p>The direction is from the target toward the attacker, unlike {@link #apply}'s push, which
+     * follows whatever motion the target already had &mdash; that is what makes a knockback feel
+     * like being hit rather than like being aimed at, and a pull has to feel like being caught.</p>
+     */
+    public static void pull(LivingEntity source, Entity target, float distance) {
+        if (!(target instanceof LivingEntity living) || !(distance > 0.0F)) {
+            return;
+        }
+        Vec3 toward = source.position().subtract(living.position());
+        Vec3 direction = toward.normalize();
+        // Flattened, for the same reason apply() flattens its push: a pull that lifts the target
+        // off the ground stops being a pull and starts being a jump the player did not ask for.
+        Vec3 motion = living.getDeltaMovement();
+        living.hurtMarked = true;
+        living.setDeltaMovement(
+                motion.x + direction.x * distance,
+                motion.y,
+                motion.z + direction.z * distance);
         living.hasImpulse = true;
     }
 }

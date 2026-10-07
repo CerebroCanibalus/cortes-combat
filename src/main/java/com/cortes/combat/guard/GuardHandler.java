@@ -195,8 +195,40 @@ public final class GuardHandler {
             return;
         }
 
+        // **One swing spends one point, and this is where that is decided.**
+        //
+        // <p>Vanilla resolves the shield at {@code LivingEntity#hurt} line 1164 and does not check
+        // the invulnerability window until line 1190. Anything that calls {@code hurt()} twice on
+        // one entity in one tick therefore pays twice, and the window will not stop it.</p>
+        //
+        // <p>We do exactly that: the sabre's charged swing is two cuts by design and the loop in
+        // {@code CombatEngine} clears {@code invulnerableTime} before each one so the second cut
+        // is not swallowed. Both lands inside a single swing. <b>So a charged sabre took two
+        // points off a raised shield, and a third cut would have taken the third</b> &mdash; which
+        // is also why the shield sometimes stopped working at all, because at zero stamina
+        // {@code isActive()} is false and this method returns without ever setting the damage.</p>
+        //
+        // <p>The key is the triple and not a boolean, because one attacker's tick is not one
+        // strike: a sweep hits four different mobs and each of them has to pay.</p>
+        Entity attacker = event.getDamageSource().getEntity();
+        long now = player.level().getGameTime();
+        GuardStamp last = player.getData(ModAttachments.GUARD_LAST_BLOCK.get());
+        int attackerId = attacker == null ? 0 : attacker.getId();
+        int targetId = player.getId();
+        if (!last.shouldCharge(now, attackerId, targetId)) {
+            // Same swing, already paid. The block still stands &mdash; only the point is not
+            // spent twice &mdash; so a follow-up cut is still stopped, which is what the player
+            // sees as "the shield held".
+            event.setBlocked(true);
+            event.setBlockedDamage(event.getOriginalBlockedDamage() * (1.0F - blocked));
+            event.setShieldDamage(0.0F);
+            return;
+        }
+
         GuardState after = state.block(guard.profile().regenTicks());
         player.setData(ModAttachments.GUARD_STAMINA.get(), after);
+        player.setData(ModAttachments.GUARD_LAST_BLOCK.get(),
+                last.charged(now, attackerId, targetId));
 
         event.setBlocked(true);
         // The fraction, not a flag. The event starts with `dmgBlocked` at the FULL incoming

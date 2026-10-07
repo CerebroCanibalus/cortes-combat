@@ -37,7 +37,8 @@ public final class ConeTargeting {
 
     /** Resolve using whatever is in the player's main hand. */
     public static Optional<LivingEntity> findTargetForHeldItem(LocalPlayer player) {
-        return findTarget(player, WeaponStats.of(player.getMainHandItem()).reach());
+        return findTarget(player, com.cortes.combat.attack.MaceAir.reachFor(
+                WeaponStats.of(player.getMainHandItem()), player));
     }
 
     public static Optional<LivingEntity> findTarget(LocalPlayer player, ReachProfile reach) {

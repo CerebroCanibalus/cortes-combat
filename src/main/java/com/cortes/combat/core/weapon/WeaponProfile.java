@@ -65,7 +65,23 @@ public enum WeaponProfile {
      * tables being complete for every profile is the invariant {@code WeaponTablesTest} holds.
      * A profile with no row in any of the four is the ropera's bug wearing a different hat.</p>
      */
-    ARCABUZ("arcabuz");
+    ARCABUZ("arcabuz"),
+
+    /**
+     * The hoe: six things at once, gently, forever.
+     *
+     * <p><b>Declared last, and that is not an accident.</b> {@link #byOrdinal} says the order is a
+     * wire contract, and inserting here would renumber every value after it. There is one value
+     * after nothing at the moment, which is the only reason this note is cheap to follow: the day
+     * someone adds a profile they have to read it, because the alternative is a client on an older
+     * build reading a different weapon's charge ratio.</p>
+     *
+     * <p>It is a weapon and not a tool the way the shovel is one, with one difference that matters:
+     * <b>the shovel throws one thing across a room and this clears six things in a circle.</b>
+     * Neither of them kills anything on its own, which is why both sit at the bottom of the damage
+     * table and take their value from what surrounds them.</p>
+     */
+    HOE("hoe");
 
     private static final Function<String, DataResult<WeaponProfile>> BY_ID = id -> {
         String key = id.toLowerCase(Locale.ROOT);
@@ -111,7 +127,9 @@ public enum WeaponProfile {
     /** Whether the vanilla item behind this profile can break blocks. */
     public boolean isTool() {
         return switch (this) {
-            case AXE, PICKAXE, SHOVEL -> true;
+            // The hoe is in this list because it already was a tool before it was a weapon: it
+            // tills, and giving it a combat profile must not take the farmland away.
+            case AXE, PICKAXE, SHOVEL, HOE -> true;
             default -> false;
         };
     }

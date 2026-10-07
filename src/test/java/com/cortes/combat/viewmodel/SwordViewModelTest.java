@@ -80,14 +80,25 @@ class SwordViewModelTest {
      * across the bottom of the screen -- and the other four have no charge worth showing, so they
      * keep the exact vanilla pose.</p>
      *
+     * <p><b>The trident is the second one, for the same reason and a sharper one.</b> Its charge
+     * does not buy more damage &mdash; it buys the opposite motion: a loaded thrust <em>drags the
+     * target in</em> instead of pushing it away. That is the one thing in the game a player cannot
+     * predict from a bar along the bottom of the screen, because every other charged strike in
+     * this game does the same thing louder. Holding the button visibly gathering a spear backwards
+     * and then throwing it is what tells the player the second swing is coming.</p>
+     *
      * <p>The axe is therefore pinned separately, by name, below. A list of five that quietly
      * becomes a list of four is how the exception stops being an exception.</p>
      */
     @Test
     @DisplayName("the vanilla tools without a charge of their own stay on the vanilla pose")
     void vanillaToolsAreUntouched() {
+        // **The mace is no longer here.** It was, on the "vanilla art" argument, and the playtest
+        // asked for a motion for it: a weapon whose whole identity is the fall cannot play the
+        // vanilla swing and say nothing about it. The tools that remain are tools -- a hand-drawn
+        // motion on a silhouette we did not draw fights the model, and that is still true of them.
         for (WeaponProfile profile : List.of(WeaponProfile.PICKAXE,
-                WeaponProfile.SHOVEL, WeaponProfile.MACE, WeaponProfile.TRIDENT)) {
+                WeaponProfile.SHOVEL, WeaponProfile.HOE)) {
             ViewModelProfile viewModel = ViewModelDefaults.of(profile);
             assertTrue(viewModel.isEmpty(),
                     profile + " is a vanilla item and should have no viewmodel of ours; a wrong "

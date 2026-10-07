@@ -59,6 +59,27 @@ public final class DamageResolver {
             WeaponProfile profile,
             float chargeRatio,
             StreakState streak) {
+        return resolve(baseDamage, charge, profile, chargeRatio, streak, 0.0F);
+    }
+
+    /**
+     * The same, with the fall in hand.
+     *
+     * <p><b>The overload exists because the fall is the one input that is not about the weapon.</b>
+     * Everything else in this signature is a property of the item or of the swing; a fall belongs
+     * to the player, and it is zero for every weapon in the game except one.</p>
+     *
+     * <p>Keeping it out of the five-argument version is what lets the existing tests keep calling a
+     * function with no notion of gravity in it, and it is also the honest shape: a reader of the
+     * short signature is not silently promised a fall.</p>
+     */
+    public static AttackResult resolve(
+            double baseDamage,
+            ChargeProfile charge,
+            WeaponProfile profile,
+            float chargeRatio,
+            StreakState streak,
+            float fallDistance) {
 
         if (charge != null && !charge.canCharge()) {
             chargeRatio = 0.0F;
@@ -75,6 +96,23 @@ public final class DamageResolver {
         }
 
         float damage = (float) baseDamage * multiplier;
+
+        // **And the maza, which is the fall.**
+        //
+        // <p>Added after the multiplier and outside it, on purpose. A charge multiplier and a fall
+        // are the same sentence about commitment -- "how long did this take" -- and composing them
+        // would make the maza's number a product of two things, which no player could be told
+        // apart. The maza cannot be charged at all, so the multiplier is one and this is simply
+        // added to it.</p>
+        //
+        // <p><b>It is added, never multiplied</b>, because vanilla's is a bonus in the same place:
+        // {@code getAttackDamageBonus} is a flat sum on top of {@code ATTACK_DAMAGE}, capped by
+        // MaceFall's ceiling. A weapon whose whole argument is
+        // "the higher you were, the more it hurts" cannot have its two halves multiply -- a
+        // twelve block fall would be worth twice a six block one instead of once and a third.</p>
+        damage += com.cortes.combat.weapon.MaceFall.reads(profile)
+                ? com.cortes.combat.weapon.MaceFall.bonusFor(fallDistance)
+                : 0.0F;
 
         // Two weapons, two different consequences of a full charge, and they are not the same one.
         //
