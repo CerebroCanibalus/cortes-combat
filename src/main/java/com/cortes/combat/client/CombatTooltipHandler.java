@@ -97,13 +97,29 @@ public final class CombatTooltipHandler {
         if (stack == null || stack.isEmpty()) {
             return false;
         }
-        return com.cortes.combat.item.WeaponKinds.fights(WeaponStats.of(stack).profile());
+        WeaponProfile profile = WeaponStats.of(stack).profile();
+        // **A tool counts too now.** It is not a weapon and it must not print weapon lines, but its
+        // category and durability are facts a player wants, and a pickaxe with no tooltip at all
+        // among a set of tools that all have one reads as the pickaxe being forgotten. The split
+        // lives in {@code WeaponTooltip#linesFor}: the category is printed for both and everything
+        // under it only for a weapon.
+        return com.cortes.combat.item.WeaponKinds.fights(profile)
+                || com.cortes.combat.core.weapon.WeaponCategory.isTool(profile);
     }
 
-    /** Hide vanilla's two numbers for exactly the items whose numbers we are replacing. */
+    /**
+     * Hide vanilla's two numbers for exactly the items whose numbers we are replacing.
+     *
+     * <p><b>The fighters, and not the tools.</b> This exists so our block can print the real
+     * damage and tempo, and a pickaxe has neither a block nor a replacement for vanilla's lines --
+     * it keeps them, so it goes on saying what a pickaxe says about itself. Hiding them on the
+     * strength of {@link #showsTooltip} would have taken a non-fighting tool's own two lines away
+     * and put nothing back.</p>
+     */
     @SubscribeEvent
     public static void onGatherSkippedAttributeTooltips(GatherSkippedAttributeTooltipsEvent event) {
-        if (!showsTooltip(event.getStack())) {
+        if (!com.cortes.combat.item.WeaponKinds.fights(
+                WeaponStats.of(event.getStack()).profile())) {
             return;
         }
         event.skipId(Item.BASE_ATTACK_DAMAGE_ID);
@@ -130,7 +146,8 @@ public final class CombatTooltipHandler {
                 com.cortes.combat.item.WeaponTables.maxTargets(stats.profile()),
                 stack.getMaxDamage() - stack.getDamageValue(),
                 stack.getMaxDamage(),
-                stats.hasOwnShotCone());
+                stats.hasOwnShotCone(),
+                com.cortes.combat.item.WeaponKinds.fights(stats.profile()));
 
         List<Component> tooltip = event.getToolTip();
         if (lines.isEmpty()) {

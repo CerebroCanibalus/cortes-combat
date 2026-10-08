@@ -4,7 +4,9 @@
   "package": "com.cortes.combat.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "GoldDurabilityMixin"
+    "GoldDurabilityMixin",
+    "MobEffectInstanceAccessor",
+    "RedStoneWireBlockMixin"
   ],
   "client": [
     "MinecraftAttackMixin",

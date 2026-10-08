@@ -41,6 +41,8 @@ class ModelDeclarationTest {
 
     private static final Pattern LAYER0 = Pattern.compile("\"layer0\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern PARENT = Pattern.compile("\"parent\"\\s*:\\s*\"([^\"]+)\"");
+    /** A {@code cube_all} block model's one texture, under the key {@code all}. */
+    private static final Pattern ALL_TEXTURE = Pattern.compile("\"all\"\\s*:\\s*\"([^\"]+)\"");
 
     private static String read(Path path) throws IOException {
         assertTrue(Files.isRegularFile(path), "missing: " + path);
@@ -142,8 +144,14 @@ class ModelDeclarationTest {
                     continue;
                 }
                 String path = parent.substring(parent.indexOf(':') + 1);
-                Path target = ASSETS.resolve(Path.of("models", path + ".json"));
-                if (!Files.isRegularFile(target)) {
+                // **Both roots, because a generated model may parent another generated one.** The
+                // item model of a block parents the block model, and datagen writes both into
+                // src/generated -- so a test that only looked under src/main would call the block
+                // model missing while it sits one folder over. The game reads generated first, so
+                // "on disk anywhere it loads from" is the question, not "under src/main".
+                Path inMain = ASSETS.resolve(Path.of("models", path + ".json"));
+                Path inGenerated = GENERATED.resolve(Path.of("models", path + ".json"));
+                if (!Files.isRegularFile(inMain) && !Files.isRegularFile(inGenerated)) {
                     dangling.add(file.getFileName() + " -> " + parent);
                 }
             }
@@ -266,10 +274,15 @@ class ModelDeclarationTest {
      * baked, the {@code .mcmeta} was in the jar, and the override that draws the flame was simply
      * never reached. So the order is asserted here rather than trusted, because it is a property of
      * <em>vanilla's</em> loop and not of anything this file says.</p>
+     *
+     * <p><b>The icon override sits after the fuse, and that is safe.</b> It is
+     * {@code cortescombat:gui}, which is zero in the world, so being tried first it simply does not
+     * match and the fuse and the loaded pose resolve in the order this test guards. The invariant is
+     * fuse-versus-loaded, and no later entry can break it.</p>
      */
     @Test
-    @DisplayName("the lit fuse is the last override in the file, because vanilla tries them backwards")
-    void theFuseIsTheLastOverrideSoItIsTriedFirst() throws IOException {
+    @DisplayName("the lit fuse is written after the loaded pose, because vanilla tries them backwards")
+    void theFuseIsWrittenAfterTheLoadedPose() throws IOException {
         String base = read(ASSETS.resolve(Path.of("models", "item", "arcabuz.json")));
         // **Only from `overrides` onward.** Searching the whole file finds
         // `cortescombat:item/arcabuz_fuse` in the `textures` block first -- the particle names
@@ -501,6 +514,44 @@ class ModelDeclarationTest {
                         + "The particle atlas is a directory of everything in textures/particle/, "
                         + "so it will be in the atlas, but a sprite set only binds what its "
                         + "description JSON lists");
+    }
+
+    /**
+     * The first block this mod ships, and all four files it needs to be one.
+     *
+     * <p><b>The block is the first thing here that is not an item, and a block is more files than an
+     * item.</b> A model, a blockstate, an item model that parents the model, and a texture: miss any
+     * one and the block renders as the missing-model cube in the world or in the hand, silently. The
+     * blockstate in particular points at a model by name and a name that is one character off is
+     * nothing in the log and a cube on the screen.</p>
+     */
+    @Test
+    @DisplayName("the firestone block's model, blockstate, item model and texture all exist")
+    void theFirestoneBlockResolves() throws IOException {
+        Path blockModel = GENERATED.resolve(Path.of("models", "block", "firestone_block.json"));
+        assertTrue(Files.isRegularFile(blockModel),
+                "missing: " + blockModel + " -- run gradlew runData");
+        String texture = first(ALL_TEXTURE, read(blockModel), blockModel);
+        assertEquals("cortescombat:block/firestone_block", texture,
+                "the cube names a texture somewhere other than block/");
+        Path png = ASSETS.resolve(Path.of("textures",
+                texture.substring("cortescombat:".length()) + ".png"));
+        assertTrue(Files.isRegularFile(png),
+                "the block model names " + texture + " and no such file exists, so the block is the "
+                        + "missing-texture cube with nothing in the log");
+
+        Path blockstate = GENERATED.resolve(Path.of("blockstates", "firestone_block.json"));
+        assertTrue(Files.isRegularFile(blockstate), "missing: " + blockstate);
+        assertTrue(read(blockstate).contains("cortescombat:block/firestone_block"),
+                "the blockstate points at a model that is not the one datagen writes, so the placed "
+                        + "block is the missing-model cube");
+
+        Path itemModel = GENERATED.resolve(Path.of("models", "item", "firestone_block.json"));
+        assertTrue(Files.isRegularFile(itemModel), "missing: " + itemModel);
+        assertEquals("cortescombat:block/firestone_block", first(PARENT, read(itemModel), itemModel),
+                "the item model has to parent the block model. `minecraft:item/generated` -- the "
+                        + "default every item in this mod gets -- draws a flat sprite, so a block "
+                        + "would be a picture of itself in the hand");
     }
 
     /** The firestone names its own texture, which now exists. */

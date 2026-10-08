@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -69,6 +70,25 @@ class RecipeBookEntryTest {
 
     /** The firestone, filed under MISC because it is an ingredient and has no shape. */
     private static final String MISC_RECIPE = "firestone";
+
+    /**
+     * The recipes that are not weapons, and the book tab each one belongs in.
+     *
+     * <p><b>The equipment assertion below is about weapons, and it used to be about every recipe
+     * that is not the firestone.</b> That held while the mod was thirty weapons and an ingredient;
+     * the firestone block's two recipes are neither, and they belong in the tabs vanilla puts a
+     * storage block and its unpacking in -- {@code building} for nine-into-one, {@code misc} for
+     * one-into-nine. A test that demanded {@code equipment} of them would be asking the book to file
+     * a block of firestone next to a sword.</p>
+     *
+     * <p>The map is by name with the expected category, so this stays a check: a recipe that drifted
+     * to the wrong tab still fails, and the failure names the tab it should have been in.</p>
+     */
+    private static final Map<String, String> NOT_A_WEAPON = Map.of(
+            MISC_RECIPE, "misc",
+            "firestone_block", "building",
+            "firestone_from_block", "misc",
+            "nether_reactor", "redstone");
 
     private static List<Path> jsonFiles(Path dir) throws IOException {
         if (!Files.isDirectory(dir)) {
@@ -234,7 +254,7 @@ class RecipeBookEntryTest {
     void aWeaponRecipeSitsInTheEquipmentTab() throws IOException {
         for (Path recipe : jsonFiles(RECIPES)) {
             String name = fileName(recipe);
-            if (DELIBERATELY_HIDDEN.contains(name) || name.equals(MISC_RECIPE)) {
+            if (DELIBERATELY_HIDDEN.contains(name)) {
                 continue;
             }
             String json = text(recipe);
@@ -255,10 +275,14 @@ class RecipeBookEntryTest {
                 }
             }
             String category = json.substring(colon + 1, end < 0 ? json.length() : end).trim();
-            assertEquals("\"equipment\"", category,
-                    name + ".json is filed under " + category + " while its icon is a weapon. "
-                            + "The book reads the category off the RECIPE and not off the "
-                            + "advancement, so this one file decides which tab it appears in");
+            // A weapon goes in the equipment tab; the few recipes that are not weapons go where
+            // vanilla files their kind, named in the map above so this is still a check.
+            String expected = NOT_A_WEAPON.get(name);
+            assertEquals("\"" + (expected == null ? "equipment" : expected) + "\"", category,
+                    name + ".json is filed under " + category + " and should be under "
+                            + (expected == null ? "equipment" : expected) + ". The book reads the "
+                            + "category off the RECIPE and not off the advancement, so this one "
+                            + "file decides which tab it appears in");
         }
     }
 

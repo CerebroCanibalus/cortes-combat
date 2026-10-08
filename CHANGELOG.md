@@ -139,3 +139,436 @@ Lo que se toma: **un impulso y nada más** (⊘ `LungeMotion` seteando velocidad
 - **Tercera ronda — la guardia como postura. 292 tests.** Cinco bugs, cuatro de ellos números que describían algo que ya no era cierto: la regen invertida en el caller (⊘ los 3 escudos), `held` sobreviviendo aturdimiento/muerte/login, la comida cancelada por un scope nuestro, el escudo de vanilla subiendo sin puntos (c/ el arreglo obvio rompiendo el bloqueo), y golpear cubierto. `GUARD_RISE_TICKS` 11 → 2. Corchetes: la transparencia nunca fue el número (el arte se puso más tenue solo, 102 → 38) y el descentrado era un bug de **1px** en la relación entre dos anclajes. **`/cc hud` agregado** y fue lo que destrabó los corchetes.
 - **Balance:** espada 3.2 → 3.6, manos desnudas 3.0 → 1.9 de alcance y tempo 1.25, daga tempo 0.7, espada 0.85. `GUARD_RISE_TICKS` 11 → 2. `BRACKET_ALPHA` 0.28 → 0.30 (con normalización contra el pico del arte).
 - **⚠️ DEUDA LEGAL: quedan DOS texturas de `refs/`** — la viñeta (**All Rights Reserved**, sin `LICENSE`) y las dos esferitas de aguante (LGPL-2.1). Ver tabla en "Texturas".
+
+
+e no hacía falta pensarlo.
+
+### Lo que sigue
+
+1. **Decidir cada especial** (las 5 preguntas de arriba). Es lo único del rework que es diseño puro.
+2. **`REACH.put(NONE, 3.0F)` sigue mintiendo** — ya no se alcanza desde el click, pero un perfil sin
+   combate no debería tener número de alcance. Queda pendiente de decidir.
+3. El pico conserva sus filas de alcance/carga/knockback: ya no se leen desde el click, pero siguen
+   ahí. **Los getters devuelven `null` si falta la fila** → borrarlas es un NPE esperando.
+4. **Vanilla armas y herramientas fuera del alcance de `mods.toml`:** las 5 que vuelven a pelear son
+   ítems de vanilla, no nuestros, así que `/cc weapons` no las lista.
+
+---
+
+## Abierta, con el log puesto
+
+**El parry contra jugadores.** `"NINGÚN ARMA PARREA. Todas pasan totalmente. Solo parrea daños de
+mobs, explosiones. Pero lo del jugador queda totalmente a segundo plano."` Playtest 2026-10-04.
+
+Descartado **con motivo**: clase de entidad (`Player` **es** `LivingEntity`, el `instanceof` pasa);
+source (las 5 rutas usan `playerAttack(player)` → `getEntity()` **es** el atacante); `invulnerableTime`
+(el attachment `PARRY` **no** tiene `.sync()`, el estado vive sólo en el server); orden de handlers
+(`GuardHandler` **no** escucha `LivingIncomingDamageEvent`); y "caso raro" (con "ningún arma contra
+ningún jugador" es el **100%**).
+
+**Y NO es bug, es diseño**: el puño no puede parrear — `SPECIAL.put(UNARMED, NONE)`. *"Ni con puño
+parrea"* **no prueba nada**.
+
+Sospechoso, marcado como hipótesis: `LivingEntity#hurt` **L1153** emite `onEntityIncomingDamage` (el
+parry escucha ahí), **L1164** corre `onDamageBlock`/`isDamageSourceBlocked`, y
+`isDamageSourceBlocked:1362` decide "¿viene DE FRENTE?" con `damageSource.getSourcePosition()`.
+
+**El log**: `[parry] golpe=<msgId> atacante=<nombre> posicion=<Vec3> cantidad=<float>
+bloqueando=<bool>`, sólo en el tick con ventana abierta. Recoger con compa, `/cc trace`, parreando a
+un jugador. **Sin compa no se cierra, y no se debe escribir el fix a ciegas.**
+---
+
+## Ronda del tooltip, la durabilidad y las categorias (2026-10-07)
+
+**Cerro con 841 tests y 1 rojo**, y el rojo es el guard de texturas: son los assets de cobre del
+usuario (`copper_axe/boots/chestplate/helmet/leggings/pickaxe/shovel/sword`, `trial_hoe`,
+`textures/entity/equipment/armor/copper*`) esperando el rework de oro/cobre. **No se commitean**: son
+staging, y en un checkout limpio el guard pasa.
+
+### Lo que entro
+
+- **Tooltip reescrito**: categoria en azul (como vanilla), color por linea, durabilidad como
+  contador `actual/max`, empuje base + cargado, numero de objetivos, y la mecanica de cada arma.
+  Todo leido del codigo: `WeaponTables`, `Knockback`, `DamageResolver`, `MaceFall`, `ParryState`,
+  `StreakState`, `ArcabuzState`, `ArcabuzStats`. Rebalancear = cambiar la tabla.
+- **Durabilidad real**: `Item.postHurtEnemy` vive en el item y el flujo de ataque reemplazado nunca
+  lo llama -> ninguna arma perdia un punto. 1 punto por golpe aterrizado.
+- **Curva de durabilidad nueva**: oro 32 -> **190** (entre piedra y hierro), cobre 190 -> **320**
+  (arriba del hierro). El resto en Mojang. Mixin `GoldDurabilityMixin` para el oro de vanilla.
+- **Cobre**: dano 1,0 -> **0,5**, por debajo de piedra. Identidad: aguanta y no pega.
+- **Maza**: base 10 -> **15**, techo 22 -> **50**, altura 8 -> **31** (derivada), velocidad -10%
+  (0,54). El `SCALE` estaba soldado al techo y eso mantenia el tope en 8 bloques.
+- **Coyote time**: `resetFallDistance()` en el golpe (lo de vanilla, perdido) + 8 ticks de ventana.
+- **Maza en el aire**: `MaceAir.airborne` -- nadar, lava y elytra NO son aire.
+- **Pala**: +30% de empuje (1,365), y ahora empuja mas que el arcabuz -- que es lo que
+  `KnockbackProfile` decia desde siempre.
+- **Categoria** (`WeaponCategory`): por capacidad, no por nombre. "Pesada" pregunta intervalo Y
+  alcance, porque la pala de vanilla (20 ticks) es mas lenta que el martillo (19).
+
+### Las tres trampas de esta ronda
+
+1. **`javap` antes de un mixin, siempre.** Me fie de las fuentes decompiladas (`Item.getMaxDamage`)
+   y el runtime tiene `ItemStack.getMaxDamage()`. Crash duro en el bootstrap.
+2. **Nunca corri `runData`** despues de agregar claves de idioma -> el juego imprime la clave. Un
+   `LanguageFilesTest` que lee el *provider* no ve el `.json` generado.
+3. **Un tooltip que lee el componente miente sobre lo que el evento cambia.** El mazo decia 6 porque
+   `MaceRebalance` mete su 14 por `ItemAttributeModifierEvent`, y el tooltip leia el componente.
+   `forEachModifier` es la misma puerta que `getAttributeValue`.
+
+### Los guards que mordieron solos
+
+- `no number carries more than one decimal` cazo `"50.0/31.0"` en un argumento -> partido en dos, que
+  ademas es lo correcto: un valor compuesto congela el orden, que es gramatica.
+- `the shove is the hardest` cazo que la pala paso al arcabuz -> el test estaba mal, no el +30%.
+- `TheCrosshairMeasuresTheSwingTest` (nuevo) lee los 4 sitios de dibujo: si uno vuelve a
+  `displayedReach()`, muere.
+
+### Pendiente
+
+- **Rework de oro/cobre** (diseno cerrado, ver seccion propia): sin implementar.
+- **Feedback por objetivo del arcabuz**, y el flash a 1,7 m.
+- **Paso 11: supervivencia (`FoodData`)**.
+---
+
+## Ronda del cobre — el set que 1.21.1 no tiene (2026-10-07)
+
+**854 tests verdes.** Cobre pasa de material del catalogo a **set completo**: 5 herramientas, 4
+piezas de armadura, y sus dos mecanicas.
+
+### Lo que entro
+
+- **`core/gear/CopperGear`** (puro): los numeros y los 9 nombres. Los leen los registros y el test.
+- **`ModTools`**: espada, pico, hacha, pala, azada. Clases vanilla (`SwordItem`...), asi que el
+  perfil sale de `deriveProfile` — pero **hay que meterlas en los tags vanilla** (`#swords`,
+  `#axes`...) o resuelven a `NONE` y no pelean. `CopperToolTier` es un enum aparte porque
+  `CortesTier.getSpeed()` es 1.0 a proposito (las armas no minan).
+- **`ModArmor`**: el `ArmorMaterial` (record, no interfaz) + 4 piezas. Proteccion **3/6/5/3 = 17**
+  (arriba de hierro 15 y cadena 12), durabilidad **x8** (menos de la mitad de hierro 15). El trade.
+- **Recetas + advancements**: 9 recetas shiftable + 9 advancements. `RecipeBookEntryTest` exige el
+  advancement; mi suposicion de que `RecipeBookPopulation` alcanzaba estaba mal.
+- **Efectos**: `ANTISEPTIC` (1 nivel por pieza, I-IV; **9% por nivel = 36%** con las cuatro -- era
+  5% y el playtest lo llamo corto) y `PURIFICATION` (dano puro a no-muertos y netherite +
+  -30% de dano del objetivo).
+
+### La trampa de la ronda: la ruta de la textura de armadura
+
+`ArmorMaterial.Layer` resuelve a **`textures/models/armor/copper_layer_1.png`** y `_layer_2.png`,
+NO a `textures/entity/equipment/armor/` (esa es la ruta de 1.21.2+). **Quinta vez** que un archivo
+existe donde el juego no mira. Las texturas del usuario estan en la carpeta nueva.
+
+### La trampa del API: no se puede acortar un `MobEffectInstance`
+
+`mapDuration` **no muta** (bytecode: termina en `ireturn`, sin `putfield`) y no hay setter. Y
+`MobEffectEvent.Added` dispara **antes** de guardar. Por eso el antiseptico usa **`Applicable`**
+(niega) + **`LivingEntity.forceAddEffect`** (mete la version corta sin recursion). Verificado en el
+runtime. `MobType` **no existe** en 1.21.1 (es de otra version): no-muerto se pregunta con
+`EntityTypeTags.UNDEAD`. Y `Holder.is(Holder)` si existe — mejor que comparar `value()`.
+
+### Pendiente
+
+- **Iconos de los efectos**: placeholder (no hay `textures/mob_effect/*.png`).
+- ~~Mover las texturas de armadura~~ HECHO: `copper_layer_1.png` y `copper_layer_2.png` en
+  `textures/models/armor/`.
+- **Playtest**: la purificacion (**0,5 cada 10 ticks**, 100 ticks — decision del usuario) y el
+  antiseptico.
+---
+
+## Ronda de cierre del cobre — tooltip de herramientas, autohit, sonidos (2026-10-07)
+
+**857 tests verdes** (3 guards nuevos). Cierra lo que el playtest reporto.
+
+### Lo que entro
+
+- **Tooltip de herramientas**: `linesFor` gano un 12o arg `fights`. Con `!fights` imprime **solo
+  categoria + durabilidad** y sale; el bloque de combate se saltea. `showsTooltip` =
+  `fights || WeaponCategory.isTool(profile)`, y los atributos vanilla se ocultan **solo si
+  fights** (el pico conserva sus renglones).
+- **Autohit de daga/ropera**: `WeaponTables.firesOnPress(profile)` = `fights && !charge.canCharge()`.
+  El press manda el paquete resolutivo y queda `claim = OURS`; el release cierra sin cobrar.
+  **Bug extra**: `autoStrikeWhileHeld` reabre el swing del servidor antes de cada resolver -- sin
+  eso, los repeats 2..N caian en `NO_SWING` y **solo un golpe aterrizaba**. Afectaba tambien a
+  hoe/arcabuz. Y `ItemViewModel.tick` borra `pendingStrike` en el borde de press, que corre antes
+  del tick: se difiere con `pressStrikePending`.
+- **Azada**: `SPECIAL.put(HOE, SpecialType.MULTI_HIT)` (el especial **real** de la alabarda;
+  `SWEEP` es un enum muerto del rework de la pala). Pitch del sonido de barrido mas bajo (0.7).
+- **Sonidos**: maza + `block.heavy_core.place` (1.0 normal, 0.6 en el smash); miss de pala/azada =
+  `sword_miss` (0.8 / 1.2); golpe de pala = `block.lantern.break` (0.8) + `entity.wind_charge.wind_burst`
+  (0.6) si cargado.
+- **Assets**: iconos `textures/mob_effect/antiseptic.png` y `purification.png` (copiados desde
+  `textures/effects/`, original intacto). Particulas `maza_hit` y `shovel` = strips 32x160 nuevas
+  filas en `SlashSprite`.
+
+### Pendiente
+
+- ~~`purified_effect.aseprite`~~ HECHO: exportada a `purified_effect.png` (16x64 = 4 frames de 16x16)
+  y cableada como particula propia (`PURIFIED`, `SimpleParticleType`, `.mcmeta` frametime 2).
+  Spawnea en `PurificationEffect.applyEffectTick` solo si `isPurifiable`. **OJO**: el `.mcmeta` usa
+  el reloj del **atlas** (compartido) -- si en juego no anima por particula, partir el PNG en 4
+  `purified_effect_0..3.png` y listarlos en el JSON.
+- **Barrido de la azada** usa el sprite `barrido_alabarda` (no hay arte propio de azada).
+- **Playtest**: quitar el gate `cocks` re-habilita la repeticion de daga/ropera que un playtest
+  viejo habia apagado -- hay que verlo en juego.
+
+---
+
+## Playtest de cierre del cobre + auditoria de encantamientos (2026-10-07)
+
+**Confirmado en cliente real, "todo perfecto":** autohit de daga/ropera (el press dispara y
+repite), tooltip de herramientas (categoria + durabilidad, sin lineas de combate), sonidos
+(maza, pala, azada, miss), particula de purificacion, barrido de la azada, y el special del
+shotel sin lag. **857 tests.** Sigue **sin commitear** (nada desde `d5f96e0`).
+
+### Auditoria: encantamientos vs. el flujo reemplazado -- ABIERTO
+
+El flujo reemplazado (`CombatEngine`) **nunca llama a `Player#attack`**, asi que cuatro hooks
+de encantamiento de vanilla **no corren**. Verificado leyendo las fuentes de `21.1.250`, no de
+memoria:
+
+| Hook perdido | Donde vive en vanilla | Efecto que se pierde |
+|---|---|---|
+| `getEnchantedDamage` -> `EnchantmentHelper.modifyDamage` (`ServerPlayer:2162`) | `Player:1229` | **Filo, Castigo, Perdicion de artropodos, Empalamiento** |
+| **Densidad** -> `EnchantmentHelper.modifyFallBasedDamage` (`SMASH_DAMAGE_PER_FALLEN_BLOCK`) | `MaceItem` | **Densidad (maza)** -- **HECHA (2026-10-07)**: `MaceFall.densityBonus` = `1.0 * nivel * sqrt(caida)`, sin tope, leida en `CombatEngine` y sumada plana por `DamageResolver`. NO es `modifyDamage` |
+| **Breach** -> `EnchantmentHelper.modifyArmorEffectiveness` (`ARMOR_EFFECTIVENESS`) | `MaceItem` | **Breach (maza)** -- **NO REQUIERE CODIGO**: su unico consumidor, `CombatRules.getDamageAfterAbsorb`, corre en el DEFENSOR dentro de `target.hurt` y lee el arma del atacante desde la fuente -> sobrevive al flujo reemplazado. NO es `modifyDamage` |
+| `getKnockback` -> `EnchantmentHelper.modifyKnockback` | `Player:1292` | **Empuje (Knockback)** |
+| `EnchantmentHelper.doPostAttackEffects` | `Player:1331` y `1380` | **Aspecto de fuego, Wind Burst** |
+| `SWEEPING_DAMAGE_RATIO` | `Player:1313` | Filo arrasador (el barrido es nuestro, y solo la alabarda/azada lo tienen) |
+
+**Intactos (no tocan el flujo del atacante):** Proteccion/Espinas/armaduras de defensor
+(dentro de `LivingEntity#hurt`), Irrompible/Reparacion (`hurtAndBreak` ya re-agregado), Saqueo
+(`getKiller` sale de la fuente `playerAttack`), y **todos los encantamientos a distancia**
+(arco/ballesta: el flujo reemplazado es melee).
+
+**El arreglo natural:** `CombatEngine` tendria que llamar los tres hooks que le faltan
+(`modifyDamage`, `modifyKnockback`, `doPostAttackEffects`) contra `ServerLevel`. La pregunta de
+diseno abierta es **si el dano de encantamiento escala con la carga** (vanilla lo escala por el
+attack-strength) o se **suma plano** como el golpe de la maza.
+
+## Decisiones nuevas (2026-10-07, post-playtest del cobre)
+
+Cierran la ronda de encantamientos. Todo esto es diseno del usuario, anotado antes de codear.
+
+- **Encantamientos perdidos por el flujo reemplazado** (ver auditoria arriba): al restaurarlos, el
+  **dano de encantamiento se SUMA PLANO** -- como el golpe de la maza, no escala con la carga. Los
+  tres hooks que faltan: `EnchantmentHelper.modifyDamage`, `modifyKnockback` y `doPostAttackEffects`.
+- **Filo arrasador (Sweeping Edge)** -- rework a **carga de multitud**: `+dano por cada enemigo
+  pegado al objetivo`, y sigue pegando a **UNO**. Deja de ser area porque la alabarda y la azada ya
+  cubren el multiobjetivo.
+- **Bloque de firestone** (`cortescombat:firestone_block`, el **primer bloque del mod**):
+  - Luz **10** (mediana). Emite luz; **no** es fuente de fuego por si solo.
+  - **Inestable**: el **fuego** o una **explosion** lo detonan -> explosion de potencia **8.0**
+    (2x la TNT, que es 4.0), **con fuego** (`createFire = true`), que rompe bloques y quema a todos.
+    **Cuidar la recursion**: el bloque detona, la explosion lo agarra a el, y no debe re-detonar.
+  - **Agua -> obsidiana**: el agua que lo toca se solidifica en obsidiana. Base de granja de
+    obsidiana.
+  - Receta: **9 firestones -> 1 bloque** (reversible), con su advancement (`RecipeBookEntryTest`).
+  - Pendiente de arte: **falta la textura**.
+
+## Ronda de encantamientos -- hooks + Filo arrasador (2026-10-07)
+
+**868 tests verdes** (10 guards nuevos). Restaura lo que el flujo reemplazado perdia.
+
+### Lo que entro
+
+- **Tres hooks restaurados en `CombatEngine`**: `modifyDamage` (Filo/Castigo/Perdicion/Empalamiento),
+  `modifyKnockback` (Empuje) y `doPostAttackEffects` (Aspecto de fuego/Wind Burst). El dano de
+  encantamiento **se suma plano** (`DamageResolver.resolve` gano un 7o arg `enchantBonus`), **por
+  objetivo**, despues del multiplicador y del fall.
+- **Empuje del encantamiento**: se suma a la componente **horizontal**, **fuera del piso de carga**
+  (`knockbackFor`), escalado x0.5 (vanilla hace `f4 * 0.5`). El piso existe para matar el shove-spam
+  del arma; un encantamiento pagado en el yunque no es un tap spameado. La rama del **pull del
+  tridente queda intacta** -- un tiron hacia adentro y un empuje hacia afuera son instrucciones
+  opuestas y gana el especial.
+- **Filo arrasador reworkeado a carga de multitud**: `weapon/SweepingEdge.bonus(level, enemigos) =
+  0.5 * level * enemigos`, `CROWD_RADIUS = 3.0`. **Sigue pegando a UNO** (no toca `maxTargets`).
+- **`onPlayerAttackTarget` se dispara otra vez** -- es el `AttackEntityEvent` de compat que
+  `Player:1223` emitia y habiamos perdido. Solo para el objetivo apuntado; si un mod lo cancela, el
+  swing igual cuesta (el cooldown ya se pago antes de mirar el objetivo).
+
+### Leccion: `Enchantments.java` manda, no la intuicion
+
+**Densidad y Breach NO usan `modifyDamage`**: son `SMASH_DAMAGE_PER_FALLEN_BLOCK`
+(`modifyFallBasedDamage`) y `ARMOR_EFFECTIVENESS` (`modifyArmorEffectiveness`). Mi tabla de auditoria
+los tenia bajo `modifyDamage` y estaba mal; el subagente los cazo leyendo la fuente.
+
+**Densidad: HECHA (2026-10-07).** No es lineal como vanilla (`0.5 * nivel * caida`): el diseño pide
+**sin tope pero con raiz cuadrada** (`1.0 * nivel * sqrt(caida)`), porque la caida base SI tiene techo
+y una recta encima lo volveria decorativo. `MaceFall.densityBonus` (puro, testeado), leida en
+`CombatEngine` con `Enchantments.DENSITY` (patron de `sweepingEdgeLevel`) y sumada plana por
+`DamageResolver` **al lado del fall** (no en `enchantBonus`, que se suma para todos los perfiles).
+El nivel viaja como 8o arg `int densityLevel`, entre `fallDistance` y `enchantBonus`, para que la
+maza y su caida se lean juntas en la firma.
+
+**Breach sigue sin codigo y no lo necesita**: corre del lado del defensor dentro de `target.hurt`,
+lee el arma del atacante desde la fuente, y las tres fuentes del mod (`playerAttack`,
+`warhammerIgnoredArmour`, `axeCharged`) ponen al jugador como entidad directa. Ver la tabla arriba.
+
+### Pendiente
+
+- **Densidad**: HECHA (ronda 2026-10-07). **Breach**: sin codigo por diseño. Ver la tabla de auditoria.
+- **Numeros a playtest**: `SweepingEdge.DAMAGE_PER_ENEMY_PER_LEVEL = 0.5`, `CROWD_RADIUS = 3.0`,
+  `MaceFall.DENSITY_PER_LEVEL = 1.0` (la raiz), y el aporte de encantamiento plano por objetivo.
+- **El empuje del encantamiento y el bonus por objetivo no son testeables en JVM pelada** (necesitan
+  `ServerLevel`): verificados por lectura + compilacion, como la red.
+
+## Ronda de Wind Burst + vapor (2026-10-07)
+
+**878 tests verdes.** Cierra lo que reporto el playtest.
+
+### Wind Burst y el dano de caida
+
+- **El smash de vanilla** (`MaceItem.hurtEnemy:71-97`) hace tres cosas que el flujo reemplazado
+  perdia: para la caida (`setDeltaMovement(Y, 0.01)` + `ClientboundSetEntityMotionPacket`), guarda
+  `currentImpulseImpactPos` y enciende `setIgnoreFallDamageFromCurrentImpulse(true)`. Y
+  `Player.causeFallDamage:1629` usa eso para **perdonar la caida por encima del punto del golpe**,
+  **una sola vez** (`tryResetCurrentImpulseContext`).
+- **Y Wind Burst la borra**: su explosion pasa por `ServerPlayer.onExplosionHit:1117`, que pisa el
+  contexto y deja el flag en `entity.getType() == WIND_CHARGE` -- y el atacante es un jugador, asi
+  que queda **false**. Por eso el lanzamiento del encantamiento dolia.
+- **`attack/MaceSmash`** (nuevo) replica los estados y los **re-afirma despues** de
+  `doPostAttackEffects`. Orden final en `anyLanded`: `notifyHit` -> `onLanding` -> `doPostAttackEffects`
+  -> `afterEffects` -> `FallCoyote.landed`. **Antes de los efectos no puede ir**: el `0.01` pisaria
+  el lanzamiento de Wind Burst.
+- **No es inmunidad permanente** (la regla del javadoc de `FallCoyote`): solo con aterrizar el golpe,
+  solo con caida (`> THRESHOLD`), y el impulso es de un solo uso. `MaceFall.smashes(fall, fallFlying)`
+  es el gate puro, testeado.
+- `smashLanding` se resuelve **una vez por swing**: la maza pega a hasta 3 cuerpos y el fall se
+  resetea tras el primero, asi que preguntar por cuerpo daria "no smash" en el 2o/3o.
+
+### Vapor al convertir agua en obsidiana
+
+- Se **reusa el evento de vanilla**: `LevelEvent.LAVA_FIZZ` (1501), verificado en `LevelEvent` y en
+  `LevelRenderer#levelEvent, case 1501` -> `SoundEvents.LAVA_EXTINGUISH` + 8 `LARGE_SMOKE` en
+  `pos.y+1.2`. `ServerLevel.levelEvent` difunde `ClientboundLevelEventPacket` a 64 bloques.
+- **Solo desde las dos conversiones reales** (`neighborChanged` de la celda cambiada y
+  `hardenWaterAround`), no en cada `neighborChanged`. `FirestoneBlock.harden` es el unico sitio que
+  escribe obsidiana y el unico que emite el fizz.
+
+## Ronda del Reactor del Nether — FASE 1 (2026-10-07)
+
+**894 tests verdes.** El primer `BlockEntity` del mod y el tercer mixin.
+
+### Lo que entro
+
+- **`block/ReactorCharge`** (puro): radio `3 x carga`, `MAX_NORMAL 30`, `MAX_OVERLOAD 40`,
+  `HOUR_TICKS 72000`, `LIGHT_MAX 15`, `SIGNAL_STRENGTH 15`, `lightFor` lineal con tope,
+  `isActive = powered && charged`.
+- **`NetherReactorBlock` + `NetherReactorBlockEntity`**: 2 propiedades (`charged`, `active`),
+  inventario de 2 slots (firestone limite 40, estrella limite 1), wrapper de automatizacion que
+  frena en **30**, reloj de 1 h solo activo, sync al cliente, drop del contenido al romper.
+- **Registro**: `ModBlockEntities` -> `cortescombat:nether_reactor`. Capability `ItemHandler.BLOCK`
+  contra el TIPO en `RegisterCapabilitiesEvent`.
+- **Datos**: tag `#cortescombat:reactor_powerable` (73 bloques), receta `NPN/COC/NBN` + advancement,
+  loot, blockstate multipart, 4 modelos de bloque + item, lang ES/EN. `dead_star` registrado s/ uso.
+- **`ModBlocks.REACTOR_SOUND`**: `SoundType(1.0F, 0.5F, NETHERITE_*)` -> colocar/romper/pisar/golpear/
+  caer con el sonido del netherite a medio pitch. **Un `SoundType` lleva su propio `pitch` y vanilla
+  lo multiplica por 0.8 al colocar (`BlockItem.place:88-95`) y al romper (`LevelRenderer:3151`)** ->
+  cero eventos custom. Los 6 `.ogg` del reactor ya estan en `sounds.json` + `ReactorSounds`.
+
+### El mixin — la trampa de la ronda
+
+`hasNeighborSignal` y `getBestNeighborSignal` son **`default` de la interfaz `SignalGetter`** (y
+`hasNeighborSignal` NO llama al otro: duplica el loop). **`@Mixin` de una clase a una interfaz NO
+funciona**: `InvalidMixinException: @Mixin target type mismatch: ... is an interface`. El mixin es
+una **interface** con handlers `private`:
+
+```
+@Mixin(SignalGetter.class) public interface SignalGetterMixin
+  @Inject(method="hasNeighborSignal",     at=HEAD, cancellable) -> true si cubierto
+  @Inject(method="getBestNeighborSignal", at=HEAD, cancellable) -> 15 si cubierto
+```
+
+En `"mixins"` (comun). Aplica: `runServer` llega a `Done (1.445s)!` s/ `InjectionError`.
+Guard `ReactorWiringTest` afirma que es `public interface`.
+
+### El escaneo, optimizado
+
+**No se escanea el volumen.** El hook de consulta devuelve 15 a quien pregunta dentro de un reactor
+activo (O(1), fast-path estatico s/ reactores). El **`ReactorScan`** hace re-evaluar a los
+componentes al cambiar de estado (activar/desactivar/radio), **presupuestado** (40.000 pos/tick +
+256 `neighborChanged`/tick), por secciones, saltando **chunk no cargado** y **seccion vacia**.
+Filtro: `state.is(ReactorTags.POWERABLE)`.
+**La llamada correcta es `level.neighborChanged(pos, reactor, center)`** — `updateNeighborsAt`
+notifica a los vecinos *de* la posicion, no a la posicion.
+
+### Otras verificaciones
+
+- **`emissiveRendering(StatePredicate)`** existe en NeoForge 1.21.1 y es **por block-state, no por
+  modelo**: mientras `active` el bloque rinde full-bright y el overlay suma el glow.
+- `getLightEmission(state, level, pos)` esta en **`IBlockExtension`** (no `BlockBehaviour`) y hace
+  falta **`hasDynamicLightEmission`**.
+- `ItemStackHandler.insertItem` **SI** llama `isItemValid` (la premisa "el hopper no lo consulta" era
+  falsa). El cap de 30 va en `insertItem` igual, porque necesita el conteo actual.
+- `net/` en la raiz era basura de un `jar xf` viejo (3 `.java` de vanilla) -> **borrado**.
+
+## Ronda del Reactor del Nether -- FASE 2 (2026-10-07)
+
+**907 tests verdes** (+13). La bomba y el espectaculo. Sin commitear.
+
+### Lo que entro
+
+- **`block/ReactorOverload`** (puro): el fusible y todos los numeros. `FUSE_TICKS 300` (15 s = la
+  duracion de los dos `reactor_overheat_*`; el sonido ES el timer), `WARNING_CHARGE 31`,
+  `DETONATION_CHARGE 40`, `STAR_RADIUS 100`, `STAR_POWER 120` (30xTNT, **no se usa como radio**),
+  `STAR_DESTRUCTION_RADIUS 48`, `BLAST_POSITIONS_PER_TICK 24000`, `BLAST_REMOVALS_PER_TICK 6000`,
+  `QUAKE_RADIUS 64`, `QUAKE_MAX_DEGREES 1.2`, y `sphereVolume`/`ticksToClear`/`rayMarchSteps`/
+  `shakeDegrees`/`energyRadius` puras.
+- **FIRESTONE**: 31-39 = aviso (particulas, sin cuenta). 40 ⊕ activo -> fusible + `overheat_firestone`
+  una vez. La palanca apaga -> se **borra** el fusible (reactivar reinicia, no reanuda). Detona a
+  `FirestoneBlock.BLAST_POWER` (8.0) con fuego, **removiendo el bloque primero**.
+- **NETHER STAR**: se mete a mano y arranca en el mismo click; **ignora la palanca**, solo el agua la
+  corta (cubo -> `DEAD_STAR` + cubo vacio; y agua que llega sola por `neighborChanged`). Radio de
+  energia 100. Al final `nuclear_explosion` a volumen 16 (por mano, no por `explode`: el packet de
+  sonido de vanilla topa en 64 bloques), flash, dano/kb/fuego y crater escalonado.
+- **`block/ReactorBlast`** (`ServerTickEvent.Post`): el crater es una **esfera explicita** de radio 48
+  por cursor de chunk/seccion (salta chunk no cargado y seccion vacia), con dos presupuestos/tick
+  compartidos (24000 pos / 6000 remov). Sin drops, sin `explode`, sin encadenar.
+- **`client/ReactorShake`**: **`ViewportEvent.ComputeCameraAngles`** (existe, game bus) -- evento, no
+  mixin. El BE llena un `Map<BlockPos,dim>` desde `loadAdditional`/`onLoad` (el overload viaja en el
+  update tag) y lo borra en `setRemoved`. Config `ClientConfig.REACTOR_SHAKE` (mareo).
+- **`/cc reactor`**: `charge <0..40>`, `active <bool>`, `clock <ticks>`, `overload
+  firestone|star|none`, `status`; sobre el reactor que miras (`pick(20)`).
+- **Sync**: `saveAdditional`/`loadAdditional` guardan `overload`+`fuse`.
+
+### La explosion x30: se midio, y se partio
+
+`Explosion.explode` lanza `16^3-14^3 = 1352` rayos y cada uno camina 0.3 bloques con el presupuesto
+bajando 0.225/paso en aire. A potencia 120: `1352 * 120/0.225 ≈ 721.000` pasos, cada uno un
+`getBlockState` **y** un `getFluidState`, y cada uno puede sumar una posicion al `toBlow` -> hasta
+~721k posiciones en un `ClientboundExplodePacket`. **La cifra real es ~0,72M, no "millones"**: la nota
+sobreestimaba, pero cientos de ms en un tick + un packet de ~11 MB igual matan al watchdog. El diseno
+pedia "x30 TNT" = potencia 120 -> se conserva como `STAR_POWER` documentado, **no** como radio.
+Solucion: esfera de radio 48 (~463k bloques) a 6000/tick -> **78 ticks (~4 s)**. Se salta chunk no
+cargado (no genera terreno p/ destruirlo) y bloque con `defaultDestroyTime() < 0`. Diferencia con la
+explosion literal: forma material-independiente, sin drops, sin encadenar firestone.
+`thePointBlastIsTooBigToRun` afirma el numero medido; volver a `explode` o cambiar la constante mata.
+
+### Trampas de esta ronda
+
+1. **La referencia a una clase cliente tiene que estar en un metodo que el server NUNCA llame.**
+   `refreshClientRegistry` corre en el server y retorna temprano; `publishShake` (que nombra
+   `ReactorShake` -> `Minecraft`) solo lo invoca el cliente -> nunca se verifica en el server. Metida
+   directa en `refreshClientRegistry`: `NoClassDefFoundError` al arrancar.
+2. **`Entity.setSecondsOnFire` no existe en 1.21.1** -> `igniteForSeconds(float)`.
+3. **El gametest server no sirve p/ verificar arranque aca**: `No test functions were given!` tumba
+   `GameTestServer.create` **antes** del mundo. Verificado con `runServer` -> `Done (1.556s)!`.
+
+### Pendiente (fase 2)
+
+- **Playtest**: radio 48 (¿mas grande?), dano/kb/fuego del nucleo, volumen de la explosion, el shake
+  (`QUAKE_MAX_DEGREES`) y la duracion de la onda (6000/tick).
+- **Fuego del crater**: la esfera no replica `createFire`; solo las entidades se prenden.
+- `forceOverload(FIRESTONE)` usa `debugActive` (no se guarda): solo debug.
+
+## Ronda de la pala, la azada y el icono del arcabuz (2026-10-07)
+
+**913 tests verdes** (+19). Sin abrir el cliente: pedido explicito del usuario. Sin commitear.
+
+### Lo que entro
+
+- **Pala**: perfil de viewmodel. Es el UNICO golpe de la tabla que termina subiendo. Carga 0.4/33
+  (ya estaba en `WeaponTables`); el cabezal baja y el mango vuelve mientras carga (`WINDUP` +
+  temblor EXPO), y el golpe es un **scoop**: adelante (`z` -0.60) y ARRIBA (`y` +0.28, pitch +46).
+  Va por `STRIKE`, no por `CHOP`: un lanzamiento sube, una caida baja. La direccion no es gusto:
+  coincide con su empuje horizontal (1.365, el mayor del set despues del arcabuz).
+- **Azada**: dos movimientos, porque es la unica arma que pega en area con el click izquierdo Y con
+  el derecho. El izquierdo es un **tajo que cruza**: `CHOP` con 112 de yaw contra los 62 de la. El criterio es que un test que afirma la convencion equivocada es peor que no tener test.

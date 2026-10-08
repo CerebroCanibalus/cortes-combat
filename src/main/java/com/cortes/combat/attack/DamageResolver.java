@@ -80,6 +80,50 @@ public final class DamageResolver {
             float chargeRatio,
             StreakState streak,
             float fallDistance) {
+        return resolve(baseDamage, charge, profile, chargeRatio, streak, fallDistance, 0, 0.0F);
+    }
+
+    /**
+     * The same, with the maza's fall in hand and the enchantment's flat bonus already settled.
+     *
+     * <h2>Why this is a flat argument and not part of the multiplier</h2>
+     *
+     * <p><b>The design's decision: the enchantment's damage is summed whole, like the maza's
+     * fall.</b> Everything else in this file that is about the swing scales with the charge,
+     * because the charge is the player's commitment and a commitment has to buy something
+     * proportional. Enchantments are not commitment -- they are a permanent property of the item,
+     * paid for once at an anvil -- so making them scale with a tic of timing would mean a sword
+     * with Sharpness I hit for different amounts depending on how the player's finger was
+     * hovering, which is a number nobody could learn.</p>
+     *
+     * <p>Vanilla does scale it ({@code f1 *= f2} in {@code Player#attack}), but vanilla's whole
+     * attack is gated by the timing multiplier that this project deliberately removed. Keeping the
+     * scaling would reintroduce exactly the thing the hard cooldown exists to delete.</p>
+     *
+     * <p>It is computed by the caller, per target, because two of the enchantments that feed it are
+     * not the same for every body the swing touches: Sharpness does not care, but Smite adds five
+     * points against the undead, and a sword swung into a zombie next to a cow has to pay the
+     * zombie more. That is why the value arrives here already resolved rather than derived from
+     * the weapon alone.</p>
+     *
+     * @param enchantBonus the enchantment's contribution, already reduced to a bonus (the
+     *                     {@code modifyDamage} result minus its input). Zero for a swing whose
+     *                     weapon carries no combat enchantment
+     * @param densityLevel the Density level on the weapon, zero when it has none. It sits beside
+     *                     {@code fallDistance} and not in {@code enchantBonus} because the two are
+     *                     the same family of number -- "the maza and its fall" -- while
+     *                     {@code enchantBonus} is summed for every profile. Only the maza reads it,
+     *                     and only when there was a fall: see {@link com.cortes.combat.weapon.MaceFall#densityBonus}
+     */
+    public static AttackResult resolve(
+            double baseDamage,
+            ChargeProfile charge,
+            WeaponProfile profile,
+            float chargeRatio,
+            StreakState streak,
+            float fallDistance,
+            int densityLevel,
+            float enchantBonus) {
 
         if (charge != null && !charge.canCharge()) {
             chargeRatio = 0.0F;
@@ -110,9 +154,21 @@ public final class DamageResolver {
         // MaceFall's ceiling. A weapon whose whole argument is
         // "the higher you were, the more it hurts" cannot have its two halves multiply -- a
         // twelve block fall would be worth twice a six block one instead of once and a third.</p>
-        damage += com.cortes.combat.weapon.MaceFall.reads(profile)
-                ? com.cortes.combat.weapon.MaceFall.bonusFor(fallDistance)
-                : 0.0F;
+        // <p><b>Density goes through the same door, and not through {@code enchantBonus}.</b> It is
+        // the enchantment that scales this very fall, so it belongs beside the fall and it is zero
+        // for every profile but the maza -- while {@code enchantBonus} is summed for every weapon in
+        // the game. It is added flat for the same reason the fall is: a root, and not a product of
+        // two things no player could be told apart.</p>
+        if (com.cortes.combat.weapon.MaceFall.reads(profile)) {
+            damage += com.cortes.combat.weapon.MaceFall.bonusFor(fallDistance);
+            damage += com.cortes.combat.weapon.MaceFall.densityBonus(densityLevel, fallDistance);
+        }
+
+        // **And the enchantment, summed whole.** Added here rather than multiplied into `damage`
+        // above, because a sword with Sharpness I has to pay the same three points whether the
+        // player tapped or charged -- see the argument's own note. It sits after the fall for the
+        // same reason the fall sits after the multiplier: it is a flat bonus, not a scale.
+        damage += Math.max(0.0F, enchantBonus);
 
         // Two weapons, two different consequences of a full charge, and they are not the same one.
         //

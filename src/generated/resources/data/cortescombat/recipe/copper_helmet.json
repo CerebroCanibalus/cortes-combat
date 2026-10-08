@@ -1,0 +1,17 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "equipment",
+  "key": {
+    "X": {
+      "item": "minecraft:copper_ingot"
+    }
+  },
+  "pattern": [
+    "XXX",
+    "X X"
+  ],
+  "result": {
+    "count": 1,
+    "id": "cortescombat:copper_helmet"
+  }
+}

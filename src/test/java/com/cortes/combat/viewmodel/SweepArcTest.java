@@ -25,26 +25,34 @@ class SweepArcTest {
     private static final Offset ARC = HALBERD.evaluate(ViewModelInput.sweeping(1.0F));
 
     /**
-     * The sweep is the halberd's own channel, and nothing else has it.
+     * The sweep belongs to the weapons that throw an area special, and to nobody else.
      *
      * <p>The signal is global -- it belongs to the player, not to the item -- so a gate of "is this
      * the halberd" would be a question about the weapon where the useful question is what the
      * profile can do with the signal. That is the lesson the parry paid for once already, when the
      * channel lit and the sword drew the sabre's lockout.</p>
+     *
+     * <p><b>Two weapons now, because the hoe throws the same {@code MULTI_HIT} special.</b> It is a
+     * capability and not a list: any profile with a track on {@code SWEEP} can draw an arc, and a
+     * third weapon that grows one is a row rather than an edit here.</p>
      */
     @Test
-    @DisplayName("the sweep is the halberd's channel and nobody else's")
-    void onlyTheHalberdReadsIt() {
+    @DisplayName("the sweep belongs to the two area weapons and nobody else")
+    void onlyTheAreaWeaponsReadIt() {
         assertTrue(HALBERD.reads(Channel.SWEEP),
                 "the halberd has to read the sweep channel, or the arc is an arc for nobody");
+        assertTrue(ViewModelDefaults.of(WeaponProfile.HOE).reads(Channel.SWEEP),
+                "and the hoe throws the same MULTI_HIT special on the same channel (WeaponTables), "
+                        + "so its right button has to move the weapon too");
 
         for (WeaponProfile profile : WeaponProfile.values()) {
-            if (profile == WeaponProfile.HALBERD) {
+            if (profile == WeaponProfile.HALBERD || profile == WeaponProfile.HOE) {
                 continue;
             }
             assertFalse(ViewModelDefaults.of(profile).reads(Channel.SWEEP),
-                    profile + " reads the sweep channel. The arc belongs to one weapon and a second "
-                            + "one picking it up is the sword drawing the halberd's move");
+                    profile + " reads the sweep channel. The arc belongs to the weapons that throw "
+                            + "an area special, and a third one picking it up is the sword drawing "
+                            + "the halberd's move");
         }
     }
 

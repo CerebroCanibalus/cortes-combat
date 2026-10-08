@@ -3,6 +3,7 @@ package com.cortes.combat.registry;
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.particle.SlashParticleOptions;
 import net.minecraft.core.particles.ParticleType;
+import net.minecraft.core.particles.SimpleParticleType;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -47,6 +48,15 @@ public final class ModParticleTypes {
                     return SlashParticleOptions.STREAM_CODEC;
                 }
             });
+
+    /**
+     * The purification plume. A plain, parameterless particle: unlike the slash it carries no
+     * sprite name, because it has exactly one sprite, so vanilla's own {@link SimpleParticleType}
+     * already implements {@code ParticleOptions} with both codecs and there is nothing to
+     * hand-roll. Its animation lives in an {@code .mcmeta} next to the texture.
+     */
+    public static final DeferredHolder<ParticleType<?>, SimpleParticleType> PURIFIED =
+            PARTICLE_TYPES.register("purified_effect", () -> new SimpleParticleType(false));
 
     private ModParticleTypes() {
     }

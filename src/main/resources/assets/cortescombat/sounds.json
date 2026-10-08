@@ -84,4 +84,11 @@
   },
   "arcabuz_reload": { "sounds": [ { "name": "cortescombat:weapons/arcabuz_reload" } ] },
   "arcabuz_loaded": { "sounds": [ { "name": "cortescombat:weapons/arcabuz_loaded" } ] }
+  ,
+  "reactor_up": { "sounds": [ { "name": "cortescombat:block/reactor_up" } ] },
+  "reactor_off": { "sounds": [ { "name": "cortescombat:block/reactor_off" } ] },
+  "reactor_loop_on": { "sounds": [ { "name": "cortescombat:block/reactor_loop_on" } ] },
+  "reactor_overheat_firestone": { "sounds": [ { "name": "cortescombat:block/reactor_overheat_firestone" } ] },
+  "reactor_overheat_netherstar": { "sounds": [ { "name": "cortescombat:block/reactor_overheat_netherstar" } ] },
+  "nuclear_explosion": { "sounds": [ { "name": "cortescombat:block/nuclear_explosion" } ] }
 }

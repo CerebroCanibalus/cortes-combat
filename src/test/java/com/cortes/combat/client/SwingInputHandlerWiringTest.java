@@ -59,17 +59,71 @@ class SwingInputHandlerWiringTest {
      * <p>Not "does not charge". The bare fist charges, the sword charges, and asking only that
      * would make every charging weapon repeat -- which is the third state, where a tap is already
      * a charge and holding means two things at once.</p>
+     *
+     * <p><b>It asks {@code canHoldDown} and it cannot ask {@code autoRepeats(.., cocks)} any
+     * more.</b> The cock gate was here for one round and it took the repeat away from the ropera
+     * and the dagger -- the two weapons whose profiles read the wind-up -- which are exactly the
+     * two the playtest reported as "holding does nothing". The rule the project asserts everywhere
+     * else is "no charge means it repeats, the maza aside", and this call site was the one not
+     * asking it.</p>
      */
     @Test
-    @DisplayName("the loop asks autoRepeats, which is not the same as asking about charge")
+    @DisplayName("the loop asks canHoldDown, which is not the same as asking about charge")
     void theLoopAsksTheRightQuestion() {
         String handler = readSource();
 
-        assertTrue(handler.contains("WeaponTables.autoRepeats("),
-                "**it has to ask autoRepeats.** Asking whether the weapon charges is the trap: "
+        assertTrue(handler.contains("WeaponTables.canHoldDown("),
+                "**it has to ask canHoldDown.** Asking whether the weapon charges is the trap: "
                         + "the fist charges at 0.3 over twelve ticks and the sword charges at 0.5 "
                         + "over twenty five, so both would repeat and a tap on either is already "
-                        + "a charge in progress");
+                        + "a charge in progress. And the cock argument that used to be passed here "
+                        + "is what silently disabled the repeat for the ropera and the dagger");
+    }
+
+    /**
+     * A weapon that cannot charge fires on the press, and the press still claims the click.
+     *
+     * <h2>The bug this is for</h2>
+     *
+     * <p>The press/release split only has a question to answer on a weapon that <em>charges</em>:
+     * how long did the button go down. On one that does not, resolving on the release is pure
+     * latency and it reads as the game not hearing the click -- <b>"I hold it down and nothing
+     * happens until I let go"</b>, which is what the ropera and the dagger were reported as.</p>
+     *
+     * <p><b>And the fix must not hand the click to vanilla.</b> A {@code return} that set
+     * {@code NOT_OURS} for a non-charging weapon is the exact bug that once ran the ropera on
+     * vanilla's whole attack path, so the assertion here is two-sided: the branch fires <em>and</em>
+     * the claim was already {@code OURS} above it.</p>
+     *
+     * <p>A source read, like every other guard in this class, because {@code press} takes a
+     * {@code Minecraft}.</p>
+     */
+    @Test
+    @DisplayName("a weapon that cannot charge is claimed and fires on the press")
+    void thePressFiresWhenItCannotCharge() {
+        String handler = readSource();
+
+        assertTrue(handler.contains("WeaponTables.firesOnPress("),
+                "**press() has to ask firesOnPress and resolve there.** Without it a weapon that "
+                        + "cannot charge opens a swing on the press and pays nothing until the "
+                        + "release, which is the reported bug");
+
+        // The question and the claim, in the press body.
+        int press = handler.indexOf("private static void press(Minecraft mc)");
+        assertTrue(press > 0, "press() has to exist for this to be about anything");
+        int end = handler.indexOf("\n    /**", press);
+        String body = handler.substring(press, end > press ? end : handler.length());
+
+        int claim = body.indexOf("claim = Claim.OURS;");
+        int fires = body.indexOf("firesOnPress(");
+        assertTrue(claim > 0 && fires > claim,
+                "**the claim has to come before the fire.** `claim` is what stops vanilla from "
+                        + "also attacking; a return that handed the click back would run the "
+                        + "ropera and the dagger on vanilla's whole attack path, which is a bug "
+                        + "this project already paid for once");
+        assertTrue(body.contains("new SwingPayload("),
+                "and the open swing is still sent, so the server has something to resolve the "
+                        + "immediate fire against");
     }
 
     /**

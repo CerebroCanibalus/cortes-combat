@@ -8,6 +8,8 @@
     "cortescombat:shotel_hit",
     "cortescombat:alabarda_hit",
     "cortescombat:barrido_alabarda",
-    "cortescombat:arcabuz_shot"
+    "cortescombat:arcabuz_shot",
+    "cortescombat:maza_hit",
+    "cortescombat:shovel"
   ]
 }

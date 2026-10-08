@@ -5,6 +5,7 @@ import com.cortes.combat.core.weapon.WeaponMaterial;
 import com.cortes.combat.item.WeaponFamily;
 import com.cortes.combat.registry.CortesTier;
 import com.cortes.combat.registry.ModItems;
+import com.cortes.combat.registry.ModTools;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -69,6 +70,28 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
     protected void addTags(HolderLookup.Provider registries) {
         materialTags();
         everyWeaponIsABlade();
+        copperToolsFight();
+    }
+
+    /**
+     * The copper tools into the vanilla tags the derivation reads.
+     *
+     * <p><b>Without this the copper axe and the copper sword would not fight at all.</b>
+     * {@code WeaponStats.deriveProfile} classifies an item purely by which vanilla tag it sits in,
+     * so an item of ours in no tag resolves to {@code NONE} -- and {@code NONE} does not fight. The
+     * copper tools are ordinary {@code AxeItem}s and {@code SwordItem}s, but "an axe" to the game
+     * is a member of {@code #minecraft:axes}, and a new axe starts outside it.</p>
+     *
+     * <p>Vanilla's own tags merge with ours, so this adds our five to the vanilla five rather than
+     * replacing them. The pickaxe is here for consistency and not because it fights: it resolves to
+     * {@code PICKAXE}, which is deliberately the one profile that does not.</p>
+     */
+    private void copperToolsFight() {
+        tag(ItemTags.SWORDS).add(ModTools.COPPER_SWORD.get());
+        tag(ItemTags.AXES).add(ModTools.COPPER_AXE.get());
+        tag(ItemTags.PICKAXES).add(ModTools.COPPER_PICKAXE.get());
+        tag(ItemTags.SHOVELS).add(ModTools.COPPER_SHOVEL.get());
+        tag(ItemTags.HOES).add(ModTools.COPPER_HOE.get());
     }
 
     private void everyWeaponIsABlade() {

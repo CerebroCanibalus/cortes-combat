@@ -459,7 +459,14 @@ KNOCKBACK.put(WeaponProfile.HOE, new KnockbackProfile(0.06F, 0.01F));
         SPECIAL.put(WeaponProfile.SHOVEL, SpecialType.NONE);
         SPECIAL.put(WeaponProfile.MACE, SpecialType.NONE);
         SPECIAL.put(WeaponProfile.TRIDENT, SpecialType.NONE);
-        SPECIAL.put(WeaponProfile.HOE, SpecialType.NONE);
+        // **The hoe sweeps, and it is the halberd's own special.** It is the one tool that fights
+        // with an area and a wide, cheap arc -- and a sweep is exactly "everything in the arc",
+        // which is what its six-target clearing motion already is. It is `MULTI_HIT` and not the
+        // enum's `SWEEP` value: the halberd's right button *is* `MULTI_HIT` (see
+        // `SpecialHandler#sweep`), and the `SWEEP` member is a leftover from the vanilla-shovel
+        // rework that nothing reads. Sharing the special is the whole point -- a second area attack
+        // with its own price would be a second number to learn for the same motion.
+        SPECIAL.put(WeaponProfile.HOE, SpecialType.MULTI_HIT);
         // The three families of the mod that answer the right button.
         SPECIAL.put(WeaponProfile.ROPERA, SpecialType.LUNGE);
         SPECIAL.put(WeaponProfile.HALBERD, SpecialType.MULTI_HIT);
@@ -561,6 +568,30 @@ KNOCKBACK.put(WeaponProfile.HOE, new KnockbackProfile(0.06F, 0.01F));
     /** The question without the viewmodel half, for anything that only wants "no charge". */
     public static boolean canHoldDown(WeaponProfile profile) {
         return autoRepeats(profile, false);
+    }
+
+    /**
+     * Whether this weapon's swing resolves on the <b>press</b> of the button rather than on the
+     * release.
+     *
+     * <h2>Why a weapon that cannot charge fires on the press</h2>
+     *
+     * <p>The whole press/release split exists to tell a tap from a hold, and that question only has
+     * two answers on a weapon that <em>charges</em>. On one that does not, the release is pure
+     * latency: the player presses, the client opens a swing, and nothing lands until they let go --
+     * which is exactly the report "I hold it down and nothing happens until I let go".</p>
+     *
+     * <p>So the rule is a capability and not a list: {@link WeaponKinds#fights} says it is a weapon
+     * and {@link #charge} says it cannot charge. The mace answers yes to both and fires on the
+     * press too -- it simply does not repeat, for the fall's own reason (see {@link #canHoldDown}).
+     * The pickaxe and {@code NONE} answer no to the first and fire nowhere.</p>
+     *
+     * <p>Every weapon in the set that charges answers no: the sword, the axe, the shovel, the
+     * trident, the halberd, the warhammer, the sabre and the fist all resolve on the release,
+     * because on all of them the release <em>is</em> the decision.</p>
+     */
+    public static boolean firesOnPress(WeaponProfile profile) {
+        return WeaponKinds.fights(profile) && !charge(profile).canCharge();
     }
 
     /**

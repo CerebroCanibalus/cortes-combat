@@ -216,7 +216,11 @@ public final class SpecialHandler {
         // The sound and the sweep particle happen whether or not anything was hit. The swing is an
         // event: a polearm swung wide is a thing the player did, and the orbs come out of the arc
         // itself. Making the effect conditional on a hit would make a miss into no feedback at all.
-        CombatSounds.play(level, player, WeaponProfile.HALBERD, ModSounds.Kind.SPECIAL);
+        //
+        // **By the weapon's own profile, not the halberd's.** The hoe throws the same `MULTI_HIT`
+        // special, and the profile is what gives it its own pitch for the same event (see
+        // `ModSounds#pitch`) instead of sounding exactly like a halberd.
+        CombatSounds.play(level, player, stats.profile(), ModSounds.Kind.SPECIAL);
         double arc = HalberdSweep.arcOffset(reach);
         SlashParticles.sweep(level, stats.profile(),
                 player.getX() + player.getLookAngle().x * arc,

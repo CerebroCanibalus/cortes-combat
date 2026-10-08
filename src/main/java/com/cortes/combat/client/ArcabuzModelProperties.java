@@ -83,6 +83,27 @@ public final class ArcabuzModelProperties {
     public static final ResourceLocation LOADED = ResourceLocation.fromNamespaceAndPath(
             CortesCombat.MODID, "loaded");
 
+    /**
+     * The item is being drawn in a GUI, which is what puts the flat icon on the inventory slot.
+     *
+     * <p><b>An item model cannot branch on the display context in 1.21.1</b>, so the flat icon cannot
+     * be a {@code display} entry: the {@code display} block moves and scales the <em>same</em>
+     * geometry. The three ways to show a different model in a GUI are a predicate that knows where it
+     * is being drawn, a custom {@code BlockEntityWithoutLevelRenderer} (which would mean drawing the
+     * gun by hand in every context), or one of NeoForge's composite model loaders, which resolve the
+     * model before the context is known and would therefore lose the loaded and fuse overrides.</p>
+     *
+     * <p>So this is the predicate, and the question it answers is the one the renderer actually asks:
+     * <b>is a screen open?</b> {@code GuiGraphics#renderItem} calls the model resolver with a
+     * non-null entity and a non-null level, exactly like the hand renderer does, so the entity is not
+     * the tell; the screen is. In the world there is no screen and the gun is drawn in three
+     * dimensions; in the inventory, a chest or the creative menu there is one and the slot gets the
+     * sprite. The hotbar is drawn with no screen, so it keeps the gun -- which is right, because it
+     * sits beside the actual hand.</p>
+     */
+    public static final ResourceLocation GUI = ResourceLocation.fromNamespaceAndPath(
+            CortesCombat.MODID, "gui");
+
     private ArcabuzModelProperties() {
     }
 
@@ -110,5 +131,12 @@ public final class ArcabuzModelProperties {
         // weapon spring back mid-burn.
         ItemProperties.register(com.cortes.combat.registry.ModItems.ARCABUZ.get(), LOADED,
                 (stack, level, entity, seed) -> ArcabuzFuseState.chamberVisible() ? 1.0F : 0.0F);
+        // **The third predicate, and the last one tried**, so it cannot shadow the loaded or the
+        // burning pose in the world: `ItemOverrides` bakes the list back to front, which makes the
+        // LAST entry in `arcabuz.json` the first one tested. In a GUI this is one and the sprite wins
+        // outright; in the world it is zero and the gun's own overrides resolve as they always did.
+        ItemProperties.register(com.cortes.combat.registry.ModItems.ARCABUZ.get(), GUI,
+                (stack, level, entity, seed) ->
+                        net.minecraft.client.Minecraft.getInstance().screen != null ? 1.0F : 0.0F);
     }
 }

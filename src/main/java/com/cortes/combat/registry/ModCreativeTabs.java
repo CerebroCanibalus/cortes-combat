@@ -46,7 +46,23 @@ public final class ModCreativeTabs {
                         // tab teaches the progression for the catalogue and the dependency for the
                         // arcabuz, which is the same thing it was already doing.
                         output.accept(ModItems.FIRESTONE.get());
+                        // **And the block made of nine of them, right after the nine.** The tab is
+                        // ordered by dependency -- the gun, then what it eats, then what those
+                        // stack into -- so a player reading top to bottom meets the firestone, its
+                        // recipe ingredient, and the block in the order they are learned.
+                        output.accept(ModBlocks.FIRESTONE_BLOCK_ITEM.get());
+                        // **And the reactor, the thing those firestones are for.** It sits after
+                        // the block made of nine of them because the progression reads the same
+                        // way: the powder, the block, and then the machine that burns it.
+                        output.accept(ModBlocks.NETHER_REACTOR_ITEM.get());
+                        output.accept(ModItems.DEAD_STAR.get());
                         output.accept(ModItems.COPPER_NUGGET.get());
+                        // **The copper gear, last, because it is the one thing here that is not a
+                        // weapon.** The tab's order is the progression: thirty weapons, the gun,
+                        // what to put in it, and then the set a player makes out of the metal they
+                        // have been digging up all along.
+                        ModTools.tools().forEach(item -> output.accept(item.get()));
+                        ModArmor.pieces().forEach(item -> output.accept(item.get()));
                     })
                     .build());
 

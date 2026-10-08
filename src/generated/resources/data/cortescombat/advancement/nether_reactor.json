@@ -1,0 +1,40 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_netherite": {
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:netherite_ingot"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "advancements.cortescombat.weapon"
+    },
+    "hidden": true,
+    "icon": {
+      "count": 1,
+      "id": "cortescombat:nether_reactor"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "block.cortescombat.nether_reactor"
+    }
+  },
+  "requirements": [
+    [
+      "has_netherite"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "cortescombat:nether_reactor"
+    ]
+  }
+}

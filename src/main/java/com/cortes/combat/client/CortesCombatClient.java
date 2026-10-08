@@ -39,6 +39,9 @@ public class CortesCombatClient {
         NeoForge.EVENT_BUS.register(GuardInputHandler.class);
         NeoForge.EVENT_BUS.register(SpecialInputHandler.class);
         NeoForge.EVENT_BUS.register(ClientTasks.class);
+        // The nether star's camera shake. Registered here like every other client listener, on the
+        // game bus, because it is a per-frame viewport event fired from Camera.setup.
+        NeoForge.EVENT_BUS.register(ReactorShake.class);
         NeoForge.EVENT_BUS.register(ConeDebugRenderer.class);
         // The weapon tooltips. Registered here rather than through @EventBusSubscriber because
         // this class already is the client's subscription list, and a second list is a second
@@ -100,6 +103,15 @@ public class CortesCombatClient {
                     particle.bindSprite(sprites);
                     return particle;
                 });
+
+        // The purification plume. Unlike the slash this is a normal animated sprite: the 16x64
+        // art is an .mcmeta animation (four frames read off the strip's height), so the particle
+        // only binds the sprite set and the atlas walks the frames. No UV cutting, no frame count
+        // in Java. SimpleParticleType as the option type, because it carries no data.
+        event.registerSpriteSet(com.cortes.combat.registry.ModParticleTypes.PURIFIED.get(),
+                sprites -> (options, level, x, y, z, dx, dy, dz) ->
+                        new com.cortes.combat.particle.PurifiedParticle(
+                                level, x, y, z, dx, dy, dz, sprites));
     }
 
     private static void registerLayers(RegisterGuiLayersEvent event) {

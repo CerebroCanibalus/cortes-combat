@@ -33,6 +33,19 @@ public enum WeaponCategory {
     /** It has a second cone for the right button: the arcabuz. */
     RANGED("ranged"),
 
+    /**
+     * A tool rather than a weapon: the pickaxe, and the pala which fights anyway.
+     *
+     * <p><b>Asked before reach and interval, and that is the whole point.</b> The pala's three
+     * blocks and twenty tick swing would land it in medium or heavy by the numbers, and both of
+     * those are claims about how a <em>weapon</em> is used. A tool that happens to fight is still
+     * the thing a player reaches for to dig, and the category is the one line that says so.</p>
+     *
+     * <p>The axe is deliberately not here: it is a weapon that can also chop, which is the other
+     * side of the same distinction, and the numbers already place it as heavy.</p>
+     */
+    TOOL("tool"),
+
     /** Reaches five blocks or more: the trident and the alabarda. */
     LONG("long"),
 
@@ -122,6 +135,12 @@ public enum WeaponCategory {
         if (profile == WeaponProfile.UNARMED) {
             return NATURAL;
         }
+        // **Before reach and interval, because a tool is not classified by how it swings.** The
+        // pala would read as medium or heavy by its numbers; "Herramienta" is the truthful answer
+        // and it has to be asked first or the numbers win.
+        if (isTool(profile)) {
+            return TOOL;
+        }
         if (reach != null && reach.distance() >= LONG_REACH) {
             return LONG;
         }
@@ -134,5 +153,18 @@ public enum WeaponCategory {
             return SHORT;
         }
         return MEDIUM;
+    }
+
+    /**
+     * Whether the profile is a tool rather than a weapon.
+     *
+     * <p>The pickaxe never fights and the pala does, and both are tools -- so the question is about
+     * the item's role, not about whether it is allowed to swing. The hoe is a tool on the same
+     * terms; the axe is not, and {@link #TOOL} says why.</p>
+     */
+    public static boolean isTool(WeaponProfile profile) {
+        return profile == WeaponProfile.PICKAXE
+                || profile == WeaponProfile.SHOVEL
+                || profile == WeaponProfile.HOE;
     }
 }

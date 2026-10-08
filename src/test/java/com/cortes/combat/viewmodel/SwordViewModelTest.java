@@ -65,7 +65,7 @@ class SwordViewModelTest {
     }
 
     /**
-     * The four vanilla tools that are still untouched, and the axe that is not.
+     * The one vanilla tool that is still untouched, and the ones that are not.
      *
      * <p>Was "every other weapon", and it failed the moment the five new families got their
      * profiles -- which is the test working. The old form asserted a snapshot of the table
@@ -91,20 +91,26 @@ class SwordViewModelTest {
      * becomes a list of four is how the exception stops being an exception.</p>
      */
     @Test
-    @DisplayName("the vanilla tools without a charge of their own stay on the vanilla pose")
+    @DisplayName("the pickaxe is the only vanilla tool still on the vanilla pose")
     void vanillaToolsAreUntouched() {
-        // **The mace is no longer here.** It was, on the "vanilla art" argument, and the playtest
-        // asked for a motion for it: a weapon whose whole identity is the fall cannot play the
-        // vanilla swing and say nothing about it. The tools that remain are tools -- a hand-drawn
-        // motion on a silhouette we did not draw fights the model, and that is still true of them.
-        for (WeaponProfile profile : List.of(WeaponProfile.PICKAXE,
-                WeaponProfile.SHOVEL, WeaponProfile.HOE)) {
-            ViewModelProfile viewModel = ViewModelDefaults.of(profile);
-            assertTrue(viewModel.isEmpty(),
-                    profile + " is a vanilla item and should have no viewmodel of ours; a wrong "
-                            + "one is worse than none");
-            assertTrue(viewModel.evaluate(ViewModelInput.RESTING).isZero());
-        }
+        // **The list has been cut three times and every cut was the player asking for a motion.**
+        // The mace was the first, then the axe and the trident for charges nobody could aim without
+        // seeing, and now the shovel and the hoe -- the last two on the "vanilla art" argument, which
+        // was really an argument about a tool nobody had asked to watch swing. The pickaxe is the one
+        // that remains, and it remains for a reason the old list never had: it is not a weapon any
+        // more (`WeaponKinds.fights`), so there is nothing for a motion to say.
+        ViewModelProfile pickaxe = ViewModelDefaults.of(WeaponProfile.PICKAXE);
+        assertTrue(pickaxe.isEmpty(),
+                "the pickaxe is not a weapon and should have no viewmodel of ours; a wrong one is "
+                        + "worse than none");
+        assertTrue(pickaxe.evaluate(ViewModelInput.RESTING).isZero());
+
+        // And the two that used to be in this list, pinned so a future edit cannot quietly put them
+        // back: the playtest asked for both of them by name.
+        assertFalse(ViewModelDefaults.of(WeaponProfile.SHOVEL).isEmpty(),
+                "the shovel was given a scoop when the playtest asked for its action's animation");
+        assertFalse(ViewModelDefaults.of(WeaponProfile.HOE).isEmpty(),
+                "the hoe was given a reap and a cleave for the same reason");
     }
 
     /**

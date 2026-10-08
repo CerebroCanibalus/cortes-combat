@@ -75,7 +75,11 @@ class WeaponCategoryTest {
         // **The case that made this two questions instead of one.** Vanilla's shovel swings every
         // twenty ticks, which is slower than the warhammer -- so an interval-only rule called the
         // pala heavy and the warhammer medium, backwards in both directions at once.
-        assertEquals(WeaponCategory.MEDIUM,
+        //
+        // **And the answer is now "tool" rather than "medium", because the design gained the
+        // category.** Both readings say the same thing -- the pala is not a heavy weapon -- and the
+        // category says it in the one line the player actually reads.
+        assertEquals(WeaponCategory.TOOL,
                 WeaponCategory.forWeapon(WeaponProfile.SHOVEL, new ReachProfile(3.0F, 35.0F, 30.0F),
                         20, false),
                 "**the pala is slower than the martillo and is not a heavy weapon.** It is a tool "
@@ -89,11 +93,20 @@ class WeaponCategoryTest {
                 WeaponCategory.forWeapon(WeaponProfile.SABRE, new ReachProfile(2.25F, 75.0F, 25.0F),
                         8, false),
                 "the sabre is the shortest weapon in the game and the one the category exists for");
+        // **The boundary example moved off the pala when the pala became a tool.** It used to be
+        // the three-block case, and it cannot be any more: a tool is classified by what it is, not
+        // by how far it reaches. So the boundary is proven with a weapon -- the warhammer at
+        // exactly three blocks, which is under HEAVY_REACH and not under SHORT_REACH.
         assertEquals(WeaponCategory.MEDIUM,
+                WeaponCategory.forWeapon(WeaponProfile.WARHAMMER, new ReachProfile(3.0F, 36.0F, 36.0F),
+                        20, false),
+                "**and three blocks exactly is medium.** The boundary is inclusive on the medium "
+                        + "side, so three point oh is the first of the medium weapons");
+        assertEquals(WeaponCategory.TOOL,
                 WeaponCategory.forWeapon(WeaponProfile.SHOVEL, new ReachProfile(3.0F, 35.0F, 30.0F),
                         20, false),
-                "**and three blocks exactly is medium.** The pala's own reach is the boundary, so "
-                        + "the shortest of the ordinary weapons is the first of the medium ones");
+                "and the pala at the same three blocks is a tool, which is the category that "
+                        + "replaced its old medium reading");
     }
 
     @Test

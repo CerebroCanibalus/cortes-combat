@@ -146,6 +146,12 @@ public final class WeaponTooltip {
      * @param maxDamage     the item's durability, or zero for something that cannot break
      * @param hasShotCone   whether the right button has a cone of its own, which is what makes a
      *                      weapon ranged rather than short
+     * @param fights        whether this is a weapon at all, from {@code WeaponKinds#fights}. A
+     *                      <b>tool that does not fight</b> -- the pickaxe -- gets its category and
+     *                      its durability and nothing else: printing a reach and a cone for a
+     *                      profile that no longer swings is the same wallpaper the whole class
+     *                      exists to avoid, and it is worse here because the player reads a range
+     *                      off a tool that cannot use it
      */
     public static List<TooltipLine> linesFor(WeaponProfile profile,
                                              float attackDamage,
@@ -157,7 +163,8 @@ public final class WeaponTooltip {
                                              int maxTargets,
                                              int damageLeft,
                                              int maxDamage,
-                                             boolean hasShotCone) {
+                                             boolean hasShotCone,
+                                             boolean fights) {
 
         if (profile == WeaponProfile.NONE || reach == null) {
             return NOTHING;
@@ -172,6 +179,20 @@ public final class WeaponTooltip {
         lines.add(TooltipLine.plain(
                 CATEGORY + WeaponCategory.forWeapon(profile, reach, intervalTicks, hasShotCone).id(),
                 TooltipColor.CATEGORY));
+
+        // **A tool that does not fight stops at the category.** The pickaxe is the one profile
+        // here: it has a reach row, a charge row and a knockback row like everything else, and
+        // none of them is reachable from a click any more -- so the lines that read them are the
+        // exact "a number a player reads and the game does not produce" this tooltip was rewritten
+        // to stop. What is left is the two things that ARE a fact about it: what it is, and how
+        // much of it is left.
+        if (!fights) {
+            if (maxDamage > 0) {
+                lines.add(TooltipLine.of(DURABILITY, damageLeft + "/" + maxDamage,
+                        durabilityColor(damageLeft, maxDamage)));
+            }
+            return List.copyOf(lines);
+        }
 
         lines.add(TooltipLine.of(DAMAGE, decimal(damageFor(profile, charge, attackDamage, 0.0F)),
                 TooltipColor.DAMAGE));

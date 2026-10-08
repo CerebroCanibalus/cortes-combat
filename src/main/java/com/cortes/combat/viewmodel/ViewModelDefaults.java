@@ -32,22 +32,28 @@ public final class ViewModelDefaults {
     TABLE.put(WeaponProfile.ARCABUZ, arcabuz());
     TABLE.put(WeaponProfile.AXE, axe());
         // The trident is the fifth vanilla tool to get a profile, and the only one whose strike is
-        // copied from another weapon rather than drawn. The hoe is the one that stays without: it
-        // is an area weapon whose motion would be a loop, and vanilla's swing already is one.
+        // copied from another weapon rather than drawn.
         TABLE.put(WeaponProfile.TRIDENT, trident());
         // **The maza, which used to be absent on the "vanilla art" argument and is the exception
         // to it.** The argument was that a hand-drawn motion on an item whose silhouette we did
-        // not draw fights the model -- true of the shovel and the pickaxe, which are tools whose
-        // vanilla swing is already correct. The maza is not a tool: it is a weapon whose whole
-        // identity is the fall, and a smash that plays the vanilla swing says nothing about it.
-        // The playtest asked for the motion, which is the only test that settles an argument about
-        // what a player can read off a screen.
+        // not draw fights the model -- true of the pickaxe, which is a tool whose vanilla swing is
+        // already correct. The maza is not a tool: it is a weapon whose whole identity is the fall,
+        // and a smash that plays the vanilla swing says nothing about it. The playtest asked for
+        // the motion, which is the only test that settles an argument about what a player can read
+        // off a screen.
         TABLE.put(WeaponProfile.MACE, mace());
-        // Vanilla's axe, pickaxe and shovel are deliberately absent. They are tools: a hand-drawn
-        // motion on an item whose silhouette we did not draw would fight the model, and a viewmodel
-        // that is subtly wrong is worse than none, because a player cannot tell that a motion was
-        // meant to be there. A weapon with no entry gets the exact vanilla pose, which is the
-        // correct default.
+        // **The two tools the playtest asked for by name, and the shovel is the one that breaks the
+        // old rule.** The shovel has a three and a half second charge whose payoff is a shove nobody
+        // can aim without seeing, and the hoe is the only weapon that fights an area with its
+        // ordinary swing as well as its right button -- both of which are exactly the cases the
+        // "vanilla art" argument left a bar on screen to say. So they get motions of their own, and
+        // `ChopVersusThrustTest` was updated to stop calling them a documented gap.
+        TABLE.put(WeaponProfile.SHOVEL, shovel());
+        TABLE.put(WeaponProfile.HOE, hoe());
+        // **And the pickaxe is deliberately still absent, and now it is the only one.** It was
+        // removed from combat at `WeaponKinds.fights`, so it has no charge, no cone worth reading
+        // and nothing a motion could say; a weapon with no entry gets the exact vanilla pose, which
+        // is the correct default.
     }
 
     private ViewModelDefaults() {
@@ -748,5 +754,84 @@ public final class ViewModelDefaults {
                 // sword.
                 Track.of(Channel.RECOVER, Curve.SMOOTH,
                         new Offset(0.0, -0.30, 0.12, 96.0, 0.0, 2.0)));
+    }
+
+    /**
+     * The shovel: a scoop, and the only strike in the file that finishes going UP.
+     *
+     * <p><b>Every other way of hitting in this table ends low or level, and that is why the shovel
+     * needs its own.</b> The sword, the axe, the hammer and the maza all fall onto the crosshair;
+     * the ropera, the dagger, the fist and the bayonet all drive forward. A shovel is the one tool
+     * whose whole job is <em>moving material</em>, so its swing is a scoop: the head drops and the
+     * shaft comes back while the charge builds, and then the load is flung forward and up off the
+     * blade. That upward finish is what makes it read as a shovel instead of as a slow sword, and it
+     * agrees with the direction the weapon already pushes -- its knockback is 1.365 horizontal
+     * against the warhammer's 0.55, the strongest horizontal in the set after the arcabuz's shot.</p>
+     *
+     * <p>It charges -- 0.4 over thirty-three ticks, read from {@code WeaponTables} rather than
+     * guessed here -- so the wind-up is most of what the player watches and it carries a tremble
+     * weighted on EXPO: a suggestion at half and unmistakable at full, the same shape the maza and
+     * the axe use.</p>
+     *
+     * <p><b>These numbers are written, not played.</b> What a scoop reads like on screen is a
+     * playtest question, and the one part that is derived rather than chosen is the direction: the
+     * push is horizontal, so the throw is forward and up.</p>
+     */
+    private static ViewModelProfile shovel() {
+        return ViewModelProfile.owningSwing(
+                // The load: the head drops and the shaft comes back toward the body, which is a
+                // shovel gathering something off the ground in front of it. The roll tips the blade
+                // so it faces the load rather than the player.
+                Track.of(Channel.WINDUP, Curve.LINEAR,
+                        new Offset(-0.03, -0.16, 0.16, -30.0, -10.0, 10.0)),
+                Track.shaking(Channel.WINDUP, Curve.LINEAR, Offset.ZERO,
+                        new Offset(0.0, 0.0, 0.014, 1.6, 0.8, 0.8),
+                        13.0F, Curve.EXPO),
+                // The throw. Forward and up, which is the half of a shovel that no other profile
+                // does: a scoop that ends where it started is a shovel that never emptied. EXPO so
+                // it LEAVES rather than easing out -- a flung load does not decelerate on the way to
+                // the target, and a motion that does reads as an arm reaching.
+                Track.of(Channel.STRIKE, Curve.EXPO,
+                        new Offset(0.0, 0.28, -0.60, 46.0, 0.0, -6.0)),
+                // And down the same line, so the follow-through is the arm coming back to the
+                // ground rather than a second motion.
+                Track.of(Channel.RECOVER, Curve.SMOOTH,
+                        new Offset(0.0, -0.20, 0.18, -34.0, 0.0, 5.0)));
+    }
+
+    /**
+     * The hoe: two motions, because it is the only weapon that fights an area with its ordinary
+     * swing <b>and</b> its right button.
+     *
+     * <p><b>The left click is a reap, and the width is the whole reason it has a profile.</b> The
+     * hoe's own cone is the widest in the game at sixty by fifty degrees and its ordinary strike
+     * reaches six things at once, so the motion has to say "this takes the whole front" rather than
+     * "this takes the thing in front". Every other chop in this table falls onto the crosshair; this
+     * one comes across, with a hundred and twelve degrees of yaw against the halberd's sixty-two and
+     * a roll that turns the head over like a scythe. The crosshair is still the centre of the cone,
+     * because the cone is centred on the gaze -- but the blade is not the only thing that moves.</p>
+     *
+     * <p><b>The right button is a full cleave, and it is the one motion in the game that goes past a
+     * half turn.</b> The halberd throws the same {@code MULTI_HIT} special on the same {@code SWEEP}
+     * channel with a third of the angle; the hoe is the weapon whose whole argument is clearing a
+     * room, so its sweep is written as the blade going all the way around the grip and arriving from
+     * the other side. It reads as a circle because it is one.</p>
+     *
+     * <p><b>No wind-up track</b>, because the hoe cannot be charged ({@code ChargeProfile.NONE}) and
+     * a track on a channel that is always zero is a comment that costs a sum. No tremble for the
+     * same reason: there is no charge to grow one.</p>
+     */
+    private static ViewModelProfile hoe() {
+        return ViewModelProfile.owningSwing(
+                // The reap. Nearly an entire item of lateral travel and a hundred and twelve degrees
+                // of yaw, because a weapon that reaches six bodies at arm's length has to look like
+                // it is sweeping a field rather than stabbing one of them.
+                Track.of(Channel.CHOP, Curve.LINEAR,
+                        new Offset(0.92, -0.12, -0.24, -30.0, 112.0, -56.0)),
+                // The cleave. A hundred and ninety degrees is past a half turn, so the head starts
+                // behind the player's shoulder and comes all the way around to the hand. The roll
+                // turns it over on the way, which is what makes it a harvest rather than a spin.
+                Track.of(Channel.SWEEP, Curve.LINEAR,
+                        new Offset(0.70, -0.22, -0.16, -26.0, 190.0, -72.0)));
     }
 }

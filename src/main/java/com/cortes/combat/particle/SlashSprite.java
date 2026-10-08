@@ -62,7 +62,15 @@ public final class SlashSprite {
               // frames, same single animated quad. What makes it a different thing is where it is
               // spawned -- at the barrel, facing the way the gun points -- and a second particle
               // type would have been a second renderer for a difference in the spawn call.
-              "arcabuz_shot");
+              "arcabuz_shot",
+              // **The maza and the pala, appended so no index above them moves.** Both are five
+              // frame strips on the same canvas as every other slash -- the art was drawn to that
+              // format -- so they are rows here and a pair of lines in `slash.json`, not a second
+              // particle type. The maza's own hit used to fall through to the sword's slash and the
+              // pala's to the sword's as well; these say what each of them actually left on the
+              // body.
+              "maza_hit",
+              "shovel");
 
     private static final Map<WeaponProfile, String> BY_PROFILE = new EnumMap<>(WeaponProfile.class);
 
@@ -88,6 +96,12 @@ public final class SlashSprite {
         // If a bayonet strip is ever drawn, this is the one line to change, and the list above grows
         // at the end so no existing index moves.
         BY_PROFILE.put(WeaponProfile.ARCABUZ, "daga_hit");
+        // **The maza and the pala, which used to fall through to the sword's slash.** Both had no
+        // row, so both drew `sword_hit` on every hit -- a sword's arc on a hammer and on a shovel.
+        // The art for each exists now and is a five frame strip like the rest, so it is two rows
+        // here and two names appended to `SPRITES`.
+        BY_PROFILE.put(WeaponProfile.MACE, "maza_hit");
+        BY_PROFILE.put(WeaponProfile.SHOVEL, "shovel");
     }
 
     private SlashSprite() {

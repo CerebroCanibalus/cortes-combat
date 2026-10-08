@@ -1,0 +1,48 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "cortescombat:block/nether_reactor_empty"
+      },
+      "when": {
+        "charged": "false",
+        "star": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "cortescombat:block/nether_reactor"
+      },
+      "when": {
+        "charged": "true",
+        "star": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "cortescombat:block/nether_reactor_star"
+      },
+      "when": {
+        "star": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "cortescombat:block/nether_reactor_e"
+      },
+      "when": {
+        "active": "true",
+        "star": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "cortescombat:block/nether_reactor_star_e"
+      },
+      "when": {
+        "active": "true",
+        "star": "true"
+      }
+    }
+  ]
+}

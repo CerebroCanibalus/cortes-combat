@@ -4,11 +4,14 @@ import com.cortes.combat.attack.CombatTicker;
 import com.cortes.combat.command.CortesCommand;
 import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.net.ModNetworking;
+import com.cortes.combat.registry.ModArmor;
 import com.cortes.combat.registry.ModAttachments;
+import com.cortes.combat.registry.ModBlocks;
 import com.cortes.combat.registry.ModComponents;
 import com.cortes.combat.registry.ModCreativeTabs;
 import com.cortes.combat.registry.ModItems;
 import com.cortes.combat.registry.ModParticleTypes;
+import com.cortes.combat.registry.ModTools;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -103,6 +106,20 @@ public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         ModComponents.DATA_COMPONENT_TYPES.register(modEventBus);
         ModAttachments.ATTACHMENT_TYPES.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
+        // **The copper gear: a set vanilla 1.21.1 does not ship.** Two registers of its own, one
+        // for the five tools and one for the armour and its material, and neither touches ModItems
+        // -- the catalogue is thirty weapons of five shapes, and a pickaxe is not one of them.
+        ModArmor.register(modEventBus);
+        ModTools.register(modEventBus);
+        // **The first block this mod has ever had.** Its own register, the same way the copper
+        // tools and armour have theirs: the catalogue in ModItems is a table of weapons, and a
+        // block is not an entry in it.
+        ModBlocks.register(modEventBus);
+        // **The first block entity this mod has ever had.** Its own register, and it carries the
+        // reactor's item-handler capability -- the thirty-cap door a hopper sees. The capability is
+        // registered against the block entity TYPE, so it is per reactor and not shared.
+        com.cortes.combat.registry.ModBlockEntities.register(modEventBus);
+        modEventBus.addListener(com.cortes.combat.registry.ModBlockEntities::registerCapabilities);
         ModCreativeTabs.TABS.register(modEventBus);
         ModParticleTypes.PARTICLE_TYPES.register(modEventBus);
         com.cortes.combat.registry.ModEffects.register(modEventBus);
@@ -142,6 +159,41 @@ public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         NeoForge.EVENT_BUS.register(com.cortes.combat.special.ParryHandler.class);
         NeoForge.EVENT_BUS.register(com.cortes.combat.special.LungeImmunity.class);
         NeoForge.EVENT_BUS.register(com.cortes.combat.attack.ArmorWearHandler.class);
+        // **The reactor's resumable sweep, advanced a slice per server tick.** The hook on
+        // `SignalGetter` makes a component SEE the reactor's power; this is what makes it re-ask.
+        // Registering it on the game bus as a `ServerTickEvent.Post` listener, because the sweep is
+        // server-only and the game bus is where gameplay ticks live.
+        NeoForge.EVENT_BUS.addListener(com.cortes.combat.block.ReactorScan::onServerTick);
+        // **Y un componente puesto dentro de un campo vivo se re-evalua en el momento.** El barrido
+        // corre al encender, al apagar y al cambiar el radio -- nunca al colocar. La lampara y el
+        // piston se preguntan solos al aterrizar, pero hay componentes que no, y "lo coloque
+        // despues de activar y nunca prendio" fue el reporte. Mismo llamado que el barrido, uno solo,
+        // y solamente si el tag y el radio lo cubren.
+        NeoForge.EVENT_BUS.addListener(com.cortes.combat.block.ReactorScan::onBlockPlace);
+        // **Y el espejo: romper un cable es dejar de recibir fuerza gratis.** Sólo rompimientos de
+        // jugador; una explosión no dispara este evento, y el limite queda documentado en el metodo.
+        NeoForge.EVENT_BUS.addListener(com.cortes.combat.block.ReactorScan::onBlockBreak);
+        // **The star's crater, carved a slice at a time.** A power-120 point blast cannot run in a
+        // tick, so the destruction is an explicit sphere advanced here against a fixed per-tick
+        // budget. Registered beside the sweep because it is the same shape of job: server-only,
+        // resumable, one shared budget.
+        NeoForge.EVENT_BUS.addListener(com.cortes.combat.block.ReactorBlast::onServerTick);
+        // **Y los dos registros estaticos se vacian al cerrar el mundo.** `ReactorScan.PENDING` y
+        // `ActiveReactors.BY_LEVEL` sobreviven a un mundo por ser `static`: un barrido pendiente
+        // seguiria apuntando al nivel que se esta guardando y el siguiente mundo heredaria reactores
+        // que no existen. El sintoma del primero es el cuelgue en "Guardando mundo".
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent event) -> {
+            com.cortes.combat.block.ReactorScan.clear();
+            com.cortes.combat.block.ActiveReactors.clear();
+            // The wired region is static and keyed by dimension too: a world that closed would
+            // otherwise leave its wires immune to decay for the next one loaded in this process.
+            com.cortes.combat.block.ReactorNetwork.clear();
+        });
+        // **Las dos mecánicas del cobre, y una de ellas existe por una restricción verificada del
+        // API.** `MobEffectInstance` no tiene setter de duración y `mapDuration` no muta, así que
+        // acortar un debuff sólo se puede hacer negando su aplicación y metiendo una más corta por
+        // `forceAddEffect`. Ver `CopperEffects`.
+        NeoForge.EVENT_BUS.register(com.cortes.combat.effect.CopperEffects.class);
         // Pone las recetas del mod en el libro de crafteo de quien entra. Sin esto el libro depende
         // de que se conceda un avance, y en un mundo viejo donde las 32 ya estaban completas nunca
         // pasa: el jugador se queda con el libro vacío hasta que empieza otro mundo.

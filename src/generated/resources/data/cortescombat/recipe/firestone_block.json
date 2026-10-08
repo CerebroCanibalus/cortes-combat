@@ -1,0 +1,18 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "building",
+  "key": {
+    "X": {
+      "item": "cortescombat:firestone"
+    }
+  },
+  "pattern": [
+    "XXX",
+    "XXX",
+    "XXX"
+  ],
+  "result": {
+    "count": 1,
+    "id": "cortescombat:firestone_block"
+  }
+}

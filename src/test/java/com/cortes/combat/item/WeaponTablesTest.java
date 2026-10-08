@@ -351,6 +351,54 @@ class WeaponTablesTest {
     }
 
     /**
+     * A weapon that cannot charge fires on the press, and nothing else does.
+     *
+     * <h2>Why this is a capability and not a list</h2>
+     *
+     * <p>The press/release split only has a question to answer on a weapon that charges. On one
+     * that does not, resolving on the release is a round trip of latency for a decision nobody
+     * made -- the report was "I hold it down and nothing happens until I let go", about the ropera
+     * and the dagger. So the rule is asked of the two tables that already exist: does it fight, and
+     * can it charge.</p>
+     *
+     * <p><b>It is deliberately not the same set as {@code canHoldDown}.</b> The mace fires on the
+     * press and does not repeat, for the fall's own reason; the pickaxe does neither because it
+     * does not fight. Writing this as a set would have made those two the same kind of gap.</p>
+     */
+    @Test
+    @DisplayName("a weapon that cannot charge fires on the press, and one that charges does not")
+    void onlyTheNonChargingFightersFireOnThePress() {
+        for (WeaponProfile profile : WeaponProfile.values()) {
+            boolean expected = WeaponKinds.fights(profile) && !WeaponTables.charge(profile).canCharge();
+            assertEquals(expected, WeaponTables.firesOnPress(profile),
+                    profile + " disagrees with (fights && !charges). The question is not a list: "
+                            + "it is the two tables, so a weapon added tomorrow classifies itself");
+        }
+
+        // The two the report was about, and the reason it was about them.
+        assertTrue(WeaponTables.firesOnPress(WeaponProfile.ROPERA),
+                "**the ropera fires on the press.** It cannot charge -- its whole identity is a "
+                        + "fast thrust -- so waiting for the release is latency and nothing else");
+        assertTrue(WeaponTables.firesOnPress(WeaponProfile.DAGGER),
+                "and the dagger, for the same reason: the fastest weapon in the set is the one "
+                        + "where a round trip is most visible");
+
+        // A weapon that charges must NOT fire on the press: the release is the decision.
+        assertFalse(WeaponTables.firesOnPress(WeaponProfile.SWORD),
+                "a sword that fired on the press could not charge -- the hold would have already "
+                        + "spent the swing");
+        assertFalse(WeaponTables.firesOnPress(WeaponProfile.UNARMED));
+
+        // The mace fires but does not repeat; the pickaxe does neither.
+        assertTrue(WeaponTables.firesOnPress(WeaponProfile.MACE),
+                "the mace cannot charge, so it fires on the press too -- it is its repeat that is "
+                        + "refused, and that is a separate rule (the fall)");
+        assertFalse(WeaponTables.firesOnPress(WeaponProfile.PICKAXE),
+                "the pickaxe does not fight, so it fires nowhere");
+        assertFalse(WeaponTables.firesOnPress(WeaponProfile.NONE));
+    }
+
+    /**
      * The exclusion is one weapon, and it is named rather than derived.
      *
      * <p><b>An empty list would have been defensible and would have meant "nobody thought about

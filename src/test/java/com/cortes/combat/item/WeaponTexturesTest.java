@@ -60,6 +60,12 @@ class WeaponTexturesTest {
         // and the fix is to name it here rather than to loosen the test.
         names.add("firestone");
 
+        // **And the copper set, which is neither a weapon nor an ingredient.** Five tools and four
+        // armour pieces, all with a texture on disk and none of them in WeaponFamily -- so without
+        // this line the audit would call every one of them an orphan. Read from CopperGear rather
+        // than typed, because that is the same list the two registries build their items from.
+        names.addAll(com.cortes.combat.core.gear.CopperGear.ALL_NAMES);
+
         // **And NOT the arcabuz, which looks like it belongs here and does not.**
         //
         // It is registered by hand like the firestone, so the catalogue cannot see it, and it has a

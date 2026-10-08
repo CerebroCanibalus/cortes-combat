@@ -19,6 +19,12 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.phys.AABB;
 
 /**
  * The whole attack flow, in one method, resolved on the release of one button.
@@ -151,18 +157,40 @@ public final class CombatEngine {
         }
         debug(player, "objetivo " + targetId + " (" + target.getName().getString()
                 + ") VALIDO, aplicando dano");
+
+        // **NeoForge's own attack hook, which `Player#attack` fires and a replaced flow drops.**
+        // Fired for the aimed target only, the way vanilla fires it once per attack and not once
+        // per sweep victim. If a mod cancels it the swing is still spent: the cooldown was paid
+        // before the target was looked at, which is the same rule a whiff obeys -- an attempt costs
+        // whether or not it lands.
+        if (!net.neoforged.neoforge.common.CommonHooks.onPlayerAttackTarget(player, target)) {
+            debug(player, "objetivo " + targetId + " cancelado por AttackEntityEvent");
+            return;
+        }
+
         swingArm(player);
 
-        AttackResult result = DamageResolver.resolve(
-                player.getAttributeValue(Attributes.ATTACK_DAMAGE),
-                stats.charge(),
-                stats.profile(),
-                chargeRatio,
-                player.getData(ModAttachments.HAMMER_STREAK.get()),
-                // The maza's other half. Zero for every weapon but one, and it is the player's
-                // fall rather than the weapon's -- which is why it is an argument here and not a
-                // row in WeaponTables.
-                player.fallDistance);
+        float base = (float) player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        StreakState streak = player.getData(ModAttachments.HAMMER_STREAK.get());
+        // **The flags first, because the damage source they choose is what the enchantment hooks
+        // need.** Whether this swing bypasses armour is a property of the weapon and the charge and
+        // has nothing to do with the enchantments on it, so a bonus-free resolve is the honest way
+        // to ask -- and the source it builds is the same one every target is hit with.
+        AttackResult flags = DamageResolver.resolve(base, stats.charge(), stats.profile(),
+                chargeRatio, streak, player.fallDistance);
+        DamageSource source = damageSource(player, flags.ignoredArmour(), flags.axeCharged());
+
+        // **Per target, because the enchantment does not have one answer.** Sharpness is the same
+        // for every body the swing touches, but Smite is not, and neither is a crowd charge that
+        // counts the bodies around the one you aimed at. The base, the charge and the fall are the
+        // same for all of them; only the flat enchantment bonus moves.
+        //
+        // Density is read once and sits with the fall, because the fall and Density are the same
+        // family: the level does not depend on the body being hit, so one read feeds every target.
+        int density = densityLevel(player);
+        AttackResult result = DamageResolver.resolve(base, stats.charge(), stats.profile(),
+                chargeRatio, streak, player.fallDistance, density,
+                enchantBonus(player, target, source, base));
 
         // **The one the player was aiming at pays first, and the area weapons add the rest.**
         //
@@ -176,7 +204,13 @@ public final class CombatEngine {
         // aiming at the mob behind the crowd would watch the mob in front take the hit, and the
         // damage would look like it went to the wrong target -- which is the exact symptom of the
         // cone and reach bugs this project has already chased down twice.</p>
-        apply(player, target, stats, result, chargeRatio);
+        //
+        // **One landing for the whole swing.** The maza hits up to three bodies and each body's
+        // Wind Burst clears the fall immunity, so the descent stop and the re-asserts do not divide
+        // the same way -- see `MaceSmash.Landing`. Created here, before the bodies are applied.
+        MaceSmash.Landing smash = smashLanding(player, stats);
+
+        apply(player, target, stats, result, chargeRatio, smash);
 
         int extra = com.cortes.combat.item.WeaponTables.maxTargets(stats.profile()) - 1;
         if (extra > 0) {
@@ -192,7 +226,12 @@ public final class CombatEngine {
                 if (other == target) {
                     continue;
                 }
-                apply(player, other, stats, result, chargeRatio);
+                // Its own enchantment bonus, because Smite and the crowd charge both read the body
+                // being hit. The source does not change: it is still the player's swing.
+                AttackResult otherResult = DamageResolver.resolve(base, stats.charge(),
+                        stats.profile(), chargeRatio, streak, player.fallDistance, density,
+                        enchantBonus(player, other, source, base));
+                apply(player, other, stats, otherResult, chargeRatio, smash);
                 landed++;
             }
             debug(player, "area: " + landed + "/" + extra + " objetivos extra (tope "
@@ -226,7 +265,7 @@ public final class CombatEngine {
     }
 
     private static void apply(Player player, Entity target, WeaponStats stats,
-                              AttackResult result, float chargeRatio) {
+                              AttackResult result, float chargeRatio, MaceSmash.Landing smash) {
         // Read before the hit: afterwards a dead mob reads 0 health and there is no way to tell
         // "the swing killed it" from "the swing finished it off". Only a living thing has health
         // to read, and only a living thing can be in the cone to be hit, so the cast is safe
@@ -314,6 +353,45 @@ public final class CombatEngine {
         }
         if (anyLanded) {
             notifyHit(player, target, healthBefore);
+
+            // **The maza's landing, and it runs BEFORE the post-attack effects on purpose.**
+            // Vanilla runs it in that order too: `MaceItem#hurtEnemy` is called inside `hurt`
+            // (`Player#attack`:1377), the post-attack effects fire right after it (:1380), and only
+            // then `postHurtEnemy` resets the fall (:1385) at the bottom of this block.
+            //
+            // The descent stop belongs in this half, because Wind Burst's own explosion pushes the
+            // player upward and that launch is a feature: stopping the fall after it would cancel
+            // the height the enchantment just paid for. And it runs only on the FIRST body that
+            // lands -- see `MaceSmash.Landing` for why a second one would erase the launch. What
+            // Wind Burst does wipe is the immunity flag, re-set after each body's effects below.
+            if (smash != null) {
+                smash.onLanding(target);
+            }
+
+            // **Vanilla's post-attack enchantment hooks, once per body that took the hit.** These
+            // are what fire Aspect of Fire and Wind Burst, and `Player#attack` calls them right
+            // after a landed hit -- which the replaced flow never does. Once per target and not
+            // once per cut: the sable's second cut is the same victim, and setting it on fire
+            // twice is not twice the fire, it is the same fire set a tick later.
+            if (player.level() instanceof net.minecraft.server.level.ServerLevel level) {
+                EnchantmentHelper.doPostAttackEffects(level, target,
+                        damageSource(player, result.ignoredArmour(), result.axeCharged()));
+            }
+
+            // **The immunity is set AGAIN after the effects, and this is the whole of the fix.**
+            // Wind Burst is a POST_ATTACK effect on the attacker: its `ExplodeEffect` explodes at
+            // the player, and that explosion calls `ServerPlayer#onExplosionHit`, which overwrites
+            // `currentImpulseImpactPos` and clears `ignoreFallDamageFromCurrentImpulse` (the
+            // explosion's source entity is the player, not a wind charge). So the guard armed above
+            // survives exactly until here, and without this line a maza swing with Wind Burst lands
+            // you from the height the enchantment threw you -- the opposite of "a landed smash
+            // forgives the fall". One use only: `tryResetCurrentImpulseContext` clears it on the
+            // first landing. Also per body, because the maza hits up to three and each one's Wind
+            // Burst clears the flag again.
+            if (smash != null) {
+                smash.afterEffects();
+            }
+
             // **The fall is cancelled here and not in `onHit`, because the smash's sound reads it.**
             // `spawnSlash` above chose the anvil's pitch from `player.fallDistance`; zeroing it any
             // earlier would make the biggest hit in the game sound like the smallest. And only for
@@ -335,6 +413,31 @@ public final class CombatEngine {
                             + " vida=" + healthBefore + " -> "
                             + (target instanceof LivingEntity l ? l.getHealth() : 0.0F));
         }
+    }
+
+    /**
+     * The landing to replay a maza smash into, or {@code null} when this swing is not one.
+     *
+     * <p>Two questions, and both have to be yes: is the weapon the maza, and is the wielder
+     * actually falling. The second is vanilla's own {@code canSmashAttack} gate -- a grounded maza
+     * hit is an ordinary club hit and arms none of the impulse states -- asked of
+     * {@link com.cortes.combat.weapon.MaceFall#smashes} so the threshold lives in one place and a
+     * bare-JVM test can walk it.</p>
+     *
+     * <p>Asked <b>once per swing</b>, here in {@code resolveTarget} before any target is applied,
+     * because the maza hits up to three bodies and the fall is reset after the first one lands; a
+     * per-body question would answer "no smash" for the other two. The {@link MaceSmash.Landing}
+     * it returns is what keeps the descent stop to one body and the immunity re-assert per body.</p>
+     */
+    private static MaceSmash.Landing smashLanding(Player player, WeaponStats stats) {
+        if (!com.cortes.combat.weapon.MaceFall.reads(stats.profile())) {
+            return null;
+        }
+        if (!(player instanceof net.minecraft.server.level.ServerPlayer server)) {
+            return null;
+        }
+        return com.cortes.combat.weapon.MaceFall.smashes(server.fallDistance, server.isFallFlying())
+                ? new MaceSmash.Landing(server) : null;
     }
 
     /**
@@ -392,6 +495,22 @@ public final class CombatEngine {
                 stats.profile(), player.fallDistance, com.cortes.combat.attack.MaceAir.airborne(player));
         if (fall > 0.0F) {
             com.cortes.combat.sound.CombatSounds.playMaceSmash(level, target, fall);
+        }
+
+        // **The maza's core, on top of its own recording, on every hit.** The hammer's recordings
+        // are borrowed and the anvil only speaks when there was a fall, so a grounded mace hit had
+        // one voice. This is a second, deeper thud under it, and on the smash it drops with the
+        // fall the way every other weight cue in the sound file does.
+        if (stats.profile() == WeaponProfile.MACE) {
+            com.cortes.combat.sound.CombatSounds.playHeavyCore(level, target,
+                    fall > 0.0F ? ModSounds.MACE_CORE_SMASH_PITCH : ModSounds.MACE_CORE_PITCH);
+        }
+
+        // **And the pala's own impact, on top of the borrowed swing.** A vanilla item borrowing
+        // vanilla's weak hit had no voice; the lantern breaking is the tool landing, and a charged
+        // pala adds the wind burst under it.
+        if (stats.profile() == WeaponProfile.SHOVEL) {
+            com.cortes.combat.sound.CombatSounds.playShovelHit(level, target, charged);
         }
     }
 
@@ -464,10 +583,171 @@ public final class CombatEngine {
         if (pull > 0.0F && chargeRatio >= DamageResolver.FULL_CHARGE) {
             Knockback.pull(player, target, pull);
         } else {
+            // The enchantment's own push, on top of the weapon's. Vanilla's Knockback always
+            // shoves and has no charge to gate it with, so it is not run through the tap floor --
+            // see `Knockback.apply`'s five-argument note. The trident's charged pull is left
+            // alone: an inward drag and an outward enchantment push are opposite instructions and
+            // the weapon's special wins.
             Knockback.apply(player, target, stats.knockback(),
-                    DamageResolver.knockbackFor(chargeRatio));
+                    DamageResolver.knockbackFor(chargeRatio),
+                    enchantPush(player, target, result));
         }
     }
+
+    /**
+     * The flat enchantment bonus for one target, which is two enchantments in one number.
+     *
+     * <h2>Why both halves arrive through the same channel</h2>
+     *
+     * <p>{@code modifyDamage} is vanilla's own hook for Sharpness, Smite, Bane of Arthropods,
+     * Impaling and Density, and it is the one {@code ServerPlayer#getEnchantedDamage} calls. It is
+     * asked with the swing's base as its input and the difference taken -- the same "bonus, not
+     * total" shape the fall uses -- so that the caller adds a flat amount and the bonus-free path
+     * is the same arithmetic as before.</p>
+     *
+     * <p>The crowd charge rides along because it is also a flat, per-target damage bonus, and one
+     * argument is one place for the resolver to add it. Keeping it separate would be a second
+     * channel that could be forgotten by a future caller of {@code resolve}.</p>
+     *
+     * <h2>The two maza enchantments that are deliberately not here</h2>
+     *
+     * <p><b>Density and Breach do not use {@code modifyDamage}.</b> They are
+     * {@code SMASH_DAMAGE_PER_FALLEN_BLOCK} and {@code ARMOR_EFFECTIVENESS}, each with its own hook
+     * and its own {@code EnchantmentHelper} method. Density is ours: it is applied beside the fall,
+     * read here by {@link #densityLevel}.</p>
+     *
+     * <p><b>Breach needs no code and never did.</b> Its only consumer is
+     * {@code CombatRules.getDamageAfterAbsorb}, and that runs on the <em>defender</em>, inside
+     * {@code LivingEntity#hurt}, well after this file has decided the number. It reads the
+     * attacker's weapon off the damage source ({@code getWeaponItem}), and every source this mod
+     * builds -- {@code playerAttack}, {@code warhammerIgnoredArmour}, {@code axeCharged} -- puts
+     * the player on as the direct entity, which is exactly what that read needs. So it survives the
+     * replaced flow untouched. <b>A future auditor should not look for it again.</b></p>
+     */
+    private static float enchantBonus(Player player, Entity target, DamageSource source, float base) {
+        if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
+            return 0.0F;
+        }
+        ItemStack weapon = player.getWeaponItem();
+        float enchanted = EnchantmentHelper.modifyDamage(level, weapon, target, source, base) - base;
+        return Math.max(0.0F, enchanted) + sweepingEdgeBonus(level, player, target, weapon);
+    }
+
+    /**
+     * The crowd charge: Sweeping Edge, reworked so a packed room hurts.
+     *
+     * <p>The level is read off the weapon and the count off the world, and the formula they feed
+     * lives in {@link com.cortes.combat.weapon.SweepingEdge}, where a bare JVM can walk it. This
+     * method exists only to produce the second argument.</p>
+     */
+    private static float sweepingEdgeBonus(net.minecraft.server.level.ServerLevel level,
+                                           Player player, Entity target, ItemStack weapon) {
+        int sweeping = sweepingEdgeLevel(level, weapon);
+        if (sweeping <= 0) {
+            return 0.0F;
+        }
+        return com.cortes.combat.weapon.SweepingEdge.bonus(sweeping, crowdAround(player, target));
+    }
+
+    /**
+     * The weapon's Sweeping Edge level, through the registry.
+     *
+     * <p>A {@code ResourceKey} and not a {@code Holder}, so it has to be resolved against the
+     * level's registry before the item can be asked. {@code getHolderOrThrow} rather than a nullable
+     * get is deliberate: the enchantment is built into the game, and a missing one is a broken
+     * install that should say so rather than read as "no enchantment".</p>
+     */
+    private static int sweepingEdgeLevel(net.minecraft.server.level.ServerLevel level, ItemStack weapon) {
+        Holder<Enchantment> sweeping = level.registryAccess()
+                .registryOrThrow(Registries.ENCHANTMENT)
+                .getHolderOrThrow(Enchantments.SWEEPING_EDGE);
+        return weapon.getEnchantmentLevel(sweeping);
+    }
+
+    /**
+     * The weapon's Density level, through the registry.
+     *
+     * <p><b>The enchantment that keeps the maza's fall growing.</b> Vanilla applies Density inside
+     * {@code MaceItem#getAttackDamageBonus} as {@code modifyFallBasedDamage(...) * fallDistance},
+     * and that class appears nowhere in this project because the entire attack flow is replaced --
+     * so without this read a Density maza carried a dead enchantment. The registry plumbing is the
+     * same as {@link #sweepingEdgeLevel}'s, and for the same reason: a {@code ResourceKey} has to be
+     * resolved against the level's registry before the item can be asked.</p>
+     *
+     * <p>Zero outside a server level, where there is no registry to ask; the resolver then sums a
+     * zero and the maza's fall is unchanged, which is the right answer for a client-side call and
+     * the only one available.</p>
+     */
+    private static int densityLevel(Player player) {
+        if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
+            return 0;
+        }
+        Holder<Enchantment> density = level.registryAccess()
+                .registryOrThrow(Registries.ENCHANTMENT)
+                .getHolderOrThrow(Enchantments.DENSITY);
+        return player.getWeaponItem().getEnchantmentLevel(density);
+    }
+
+    /**
+     * How many other living things are packed around the target.
+     *
+     * <p>Around the <em>target</em> and not the player, because the enchantment's question is "is
+     * this victim in a crowd", not "is the player". The player and the victim are both excluded:
+     * the victim is not packed around itself, and the player is not a body the sword is counting.
+     * Dead, removed and spectator entities are skipped for the same reason every other scan in this
+     * project skips them -- a corpse is not a crowd.</p>
+     */
+    private static int crowdAround(Player player, Entity target) {
+        AABB box = target.getBoundingBox().inflate(com.cortes.combat.weapon.SweepingEdge.CROWD_RADIUS);
+        int count = 0;
+        for (LivingEntity other : player.level().getEntitiesOfClass(LivingEntity.class, box)) {
+            if (other == player || other == target) {
+                continue;
+            }
+            if (!other.isAlive() || other.isSpectator() || other.isRemoved()) {
+                continue;
+            }
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * The Knockback enchantment's push for one target.
+     *
+     * <p>{@code modifyKnockback} is called with a base of zero because the weapon's own push is
+     * the profile's, not the {@code ATTACK_KNOCKBACK} attribute -- this project replaced that
+     * number. Asking from zero leaves exactly the enchantment's contribution: vanilla's Knockback
+     * adds one point per level to the attribute, and vanilla then converts the whole strength to a
+     * velocity with {@code f4 * 0.5F}. Mirroring that factor here is what keeps Knockback I worth
+     * about the same shove it is worth in vanilla rather than twice it, which is the difference
+     * between a shove and a launch on a number the player did not ask to be enormous.</p>
+     */
+    private static float enchantPush(Player player, Entity target, AttackResult result) {
+        if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
+            return 0.0F;
+        }
+        float strength = EnchantmentHelper.modifyKnockback(level, player.getWeaponItem(), target,
+                damageSource(player, result.ignoredArmour(), result.axeCharged()),
+                NO_WEAPON_KNOCKBACK);
+        return ENCHANT_KNOCKBACK_SCALE * Math.max(0.0F, strength);
+    }
+
+    /**
+     * Vanilla's own strength-to-velocity factor, {@code f4 * 0.5F} in {@code Player#attack}.
+     */
+    private static final float ENCHANT_KNOCKBACK_SCALE = 0.5F;
+
+    /**
+     * The weapon's contribution to {@code modifyKnockback}, which here is nothing.
+     *
+     * <p>The per-weapon push is this project's own {@code KnockbackProfile}, not vanilla's
+     * {@code ATTACK_KNOCKBACK} attribute, so asking the enchantment from zero is what leaves only
+     * the enchantment inside the answer. Named rather than written as a literal because the
+     * literal is the one shape the fall's wiring test forbids in this file (it flags a zero
+     * argument to the resolver as the bug it is elsewhere).</p>
+     */
+    private static final float NO_WEAPON_KNOCKBACK = 0.0F;
 
     /**
  * The warhammer's charged swing bypasses armour, and the axe's charged swing wears it twice as

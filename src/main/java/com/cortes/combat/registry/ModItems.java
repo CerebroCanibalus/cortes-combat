@@ -102,6 +102,17 @@ public final class ModItems {
     public static final DeferredItem<Item> FIRESTONE =
             ITEMS.registerSimpleItem("firestone", new Item.Properties());
 
+    /**
+     * The dead star: the nether star a reactor consumes, once it is spent.
+     *
+     * <p><b>Registered now, unused for now.</b> It is phase two's currency -- the nether star goes
+     * into the reactor's second slot and this is what comes back out -- and the item exists at
+     * registration so the texture the designer drew has a model and the atlas stitches it. An item
+     * with no behaviour is still an item; giving it a use is a later round.</p>
+     */
+    public static final DeferredItem<Item> DEAD_STAR =
+            ITEMS.registerSimpleItem("dead_star", new Item.Properties());
+
     private static final Map<String, DeferredItem<? extends Item>> WEAPONS = new LinkedHashMap<>();
 
     static {

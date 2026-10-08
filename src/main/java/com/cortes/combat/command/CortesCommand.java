@@ -2,9 +2,12 @@ package com.cortes.combat.command;
 
 import com.cortes.combat.CombatTrace;
 import com.cortes.combat.CortesCombat;
+import com.cortes.combat.block.NetherReactorBlock;
+import com.cortes.combat.block.NetherReactorBlockEntity;
 import com.cortes.combat.client.ItemViewModel;
 import com.cortes.combat.registry.ModItems;
 import net.neoforged.fml.loading.FMLEnvironment;import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -12,6 +15,7 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
@@ -23,6 +27,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -76,7 +82,26 @@ public final class CortesCommand {
                 .then(Commands.literal("hud")
                         .executes(CortesCommand::dumpHud))
                 .then(Commands.literal("input")
-                        .executes(CortesCommand::dumpInput)));
+                        .executes(CortesCommand::dumpInput))
+                .then(Commands.literal("reactor")
+                        .then(Commands.literal("charge")
+                                .then(Commands.argument("value", IntegerArgumentType.integer(0, 40))
+                                        .executes(CortesCommand::reactorCharge)))
+                        .then(Commands.literal("active")
+                                .then(Commands.argument("value", BoolArgumentType.bool())
+                                        .executes(CortesCommand::reactorActive)))
+                        .then(Commands.literal("clock")
+                                .then(Commands.argument("ticks", IntegerArgumentType.integer(0, 1000000))
+                                        .executes(CortesCommand::reactorClock)))
+                        .then(Commands.literal("overload")
+                                .then(Commands.literal("firestone")
+                                        .executes(CortesCommand::reactorOverloadFirestone))
+                                .then(Commands.literal("star")
+                                        .executes(CortesCommand::reactorOverloadStar))
+                                .then(Commands.literal("none")
+                                        .executes(CortesCommand::reactorOverloadNone)))
+                        .then(Commands.literal("status")
+                                .executes(CortesCommand::reactorStatus))));
     }
 
     /**
@@ -372,6 +397,116 @@ public final class CortesCommand {
         DebugFlags flags = get(player);
         com.cortes.combat.net.ModNetworking.sendDebugToggle(player,
                 flags.cone(), flags.hud(), flags.trace(), false, true);
+        return 1;
+    }
+
+    /**
+     * The reactor a debug subcommand acts on: the one the player is looking at.
+     *
+     * <p>No coordinate argument on purpose. A reactor is a block you are standing at, and a tester
+     * typing coordinates is a tester mis-typing one; twenty blocks is the reach every other "look
+     * at the thing" debug uses.</p>
+     */
+    private static NetherReactorBlockEntity reactorAt(CommandContext<CommandSourceStack> ctx) {
+        ServerPlayer player = player(ctx);
+        if (player == null) {
+            return null;
+        }
+        HitResult hit = player.pick(20.0D, 0.0F, false);
+        if (!(hit instanceof BlockHitResult blockHit)) {
+            ctx.getSource().sendFailure(Component.literal("Mira a un reactor dentro de 20 bloques."));
+            return null;
+        }
+        if (!(player.level().getBlockEntity(blockHit.getBlockPos())
+                instanceof NetherReactorBlockEntity reactor)) {
+            ctx.getSource().sendFailure(Component.literal("El bloque que miras no es un reactor."));
+            return null;
+        }
+        return reactor;
+    }
+
+    private static int reactorCharge(CommandContext<CommandSourceStack> ctx) {
+        NetherReactorBlockEntity reactor = reactorAt(ctx);
+        ServerPlayer player = player(ctx);
+        if (reactor == null || player == null) {
+            return 0;
+        }
+        int value = IntegerArgumentType.getInteger(ctx, "value");
+        reactor.setCharge(player.serverLevel(), value);
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "Reactor: carga=" + reactor.charge() + "/40"), false);
+        return 1;
+    }
+
+    private static int reactorActive(CommandContext<CommandSourceStack> ctx) {
+        NetherReactorBlockEntity reactor = reactorAt(ctx);
+        ServerPlayer player = player(ctx);
+        if (reactor == null || player == null) {
+            return 0;
+        }
+        boolean on = BoolArgumentType.getBool(ctx, "value");
+        reactor.setDebugActive(player.serverLevel(), on);
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "Reactor forzado " + (on ? "ACTIVO" : "libre") + " (la palanca real manda si es false)."),
+                false);
+        return 1;
+    }
+
+    private static int reactorClock(CommandContext<CommandSourceStack> ctx) {
+        NetherReactorBlockEntity reactor = reactorAt(ctx);
+        ServerPlayer player = player(ctx);
+        if (reactor == null || player == null) {
+            return 0;
+        }
+        int ticks = IntegerArgumentType.getInteger(ctx, "ticks");
+        reactor.addClock(player.serverLevel(), ticks);
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "Reloj del reactor +" + ticks + " t (hora completa en "
+                        + com.cortes.combat.block.ReactorCharge.HOUR_TICKS + ")."), false);
+        return 1;
+    }
+
+    private static int reactorOverloadFirestone(CommandContext<CommandSourceStack> ctx) {
+        return forceOverload(ctx, com.cortes.combat.block.ReactorOverload.Kind.FIRESTONE,
+                "Sobrecarga de FIRESTONE: fusible de 300 t. La palanca la corta.");
+    }
+
+    private static int reactorOverloadStar(CommandContext<CommandSourceStack> ctx) {
+        return forceOverload(ctx, com.cortes.combat.block.ReactorOverload.Kind.STAR,
+                "Sobrecarga de NETHER STAR: radio 100, fusible de 300 t, solo el agua la corta.");
+    }
+
+    private static int reactorOverloadNone(CommandContext<CommandSourceStack> ctx) {
+        return forceOverload(ctx, com.cortes.combat.block.ReactorOverload.Kind.NONE,
+                "Reactor apagado: sin sobrecarga.");
+    }
+
+    private static int forceOverload(CommandContext<CommandSourceStack> ctx,
+                                     com.cortes.combat.block.ReactorOverload.Kind kind, String message) {
+        NetherReactorBlockEntity reactor = reactorAt(ctx);
+        ServerPlayer player = player(ctx);
+        if (reactor == null || player == null) {
+            return 0;
+        }
+        reactor.forceOverload(player.serverLevel(), kind);
+        ctx.getSource().sendSuccess(() -> Component.literal(message), false);
+        return 1;
+    }
+
+    /** One line with everything the reactor is doing, because a debug command that lies is worse than none. */
+    private static int reactorStatus(CommandContext<CommandSourceStack> ctx) {
+        NetherReactorBlockEntity reactor = reactorAt(ctx);
+        if (reactor == null) {
+            return 0;
+        }
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "Reactor: carga=" + reactor.charge()
+                        + " conCarga=" + reactor.getBlockState().getValue(NetherReactorBlock.CHARGED)
+                        + " activo=" + reactor.getBlockState().getValue(NetherReactorBlock.ACTIVE)
+                        + " senal=" + reactor.powered()
+                        + " sobrecarga=" + reactor.overload()
+                        + " fusible=" + reactor.fuse()
+                        + " reloj=" + reactor.hourTicks()), false);
         return 1;
     }
 

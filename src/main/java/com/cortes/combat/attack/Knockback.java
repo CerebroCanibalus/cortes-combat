@@ -76,11 +76,39 @@ public final class Knockback {
      */
     public static void apply(LivingEntity source, Entity target, KnockbackProfile profile,
                              float charge) {
+        apply(source, target, profile, charge, 0.0F);
+    }
+
+    /**
+     * The same, with the enchantment's own push added on top.
+     *
+     * <h2>Why the enchantment is added after the charge floor and not through it</h2>
+     *
+     * <p><b>The floor zeroes the weapon's tap, not an enchantment's push.</b> Vanilla's Knockback
+     * enchantment always shoves -- there is no charge in vanilla to gate it with -- and the floor
+     * here exists for one reason: to stop a stream of uncharged taps from being a shove-spam
+     * button. That is a rule about the <em>weapon</em>, and an enchantment the player spent levels
+     * on is not a swing the player is spamming. So a Knockback I tap still moves the target the
+     * half-block the enchantment is worth, and the floor keeps its meaning for the weapon's own
+     * push.</p>
+     *
+     * <p><strong>Horizontal only, unlike vanilla.</strong> Vanilla's {@code knockback()} adds the
+     * strength to the target's vertical velocity too, which is what puts a mob in the air; this
+     * project removed that on purpose (see the class note). Rerouting the enchantment through the
+     * vertical would smuggle the launch back in through the one number that is supposed to be a
+     * property of the weapon, so the enchantment obeys the same flat, horizontal rule as the
+     * weapon's own push.</p>
+     *
+     * @param enchantPush the enchantment's contribution in blocks, already resolved by the caller.
+     *                    Zero for a weapon without the enchantment
+     */
+    public static void apply(LivingEntity source, Entity target, KnockbackProfile profile,
+                             float charge, float enchantPush) {
         if (profile == null || !(target instanceof LivingEntity living)) {
             return;
         }
         float push = pushFor(charge);
-        float horizontal = profile.clampedHorizontal() * push;
+        float horizontal = profile.clampedHorizontal() * push + Math.max(0.0F, enchantPush);
         float vertical = profile.clampedVertical() * push;
         if (horizontal <= 0.0F && vertical <= 0.0F) {
             return;

@@ -3,8 +3,10 @@ package com.cortes.combat.data;
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.weapon.WeaponMaterial;
 import com.cortes.combat.item.WeaponFamily;
+import com.cortes.combat.registry.ModArmor;
 import com.cortes.combat.registry.ModCreativeTabs;
 import com.cortes.combat.registry.ModItems;
+import com.cortes.combat.registry.ModTools;
 import net.minecraft.data.PackOutput;
 import net.neoforged.neoforge.common.data.LanguageProvider;
 
@@ -75,6 +77,41 @@ public class CortesLanguageProvider extends LanguageProvider {
         addItem(ModItems.ARCABUZ, "Arcabuz");
         addItem(ModItems.FIRESTONE, "Firestone");
 
+        // **The block, and `block.<ns>.<path>` rather than `item.`.** That is what a BlockItem's
+        // description id is built from, so a line under `item.cortescombat.firestone_block` would
+        // sit in the file and never be read. The name keeps "Firestone" in both languages for the
+        // reason the item does: it is an English word already.
+        add("block." + CortesCombat.MODID + ".firestone_block",
+                spanish ? "Bloque de Firestone" : "Firestone Block");
+
+        // **The nether reactor and the dead star.** The reactor is a block, so its key is
+        // `block.<ns>.<path>`; the dead star is an item and goes through `addItem`. The dead star
+        // is registered ahead of its use in phase two, and it is named now so it does not show its
+        // key if it is ever held.
+        add("block." + CortesCombat.MODID + ".nether_reactor",
+                spanish ? "Reactor del Nether" : "Nether Reactor");
+        addItem(ModItems.DEAD_STAR, spanish ? "Estrella Muerta" : "Dead Star");
+
+        // **The copper set, which is neither a weapon nor an ingredient.** Five tools and four
+        // armour pieces -- vanilla's gear set that 1.21.1 does not ship. Spanish puts the material
+        // behind with "de" and English in front, exactly like the catalogue's thirty, and for the
+        // same grammatical reason.
+        addItem(ModTools.COPPER_SWORD, spanish ? "Espada de Cobre" : "Copper Sword");
+        addItem(ModTools.COPPER_PICKAXE, spanish ? "Pico de Cobre" : "Copper Pickaxe");
+        addItem(ModTools.COPPER_AXE, spanish ? "Hacha de Cobre" : "Copper Axe");
+        addItem(ModTools.COPPER_SHOVEL, spanish ? "Pala de Cobre" : "Copper Shovel");
+        addItem(ModTools.COPPER_HOE, spanish ? "Azada de Cobre" : "Copper Hoe");
+        addItem(ModArmor.COPPER_HELMET, spanish ? "Casco de Cobre" : "Copper Helmet");
+        addItem(ModArmor.COPPER_CHESTPLATE, spanish ? "Pechera de Cobre" : "Copper Chestplate");
+        addItem(ModArmor.COPPER_LEGGINGS, spanish ? "Grebas de Cobre" : "Copper Leggings");
+        addItem(ModArmor.COPPER_BOOTS, spanish ? "Botas de Cobre" : "Copper Boots");
+
+        // **The two copper effects.** The key is `effect.<namespace>.<path>`, which is what
+        // `MobEffect#getDescriptionId` builds and what the HUD shows beside the icon.
+        add("effect.cortescombat.antiseptic", spanish ? "Antiséptico" : "Antiseptic");
+        add("effect.cortescombat.purification", spanish ? "Purificación" : "Purification");
+        add("effect.cortescombat.revelacion", spanish ? "Revelación" : "Revelation");
+
         if (spanish) {
             addSpanish();
         } else {
@@ -137,6 +174,7 @@ public class CortesLanguageProvider extends LanguageProvider {
         add("tooltip.cortescombat.category.short", "Arma corta");
         add("tooltip.cortescombat.category.medium", "Arma media");
         add("tooltip.cortescombat.category.natural", "Arma natural");
+        add("tooltip.cortescombat.category.tool", "Herramienta");
 
         add("tooltip.cortescombat.size.very_small", "Radio muy pequeño");
         add("tooltip.cortescombat.size.small", "Radio pequeño");
@@ -216,6 +254,7 @@ public class CortesLanguageProvider extends LanguageProvider {
         add("tooltip.cortescombat.category.short", "Short Weapon");
         add("tooltip.cortescombat.category.medium", "Medium Weapon");
         add("tooltip.cortescombat.category.natural", "Natural Weapon");
+        add("tooltip.cortescombat.category.tool", "Tool");
 
         add("tooltip.cortescombat.size.very_small", "Very Small Radius");
         add("tooltip.cortescombat.size.small", "Small Radius");

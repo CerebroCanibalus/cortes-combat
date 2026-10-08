@@ -22,9 +22,7 @@ class DamageResolverTest {
 
     @Nested
     @DisplayName("flat damage")
-    class Flat {
-
-        @Test
+    class Flat {        @Test
         @DisplayName("an uncharged swing does exactly base damage")
         void uncharged() {
             assertEquals(6.0F, sword(0.0F).damage());
@@ -55,6 +53,56 @@ class DamageResolverTest {
         void clamped() {
             assertEquals(6.0F, sword(-3.0F).damage());
             assertEquals(9.0F, sword(99.0F).damage());
+        }
+    }
+
+    @Nested
+    @DisplayName("enchantment damage")
+    class Enchantment {
+
+        /**
+         * The decision under test: an enchantment's damage is <b>summed flat</b>, not multiplied
+         * by the charge.
+         *
+         * <p>Vanilla scales it ({@code f1 *= f2} in {@code Player#attack}), but vanilla's whole
+         * attack is gated by the timing multiplier this project deleted. Here the enchantment is a
+         * property of the item, bought once at an anvil, so it has to be worth the same on a tap
+         * and a full charge.</p>
+         *
+         * <p>The assertions are on the <b>difference</b> and not on the totals alone, because that
+         * is the exact property a sabotage breaks: multiplying the bonus into the multiplier would
+         * make the charged case gain one and a half times as much as the tap while both totals
+         * still looked plausible. Verified by sabotage: replacing the flat sum with
+         * {@code damage *= enchantBonus} fails this test and only this one.</p>
+         */
+        @Test
+        @DisplayName("the enchantment bonus is summed flat, not scaled by the charge")
+        void summedFlat() {
+            // Base 6, sword bonus 0.5: a tap is 6 and a full charge is 9.
+            AttackResult tapped = DamageResolver.resolve(6.0, SWORD, WeaponProfile.SWORD, 0.0F,
+                    StreakState.EMPTY, 0.0F, 0, 3.0F);
+            AttackResult charged = DamageResolver.resolve(6.0, SWORD, WeaponProfile.SWORD, 1.0F,
+                    StreakState.EMPTY, 0.0F, 0, 3.0F);
+
+            assertEquals(9.0F, tapped.damage(), 1.0E-6F, "6 + 3 flat");
+            assertEquals(12.0F, charged.damage(), 1.0E-6F, "9 + the same 3 flat");
+
+            // **The exact property: the bonus is the same absolute amount either way.** If it were
+            // scaled by the 1.5 multiplier, the charged case would have gained 4.5 and the totals
+            // would still have looked like a sword.
+            assertEquals(3.0F, charged.damage() - 9.0F, 1.0E-6F,
+                    "the charged swing gained 3, not 1.5 times 3");
+            assertEquals(3.0F, tapped.damage() - 6.0F, 1.0E-6F,
+                    "and the tap gained the same 3");
+        }
+
+        @Test
+        @DisplayName("a negative bonus cannot heal the target")
+        void negativeIsClamped() {
+            AttackResult result = DamageResolver.resolve(6.0, SWORD, WeaponProfile.SWORD, 0.0F,
+                    StreakState.EMPTY, 0.0F, 0, -5.0F);
+            assertEquals(6.0F, result.damage(), 1.0E-6F,
+                    "a nonsense bonus must not turn a swing into a heal");
         }
     }
 

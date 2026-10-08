@@ -87,9 +87,122 @@ class MaceFallWiringTest {
                 "and slower than vanilla, which is the assertion the sign error breaks");
     }
 
+    /**
+     * And Density, whose whole existence depends on this one read.
+     *
+     * <p><b>Density lived on a class nobody runs.</b> Vanilla applies it inside
+     * {@code MaceItem#getAttackDamageBonus}, and this project replaced the attack flow, so a
+     * Density maza carried a dead enchantment until the level was read and summed by hand. The
+     * curve is tested <em>and</em> the call is tested, because one without the other is the same
+     * green build with a dead enchantment inside it.</p>
+     */
+    @Test
+    @DisplayName("the engine reads Density and passes the level beside the fall")
+    void theEngineHandsOverDensity() {
+        String engine = read();
+
+        assertTrue(engine.contains("Enchantments.DENSITY"),
+                "**CombatEngine has to resolve the Density enchantment.** Without the read the "
+                        + "level is never known and the curve in MaceFall is a comment that costs a "
+                        + "sum -- the exact shape the fall's own wiring test was written to catch");
+
+        assertTrue(engine.contains("player.fallDistance, density"),
+                "**and the level has to arrive at the resolver, beside the fall.** Density scales "
+                        + "the fall, so it travels in the same call; a read that stops at a local "
+                        + "variable changes nothing about the hit");
+    }
+
+    /**
+     * The order the smash's landing keeps, which is the one thing a maza with Wind Burst needs.
+     *
+     * <h2>The bug this guards</h2>
+     *
+     * <p>Wind Burst is a POST_ATTACK effect on the attacker, and its explosion calls
+     * {@code ServerPlayer#onExplosionHit}, which clears the fall immunity the smash had just armed.
+     * So the immunity has to be set again <em>after</em> {@code doPostAttackEffects}; a
+     * re-assertion placed before it is silently undone on every empowered swing, and the build is
+     * green because nothing in a bare JVM can see the two calls in the same method.</p>
+     *
+     * <p>And the descent stop has to stay in the <em>other</em> half: done after Wind Burst it would
+     * overwrite the upward launch the enchantment just gave, which is a different bug on the same
+     * line. Reading the source is brittle on purpose -- the alternative is a fix that cannot be
+     * distinguished from its absence.</p>
+     *
+     * <p>The swing-level landing is one object because the maza hits up to three bodies: the
+     * descent stop runs on the first, the immunity re-assert after every body's effects. The order
+     * asserted here is the same either way; the class that holds the split is checked separately by
+     * {@link #theStatesAreThere()}.</p>
+     */
+    @Test
+    @DisplayName("the smash is begun before the effects and re-asserted after")
+    void theSmashSurvivesWindBurst() {
+        String engine = read();
+
+        int begin = engine.indexOf("smash.onLanding(");
+        int effects = engine.indexOf("EnchantmentHelper.doPostAttackEffects(");
+        int reaffirm = engine.indexOf("smash.afterEffects(");
+
+        assertTrue(begin >= 0, "**CombatEngine has to land the maza's smash at all.** Without the "
+                + "`onLanding` call the smash never stops the descent nor arms the fall immunity -- "
+                + "the exact shape of the dropped `resetFallDistance` the replaced flow already paid for");
+        assertTrue(effects >= 0, "and the post-attack effects have to keep running; Wind Burst is one of them");
+        assertTrue(reaffirm >= 0, "**and the immunity has to be re-asserted.** Wind Burst's explosion "
+                + "clears it (`onExplosionHit`), so a maza with the enchantment falls from the height "
+                + "it was thrown to unless this call exists");
+        assertTrue(begin < effects,
+                "the descent stop goes BEFORE the effects: after them it would cancel Wind Burst's "
+                        + "own upward launch");
+        assertTrue(effects < reaffirm,
+                "**and the re-assert goes AFTER the effects, which is the whole point.** Placed "
+                        + "before `doPostAttackEffects` it is cleared again by the very explosion it "
+                        + "exists to survive, and every test still passes");
+    }
+
+    /**
+     * That the replicated states are actually the four vanilla sets, and the min-guard is kept.
+     *
+     * <p>The order test above only proves <em>when</em> the landing runs. This one proves it does
+     * something: the descent stop and its motion packet, the impact position, the immunity flag, and
+     * the grounded-victim particle flag -- verbatim {@code MaceItem#hurtEnemy}. And the
+     * minimum-with-the-saved guard, which is the half a simplification drops and which decides the
+     * height the fall is forgiven from.</p>
+     */
+    @Test
+    @DisplayName("the landing replicates vanilla's four states, min-guard included")
+    void theStatesAreThere() {
+        String smash = readMaceSmash();
+
+        assertTrue(smash.contains("setIgnoreFallDamageFromCurrentImpulse(true)"),
+                "the fall immunity -- the flag that makes a smash forgive the drop");
+        assertTrue(smash.contains("currentImpulseImpactPos"),
+                "and the impact point it forgives down to");
+        assertTrue(smash.contains("ClientboundSetEntityMotionPacket"),
+                "and the motion packet, so the client sees the descent stop");
+        assertTrue(smash.contains("setDeltaMovement("),
+                "which is the descent stop itself");
+        assertTrue(smash.contains("setSpawnExtraParticlesOnFall("),
+                "and the grounded-victim flag");
+        assertTrue(smash.contains("isIgnoringFallDamageFromCurrentImpulse()"),
+                "**and the saved-minimum guard, which is not a simplification to drop.** Without it "
+                        + "a second smash on one fall resets the forgiveness height to the later, "
+                        + "higher point and the earlier drop is charged again");
+        assertTrue(smash.contains("Direction.Axis.Y"),
+                "the descent stop is on Y only, as vanilla writes it");
+    }
+
     private static String read() {
         Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "attack",
                 "CombatEngine.java");
+        try {
+            return Files.readString(file, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new AssertionError("could not read " + file + ": " + e.getMessage(), e);
+        }
+    }
+
+    private static String readMaceSmash() {
+        Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "attack",
+                "MaceSmash.java");
         try {
             return Files.readString(file, StandardCharsets.UTF_8);
         } catch (IOException e) {

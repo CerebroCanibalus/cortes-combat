@@ -107,20 +107,35 @@ class ChopVersusThrustTest {
                                 + "forward, not down");
                 continue;
             }
-            // **The vanilla tools that have no viewmodel profile at all.**
+            // **The shovel and the hoe, pinned by name because they were the last two on the
+            // vanilla-tools list and the day they left it is worth recording.**
             //
-            // The pickaxe, the shovel and the hoe are a documented gap, not an oversight: a
-            // hand-drawn motion over a silhouette nobody in this project drew fights with the
-            // model, so they are left on vanilla's exact pose and get vanilla's swing. The axe is
-            // NOT in this group -- it has a profile, and it chops. Neither is the mace any more:
-            // it has a smash now, and it is in the chop group below.
+            // The shovel charges and its whole motion is a scoop: the load goes forward and UP, and
+            // a thing that rises is the bump. The hoe's ordinary strike is an area reap that comes
+            // across the front and falls, so it is the chop; its right button is a separate channel
+            // (SWEEP) and this loop does not ask about it.
+            if (profile == WeaponProfile.SHOVEL) {
+                assertTrue(of(profile).reads(Channel.STRIKE),
+                        "the shovel's action is a scoop -- a throw forward rather than a fall -- so "
+                                + "it reads the strike and not the chop");
+                assertFalse(of(profile).reads(Channel.CHOP), "and not both at once");
+                continue;
+            }
+            if (profile == WeaponProfile.HOE) {
+                assertTrue(of(profile).reads(Channel.CHOP),
+                        "the hoe's left click is a reap that falls across the front, so it reads "
+                                + "the chop channel");
+                assertFalse(of(profile).reads(Channel.STRIKE),
+                        "and not the bump: a bump rises and a reap falls");
+                continue;
+            }
+            // **The pickaxe, the one that is still a gap and now the only one.**
             //
-            // They are named one by one rather than skipped by a predicate, because "every profile
-            // that has a profile reads one of the two" is a rule that passes while the list of
-            // profiles quietly shrinks. This way the day one of them gets a profile, the test says
-            // so -- which is exactly what happened to the mace.
-            if (profile == WeaponProfile.PICKAXE || profile == WeaponProfile.SHOVEL
-                    || profile == WeaponProfile.HOE) {
+            // It is named rather than skipped by a predicate, because "every profile that has a
+            // profile reads one of the two" is a rule that passes while the list of profiles quietly
+            // shrinks. This way the day it gets a profile, the test says so -- which is exactly what
+            // happened to the mace, the shovel and the hoe.
+            if (profile == WeaponProfile.PICKAXE) {
                 assertFalse(of(profile).reads(Channel.CHOP) || of(profile).reads(Channel.STRIKE),
                         profile + " has a swing channel now, so it is no longer a vanilla tool with "
                                 + "no profile. Either this line or the entry above is wrong, and "

@@ -85,6 +85,53 @@ public final class ModSounds {
 
     public static final float SHOTEL_PITCH = 1.2F;
 
+    /**
+     * The hoe's sweep: the halberd's event, lower.
+     *
+     * <p><b>The event is shared and the pitch is the whole difference.</b> The hoe's right button
+     * is the halberd's {@code MULTI_HIT} (see {@code WeaponTables}), so it throws the same
+     * {@code alabarda_wide_swing}; dropping it makes a farm tool's arc read as its own thing
+     * instead of as a halberd that happens to be in the hand. 0.7 is a fourth below where it was
+     * written and well inside the engine's [0.5, 2.0] clamp, so it is a pitch and not a limit.</p>
+     */
+    public static final float HOE_SWEEP_PITCH = 0.7F;
+
+    /**
+     * The pala's miss, which is the sword's recording dropped.
+     *
+     * <p>A shovel has no recordings of its own, and its miss used to borrow vanilla's weak hit at
+     * 1.0 -- the same sound as every other unrecorded weapon. Dropped a fifth it is recognisably
+     * the pala's: the same swing-finds-nothing cue, at the weight of the tool doing it.</p>
+     */
+    public static final float SHOVEL_MISS_PITCH = 0.8F;
+
+    /**
+     * The hoe's miss, the same recording raised instead.
+     *
+     * <p><b>And not the pala's number.</b> Two tools sharing a recording have to be told apart by
+     * their pitch or they are one weapon with two reach values, which is exactly the kind of
+     * second-opinion the tables exist to avoid.</p>
+     */
+    public static final float HOE_MISS_PITCH = 1.2F;
+
+    /** The maza's core, under its hammer recording on every ordinary hit. */
+    public static final float MACE_CORE_PITCH = 1.0F;
+
+    /**
+     * And on the air smash, dropped.
+     *
+     * <p>The smash already plays the hammer lower (MACE_PITCH) and the anvil by fall; the core at
+     * 0.6 is what makes the biggest hit in the game also the deepest, and it moves the same
+     * direction as the damage the way every weight cue in this file does.</p>
+     */
+    public static final float MACE_CORE_SMASH_PITCH = 0.6F;
+
+    /** The pala's lantern-breaking impact, under the borrowed vanilla swing. */
+    public static final float SHOVEL_HIT_PITCH = 0.8F;
+
+    /** And the wind burst that layers onto a <em>charged</em> pala hit, lower still. */
+    public static final float SHOVEL_CHARGED_PITCH = 0.6F;
+
     /** The lunge plays far outside the range everything else does. */
     public static final float LUNGE_PITCH = 2.0F;
 
@@ -236,6 +283,14 @@ public final class ModSounds {
         HIT.put(WeaponProfile.SABRE, "cortescombat:sword_hit");
         MISS.put(WeaponProfile.SABRE, "cortescombat:sword_miss");
         CHARGED_HIT.put(WeaponProfile.SABRE, "cortescombat:sword_charge_hit");
+
+        // **The two tools borrow the sword's miss, at their own pitches.** Neither the pala nor the
+        // hoe has a recording, so before this their miss was vanilla's weak hit at 1.0 -- the same
+        // event as every other unrecorded weapon. Borrowing the sword's miss is not a third sound
+        // to ship; it is the one "the swing found nothing" cue the jar already has, and the pitch
+        // is what makes it theirs (see {@link #pitch}).
+        MISS.put(WeaponProfile.SHOVEL, "cortescombat:sword_miss");
+        MISS.put(WeaponProfile.HOE, "cortescombat:sword_miss");
     }
 
     private ModSounds() {
@@ -296,6 +351,21 @@ public final class ModSounds {
         if (resolved == WeaponProfile.MACE
                 && (kind == Kind.HIT || kind == Kind.MISS || kind == Kind.CHARGED_HIT)) {
             return MACE_PITCH;
+        }
+        // The pala's and the hoe's borrowed miss, each at its own pitch so the two tools do not
+        // sound like one weapon with two reach values. See the constants for why they move in
+        // opposite directions off 1.0.
+        if (resolved == WeaponProfile.SHOVEL && kind == Kind.MISS) {
+            return SHOVEL_MISS_PITCH;
+        }
+        if (resolved == WeaponProfile.HOE && kind == Kind.MISS) {
+            return HOE_MISS_PITCH;
+        }
+        // **The hoe's sweep, and it is the halberd's event at a lower pitch.** The two share the
+        // special (`MULTI_HIT`), so they share the event; the pitch is the only thing telling a
+        // farm tool's arc from a polearm's without shipping a second recording.
+        if (resolved == WeaponProfile.HOE && kind == Kind.SPECIAL) {
+            return HOE_SWEEP_PITCH;
         }
         // The arcabuz is the one weapon whose blast is a vanilla recording nobody else plays, so
         // it is the only one whose blast is dropped. Same reasoning as VANILLA_CHARGED_PITCH,

@@ -37,6 +37,12 @@ public final class CortesDataEvents {
                 event.getGenerator().getPackOutput(),
                 event.getLookupProvider(),
                 event.getExistingFileHelper()));
+        // **And the block tags, which are a second provider and not a second method.** A tags
+        // provider is parameterised by one registry, so the block tags cannot live in the item one.
+        event.addProvider(new CortesBlockTagProvider(
+                event.getGenerator().getPackOutput(),
+                event.getLookupProvider(),
+                event.getExistingFileHelper()));
 
         // createProvider alone, and the nesting is the whole point of this comment.
         //
@@ -67,6 +73,27 @@ public final class CortesDataEvents {
         // an advancement: a player who never sees this entry never learns the gun exists, which is
         // exactly what happened for as long as the grid was missing.
         event.createProvider(ArcabuzRecipes::new);
+        // And the copper gear: five tools and four armour pieces, the set vanilla 1.21.1 lacks.
+        //
+        // **No advancements, and that is a decision rather than an omission.** RecipeBookPopulation
+        // filters by namespace and puts every recipe of ours in the book when a player logs in, so
+        // the gear reaches a survival player without nine more advancement files -- which is the
+        // reason the nuggets and the firestone carry none either.
+        event.createProvider(CopperGearRecipes::new);
+        // And the firestone block: nine firestones up and nine back down, the first block this mod
+        // has ever added. Its own provider for the reason every non-catalogue recipe has one -- it
+        // is not a weapon and it is not an ingredient, and neither of the loops that own those can
+        // hold it without growing an if.
+        event.createProvider(FirestoneBlockRecipes::new);
+        // And the nether reactor: the first machine and the first block entity, whose grid is a
+        // one-off shape and whose recipe carries an advancement like every other discovery.
+        event.createProvider(NetherReactorRecipes::new);
+        // And the block's loot table, which is the first file this mod writes under `loot_table/`.
+        // A block with no loot table drops nothing at all, silently, so the file that says "it
+        // drops itself" is not optional.
+        event.addProvider(new FirestoneBlockLoot(event.getGenerator().getPackOutput()));
+        // The reactor's loot table, the same shape one block over.
+        event.addProvider(new NetherReactorLoot(event.getGenerator().getPackOutput()));
         // Two language files, as two providers. The English one is not optional: en_us is what
         // Minecraft runs in until a player opens the options menu, so a mod with only es_es
         // shows every item's translation key to anyone who has not done that.

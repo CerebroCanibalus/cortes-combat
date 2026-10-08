@@ -100,6 +100,18 @@ public final class MaceFall {
      */
     public static final float CAP_FALL = TAIL + (BONUS_CEILING - KNEE_BONUS) / TAIL_SLOPE;
 
+    /**
+     * What one level of Density is worth against one block of fall, on the root curve.
+     *
+     * <p><b>A first number to validate in playtest</b>, documented the way
+     * {@link SweepingEdge#DAMAGE_PER_ENEMY_PER_LEVEL} is: one point of damage per level per square
+     * root of a block. Density is a maza-only enchantment and the maza is the one weapon the
+     * project pays for height, so it is meant to be a real multiplier on the fall rather than a
+     * rounding error -- level III at nine blocks is three points, which stacks on top of the base
+     * curve instead of replacing it.</p>
+     */
+    public static final float DENSITY_PER_LEVEL = 1.0F;
+
     private MaceFall() {
     }
 
@@ -142,13 +154,72 @@ public final class MaceFall {
     }
 
     /**
+     * What the Density enchantment adds to a falling maza, on a square root instead of vanilla's
+     * straight line.
+     *
+     * <h2>Why this exists at all</h2>
+     *
+     * <p><b>Vanilla's Density is another number on a class nobody runs here.</b> It is
+     * {@code SMASH_DAMAGE_PER_FALLEN_BLOCK}, read only inside {@code MaceItem#getAttackDamageBonus}
+     * as {@code modifyFallBasedDamage(...) * fallDistance} -- and this project never calls
+     * {@code getAttackDamageBonus}, because the whole attack flow is replaced. So a Density V maza
+     * was a maza with a dead enchantment on it, the same shape as the sable's dead {@code BREAK}
+     * track.</p>
+     *
+     * <h2>And why it is a root</h2>
+     *
+     * <p><b>The design's decision: no cap, but the curve bends.</b> Vanilla's Density is linear in
+     * the fall, so level V at forty blocks is twenty bonus damage on top of an already uncapped
+     * curve -- and this weapon's fall is <em>deliberately capped</em> at {@link #BONUS_CEILING}.
+     * An enchantment that grows without limit next to a base that stops would simply take the
+     * curve over and make the cap meaningless. The square root keeps the enchantment monotonic
+     * &mdash; it always pays more the higher you were, so it never punishes a longer fall &mdash;
+     * while bending hard enough that the base curve stays the weapon and the enchantment stays an
+     * addition to it.</p>
+     *
+     * <p>Same gate as {@link #bonusFor}, on purpose: a Density maza standing on the floor is a
+     * club, exactly like a maza on the floor. Density scales the fall and does not create one.</p>
+     *
+     * @param level        the Density level on the weapon, zero when it has none
+     * @param fallDistance blocks fallen, as the game counts them
+     * @return the bonus, never negative, zero below {@link #THRESHOLD} and for a level of zero, and
+     *         with no ceiling: it keeps climbing
+     */
+    public static float densityBonus(int level, float fallDistance) {
+        if (level <= 0 || !(fallDistance > THRESHOLD)) {
+            return 0.0F;
+        }
+        return DENSITY_PER_LEVEL * level * (float) Math.sqrt(fallDistance);
+    }
+
+    /**
      * The damage one maza strike does, which is the base plus whatever the fall paid.
+     *
+     * <p><b>Without Density.</b> The enchantment is per-target and arrives at the resolver as its
+     * own flat bonus, exactly like the fall it scales &mdash; see {@link #densityBonus}. This
+     * method is the weapon, not the weapon plus a random enchantment somebody happened to have.</p>
      *
      * @param fallDistance blocks fallen
      * @return never below {@link #BASE_DAMAGE}, never above {@link #MAX_DAMAGE}
      */
     public static float damageFor(float fallDistance) {
         return BASE_DAMAGE + bonusFor(fallDistance);
+    }
+
+    /**
+     * Whether a hit at this fall counts as a smash.
+     *
+     * <p>Vanilla's {@code MaceItem.canSmashAttack}: {@code fallDistance > 1.5F && !isFallFlying()}.
+     * The gate is not a formality, because the smash's landing states -- stop the descent, arm the
+     * impulse immunity -- are vanilla's <em>only when there was a smash to land</em>: a grounded
+     * maza hit is an ordinary club hit and must arm neither. Pure, so a test can walk every
+     * combination without a level.</p>
+     *
+     * @param fallDistance blocks fallen
+     * @param fallFlying   whether the wielder is gliding, which vanilla excludes
+     */
+    public static boolean smashes(float fallDistance, boolean fallFlying) {
+        return !fallFlying && fallDistance > THRESHOLD;
     }
 
     /**

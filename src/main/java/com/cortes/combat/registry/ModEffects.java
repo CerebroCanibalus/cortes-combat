@@ -48,6 +48,49 @@ public final class ModEffects {
                     () -> new MobEffect(MobEffectCategory.NEUTRAL, 0xC8B89A) {
                     });
 
+    /**
+     * Copper armour's antiseptic, one level per piece worn.
+     *
+     * <p>Applied and refreshed by {@code CopperEffects} from the count of copper pieces, with the
+     * amplifier equal to the count minus one -- so one piece is level I and all four are level IV,
+     * which is the twenty percent the design asked for at the top end. The effect itself carries no
+     * behaviour: the <em>handler</em> reads its level when a debuff lands, because the reduction
+     * has to happen at the moment of application and the effect is just the number that says how
+     * much.</p>
+     *
+     * <p>Icon: {@code textures/mob_effect/antiseptic.png}. The asset was drawn by the user and is
+     * copied here from {@code textures/effects/} under the effect's own id -- {@code MobEffect}
+     * resolves the icon at {@code assets/<ns>/textures/mob_effect/<path>.png}, so a file in any
+     * other folder is a file the HUD never looks at. The colour is copper's own, so a missing icon
+     * would at least still read as ours.</p>
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> ANTISEPTIC =
+            EFFECTS.register("antiseptic",
+                    () -> new MobEffect(MobEffectCategory.BENEFICIAL, 0xD07A4A) {
+                    });
+
+    /**
+     * The copper weapon's purification: fast pure damage to the undead and to netherite wearers,
+     * and a thirty percent cut to the damage its victim deals.
+     *
+     * <p>A real subclass rather than an anonymous body, because unlike the other two this one does
+     * something every tick. See {@link com.cortes.combat.effect.PurificationEffect}.</p>
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> PURIFICATION =
+            EFFECTS.register("purification", com.cortes.combat.effect.PurificationEffect::new);
+
+    /**
+     * Revelacion: what the running reactor leaves on everything hostile inside its radius.
+     *
+     * <p>A real subclass, because unlike the two above it kills -- see
+     * {@link com.cortes.combat.effect.RevelationEffect}. Its icon lives at
+     * {@code textures/mob_effect/revelacion.png}, copied from {@code textures/effects/} under the
+     * effect's own id for the same reason antiseptic's does: that folder is the only one the HUD
+     * reads.</p>
+     */
+    public static final DeferredHolder<MobEffect, MobEffect> REVELATION =
+            EFFECTS.register("revelacion", com.cortes.combat.effect.RevelationEffect::new);
+
     private ModEffects() {
     }
 

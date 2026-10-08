@@ -82,7 +82,7 @@ class AreaStrikeTest {
     void theAimedOnePaysFirst() {
         String engine = read();
 
-        int aimed = engine.indexOf("apply(player, target, stats, result, chargeRatio);");
+        int aimed = engine.indexOf("apply(player, target, stats, result, chargeRatio, smash);");
         int extras = engine.indexOf("ConeTargets.nearestInCone(");
         assertTrue(aimed > 0 && extras > 0,
                 "**both halves have to be there**: one apply for the target the client named, and "

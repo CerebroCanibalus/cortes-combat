@@ -102,6 +102,61 @@ public final class CombatSounds {
     }
 
     /**
+     * The maza's core, layered under its own hammer recording on every hit.
+     *
+     * <p><b>Vanilla's {@code block.heavy_core.place}, named here and played at a caller-chosen
+     * pitch.</b> It is the sound of the heaviest block in the game being placed: a low, dense thud
+     * with no ring, which is what a mace landing on a body is missing between the hammer's own
+     * recording and the anvil. The pitch is the caller's because the smash drops it -- see
+     * {@link ModSounds#MACE_CORE_SMASH_PITCH} -- and a {@code Kind} could not carry that, the same
+     * reason {@link #playMaceSmash} is not one.</p>
+     *
+     * <p>Played at the <b>target</b>, like the smash: the impact is where the weapon landed.</p>
+     */
+    public static void playHeavyCore(ServerLevel level, Entity at, float pitch) {
+        var log = org.slf4j.LoggerFactory.getLogger("cortescombat");
+        if (REPORTED.add("block.heavy_core.place")) {
+            log.info("[sonido] '{}' pedido, pitch {}", "block.heavy_core.place", pitch);
+        }
+        level.playSound(null, at.getX(), at.getY(), at.getZ(),
+                SoundEvents.HEAVY_CORE_PLACE, SoundSource.PLAYERS, 1.0F, pitch);
+    }
+
+    /**
+     * The pala's own impact, layered under the borrowed vanilla swing.
+     *
+     * <p><b>Two recordings and they are the tool's whole voice.</b> The ordinary hit adds
+     * {@code block.lantern.break} low; a <em>charged</em> hit adds
+     * {@code entity.wind_charge.wind_burst}, lower still, on top of it. The pala has no
+     * recordings of its own -- it is a vanilla item whose silhouette we did not draw -- so this is
+     * the one place it can sound like a tool rather than like every other unrecorded weapon
+     * playing vanilla's weak hit.</p>
+     *
+     * <p>Played at the <b>target</b>: both describe the impact.</p>
+     *
+     * @param charged whether the swing was at full charge, which layers the wind burst on
+     */
+    public static void playShovelHit(ServerLevel level, Entity at, boolean charged) {
+        var log = org.slf4j.LoggerFactory.getLogger("cortescombat");
+        if (charged && REPORTED.add("entity.wind_charge.wind_burst")) {
+            log.info("[sonido] '{}' pedido, pitch {}", "entity.wind_charge.wind_burst",
+                    ModSounds.SHOVEL_CHARGED_PITCH);
+        }
+        if (REPORTED.add("block.lantern.break")) {
+            log.info("[sonido] '{}' pedido, pitch {}", "block.lantern.break",
+                    ModSounds.SHOVEL_HIT_PITCH);
+        }
+        if (charged) {
+            level.playSound(null, at.getX(), at.getY(), at.getZ(),
+                    SoundEvents.WIND_CHARGE_BURST, SoundSource.PLAYERS, 1.0F,
+                    ModSounds.SHOVEL_CHARGED_PITCH);
+        }
+        level.playSound(null, at.getX(), at.getY(), at.getZ(),
+                SoundEvents.LANTERN_BREAK, SoundSource.PLAYERS, 1.0F,
+                ModSounds.SHOVEL_HIT_PITCH);
+    }
+
+    /**
      * The warhammer streak's own voice, and it is vanilla's.
      *
      * <p><b>Not one of ours, and that is the point.</b> The escalation is a bare multiplier with no

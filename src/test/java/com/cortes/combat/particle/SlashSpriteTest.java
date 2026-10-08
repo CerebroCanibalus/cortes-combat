@@ -48,11 +48,15 @@ class SlashSpriteTest {
         assertEquals("alabarda_hit", SlashSprite.of(WeaponProfile.HALBERD));
         assertEquals("martillo_hit", SlashSprite.of(WeaponProfile.WARHAMMER));
         assertEquals("ropera_hit", SlashSprite.of(WeaponProfile.ROPERA));
+        // **The maza and the pala are new here, and they used to fall through to the sword.** The
+        // art was drawn later, as five frame strips like everything else.
+        assertEquals("maza_hit", SlashSprite.of(WeaponProfile.MACE));
+        assertEquals("shovel", SlashSprite.of(WeaponProfile.SHOVEL));
 
         for (WeaponProfile profile : new WeaponProfile[]{
                 WeaponProfile.SWORD, WeaponProfile.AXE, WeaponProfile.DAGGER,
                 WeaponProfile.SABRE, WeaponProfile.HALBERD, WeaponProfile.WARHAMMER,
-                WeaponProfile.ROPERA}) {
+                WeaponProfile.ROPERA, WeaponProfile.MACE, WeaponProfile.SHOVEL}) {
             assertTrue(SlashSprite.hasOwn(profile), profile + " claims art and has none");
         }
     }
@@ -61,11 +65,12 @@ class SlashSpriteTest {
     @DisplayName("everything else borrows the sword's slash")
     void theRestFallsBack() {
         // A decision, not a shrug. Nothing rendering reads as the game being broken; one asset
-        // reused reads as one asset reused. The bare hands, the pickaxe, the shovel, the mace and
-        // the trident are the ones that land here today.
+        // reused reads as one asset reused. The bare hands, the pickaxe and the trident are the
+        // ones that land here today -- the maza and the pala used to and now have their own art,
+        // so they moved out of this list and into `ownArtIsItsOwn`.
         for (WeaponProfile profile : new WeaponProfile[]{
                 WeaponProfile.NONE, WeaponProfile.UNARMED, WeaponProfile.PICKAXE,
-                WeaponProfile.SHOVEL, WeaponProfile.MACE, WeaponProfile.TRIDENT}) {
+                WeaponProfile.TRIDENT}) {
             assertEquals(SlashSprite.FALLBACK, SlashSprite.of(profile),
                     profile + " should be borrowing the sword's slash");
             assertFalse(SlashSprite.hasOwn(profile),

@@ -199,4 +199,26 @@ class MaceFallTest {
             }
         }
     }
+
+    /**
+     * The smash gate, which is vanilla's and not "is this the maza".
+     *
+     * <p>Same threshold as the bonus, and the gliding exclusion is the half a naive
+     * {@code fallDistance > 1.5} drops: an elytra fall is a fall in the variable and not one the
+     * weapon may smash on, and vanilla says so in {@code canSmashAttack}. It is the gate that
+     * decides whether the landing states are armed at all, so a wrong answer arms the fall immunity
+     * for a hit that was not a smash.</p>
+     */
+    @Test
+    @DisplayName("a smash is a fall, and never a glide")
+    void smashesOnlyWhenFalling() {
+        assertFalse(MaceFall.smashes(MaceFall.THRESHOLD, false),
+                "the threshold itself is not a smash, exactly as it is not a bonus");
+        assertTrue(MaceFall.smashes(MaceFall.THRESHOLD + 0.01F, false),
+                "just past it is");
+        assertFalse(MaceFall.smashes(0.0F, false), "and no fall never is");
+        assertFalse(MaceFall.smashes(40.0F, true),
+                "**a gliding player is never a smash**, which is vanilla's `!isFallFlying` -- the "
+                        + "same exclusion `MaceAir.airborne` makes for the reach");
+    }
 }

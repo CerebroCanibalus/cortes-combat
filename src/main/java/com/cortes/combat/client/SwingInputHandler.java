@@ -72,6 +72,30 @@ public final class SwingInputHandler {
 
     private static boolean holding;
 
+    /**
+     * Whether the open swing already resolved itself on the press.
+     *
+     * <p><b>Set for a weapon that cannot charge.</b> On those the press <em>is</em> the attack --
+     * there is no hold to wait for -- so the swing fires immediately and the release must only
+     * close it. Without this flag the release would pay a second hit for the same button, which is
+     * the double-hit this class already guards against from the automatic strike.</p>
+     *
+     * <p>It is cleared wherever the swing is closed, so a stale {@code true} cannot outlive the
+     * press that set it -- the family of bug this class has paid for three times.</p>
+     */
+    private static boolean firedOnPress;
+
+    /**
+     * A fire-on-press strike that is owed an announcement to the viewmodel.
+     *
+     * <p><b>One tick late on purpose.</b> {@code ItemViewModel.tick} clears {@code pendingStrike}
+     * on the press edge, so a strike announced from {@code press} -- which runs before the tick in
+     * the same frame -- would be erased before it was ever drawn. Setting this flag and announcing
+     * from the tail of the tick, after that edge, is what makes the first hit of a held button
+     * animate as well as land.</p>
+     */
+    private static boolean pressStrikePending;
+
     /** The item the open swing was started with, so a swap cannot carry the charge across. */
     private static Item openItem;
 
@@ -137,6 +161,7 @@ public final class SwingInputHandler {
      */
     private static void press(Minecraft mc) {
         claim = Claim.NOT_OURS;
+        firedOnPress = false;
         LocalPlayer player = mc.player;
         if (player == null || mc.level == null || player.isSpectator() || player.isUsingItem()) {
             debug("press RECHAZADO: sin jugador, spectator o usando item");
@@ -258,7 +283,65 @@ public final class SwingInputHandler {
         claim = Claim.OURS;
         debug("press NUESTRO: objetivo=" + target.map(net.minecraft.world.entity.Entity::getId)
                 .orElse(SwingPayload.NO_TARGET));
+        // The open, sent first so the server has a swing to resolve against. A weapon that fires
+        // on the press sends its hit immediately after this, in the same tick and on the same
+        // ordered connection, and the server opens on the first and resolves on the second.
         send(new SwingPayload(SwingPayload.NO_TARGET, true));
+
+        // **A weapon that cannot charge fires here, on the press.**
+        //
+        // <p>The press/release split exists to tell a tap from a hold, and that is a question only
+        // a weapon that charges has. On one that does not, waiting for the release is pure
+        // latency: the player presses, the swing opens, and nothing lands until they let go --
+        // which is the report "I hold it down and nothing happens until I let go". The ropera and
+        // the dagger are the two that read as broken because they are the two a player reaches for
+        // first.</p>
+        //
+        // <p>{@code firesOnPress} is the capability question and not a list of names, so the maza
+        // and the hoe and the arcabuz get the same behaviour without a line here. The mace simply
+        // does not repeat (its damage is the fall, see WeaponTables), which is a separate rule.</p>
+        //
+        // <p>{@code claim} is already OURS, and it must stay OURS: a return that handed the click
+        // to vanilla is exactly the bug that once made the ropera and dagger run on vanilla's whole
+        // attack path.</p>
+        if (com.cortes.combat.item.WeaponTables.firesOnPress(held)) {
+            firedOnPress = true;
+            // **Network now, viewmodel from the tick.** The hit has to land on the press, so the
+            // resolve packet goes out here; the strike <em>animation</em> cannot be announced here,
+            // because the next {@code ItemViewModel.tick} sees the press edge and clears
+            // {@code pendingStrike} -- the same edge that exists so a fast second click abandons
+            // the first one. Announcing it from the tail of the tick, after that edge has run, is
+            // what lets the first hit of a held button also animate.
+            readyAtTick = tick + WeaponStats.attackInterval(player);
+            send(new SwingPayload(resolveTargetId(player), false));
+            pressStrikePending = true;
+        }
+    }
+
+    /**
+     * Resolve a swing locally and tell the server, without touching {@code holding}.
+     *
+     * <p><b>The one copy of "this swing just happened" for the held-button repeat.</b> The repeat
+     * goes through here so the cooldown latch, the packet, the viewmodel strike and the vanilla
+     * arm cannot drift. It is the client's prediction; the server still resolves the hit from the
+     * packet.</p>
+     *
+     * <p><b>The press does not use this.</b> It sends the same packet but announces the strike
+     * from the tail of the tick instead, because a strike announced before {@code ItemViewModel.tick}
+     * is erased by the tick's press edge. See the fires-on-press branch in {@code press}.</p>
+     *
+     * <p>It does <em>not</em> open or close the swing, and neither does it clear {@code holding} --
+     * the ropera and the dagger draw their wind-up off {@code holding}, and closing it to send a
+     * strike is what once made them never render.</p>
+     */
+    private static void strikeNow(LocalPlayer player, float charge) {
+        int interval = WeaponStats.attackInterval(player);
+        readyAtTick = tick + interval;
+        send(new SwingPayload(resolveTargetId(player), false));
+        ItemViewModel.onStrike(charge, interval);
+        if (!ItemViewModel.ownsSwing(player.getMainHandItem())) {
+            player.swing(InteractionHand.MAIN_HAND);
+        }
     }
 
     /**
@@ -303,12 +386,28 @@ public final class SwingInputHandler {
             debug("release ABANDONADO: pantalla abierta");
             predictedTicks = 0;
             holding = false;
+            firedOnPress = false;
             ItemViewModel.onCancel();
             return;
         }
         if (!holding) {
             // Nothing was open, so this release is not ours. Vanilla keeps its own handling for
             // bows, for mining, and for a press that died on the cooldown.
+            return;
+        }
+        // **A weapon that cannot charge already fired, on the press.** The release has nothing left
+        // to resolve, so it only closes the swing. Without this the same button would pay twice:
+        // once on the press and once, a round trip later, when the button came up -- the double hit
+        // this class already guards against from the automatic strike, wearing the other edge.
+        //
+        // It comes before the cooldown guard on purpose: the cooldown is not what is being asked
+        // here, and a fire-on-press weapon whose interval had already elapsed would otherwise slip
+        // past the guard and pay again.
+        if (firedOnPress) {
+            debug("release: el press ya pago el golpe, cierro sin cobrar");
+            predictedTicks = 0;
+            holding = false;
+            firedOnPress = false;
             return;
         }
         // **And the cooldown, which this did not used to ask.**
@@ -607,6 +706,7 @@ public final class SwingInputHandler {
                 holding = false;
                 ItemViewModel.onCancel();
             }
+            pressStrikePending = false;
             return;
         }
         if (holding && player.getMainHandItem().getItem() != openItem) {
@@ -662,6 +762,20 @@ public final class SwingInputHandler {
         // so it gets the thresholded one, and a tap moves nothing at all.
         ItemViewModel.tick(holding, predictedRatio(player), chargedRatio(player),
                 ClientCombatState.guardHeld());
+
+        // **The fire-on-press strike, announced after the tick that owns the press edge.** See
+        // pressStrikePending: announcing it earlier, while the button was still down, is exactly
+        // what the press edge erases. The interval is read fresh so the swing's length is the
+        // weapon's own, and the vanilla arm is played only for a profile that does not own the
+        // swing -- the same rule the repeat uses.
+        if (pressStrikePending) {
+            pressStrikePending = false;
+            int interval = WeaponStats.attackInterval(player);
+            ItemViewModel.onStrike(0.0F, interval);
+            if (!ItemViewModel.ownsSwing(player.getMainHandItem())) {
+                player.swing(InteractionHand.MAIN_HAND);
+            }
+        }
     }
 
     /**
@@ -682,40 +796,35 @@ public final class SwingInputHandler {
      * from paying a second one by its own cooldown guard.</p>
      */
     private static void autoStrikeWhileHeld(Minecraft mc, LocalPlayer player) {
+        // **`canHoldDown`, not `autoRepeats(.., cocks)`.** The cock gate was here for one round and
+        // it took the repeat away from every weapon whose profile reads the wind-up -- which is the
+        // ropera and the dagger, the two that read it, and it is precisely those two the playtest
+        // reports as "holding does nothing". The rule the rest of the project already asserts is
+        // "no charge means it repeats, the maza aside" (`WeaponTablesTest`), and this is the call
+        // site that was not asking it.
+        com.cortes.combat.core.weapon.WeaponProfile held =
+                com.cortes.combat.attack.WeaponStats.of(player.getMainHandItem()).profile();
         if (!buttonIsPhysicallyDown()
                 || mc.screen != null
                 || player.isUsingItem()
-                || !com.cortes.combat.item.WeaponTables.autoRepeats(
-                        com.cortes.combat.attack.WeaponStats.of(player.getMainHandItem()).profile(),
-                        // **The wind-up is the second half of the question, asked here because
-                        // it is the only place that knows about it.** A weapon that cocks a thrust
-                        // does not get a loop: the loop restarts the cock every strike, so the
-                        // ropera, the dagger and the arcabuz played one motion over and over
-                        // instead of once. A preparation that restarts is not a preparation.
-                        ItemViewModel.ownsSwing(player.getMainHandItem())
-                                && com.cortes.combat.viewmodel.ViewModelDefaults
-                                        .of(com.cortes.combat.attack.WeaponStats
-                                                .of(player.getMainHandItem()).profile())
-                                        .reads(com.cortes.combat.viewmodel.Channel.WINDUP))
+                || !com.cortes.combat.item.WeaponTables.canHoldDown(held)
                 || !ready()) {
             return;
         }
 
-        // A tap on a weapon with no charge profile is a tap at zero, and the swing animation gets
-        // the same zero it gets from a click on a fist.
-        float charge = 0.0F;
-        int interval = WeaponStats.attackInterval(player);
-        readyAtTick = tick + interval;
-
-        send(new SwingPayload(resolveTargetId(player), false));
-        ItemViewModel.onStrike(charge, interval);
-        if (!ItemViewModel.ownsSwing(player.getMainHandItem())) {
-            player.swing(InteractionHand.MAIN_HAND);
-        }
+        // **Reopen the server's swing, then resolve it, every repeat.**
+        //
+        // The first repeat after a press finds the swing open (the press sent it) and closes it
+        // when it resolves -- `AttackCooldown.consume` clears `holding`. So a second repeat would
+        // arrive with nothing open, `CombatEngine.resolveSwing` would return `NO_SWING`, and the
+        // held button would land exactly one hit for the whole hold while the client predicted
+        // many. The open packet is what makes the loop real rather than drawn.
+        send(new SwingPayload(SwingPayload.NO_TARGET, true));
+        strikeNow(player, 0.0F);
         // Restarted, not cleared. It is what makes the next wind-up begin at zero instead of
         // arriving at the strike already halfway through a swing the player has held for a second.
         predictedTicks = 0;
-        debug("autohit: golpe automatico interval=" + interval);
+        debug("autohit: golpe automatico interval=" + WeaponStats.attackInterval(player));
     }
 
     /**
@@ -790,6 +899,8 @@ public final class SwingInputHandler {
         holding = false;
         predictedTicks = 0;
         openItem = null;
+        firedOnPress = false;
+        pressStrikePending = false;
         claim = Claim.NOT_OURS;
         ItemViewModel.onCancel();
     }
@@ -810,6 +921,7 @@ public final class SwingInputHandler {
         holding = false;
         predictedTicks = 0;
         openItem = null;
+        firedOnPress = false;
         claim = Claim.NOT_OURS;
         ItemViewModel.onCancel();
     }

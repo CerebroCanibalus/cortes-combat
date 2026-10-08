@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * That a fall is worth something to one weapon and nothing to the rest.
@@ -25,6 +26,12 @@ class MaceFallDamageTest {
 
     private static float damageOf(WeaponProfile profile, float fall, float baseDamage) {
         return DamageResolver.resolve(baseDamage, NO_CHARGE, profile, 0.0F, null, fall).damage();
+    }
+
+    /** The same door, with a Density level read through it. */
+    private static float damageOf(WeaponProfile profile, float fall, float baseDamage, int density) {
+        return DamageResolver.resolve(baseDamage, NO_CHARGE, profile, 0.0F, null, fall, density, 0.0F)
+                .damage();
     }
 
     /**
@@ -100,5 +107,40 @@ class MaceFallDamageTest {
         assertEquals(MaceFall.MAX_DAMAGE, withRatio, 0.0001F,
                 "**a full charge on the maza is the same as a tap**, and it is still fifty. "
                         + "The weapon has one commitment and it is the height");
+    }
+
+    /**
+     * Density reaches the damage, straight through the resolver, and only for the maza.
+     *
+     * <p><b>The seam this is here to keep honest.</b> A Density level read in {@code CombatEngine}
+     * and forgotten by the resolver is exactly the shape this project has paid for more than once:
+     * a value computed, handed over, and never summed. Verified by sabotage &mdash; dropping the
+     * {@code densityBonus} line from {@code DamageResolver} leaves every other test green.</p>
+     */
+    @Test
+    @DisplayName("Density is summed flat for the maza alone")
+    void densityOnlyPaysTheMace() {
+        float fall = 9.0F;
+        int level = 3;
+        float expected = MaceFall.BASE_DAMAGE + MaceFall.bonusFor(fall)
+                + MaceFall.densityBonus(level, fall);
+
+        assertEquals(expected, damageOf(WeaponProfile.MACE, fall, MaceFall.BASE_DAMAGE, level), 0.0001F,
+                "**the maza's hit is the base, the fall and Density, all summed.** Not the fall "
+                        + "times Density: the two are one sentence and a product would read as a "
+                        + "hit nobody could predict");
+        assertTrue(MaceFall.densityBonus(level, fall) > 0.0F,
+                "and there was something to add, or this asserts nothing");
+
+        for (WeaponProfile profile : WeaponProfile.values()) {
+            if (profile == WeaponProfile.MACE) {
+                continue;
+            }
+            assertEquals(damageOf(profile, fall, 7.0F, 0),
+                    damageOf(profile, fall, 7.0F, level), 0.0001F,
+                    profile + " gains damage from Density. **Only the maza reads the fall** -- a "
+                            + "sword with Density on it does nothing, because the enchantment is "
+                            + "the maza's");
+        }
     }
 }

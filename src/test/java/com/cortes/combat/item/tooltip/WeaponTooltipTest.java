@@ -6,6 +6,7 @@ import com.cortes.combat.core.weapon.ConeSize;
 import com.cortes.combat.core.weapon.ReachProfile;
 import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.core.weapon.WeaponProfile;
+import com.cortes.combat.item.WeaponKinds;
 import com.cortes.combat.item.WeaponTables;
 import com.cortes.combat.particle.SlashTiming;
 import com.cortes.combat.state.StreakState;
@@ -39,7 +40,7 @@ class WeaponTooltipTest {
                 WeaponTables.reach(profile), WeaponTables.charge(profile),
                 WeaponTables.special(profile), WeaponTables.knockback(profile),
                 WeaponTables.maxTargets(profile), maxDamage, maxDamage,
-                !WeaponTables.shotReach(profile).isNone());
+                !WeaponTables.shotReach(profile).isNone(), WeaponKinds.fights(profile));
     }
 
     /**
@@ -58,7 +59,7 @@ class WeaponTooltipTest {
                         WeaponTables.reach(WeaponProfile.NONE),
                         WeaponTables.charge(WeaponProfile.NONE),
                         SpecialType.NONE, WeaponTables.knockback(WeaponProfile.NONE),
-                        1, 0, 0, false),
+                        1, 0, 0, false, false),
                 "NONE is not a weapon. Printing numbers on it is the tooltip form of the bug that "
                         + "made a dirt block inherit a sword's charge");
 
@@ -227,7 +228,10 @@ class WeaponTooltipTest {
 
         // And every profile in the table resolves to a key that is one of the six.
         for (WeaponProfile profile : WeaponProfile.values()) {
-            if (profile == WeaponProfile.NONE) {
+            // **And not a tool that does not fight.** The pickaxe has a reach row but no size
+            // line any more: a non-fighting tool stops at its category, so there is no band to
+            // resolve. Skipping it here is the test following the same rule the code does.
+            if (profile == WeaponProfile.NONE || !WeaponKinds.fights(profile)) {
                 continue;
             }
             ConeSize band = ConeSize.forAngle(
@@ -236,6 +240,41 @@ class WeaponTooltipTest {
                             .equals("tooltip.cortescombat.size." + band.id()),
                     profile + " produced no size line for its band " + band.id());
         }
+    }
+
+    /**
+     * A tool that does not fight gets its category and its durability, and nothing else.
+     *
+     * <h2>Why this is a separate shape and not "NONE gets nothing"</h2>
+     *
+     * <p>The pickaxe is the case: it has a reach row, a charge row and a knockback row like every
+     * other profile, and none of them is reachable from a click since it lost combat. Printing them
+     * would be a range a player reads off a tool that cannot use it -- the exact "a number the
+     * player reads and the game does not produce" the whole tooltip was rewritten to stop. What is
+     * left is the two facts that are true of it: what it is, and how much of it is left.</p>
+     *
+     * <p><b>And a tool that DOES fight is untouched.</b> The pala and the hoe share the tool
+     * category and still get the full weapon block, because they do swing -- the split is
+     * {@code WeaponKinds.fights}, not {@code WeaponCategory.isTool}.</p>
+     */
+    @Test
+    @DisplayName("a tool that does not fight gets its category and durability and no weapon lines")
+    void aNonFightingToolHasOnlyCategoryAndDurability() {
+        assertEquals(List.of(
+                        "tooltip.cortescombat.category.tool",
+                        "tooltip.cortescombat.durability"),
+                linesFor(WeaponProfile.PICKAXE, 6.0F, 20, 250).stream()
+                        .map(TooltipLine::key).toList(),
+                "the pickaxe has a reach and a cone in the table, and neither is reachable from a "
+                        + "click, so neither may be printed. What is true of it is 'Herramienta' "
+                        + "and its durability");
+
+        // The same category, a fighting tool, and the full block.
+        assertTrue(linesFor(WeaponProfile.SHOVEL, 6.0F, 20, 250).size() > 2,
+                "the pala is a tool too, but it fights -- so it keeps every weapon line");
+        assertEquals("tooltip.cortescombat.category.tool",
+                linesFor(WeaponProfile.SHOVEL, 6.0F, 20, 250).get(0).key(),
+                "and it still reads as a tool, because that is what it is");
     }
 
     /** Durability is printed when there is some and omitted when there is not. */
@@ -344,7 +383,7 @@ class WeaponTooltipTest {
                 WeaponTooltip.linesFor(WeaponProfile.SWORD, 6.0F, 10, null,
                         WeaponTables.charge(WeaponProfile.SWORD),
                         WeaponTables.special(WeaponProfile.SWORD),
-                        WeaponTables.knockback(WeaponProfile.SWORD), 1, 250, 250, false),
+                        WeaponTables.knockback(WeaponProfile.SWORD), 1, 250, 250, false, true),
                 "the reach comes off a component any mod can write; a null one must not take the "
                         + "render thread down");
     }
