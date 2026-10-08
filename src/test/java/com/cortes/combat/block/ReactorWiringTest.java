@@ -368,4 +368,53 @@ class ReactorWiringTest {
         assertTrue(state.contains("cortescombat:block/nether_reactor_star_e"),
                 "nor the star's bloom: " + state);
     }
+
+    /**
+     * **The published radius only grows, and it is the whole fix for the dip.**
+     *
+     * <p>The regression was "the signal dips when the overload ends, and throwing the lever fixes
+     * it": the star publishes a flat hundred and the firestone at forty publishes sixty, and the
+     * radius then fell back to the charge's own curve. Every wire past the smaller number lost its
+     * membership, recomputed with {@code -1}, and {@code max(i, j)} never gives back a point that
+     * was lost -- the line stayed dark until a lever swept the area again.</p>
+     *
+     * <p>None of that can be asserted by running the game cheaply, and all of it can be asserted
+     * by reading the four lines that have to be there.</p>
+     */
+    @Test
+    void thePublishedRadiusOnlyGrows() {
+        String be = read(BLOCK_ENTITY);
+
+        assertTrue(be.contains("if (newRadius > publishedRadius)"),
+                "**el radio publicado tiene que subir, nunca bajar** -- sin este `if`, terminar una "
+                        + "sobrecarga encoge el radio al de la carga real y los cables de mas "
+                        + "pierden membresia para siempre (max(i, j) no devuelve el punto perdido): "
+                        + be);
+
+        assertTrue(be.contains("int published = lit ? publishedRadius : 0"),
+                "**apagado publica cero** -- el high-water es de los cables, no de la palanca. Sin "
+                        + "esta rama, tirar de la palanca dejaria el reactor registrado con el radio "
+                        + "historico y la red seguiria encendida: " + be);
+
+        assertTrue(be.contains("tag.putInt(\"radius\", publishedRadius)"),
+                "**y se guarda**, porque un radio que solo crece es un hecho sobre los cables del "
+                        + "mundo: sin persistirlo, recargar el mundo lo devuelve al de la carga y el "
+                        + "mismo sintoma vuelve despues de cualquier reinicio: " + be);
+
+        assertTrue(be.contains("publishedRadius = tag.getInt(\"radius\")"),
+                "y se lee, que es la otra mitad de guardarlo: " + be);
+    }
+
+    /**
+     * **El nombre viejo decia "el ultimo" y la regla es "el mas alto".** Un campo que se llama
+     * {@code lastRadius} y sube es un campo que miente sobre si mismo en cada lectura, y el
+     * siguiente lector va a confiar en el nombre. Muerto el nombre, este test es el que lo mata.
+     */
+    @Test
+    void theRadiusFieldWasRenamed() {
+        String be = read(BLOCK_ENTITY);
+        assertFalse(be.contains("lastRadius"),
+                "sigue el nombre viejo: `lastRadius` describe un campo que solo sube, y eso es una "
+                        + "mentira en cada lectura. La marca de agua se llama publishedRadius: " + be);
+    }
 }

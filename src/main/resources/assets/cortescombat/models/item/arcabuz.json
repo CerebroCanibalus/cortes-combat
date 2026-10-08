@@ -686,13 +686,7 @@
                                             "cortescombat:fuse":  0.75
                                         },
                           "model":  "cortescombat:item/arcabuz_fuse_4"
-                      },
-                      {
-                          "predicate":  {
-                                            "cortescombat:gui":  1
-                                        },
-                          "model":  "cortescombat:item/arcabuz_icon"
                       }
-                  ],
+    ],
     "gui_light":  "front"
 }

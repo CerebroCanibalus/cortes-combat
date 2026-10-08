@@ -2,6 +2,7 @@ package com.cortes.combat.client;
 
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.config.ClientConfig;
+import com.cortes.combat.client.ArcabuzModelProperties;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
@@ -152,6 +153,21 @@ public class CortesCombatClient {
      * the model bakes without complaint -- a predicate nobody registered is indistinguishable from
      * a predicate that is simply never satisfied.</p>
      */
+    /**
+     * The flat sprite's model, loaded as a top-level model so the renderer can ask for it by name.
+     *
+     * <p><b>Without this the mixin would be handed the missing model and the slot would draw a
+     * cube of nothing.</b> A model only reaches {@code ModelManager} if something lists it as a
+     * load: an item's inventory model, or a model a blockstate points at. The icon was neither
+     * while it was only an override target -- override targets are baked into the parent model, not
+     * published -- so asking for it by name had nothing to ask.</p>
+     */
+    @net.neoforged.bus.api.SubscribeEvent
+    public static void onRegisterAdditionalModels(
+            net.neoforged.neoforge.client.event.ModelEvent.RegisterAdditional event) {
+        event.register(ArcabuzModelProperties.ICON_MODEL);
+    }
+
     @net.neoforged.bus.api.SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         // **The arcabuz's fuse frame, first, and on this event rather than in the constructor.**

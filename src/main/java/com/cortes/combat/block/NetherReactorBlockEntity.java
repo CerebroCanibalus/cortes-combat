@@ -181,8 +181,23 @@ public class NetherReactorBlockEntity extends BlockEntity {
     /** Ticks the reactor has been active since the last firestone was spent. Saved. */
     private int hourTicks;
 
-    /** The radius the registry currently holds, so a deactivation can sweep the area it just lost. */
-    private int lastRadius;
+    /**
+     * The radius this reactor currently publishes to the registry. <b>Saved, and it only ever
+     * grows.</b>
+     *
+     * <p><b>Why it only grows: a wire the reactor once fed is still a wire the reactor feeds.</b>
+     * The regression was "the signal dips when the overload ends, and toggling the switch fixes
+     * it": the star publishes a flat hundred and the firestone at forty publishes sixty, and the
+     * moment the fuse is cut the radius falls back to the charge's own curve. Every wire beyond
+     * the smaller number loses its membership, recomputes with {@code -1}, and since
+     * {@code max(i, j)} never hands back a point that was lost, it stays dark until something
+     * sweeps the area again. The lever is what such a player found by accident.</p>
+     *
+     * <p>The lever itself does not go through here: {@code lit} false publishes zero, which is a
+     * player's decision and not a shrink. Switching back on restores the mark, so a line that was
+     * lit before the lever is lit again after it, at whatever radius the reactor once reached.</p>
+     */
+    private int publishedRadius;
 
     /**
      * Which overload is running, if any. Saved, and synced to the client so the camera knows to
@@ -403,15 +418,28 @@ public class NetherReactorBlockEntity extends BlockEntity {
         // The emission may have moved with the charge, so the light is re-evaluated at this cell.
         server.getLightEngine().checkBlock(worldPosition);
 
+        // **The radius only grows, and the reason is one sentence in the regression:** the star
+        // publishes a flat hundred and the firestone at forty publishes sixty, so when the fuse is
+        // cut the published radius fell back to the charge's curve, every wire past the smaller
+        // number lost its membership, recomputed with `-1`, and `max(i, j)` never gives back a
+        // point that was lost -- the line stayed dark until a lever was thrown, which swept the
+        // area again. A wire this reactor once fed is a wire this reactor feeds.
+        //
+        // The lever is not a case of this: `lit` false publishes zero, which is a decision rather
+        // than a shrink, and switching back on restores the mark in full.
         int newRadius = ReactorOverload.energyRadius(overload, lit, charge);
-        int sweepRadius = Math.max(lastRadius, newRadius);
-        if (newRadius > 0) {
-            ActiveReactors.add(server, worldPosition, newRadius);
+        if (newRadius > publishedRadius) {
+            publishedRadius = newRadius;
+        }
+        int published = lit ? publishedRadius : 0;
+        if (published > 0) {
+            ActiveReactors.add(server, worldPosition, published);
         } else {
             ActiveReactors.remove(server, worldPosition);
         }
-        lastRadius = newRadius;
-        ReactorScan.request(server, worldPosition, sweepRadius);
+        // **And the sweep with the same number the registry was given.** A barrido bounded to the
+        // charge would stop short of the wires the published radius still owns.
+        ReactorScan.request(server, worldPosition, published);
         // **And the wired region with it.** The network is a pure function of the blocks around the
         // reactors and of which of them are lit, so any state change is a reason to recompute it --
         // it is the moment a line joins or leaves the reactor's power.
@@ -618,9 +646,9 @@ public class NetherReactorBlockEntity extends BlockEntity {
             return;
         }
         // **Revelacion: the field does not only carry power, it burns everything hostile in it.**
-        // The same radius the wire is answering for -- `lastRadius` is what was published to
+        // The same radius the wire is answering for -- `publishedRadius` is what went to
         // ActiveReactors -- so the mark and the power always cover the same ground.
-        applyRevelation(server, pos, lastRadius);
+        applyRevelation(server, pos, publishedRadius);
         if (overload == ReactorOverload.Kind.NONE) {
             loopTicks++;
             if (loopTicks >= ReactorOverload.LOOP_INTERVAL) {
@@ -871,7 +899,7 @@ public class NetherReactorBlockEntity extends BlockEntity {
      */
     public void onBlockRemoved(ServerLevel server) {
         ActiveReactors.remove(server, worldPosition);
-        ReactorScan.request(server, worldPosition, lastRadius);
+        ReactorScan.request(server, worldPosition, publishedRadius);
         // **This, and not BreakEvent, is the reactor's break rebuild.** NeoForge fires the break
         // event (fireBlockBreak) before removeBlock, so a rebuild there sees this reactor still
         // standing and re-adds every wire as a member; here the block is already gone, the walk
@@ -928,6 +956,11 @@ public class NetherReactorBlockEntity extends BlockEntity {
         // and it rides in getUpdateTag, which is what tells the client's camera to shake.
         tag.putString("overload", overload.name());
         tag.putInt("fuse", fuse);
+        // **The published radius is saved, and it has to be.** A radius that only grows is a fact
+        // about the wires in the world, not about the moment: without this, a reload starts the
+        // reactor at the charge's curve, every wire beyond it loses its membership, and the
+        // regression "the signal dipped and the lever fixed it" comes back after any restart.
+        tag.putInt("radius", publishedRadius);
     }
 
     @Override
@@ -937,6 +970,7 @@ public class NetherReactorBlockEntity extends BlockEntity {
         hourTicks = tag.getInt("hour_ticks");
         overload = readKind(tag.getString("overload"));
         fuse = tag.getInt("fuse");
+        publishedRadius = tag.getInt("radius");
         // The client may load this from the update packet rather than from disk, and either way it
         // is the one moment the overload arrives; see refreshClientRegistry.
         refreshClientRegistry();

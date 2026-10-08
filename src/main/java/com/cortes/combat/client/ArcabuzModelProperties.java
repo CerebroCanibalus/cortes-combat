@@ -84,28 +84,31 @@ public final class ArcabuzModelProperties {
             CortesCombat.MODID, "loaded");
 
     /**
-     * The item is being drawn in a GUI, which is what puts the flat icon on the inventory slot.
+     * **No GUI predicate, on purpose.**
      *
-     * <p><b>An item model cannot branch on the display context in 1.21.1</b>, so the flat icon cannot
-     * be a {@code display} entry: the {@code display} block moves and scales the <em>same</em>
-     * geometry. The three ways to show a different model in a GUI are a predicate that knows where it
-     * is being drawn, a custom {@code BlockEntityWithoutLevelRenderer} (which would mean drawing the
-     * gun by hand in every context), or one of NeoForge's composite model loaders, which resolve the
-     * model before the context is known and would therefore lose the loaded and fuse overrides.</p>
-     *
-     * <p>So this is the predicate, and the question it answers is the one the renderer actually asks:
-     * <b>is a screen open?</b> {@code GuiGraphics#renderItem} calls the model resolver with a
-     * non-null entity and a non-null level, exactly like the hand renderer does, so the entity is not
-     * the tell; the screen is. In the world there is no screen and the gun is drawn in three
-     * dimensions; in the inventory, a chest or the creative menu there is one and the slot gets the
-     * sprite. The hotbar is drawn with no screen, so it keeps the gun -- which is right, because it
-     * sits beside the actual hand.</p>
-     */
-    public static final ResourceLocation GUI = ResourceLocation.fromNamespaceAndPath(
-            CortesCombat.MODID, "gui");
+     * <p>There used to be one, and it was the wrong instrument for the question: a predicate answers
+     * "what does this stack look like", and the question the sprite-versus-gun choice asks is "where
+     * is it being drawn". Both a slot and the gun in the player's hand are drawn with a screen open,
+     * so the predicate could not tell them apart and the gun turned into a flat sprite every time the
+     * inventory was opened. The choice now lives in {@code ArcabuzGuiIconMixin}, at the point where
+     * the display context is actually known.</p>
+    
 
     private ArcabuzModelProperties() {
     }
+
+    /**
+     * The flat sprite's model, at the path the item model has always had.
+     *
+     * <p>{@code inventory}, and not a bare {@code ResourceLocation}: that is the variant
+     * {@code ModelManager} files its item models under. <b>And it has to be registered as a
+     * load</b> -- {@link CortesCombatClient#onRegisterAdditionalModels} -- because an override
+     * target is baked into the parent model and never published, so asking for it by name would
+     * otherwise find the missing model.</p>
+     */
+    public static final net.minecraft.client.resources.model.ModelResourceLocation ICON_MODEL =
+            net.minecraft.client.resources.model.ModelResourceLocation.inventory(
+                    ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "item/arcabuz_icon"));
 
     /**
      * Registers both predicates. Client side, once, at startup.
@@ -131,12 +134,10 @@ public final class ArcabuzModelProperties {
         // weapon spring back mid-burn.
         ItemProperties.register(com.cortes.combat.registry.ModItems.ARCABUZ.get(), LOADED,
                 (stack, level, entity, seed) -> ArcabuzFuseState.chamberVisible() ? 1.0F : 0.0F);
-        // **The third predicate, and the last one tried**, so it cannot shadow the loaded or the
-        // burning pose in the world: `ItemOverrides` bakes the list back to front, which makes the
-        // LAST entry in `arcabuz.json` the first one tested. In a GUI this is one and the sprite wins
-        // outright; in the world it is zero and the gun's own overrides resolve as they always did.
-        ItemProperties.register(com.cortes.combat.registry.ModItems.ARCABUZ.get(), GUI,
-                (stack, level, entity, seed) ->
-                        net.minecraft.client.Minecraft.getInstance().screen != null ? 1.0F : 0.0F);
+        // **The third predicate is gone, and so is the `[[overrides]]` entry that used it.**
+        // The flat sprite is chosen by `ArcabuzGuiIconMixin`, which reads the display context: the
+        // hand is drawn with a screen open too, and that was the whole bug -- a predicate that asks
+        // "is a screen open?" gets the same answer for a slot and for the gun in the player's hand.
+        // What is left is what a predicate CAN answer, which is what the stack has been through.
     }
 }

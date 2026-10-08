@@ -11,7 +11,9 @@
   "client": [
     "MinecraftAttackMixin",
     "ItemInHandRendererMixin",
-    "PlayerModelMixin"
+    "PlayerModelMixin",
+    "SpecialRightClickMixin",
+    "ArcabuzGuiIconMixin"
   ],
   "injectors": {
     "defaultRequire": 1

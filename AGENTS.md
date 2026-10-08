@@ -818,6 +818,26 @@ complicar el combate.
   una banda de `ConeSize` sin su línea en los dos idiomas **falla el build**, en vez de imprimir el
   identificador en pantalla.
 
+### La ronda del radio, el sprite y el click derecho (2026-10-08)
+
+1. **Un radio que sólo crece no es un permiso, es el modelo mental del jugador.** La red se encogía
+   cuando terminaba una sobrecarga porque el radio volvía al de la carga real: los cables de más
+   perdían membresía y `max(i, j)` **nunca devuelve un punto perdido**. El fix es un *high-water*
+   persistido (`publishedRadius`, guardado en NBT) con UNA excepción: `lit` false publica cero,
+   porque apagar con la palanca es una decisión, no un encogimiento. **El nombre viejo
+   (`lastRadius`) describía "el último" un campo que sube** — un test lo mata.
+2. **Un predicate no puede contestar dónde se dibuja.** El sprite 2D del arcabuz colgaba de
+   `Minecraft.screen != null`, que es verdad **también para la mano**: abrir el inventario volvía
+   plano el arma en primera persona. La pregunta sólo tiene respuesta en `ItemRenderer#render`, que
+   recibe el `ItemDisplayContext` — el mismo sitio donde vanilla resuelve lo del tridente. El
+   override `gui` y su predicate se borraron; el icono se carga como modelo adicional
+   (`ModelEvent.RegisterAdditional`), porque un override target no se publica por nombre.
+3. **No se le puede preguntar a un bloque si es interactivo sin ejecutar la interacción.** La puerta
+   del click derecho adivinaba "todo bloque consume" y un arcabuz apuntado a una pared de piedra no
+   hacía nada. Ahora `SpecialRightClickMixin` lee el resultado real de `useItemOn` / `interact` y
+   sólo entonces dispara: **el motor decide, la especial acompaña**. El aire sigue yendo por el
+   press, y los dos caminos son disjuntos — que es lo que evita que un click sean dos especiales.
+
 ---
 
 # PARTE 3 — Animación por formato de pose + multijugador
@@ -1215,6 +1235,6 @@ Saboteados a propósito, uno por uno. **6 sabotajes → 6 muertes por su razón:
 | 10 | Parry contra jugadores + prueba de multijugador real: se cierra solo con **2 jugadores** (`/cc trace` y un compa). | pendiente |
 | 11 | `/cc weapons` trae 11 vanilla. Arcabuz: feedback por objetivo, flash a 1,7 m, sonido de carga completa, `CombatFeedback.CHARGED`. | deuda |
 | 12 | Sonido de carga completa del viewmodel e impacto de golpe cargado. | deuda |
-| 13 | **La red de redstone se ENCOGE cuando termina una sobrecarga**: la estrella publica radio 100 y el firestone a 40 cargas publica 60, y al cortarse el fusio el radio vuelve al de la carga real -- los cables de mas pierden membresia, recalculan con `-1`, y `max(i, j)` **nunca devuelve el punto perdido** (el toggle los reengancha). Instrumentado: `[red] reactor X dado de baja ... por refreshState` ya nombra al que borra. Fix honesto: **el radio de un reactor solo deberia crecer durante su vida**. | **ABIERTO 2026-10-08, causaubicada** |
+| 13 | **La red de redstone se ENCOGE cuando termina una sobrecarga**: la estrella publica radio 100 y el firestone a 40 cargas publica 60, y al cortarse el fusio el radio vuelve al de la carga real -- los cables de mas pierden membresia, recalculan con `-1`, y `max(i, j)` **nunca devuelve el punto perdido** (el toggle los reengancha). Instrumentado: `[red] reactor X dado de baja ... por refreshState` ya nombra al que borra. Fix honesto: **el radio de un reactor solo deberia crecer durante su vida**. | **CERRADO 2026-10-08**: high-water persistido (`publishedRadius`, guardado en NBT); `lit` false publica cero, que es una decision y no un encogimiento |
 
 **El lector nuevo empieza por `ARCHITECTURE.md`, luego esta seccion, luego `docs/api-trampas.md`.**
