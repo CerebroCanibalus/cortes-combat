@@ -189,6 +189,18 @@ dependencies {
     // Example project dependency using a sister or child project:
     // implementation project(":myproject")
 
+    // SnakeYAML, sombreado como Jar-in-Jar (verificado en docs.neoforged.net/toolchain/docs/
+    // dependencies/jarinjar): el `jarJar` configuration embebe el artifact y su metadata en
+    // META-INF/jarjar/metadata.json. **No relocaliza** -- es negociación por versión: si otro mod
+    // trae SnakeYAML, NeoForge elige una copia que cumpla el rango. Por eso el `strictly` es
+    // banda y no adorno: `[2.0,3.0)` dice hasta dónde este mod puede convivir.
+    jarJar(implementation(group: 'org.yaml', name: 'snakeyaml')) {
+        version {
+            strictly '[2.0,3.0)'
+            prefer '2.3'
+        }
+    }
+
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html

@@ -1,0 +1,7 @@
+# ═══ WEAPON PACKS BUILT-IN de Cortés Combat ══════════════════════════════════
+# Traducciones que el propio mod declara: tags de categoría a arquetipo, y los
+# defaults de compat que shippeemos. Vive en el classpath y tiene MENOR
+# prioridad que cualquier archivo de config/cortescombat/weapons/*.yaml.
+# (Los nueve arquetipos no están acá: son código, en ArchetypeSpec.)
+version: 1
+weapons: []

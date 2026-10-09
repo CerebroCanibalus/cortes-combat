@@ -103,9 +103,10 @@ public final class PackResolver {
      * String a enum por el id del propio enum, no por {@code valueOf}: el nombre que se escribe
      * en el YAML es el id ({@code warhammer}), y los enums no implementan
      * {@code StringRepresentable} porque es clase de Minecraft. Un id desconocido es warning y
-     * {@code null} -- cae a la capa siguiente, igual que un campo omitido.
+     * {@code null} -- cae a la capa siguiente, igual que un campo omitido. El loader de YAML
+     * usa estos mismos dos: un solo lugar donde un id se traduce.
      */
-    private static WeaponProfile profileById(String id, String origin, List<String> warnings) {
+    static WeaponProfile profileById(String id, String origin, List<String> warnings) {
         for (WeaponProfile profile : WeaponProfile.values()) {
             if (profile.id().equals(id)) {
                 return profile;
@@ -115,7 +116,7 @@ public final class PackResolver {
         return null;
     }
 
-    private static SpecialType specialById(String id, String origin, List<String> warnings) {
+    static SpecialType specialById(String id, String origin, List<String> warnings) {
         for (SpecialType special : SpecialType.values()) {
             if (special.id().equals(id)) {
                 return special;
