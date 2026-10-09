@@ -1,4 +1,19 @@
-// 1.21.1	2026-10-07T12:02:54.1709652	Tags for minecraft:item mod id cortescombat
+// 1.21.1	2026-10-09T14:12:32.0335095	Tags for minecraft:item mod id cortescombat
+85cde72e10b24d086f8f684a75887bd8f9185d99 data/cortescombat/tags/item/profile/arcabuz.json
+cea51846590e1c97af683c95ff9a128fe42ad950 data/cortescombat/tags/item/profile/axe.json
+86b0b39f82ee1e7cf1b4386e7d0e126c116d7de4 data/cortescombat/tags/item/profile/dagger.json
+ac1a113df4fa89a335ff8d94461270650c221d3f data/cortescombat/tags/item/profile/halberd.json
+7da5854aa81829d77d6063aa1d346792d68c6fc9 data/cortescombat/tags/item/profile/hoe.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/profile/mace.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/profile/none.json
+71c0666e6ad6d63ed255f8094bb6c1ed4045a07d data/cortescombat/tags/item/profile/pickaxe.json
+b5c8d8fcf0fc3bb8c44e325c73f85544d2acbbd4 data/cortescombat/tags/item/profile/ropera.json
+14c620008c8b01965c7c91282e0debadd5ed03b6 data/cortescombat/tags/item/profile/sabre.json
+6fb79f6ad551fdb79dab158e6a8a438fa2b2896a data/cortescombat/tags/item/profile/shovel.json
+5daec1249298b9f8b27f9c696c1195299331a90c data/cortescombat/tags/item/profile/sword.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/profile/trident.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/profile/unarmed.json
+7434350fe1774b1664443eb91f68ceb9f0f0a44d data/cortescombat/tags/item/profile/warhammer.json
 cea51846590e1c97af683c95ff9a128fe42ad950 data/minecraft/tags/item/axes.json
 6222fd0d7d2ce08ee1f70be68a61f4e167dda650 data/minecraft/tags/item/copper_tool_materials.json
 fdab8ddd5529ae14b26bc1853b004131135318a4 data/minecraft/tags/item/diamond_tool_materials.json

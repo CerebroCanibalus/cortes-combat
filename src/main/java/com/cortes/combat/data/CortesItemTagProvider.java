@@ -2,7 +2,9 @@ package com.cortes.combat.data;
 
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.weapon.WeaponMaterial;
+import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.item.WeaponFamily;
+import com.cortes.combat.item.WeaponProfileTags;
 import com.cortes.combat.registry.CortesTier;
 import com.cortes.combat.registry.ModItems;
 import com.cortes.combat.registry.ModTools;
@@ -16,6 +18,10 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.common.data.ExistingFileHelper;
 
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -71,6 +77,7 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         materialTags();
         everyWeaponIsABlade();
         copperToolsFight();
+        profileTags();
     }
 
     /**
@@ -92,6 +99,90 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         tag(ItemTags.PICKAXES).add(ModTools.COPPER_PICKAXE.get());
         tag(ItemTags.SHOVELS).add(ModTools.COPPER_SHOVEL.get());
         tag(ItemTags.HOES).add(ModTools.COPPER_HOE.get());
+    }
+
+    /**
+     * The mod's own classification: one {@code #cortescombat:profile/<id>} per mould, holding
+     * every item of ours that uses it.
+     *
+     * <h2>What this is for</h2>
+     *
+     * <p><b>Maintainability of the mod, and nothing else.</b> {@code WeaponStats.deriveProfile}
+     * used to ask only vanilla's tags, so five copper tools of ours entered our own combat
+     * system through {@code #minecraft:swords} and its four siblings -- tags in a namespace we
+     * do not own, that this very file wrote into. Tags merge additively, which is what makes
+     * them work, and the same mechanism lets a datapack declare one with
+     * {@code "replace": true} and drop every member, ours included. That is not hypothetical
+     * behaviour to guard against a hypothetical pack: it is the difference between the copper
+     * sword fighting and silently not fighting, decided in a file that has nothing to do with
+     * this mod.</p>
+     *
+     * <p>These tags are ours, so the answer cannot be replaced by a pack that never heard of
+     * {@code cortescombat}, and they are read <b>before</b> the vanilla ones. The vanilla tags
+     * stay where they were, below these, because they are the compat layer for a weapon of
+     * another mod.</p>
+     *
+     * <h2>Why the five copper tools are the point and the thirty are the safety net</h2>
+     *
+     * <p>{@code ModTools} sets no {@code weapon_profile} component -- the copper sword is an
+     * ordinary {@code SwordItem}, and "an axe" to the game is a member of {@code #minecraft:axes}
+     * which a new axe starts outside of. <b>So the tag is the only thing that tells the game
+     * the copper tools fight at all</b>, which is what {@link #copperToolsFight()}'s javadoc
+     * says from the other side: without those five lines in the vanilla tags they resolve to
+     * {@code NONE} and swing like vanilla.</p>
+     *
+     * <p>The thirty catalogue weapons <em>do</em> carry the component, so the component wins and
+     * the tag is never reached for them. They are in the file anyway, for two reasons: the file
+     * is then the canonical list of "which items of ours use which mould", which is the thing a
+     * future contributor comes here looking for; and it is a safety net for the day a
+     * registration path forgets {@code .component(WEAPON_PROFILE, ...)}, which is the shape of
+     * bug this project has already paid for four times -- a component in place and nothing
+     * reading it, or the reverse.</p>
+     *
+     * <h2>Every profile gets a file, including the four with no member</h2>
+     *
+     * <p><b>Unlike {@link #materialTags()}, where calling {@code tag(...)} unconditionally was
+     * a bug, here it is the specification.</b> {@code none}, {@code unarmed}, {@code mace} and
+     * {@code trident} have no item of ours yet, and they get an empty file on purpose: an empty
+     * tag is a tag that exists, and the file is the path a future entry writes into. A missing
+     * file is a mould with no door, and {@code WeaponProfileTagsTest} walks the enum to check
+     * every one is there -- so adding a profile to the enum without adding its items fails the
+     * build instead of shipping a mould nobody can select.</p>
+     */
+    private void profileTags() {
+        Map<WeaponProfile, List<Item>> ours = new EnumMap<>(WeaponProfile.class);
+        // The thirty, by family: each family names the profile it belongs to, so the item's
+        // mould comes from the family and never from this file.
+        for (WeaponFamily family : WeaponFamily.values()) {
+            for (WeaponMaterial material : family.materialsInOrder()) {
+                ours.computeIfAbsent(family.profile(), p -> new ArrayList<>())
+                        .add(ModItems.weapon(family.itemName(material)).get());
+            }
+        }
+        // The five copper tools, by hand. **This is the only place that assigns them a
+        // profile**, and that is exactly why the tag exists: there is no field on ModTools to
+        // copy, so there is no second copy to drift from.
+        ours.computeIfAbsent(WeaponProfile.SWORD, p -> new ArrayList<>())
+                .add(ModTools.COPPER_SWORD.get());
+        ours.computeIfAbsent(WeaponProfile.AXE, p -> new ArrayList<>())
+                .add(ModTools.COPPER_AXE.get());
+        ours.computeIfAbsent(WeaponProfile.PICKAXE, p -> new ArrayList<>())
+                .add(ModTools.COPPER_PICKAXE.get());
+        ours.computeIfAbsent(WeaponProfile.SHOVEL, p -> new ArrayList<>())
+                .add(ModTools.COPPER_SHOVEL.get());
+        ours.computeIfAbsent(WeaponProfile.HOE, p -> new ArrayList<>())
+                .add(ModTools.COPPER_HOE.get());
+        // And the thirty-first, which carries the component like the rest of the catalogue and
+        // lands in the file for the same two reasons.
+        ours.computeIfAbsent(WeaponProfile.ARCABUZ, p -> new ArrayList<>())
+                .add(ModItems.ARCABUZ.get());
+
+        for (WeaponProfile profile : WeaponProfile.values()) {
+            var appender = tag(WeaponProfileTags.profileTag(profile));
+            for (Item item : ours.getOrDefault(profile, List.of())) {
+                appender.add(item);
+            }
+        }
     }
 
     private void everyWeaponIsABlade() {

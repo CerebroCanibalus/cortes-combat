@@ -329,20 +329,44 @@ Un arma con `Timeline.EMPTY` no hace nada, y eso no es un caso especial: el pipe
 ```
 WeaponStats resolve(ItemStack stack)
   1. data components presentes   → declarativo (nuestro, y mods que adoptan la API)
-  2. override en config          → lo que el jugador escribió
-  3. derivación por atributos    → automático para CUALQUIER item
-  4. default                     → manos
+  2. #cortescombat:profile/<id>   → el molde, por tag NUESTRO (los clasificamos nosotros)
+  3. tags de vanilla              → fallback automático para CUALQUIER item ajeno
+  4. NONE                         → no es un arma
 ```
 
-El orden importa y está documentado. El jugador escribiendo en config **gana** sobre lo automático; lo automático gana sobre el default.
+El orden importa y está documentado. El componente gana sobre el tag; **nuestro tag gana sobre el de vanilla**, y el de vanilla gana sobre el silencio.
+
+> **Las cuatro capas son la realidad del código; las tres promesas de abajo, no todas.** El paso 2
+> de arriba es la ronda de los tags propios (2026-10-09). Antes de esa ronda la clasificación corría
+> entera por tags de vanilla, lo que metía nuestros propios items en nuestro sistema por una
+> categoría que no es nuestra. Ahora los nuestros se leen primero y los de vanilla quedan como
+> compat.
 
 ### El paso 3 es la conversión, y es automática
 
-No hay código por mod. La derivación hace tres cosas:
+No hay código por mod. La derivación **elige un molde por tag**, y es lo único que hace:
 
-1. **Lee los atributos del item**: attack damage y attack speed salen de su propio `ItemAttributeModifiers`. Un mod que seteó 8 de daño y 1.6 de velocidad ya está balanceado solo.
-2. **Elige un perfil por tag**: `minecraft:swords` → perfil espada, `minecraft:axes` → perfil hacha, y así.
-3. **Escala el alcance por la velocidad**: un arma rápida hereda alcance corto, una lenta alcance largo. La coherencia sale sola.
+1. `minecraft:swords` → perfil espada, `minecraft:axes` → hacha, `minecraft:shovels` → pala,
+   `minecraft:hoes` → azada, `minecraft:enchantable/mace` → maza,
+   `minecraft:enchantable/trident` → tridente. **No existen `#maces` ni `#tridents` en 1.21.1**:
+   `ItemTags` sólo declara SWORDS, AXES, HOES, PICKAXES y SHOVELS. Un tag para un path que nada
+   llena **no falla ni avisa**: resuelve a un conjunto vacío, y el item resuelve a `NONE`. Así
+   perdieron la maza y el tridente su perfil durante una ronda entera.
+2. Lo que **no** está en el tag sale de las cuatro tablas por perfil: alcance, carga, knockback y
+   especial son filas fijas de `WeaponTables`, no del item.
+
+> **Y lo que este documento prometió y el código no hizo, corregido:** decía que la derivación lee
+> los atributos del ítem y que escala el alcance por la velocidad. **Ninguna de las dos existe.**
+> `WeaponStats.of()` no lee `ItemAttributeModifiers`: el alcance es `WeaponTables.reach(profile)`.
+> Lo único que sale del ítem propio es el **intervalo**, porque `attackInterval` lee `ATTACK_SPEED`
+> del holder — o sea que el tempo sí es del arma y la distancia no.
+>
+> La consecuencia es la que hay que tener presente antes de prometer compat: un arma ajena en
+> `#minecraft:swords` se lleva nuestro 3.6 / 35° / 30° y nuestra carga de 25 ticks aunque su ítem
+> declare 2 de daño y 0.8 de velocidad. Darle **sus** números es el `weapon_overrides.json` del paso
+> 12 (todavía sin implementar) o los data components, que un mod Java ya puede poner y un datapack
+> todavía no: en 1.21.1 un datapack **no puede setear components en un ítem**, sólo tags. Por eso el
+> tag lleva el molde y nunca un número.
 
 > Un mod de armas con stats razonables entra a nuestro sistema **sin una línea de código nuestro**. Esa es toda la compat que hace falta, y no depende de que sepamos que el mod existe.
 

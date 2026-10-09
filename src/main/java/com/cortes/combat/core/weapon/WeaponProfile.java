@@ -107,6 +107,43 @@ public enum WeaponProfile {
     }
 
     /**
+     * The mod-owned tag that selects this mould: {@code cortescombat:profile/<id>}.
+     *
+     * <p><b>A path, not a {@code TagKey}, and that is the whole reason it lives here.</b>
+     * {@link WeaponMaterial#repairTag()} does the same thing from the same place, and the rule
+     * is the one that keeps this enum loadable from a bare JVM: the pure class names the path
+     * and the class that can see Minecraft turns it into a key. So a test walks all fourteen
+     * values and checks the path without the game on the classpath.</p>
+     *
+     * <h2>Why the mod needs tags of its own at all</h2>
+     *
+     * <p>Because classification used to run entirely through tags in a namespace we do not
+     * own. {@code WeaponStats.deriveProfile} asked {@code #minecraft:swords},
+     * {@code #minecraft:axes}, {@code #minecraft:pickaxes}, {@code #minecraft:shovels} and
+     * {@code #minecraft:hoes}, and {@code CortesItemTagProvider} wrote our own copper tools
+     * <em>into</em> them. So five items of ours entered our own combat system by way of
+     * vanilla's categories, and the javadoc of that provider said it plainly: without those
+     * five lines the copper tools would not fight at all.</p>
+     *
+     * <p>A tag in someone else's namespace is not ours to rely on. Tags from several packs
+     * <b>merge</b>, which is what makes the thing work -- and the same mechanism lets a
+     * datapack declare {@code data/minecraft/tags/item/swords.json} with
+     * {@code "replace": true}, which is a normal thing for a curated pack to do. Every member
+     * is dropped, ours included, and the copper sword stops fighting. No error, no warning:
+     * a tag that matches nothing is not an error, it is a silent no, and this project has
+     * already paid for that shape four times.</p>
+     *
+     * <p><b>The tag carries the mould, never the numbers.</b> {@code #cortescombat:profile/halberd}
+     * answers "treat this as a halberd", and the halberd's reach, charge, knockback and special
+     * still come from the four tables. Choosing a different reach is a data component
+     * ({@code reach_profile}) or, when that exists, the override config -- never a tag. A tag
+     * that tried to carry a number would be a number with no place to be wrong.</p>
+     */
+    public String tagPath() {
+        return "profile/" + id;
+    }
+
+    /**
      * The profile at that position in the declaration, or {@code null} if there is none.
      *
      * <p><b>Reads off {@code values()} and returns null rather than throwing.</b> The only caller is

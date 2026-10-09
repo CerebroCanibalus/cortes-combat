@@ -173,7 +173,7 @@ serializador. `InventoryChangeTrigger.hasItems` ⊘ tiene overload de `TagKey<It
 
 Pasos 1–10 hechos ⊕ verificados en cliente real. Librería de viewmodel, guardia unificada
 **cerrada como postura**, **las siete armas nuevas con sus animaciones**, y el **arcabuz como arma
-31**. **660 tests verdes.** Animaciones **casi completas** según playtest. Receta del arcabuz y **tooltips de stats**, que reemplazan los de las armas vanilla también.
+31**. **930 tests verdes.** Animaciones **casi completas** según playtest. Receta del arcabuz y **tooltips de stats**, que reemplazan los de las armas vanilla también.
 
 | # | Paso | Estado |
 |---|---|---|
@@ -291,14 +291,51 @@ ropera de madera en el tick 14 colapsara la tolerancia de un lunge ya legal.
 
 ### Conversión de armas de otros mods (§12)
 
-- **4 capas por prioridad:** data components → override del jugador → **derivación automática** →
-  default. El override siempre gana.
-- **La derivación automática ES la compat.** Lee `ItemAttributeModifiers` + perfil por tag + escala
-  alcance por velocidad → un mod de armas c/ stats razonables entra **s/ una línea nuestra**.
-- **Config procedural en DOS archivos:** `generated_weapons.json` (lo escribe el mod, ⊘ editar) y
-  `weapon_overrides.json` (el jugador). Uno solo regeneraría y pisaría los cambios del jugador.
+- **El orden REAL de lectura** (`WeaponStats.readProfile` → `deriveProfile`): data components →
+  **`cortescombat:profile/<id>` (nuestros tags, el molde)** → tags de vanilla (fallback p/ armas
+  ajenas) → `NONE`.
+- **El tag lleva el MOLDE, ⊘ los números.** `profile/halberd` = "tratalo como alabarda"; alcance,
+  carga, knockback y especial siguen saliendo de las 4 tablas de `WeaponTables`.
+- **La derivación ⊘ lee atributos y ⊘ escala el alcance por velocidad.** Verificado:
+  `WeaponStats.of()` **no** lee `ItemAttributeModifiers`. Lo único que sale del ítem propio es el
+  **intervalo** (`attackInterval` lee `ATTACK_SPEED` del holder) → el tempo sí es del arma, la
+  distancia ⊘. Una espada ajena se lleva nuestro 3.6/35°/30° y nuestra carga de 25 ticks aunque su
+  ítem declare 2 de daño. `ARCHITECTURE.md` tenía escritas las dos promesas y ninguna implementada;
+  ya corregido allá.
+- **Un datapack ⊘ puede setear components en un ítem** (1.21.1: los defaults viven en
+  `Item.Properties`, en Java) ∴ sólo puede escribir tags, y por eso el tag lleva el molde.
+- **Config procedural en DOS archivos:** `generated_weapons.json` (lo escribe el mod) y
+  `weapon_overrides.json` (el jugador). **⊘ IMPLEMENTADO TODAVÍA** — el javadoc de `WeaponStats` dice
+  *"the call site is left for that step and currently falls through"*. Es el paso 12, y es la única
+  vía p/ que un packmate ponga **sus** números s/ Java.
 - **Va en JSON plano, ⊘ en `ModConfigSpec`** (⊘ se pudo verificar si soporta mapas; sources de FML ⊘
   están en el cache). `ModConfigSpec` queda p/ los números de balance estáticos.
+
+### Los tags propios: `cortescombat:profile/<id>` (2026-10-09)
+
+**Por mantenibilidad nuestra, ⊘ p/ que el usuario meta armas** (eso tiene otra idea, futura).
+
+- 14 archivos en `data/cortescombat/tags/item/profile/`, uno por valor del enum. Los generamos
+  nosotros (`CortesItemTagProvider.profileTags()`), y `WeaponStats` los pregunta **antes** que los de
+  vanilla.
+- **El motivo:** la clasificación corría entera por tags de vanilla, y escribíamos nuestras cinco
+  herramientas de cobre **dentro** de `#minecraft:swords/axes/…`. Los tags mergean aditivamente, que
+  es lo que los hace funcionar — y el mismo mecanismo deja que un datapack declare uno con
+  `"replace": true`, caigan todos los miembros (los nuestros incluidos) y la espada de cobre deje de
+  pelear **en silencio**.
+- **Los 4 vacíos** (`none`, `unarmed`, `mace`, `trident`) son la especificación: el archivo es el
+  camino donde se escribe después. Es lo inverso del bug de `stone_tool_materials`, en el mismo
+  archivo, donde llamar `tag(...)` p/ un tag que nada llenaba era el error.
+- **Las 30 del catálogo van igual** aunque llegan por componente: el archivo es la lista canónica de
+  "cuáles de los nuestros usan cuál molde" y la red debajo de una vía de registro que se olvide el
+  `.component(WEAPON_PROFILE, …)`.
+- `WeaponProfile.tagPath()` es pura (patrón de `WeaponMaterial.repairTag()`); `WeaponProfileTags` la
+  envuelve en un `TagKey`. `WeaponProfileTagsTest` (5) verifica path, enum, archivo en disco y orden.
+- **⊘ confundir con el arquetipo de arma de terceros**, que es otra cosa y vive en
+  `docs/weapon-packs-design.md` (diseño sin implementar, 2026-10-09): allá el canal es YAML y los
+  tags son de **categoría** (`knives`, `hammers`); acá el tag es el **molde** y es nuestro. Ese doc
+  tiene además dos afirmaciones falsas corregidas: la derivación **no** lee atributos ni escala el
+  alcance por velocidad.
 
 ### Framework de viewmodel (§11)
 
@@ -567,7 +604,7 @@ deducen de un número:
 
 ## Estado técnico actual
 
-**660 tests unitarios verdes.** Todo lo testeable corre en JVM pelada; lo que necesita el juego queda
+**930 tests unitarios verdes.** Todo lo testeable corre en JVM pelada; lo que necesita el juego queda
 en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardState`, `ConeSize`, `WeaponTooltip`
 y los `viewmodel/*` puros.
 

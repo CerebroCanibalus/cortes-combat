@@ -5,6 +5,7 @@ import com.cortes.combat.core.weapon.KnockbackProfile;
 import com.cortes.combat.core.weapon.ReachProfile;
 import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.core.weapon.WeaponProfile;
+import com.cortes.combat.item.WeaponProfileTags;
 import com.cortes.combat.item.WeaponTables;
 import com.cortes.combat.registry.ModComponents;
 import com.cortes.combat.state.ChargeState;
@@ -22,6 +23,7 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -162,11 +164,17 @@ public final class WeaponStats {
     }
 
     /**
-     * The compat layer. A foreign weapon is classified purely by which vanilla tag it sits
-     * in, so we never need to know a mod exists to make its weapons work.
-     */
-    /**
-     * Which vanilla tag an item sits in, or {@link WeaponProfile#NONE}.
+     * The compat layer, and the mod's own classification in front of it.
+     *
+     * <p><b>Ours first, vanilla second, and the order is the maintainability.</b> This method
+     * used to ask only vanilla's tags, which meant five copper tools of ours entered our own
+     * combat system through {@code #minecraft:swords} and its four siblings -- tags in a
+     * namespace we do not own, that we happened to write into ourselves. Tags merge
+     * additively, which is what makes them work, and the same mechanism lets a datapack
+     * declare one with {@code "replace": true} and take our items with it: no error, no
+     * warning, the copper sword simply stops fighting. {@link WeaponProfileTags} is the door we
+     * own. The vanilla tags stay, below ours, because they are the compat layer for a mod that
+     * never heard of us.</p>
      *
      * <p>Anything unrecognised is not a weapon. Falling back to the sword here was the bug behind
      * "every object I hit with can charge": a dirt block has no tag, derived to a sword, and
@@ -174,7 +182,14 @@ public final class WeaponStats {
      * answer for an unknown item is that it is not a weapon.</p>
      */
     private static WeaponProfile deriveProfile(ItemStack stack) {
-        for (Map.Entry<TagKey<net.minecraft.world.item.Item>, WeaponProfile> entry : VANILLA_TAGS.entrySet()) {
+        for (Map.Entry<TagKey<net.minecraft.world.item.Item>, WeaponProfile> entry
+                : CORTES_PROFILE_TAGS.entrySet()) {
+            if (stack.is(entry.getKey())) {
+                return entry.getValue();
+            }
+        }
+        for (Map.Entry<TagKey<net.minecraft.world.item.Item>, WeaponProfile> entry
+                : VANILLA_TAGS.entrySet()) {
             if (stack.is(entry.getKey())) {
                 return entry.getValue();
             }
@@ -182,9 +197,30 @@ public final class WeaponStats {
         return WeaponProfile.NONE;
     }
 
-    private static final Map<TagKey<net.minecraft.world.item.Item>, WeaponProfile> VANILLA_TAGS = new HashMap<>();
+    /**
+     * Ours: one tag per mould, built by walking the enum.
+     *
+     * <p><b>There is no list of fourteen names here to forget.</b> The loop below fills this
+     * map from {@code WeaponProfile.values()}, so a profile added later gets its key the moment
+     * it is declared. What is left to a human is the file in
+     * {@code data/cortescombat/tags/item/profile/}, and that is what the test checks.</p>
+     *
+     * <p>A {@code LinkedHashMap} and not a {@code HashMap} because iteration order is the only
+     * reason a first match wins, and an order nobody chose is an order nobody can read. The
+     * keys are disjoint by construction -- one tag per profile -- so the order does not change
+     * an answer today; it is here so that <em>when</em> it does, the file says who wins.</p>
+     */
+    private static final Map<TagKey<net.minecraft.world.item.Item>, WeaponProfile>
+            CORTES_PROFILE_TAGS = new LinkedHashMap<>();
+
+    /** Vanilla's tags, asked only when ours answer nothing. See {@link #deriveProfile}. */
+    private static final Map<TagKey<net.minecraft.world.item.Item>, WeaponProfile>
+            VANILLA_TAGS = new HashMap<>();
 
     static {
+        for (WeaponProfile profile : WeaponProfile.values()) {
+            CORTES_PROFILE_TAGS.put(WeaponProfileTags.profileTag(profile), profile);
+        }
         VANILLA_TAGS.put(itemTag("swords"), WeaponProfile.SWORD);
         VANILLA_TAGS.put(itemTag("axes"), WeaponProfile.AXE);
         VANILLA_TAGS.put(itemTag("pickaxes"), WeaponProfile.PICKAXE);

@@ -572,3 +572,61 @@ explosion literal: forma material-independiente, sin drops, sin encadenar firest
   coincide con su empuje horizontal (1.365, el mayor del set despues del arcabuz).
 - **Azada**: dos movimientos, porque es la unica arma que pega en area con el click izquierdo Y con
   el derecho. El izquierdo es un **tajo que cruza**: `CHOP` con 112 de yaw contra los 62 de la. El criterio es que un test que afirma la convencion equivocada es peor que no tener test.
+
+## Ronda de los tags propios (2026-10-09)
+
+**930 tests verdes** (+17). Sin abrir el cliente.
+
+### Lo que entro
+
+- **`cortescombat:profile/<id>`**, un tag por molde, catorce archivos en
+  `data/cortescombat/tags/item/profile/`. Los escribe `CortesItemTagProvider.profileTags()`.
+- **Orden de lectura nuevo** en `WeaponStats.deriveProfile`: nuestros tags PRIMERO, los de vanilla
+  como fallback, `NONE` al final. Los de vanilla no se tocaron.
+- **`WeaponProfile.tagPath()`**, la mitad pura; `WeaponProfileTags`, la mitad que necesita el juego.
+  Mismo patron que `WeaponMaterial.repairTag()` / `CortesTier.repairTag()`.
+- **`WeaponProfileTagsTest`**, 5 tests: el path, el walk del enum, el archivo en disco, el orden del
+  resolver, y que el generador camine el enum.
+
+### Por que existe
+
+La clasificacion corria entera por tags de vanilla. `CortesItemTagProvider` escribia nuestras cinco
+herramientas de cobre **dentro** de `#minecraft:swords/axes/pickaxes/shovels/hoes`, y su javadoc lo
+decia: sin esas cinco lineas las herramientas de cobre no pelean. O sea que cinco items nuestros
+entraban a nuestro propio sistema de combate por una categoria que no es nuestra.
+
+**Los tags mergean aditivamente, que es lo que los hace funcionar -- y el mismo mecanismo deja que
+un datapack declare uno con `"replace": true`.** Ahi se caen todos los miembros, los nuestros
+incluidos, y la espada de cobre deja de pelear. Sin error y sin aviso: un tag que no matchea nada no
+es un error, es un silencio, y esta clase de fallo ya se pago cuatro veces en el proyecto.
+
+**Lo que NO cambio, y es la parte que hay que leer dos veces:** los tags de vanilla siguen ahi,
+debajo de los nuestros. Sacarlos mandaria cada arma de cada mod que no conocemos de vuelta a vanilla
+sin decir nada, y "no lo reconocemos" es una respuesta peor que "supusimos espada".
+
+### Los sabotajes, verificados uno por uno
+
+Que un guard muerde es parte de escribirlo, no una tarea posterior:
+
+| sabotaje | muere |
+|---|---|
+| invertir el orden de los dos bucles | `oursIsAskedFirst` (L150) |
+| borrar `profile/ropera.json` | `everyProfileHasAFile` |
+| `tag(...)` fuera del loop del enum | `theGeneratorWalksTheEnum` |
+| renombrar el prefijo `profile/` | `thePathIsThePublicName` |
+| un path duplicado | `everyProfileHasAPath` |
+
+### Lo que quedo en el camino, a proposito
+
+- **Los cuatro tags vacios** (`none`, `unarmed`, `mace`, `trident`) son la especificacion, no un
+  descuido: es el camino donde se escribe despues. Es lo INVERTIDO del bug de
+  `stone_tool_materials` en el mismo archivo, donde llamar `tag(...)` para un tag que nada llenaba
+  era el error.
+- **Las 30 armas del catalogo van en el archivo igual** aunque llegan por componente. El archivo es
+  la lista canonica de "cuales de los nuestros usan cual molde", y es la red debajo del dia que una
+  via de registro se olvide el `.component(WEAPON_PROFILE, ...)`.
+- **El tag lleva el molde, nunca los numeros.** `profile/halberd` contesta "tratalo como alabarda";
+  el alcance, la carga y el empuje siguen saliendo de las cuatro tablas.
+- **El `weapon_overrides.json` (paso 12) sigue sin existir**, y el "tags genericos para que el
+  usuario meta su arma" quedo fuera por decision del usuario: tiene una idea mejor para eso. Esta
+  ronda es mantenibilidad del mod y nada mas.
