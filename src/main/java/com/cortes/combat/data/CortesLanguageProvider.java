@@ -117,6 +117,19 @@ public class CortesLanguageProvider extends LanguageProvider {
         } else {
             addEnglish();
         }
+    // **Gold's nine, and the mark they all feed.** `Toque de Midas`, `Eco de Oro`, `Peso Pluma`
+    // and `Robo de Vida` are the names the design fixed, so they stay as they are written; the
+    // descriptive ones are translated, because they are words and not brands.
+    add("enchantment.cortescombat.midas_touch", spanish ? "Toque de Midas" : "Midas Touch");
+    add("enchantment.cortescombat.midas_tool", spanish ? "Toque de Midas" : "Midas Touch");
+    add("enchantment.cortescombat.gold_echo", spanish ? "Eco de Oro" : "Echo of Gold");
+    add("enchantment.cortescombat.life_steal", spanish ? "Robo de Vida" : "Life Steal");
+    add("enchantment.cortescombat.wind_walker", spanish ? "Velocidad del Viento" : "Wind Speed");
+    add("enchantment.cortescombat.wind_digger", spanish ? "Velocidad del Viento" : "Wind Speed");
+    add("enchantment.cortescombat.feather_weight", spanish ? "Peso Pluma" : "Feather Weight");
+    add("enchantment.cortescombat.phantom_strike", spanish ? "Golpe Fantasma" : "Phantom Strike");
+    add("enchantment.cortescombat.phantom_block", spanish ? "Golpe Fantasma" : "Phantom Strike");
+    add("effect.cortescombat.death_marked", spanish ? "Marcado de muerte" : "Marked for Death");
     }
 
     /**
@@ -127,6 +140,7 @@ public class CortesLanguageProvider extends LanguageProvider {
      * times, and a translator asked to do that eventually leaves one of them in the other
      * language.</p>
      */
+
     private void addSpanish() {
         add("advancements.cortescombat.weapon", "Hecho a mano.");
         add("advancements.cortescombat.arcabuz",

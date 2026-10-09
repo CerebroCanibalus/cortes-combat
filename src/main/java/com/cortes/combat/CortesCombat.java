@@ -123,6 +123,11 @@ public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         ModCreativeTabs.TABS.register(modEventBus);
         ModParticleTypes.PARTICLE_TYPES.register(modEventBus);
         com.cortes.combat.registry.ModEffects.register(modEventBus);
+        // **Gold, and it is two registrations.** The enchantments are their own registry, and the
+        // mark they all feed is an effect -- both are declarations, so both go on the mod bus, and
+        // the behaviour that reads them is a subscriber on the game bus instead.
+        com.cortes.combat.enchant.ModEnchantments.ENCHANTMENTS.register(modEventBus);
+        com.cortes.combat.enchant.GoldEnchantmentHandler.EFFECTS.register(modEventBus);
         // The shiftable crafting recipe's serializer, and **this call is what makes it exist.**
         //
         // `SHIFTABLE_SHAPED` is a static field in a nested class, so it is initialised when that
@@ -156,6 +161,9 @@ public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         NeoForge.EVENT_BUS.addListener(CortesCombat::reportOurRecipes);
         NeoForge.EVENT_BUS.register(CombatTicker.class);
         NeoForge.EVENT_BUS.register(GuardHandler.class);
+        // Gold's nine, and the only subscriber that knows what they do: every hook lives in the
+        // handler so the rules stay in `GoldEnchantRules`, pure and tested.
+        NeoForge.EVENT_BUS.register(com.cortes.combat.enchant.GoldEnchantmentHandler.class);
         NeoForge.EVENT_BUS.register(com.cortes.combat.special.ParryHandler.class);
         NeoForge.EVENT_BUS.register(com.cortes.combat.special.LungeImmunity.class);
         NeoForge.EVENT_BUS.register(com.cortes.combat.attack.ArmorWearHandler.class);
