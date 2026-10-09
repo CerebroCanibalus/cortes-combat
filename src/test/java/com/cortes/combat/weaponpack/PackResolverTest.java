@@ -29,12 +29,12 @@ class PackResolverTest {
 
     private static Entry byTag(String tag, String archetype) {
         return new Entry(null, null, tag, archetype, null, null, null, null, null,
-                null, null, null, null);
+                null, null, null, null, null, null);
     }
 
     private static Entry byId(String id, String archetype) {
         return new Entry(null, id, null, archetype, null, null, null, null, null,
-                null, null, null, null);
+                null, null, null, null, null, null);
     }
 
     /** Los nueve built-in cargan la identidad del tipo, no la cultura. */
@@ -67,11 +67,11 @@ class PackResolverTest {
     @Test
     void specificityBeatsOrder() {
         Entry tagEntry = new Entry(null, null, "mymod:knives", "dagger",
-                null, new WeaponPackSpec.Stats(3.0F, null, null, null, null),
-                null, null, null, null, null, null, null);
+                null, new WeaponPackSpec.Stats(3.0F, null, null, null, null, null, null, null),
+                null, null, null, null, null, null, null, null, null);
         Entry idEntry = new Entry(null, "mymod:ruby", null, "dagger",
-                null, new WeaponPackSpec.Stats(7.0F, null, null, null, null),
-                null, null, null, null, null, null, null);
+                null, new WeaponPackSpec.Stats(7.0F, null, null, null, null, null, null, null),
+                null, null, null, null, null, null, null, null, null);
 
         ResolvedWeapon resolved = PackResolver.resolve("mymod:ruby", List.of("mymod:knives"),
                 List.of(pack("a.yaml", idEntry, tagEntry)));
@@ -85,11 +85,11 @@ class PackResolverTest {
     @Test
     void onATieTheLowerOneWins() {
         Entry first = new Entry(null, null, "t", "dagger", null,
-                new WeaponPackSpec.Stats(1.0F, null, null, null, null),
-                null, null, null, null, null, null, null);
+                new WeaponPackSpec.Stats(1.0F, null, null, null, null, null, null, null),
+                null, null, null, null, null, null, null, null, null);
         Entry second = new Entry(null, null, "t", "sword", null,
-                new WeaponPackSpec.Stats(2.0F, null, null, null, null),
-                null, null, null, null, null, null, null);
+                new WeaponPackSpec.Stats(2.0F, null, null, null, null, null, null, null),
+                null, null, null, null, null, null, null, null, null);
 
         ResolvedWeapon sameFile = PackResolver.resolve("x", List.of("t"),
                 List.of(pack("a.yaml", first, second)));
@@ -112,7 +112,7 @@ class PackResolverTest {
         assertNull(inherited.damage(), "números heredados del molde: nada escrito, nada copiado");
 
         Entry explicit = new Entry(null, "x", null, "sabre", "sword",
-                null, "lunge", null, null, null, null, null, null);
+                null, "lunge", null, null, null, null, null, null, null, null);
         ResolvedWeapon overrode = PackResolver.resolve("x", List.of(),
                 List.of(pack("a.yaml", explicit)));
         assertEquals(WeaponProfile.SWORD, overrode.profile(), "lo explícito pisa al arquetipo");
@@ -123,7 +123,7 @@ class PackResolverTest {
     @Test
     void profileNoneIsAnAnswer() {
         Entry entry = new Entry(null, "x", null, "sword", "none",
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null);
         ResolvedWeapon resolved = PackResolver.resolve("x", List.of(),
                 List.of(pack("a.yaml", entry)));
         assertEquals(WeaponProfile.NONE, resolved.profile(),
@@ -146,7 +146,7 @@ class PackResolverTest {
     @Test
     void createsMatchesByItsId() {
         Entry entry = new Entry("mymod:ruby_knife", null, null, "dagger", null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null);
         ResolvedWeapon resolved = PackResolver.resolve("mymod:ruby_knife", List.of(),
                 List.of(pack("a.yaml", entry)));
         assertNotNull(resolved, "el ítem que el pack crea es su propio match");
@@ -159,7 +159,7 @@ class PackResolverTest {
     @Test
     void tagWithOrWithoutHashAndNoMatchIsNull() {
         Entry withHash = new Entry(null, null, "#cortescombat:category/hammers", null, null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null);
         ResolvedWeapon resolved = PackResolver.resolve("x",
                 List.of("cortescombat:category/hammers"), List.of(pack("a.yaml", withHash)));
         assertNotNull(resolved, "con almohadilla también matchea");
@@ -187,7 +187,7 @@ class PackResolverTest {
     @Test
     void unknownIdsWarnInsteadOfThrowing() {
         Entry entry = new Entry(null, "x", null, null, "greatsword",
-                null, "katana", null, null, null, null, null, null);
+                null, "katana", null, null, null, null, null, null, null, null);
         ResolvedWeapon resolved = PackResolver.resolve("x", List.of(),
                 List.of(pack("a.yaml", entry)));
         assertNull(resolved.profile());

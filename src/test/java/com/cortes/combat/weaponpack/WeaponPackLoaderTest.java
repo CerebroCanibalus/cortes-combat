@@ -42,9 +42,10 @@ class WeaponPackLoaderTest {
                 stats:
                   damage: 4.5
                   attack_speed: 1.6
-                  cooldown: 14
-                  charge: { can_charge: false }
-                reach: { distance: 2.6, horizontal: 22, vertical: 18 }
+                  charge: { can_charge: false, bonus: 1.0, full_charge_ticks: 25 }
+                  knockback: { horizontal: 1.2, vertical: 0.3 }
+                reach: { distance: 2.6 }
+                cone: { horizontal: 22, vertical: 18 }
                 special: lunge
                 texture: { slash: mymod:slash.png }
                 sounds: { swing: mymod:sw }
@@ -63,9 +64,14 @@ class WeaponPackLoaderTest {
         assertEquals("#mymod:knives", entry.tag(), "el tag se guarda tal cual, con almohadilla");
         assertEquals("chef", entry.archetype());
         assertEquals(4.5F, entry.stats().damage());
-        assertEquals(14, entry.stats().cooldown());
+        assertEquals(1.0F, entry.stats().chargeBonus());
+        assertEquals(25, entry.stats().fullChargeTicks());
+        assertEquals(1.2F, entry.stats().knockback().horizontal());
         assertEquals(Boolean.FALSE, entry.stats().canCharge());
-        assertEquals(22.0F, entry.reach().horizontal());
+        assertEquals(2.6F, entry.reach().distance(), "reach es SÓLO distancia: parámetro separado");
+        assertEquals(22.0F, entry.cone().horizontal(),
+                "el cono es radio en crudo por eje, sin bandas");
+        assertEquals(18.0F, entry.cone().vertical());
         assertEquals("lunge", entry.special());
         assertEquals("mymod:slash.png", entry.slash());
         assertEquals("mymod:chef", entry.pose());
@@ -101,11 +107,11 @@ class WeaponPackLoaderTest {
                 version: 1
                 weapons:
                   - match: { id: x }
-                    stats: { damage: alto, cooldown: true }
+                    stats: { damage: alto, durability: true }
                 """);
         WeaponPackSpec.Entry entry = result.packs().get(0).weapons().get(0);
         assertNull(entry.stats().damage(), "un string donde va un número no vuelve número");
-        assertNull(entry.stats().cooldown(), "ni un booleano donde va un entero");
+        assertNull(entry.stats().durability(), "ni un booleano donde va un entero");
         assertEquals(2, result.warnings().size());
         assertTrue(result.warnings().get(0).contains("malo.yaml"), "warning con el archivo");
         assertTrue(result.warnings().get(0).contains("damage"), "y con el campo");
@@ -172,6 +178,22 @@ class WeaponPackLoaderTest {
         assertEquals(1, result.warnings().size(), "y el roto quedó como warning, no como crash");
         assertTrue(result.warnings().get(0).contains("b-roto.yaml"),
                 "el warning nombra el archivo malo, no el estado del mundo");
+    }
+
+    /** La banda vieja no es "campo desconocido": enseña el mapa exacto a escribir. */
+    @Test
+    void theOldBandTeachesTheNewMap() {
+        WeaponPackLoader.Result result = WeaponPackLoader.fromYaml("banda.yaml", """
+                version: 1
+                weapons:
+                  - match: { id: x }
+                    cone: small
+                """);
+        assertNull(result.packs().get(0).weapons().get(0).cone(),
+                "la banda ya no se convierte en nada: es un apodo, y un apodo no deja elegir");
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("cone")
+                        && w.contains("cone: {horizontal: 22, vertical: 18}")),
+                "y el warning dice el mapa a escribir, no un 'desconocido' que deja adivinando");
     }
 
     /** El pipeline completo: texto -> DTO -> resolver. Un archivo de dos líneas es un arma. */

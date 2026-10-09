@@ -32,8 +32,8 @@ public record WeaponPackSpec(String origin, List<Entry> weapons, Map<String, Arc
      * el más específico y, a igualdad, el que está más abajo.
      */
     public record Entry(String creates, String id, String tag, String archetype, String profile,
-                        Stats stats, String special, String cone, Reach reach, String slash,
-                        Sounds sounds, String pose, Display display) {
+                        Stats stats, String special, Cone cone, Reach reach, ShotReach shot,
+                        String slash, Sounds sounds, String pose, Display display, Guard guard) {
 
         /** 2 = id o creates (más específico), 1 = tag; 0 = sin identidad, nunca matchea. */
         public int specificity() {
@@ -69,13 +69,46 @@ public record WeaponPackSpec(String origin, List<Entry> weapons, Map<String, Arc
         }
     }
 
-    /** Metros y grados crudos del cono; nulo = la banda {@code cone} o el molde. */
-    public record Reach(Float distance, Float horizontal, Float vertical) {
+    /**
+     * El cono, en grados crudos -- radio por eje, sin bandas. Decisión del General (2026-10-09):
+     * **en vez de `cone: small`, el número directo**: las seis bandas de {@code ConeSize} eran
+     * apodos de unos ángulos, y un apodo no deja elegir. {@code reach} quedó separado -- la
+     * distancia es un parámetro y el ángulo es otro, cada uno configurable por su cuenta.
+     *
+     * @param horizontal grados a izquierda y derecha de la mirada (5-85)
+     * @param vertical  grados sobre y bajo el horizonte (5-85)
+     */
+    public record Cone(Float horizontal, Float vertical) {
     }
 
-    /** Los números del arma. {@code canCharge} nulo hereda el molde. */
-    public record Stats(Float damage, Float attackSpeed, Integer cooldown, Integer durability,
-                        Boolean canCharge) {
+    /** Sólo la distancia de alcance en bloques (1.0-6.0); los ángulos son {@link Cone}. */
+    public record Reach(Float distance) {
+    }
+
+    /** El segundo alcance (tiro), que sí lleva sus tres números juntos. */
+    public record ShotReach(Float distance, Float horizontal, Float vertical) {
+    }
+
+    /** Empuje del golpe, con los techos del propio {@code KnockbackProfile} (1.6 / 0.45). */
+    public record Knockback(Float horizontal, Float vertical) {
+    }
+
+    /**
+     * La aguante del arma: puntos que aguanta bloqueando, arco en grados, regen y stun.
+     * El escudo vanilla es (3, 120°, 40, 100) y la espada (1, 90°, 40, 100).
+     */
+    public record Guard(Integer points, Float arcDegrees, Integer regenTicks, Integer stunTicks) {
+    }
+
+    /**
+     * Los números del arma, y sin {@code cooldown} a propósito: el tempo del golpe es
+     * {@code attack_speed} (lo que vanilla llama toques por segundo y {@code attackInterval}
+     * lee del holder). Dos campos para la misma magnitud serían dos verdades, y el jugador
+     * terminaría escribiendo uno que no rige.
+     */
+    public record Stats(Float damage, Float attackSpeed, Integer durability,
+                        Boolean canCharge, Float chargeBonus, Integer fullChargeTicks,
+                        Integer maxTargets, Knockback knockback) {
     }
 
     /** Ids de sounds.json del resource pack; nulo = el sonido del mod. */

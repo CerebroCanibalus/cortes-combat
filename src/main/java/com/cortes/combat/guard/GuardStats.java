@@ -36,6 +36,20 @@ public final class GuardStats {
         if (component != null) {
             return component;
         }
+        // **La capa 2 también acá**: un pack puede darle guarda a un arma que vanilla no tiene
+        // (points > 0) o quitarle la espada de la suya. Mismo orden que todo lo demás:
+        // componente > pack > lo que el juego dice sin que nadie diga nada.
+        com.cortes.combat.weaponpack.ResolvedWeapon pack =
+                com.cortes.combat.weaponpack.WeaponPackStore.resolve(stack);
+        if (pack != null && pack.guard() != null) {
+            GuardProfile base = vanillaDefaultFor(stack);
+            com.cortes.combat.weaponpack.WeaponPackSpec.Guard declared = pack.guard();
+            return new GuardProfile(
+                    declared.points() != null ? declared.points() : base.points(),
+                    declared.arcDegrees() != null ? declared.arcDegrees() : base.arcDegrees(),
+                    declared.regenTicks() != null ? declared.regenTicks() : base.regenTicks(),
+                    declared.stunTicks() != null ? declared.stunTicks() : base.stunTicks());
+        }
         return vanillaDefaultFor(stack);
     }
 

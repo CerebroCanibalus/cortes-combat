@@ -141,20 +141,29 @@ public final class WeaponStats {
         ChargeProfile charge = readOr(stack, ModComponents.CHARGE_PROFILE, null);
         if (charge == null) {
             charge = WeaponTables.charge(profile);
-            if (pack != null && pack.canCharge() != null) {
-                // El pack sólo declara la puerta; bonus y ticks siguen siendo del molde.
-                charge = new ChargeProfile(pack.canCharge(), charge.bonus(),
-                        charge.fullChargeTicks());
+            if (pack != null) {
+                // El pack declara la puerta y los números de la carga; lo que no declara sigue
+                // siendo del molde -- bono y ticks son la profundidad del mecanismo, no decoración.
+                charge = new ChargeProfile(
+                        pack.canCharge() != null ? pack.canCharge() : charge.canCharge(),
+                        pack.chargeBonus() != null ? pack.chargeBonus() : charge.bonus(),
+                        pack.fullChargeTicks() != null ? pack.fullChargeTicks()
+                                : charge.fullChargeTicks());
             }
         }
 
         ReachProfile reach = readOr(stack, ModComponents.REACH_PROFILE, null);
         if (reach == null) {
-            WeaponPackSpec.Reach declared = pack == null ? null : pack.reach();
-            reach = declared != null
-                    ? new ReachProfile(declared.distance(), declared.horizontal(),
-                            declared.vertical())
-                    : WeaponTables.reach(profile);
+            ReachProfile base = WeaponTables.reach(profile);
+            // Distancia y ángulos son parámetros SEPARADOS (decisión del General): el pack puede
+            // poner sólo la distancia y dejar el cono del molde, o al revés, campo por campo.
+            reach = new ReachProfile(
+                    pack != null && pack.reachDistance() != null ? pack.reachDistance()
+                            : base.distance(),
+                    pack != null && pack.cone() != null && pack.cone().horizontal() != null
+                            ? pack.cone().horizontal() : base.horizontalAngle(),
+                    pack != null && pack.cone() != null && pack.cone().vertical() != null
+                            ? pack.cone().vertical() : base.verticalAngle());
         }
 
         SpecialType special = readOr(stack, ModComponents.SPECIAL, null);
@@ -163,20 +172,52 @@ public final class WeaponStats {
                     : WeaponTables.special(profile);
         }
 
+        KnockbackProfile knockback = readOr(stack, ModComponents.KNOCKBACK_PROFILE, null);
+        if (knockback == null) {
+            KnockbackProfile base = WeaponTables.knockback(profile);
+            if (pack != null && pack.knockback() != null) {
+                // **Los techos viven en KnockbackProfile y el pack no los mueve**: clamp contra
+                // MAX_HORIZONTAL / MAX_VERTICAL como cualquier otro número de este sistema.
+                float horizontal = pack.knockback().horizontal() != null
+                        ? pack.knockback().horizontal() : base.horizontal();
+                float vertical = pack.knockback().vertical() != null
+                        ? pack.knockback().vertical() : base.vertical();
+                knockback = new KnockbackProfile(
+                        net.minecraft.util.Mth.clamp(horizontal, 0.0F,
+                                KnockbackProfile.MAX_HORIZONTAL),
+                        net.minecraft.util.Mth.clamp(vertical, 0.0F,
+                                KnockbackProfile.MAX_VERTICAL));
+            } else {
+                knockback = base;
+            }
+        }
+
+        ReachProfile shotReach = readOr(stack, ModComponents.SHOT_REACH, null);
+        if (shotReach == null) {
+            WeaponPackSpec.ShotReach declared = pack == null ? null : pack.shot();
+            // El segundo cono, resuelto por las mismas capas que todos los demás números:
+            // componente, pack, fila del perfil, NONE. **El nombre del componente es el mismo
+            // que el del campo que alimenta** -- reach_profile es la bayoneta, shot_reach es el
+            // cañón -- y eso vale más un comentario que un test, porque una pareja intercambiada
+            // haría el click izquierdo del arcabuz de seis bloques y nada más lo notaría.
+            shotReach = declared != null
+                    ? new ReachProfile(
+                            declared.distance() != null ? declared.distance()
+                                    : WeaponTables.shotReach(profile).distance(),
+                            declared.horizontal() != null ? declared.horizontal()
+                                    : WeaponTables.shotReach(profile).horizontalAngle(),
+                            declared.vertical() != null ? declared.vertical()
+                                    : WeaponTables.shotReach(profile).verticalAngle())
+                    : WeaponTables.shotReach(profile);
+        }
+
         return new WeaponStats(
                 profile,
                 reach,
                 charge,
                 special,
-                readOr(stack, ModComponents.KNOCKBACK_PROFILE, WeaponTables.knockback(profile)),
-                // The second cone, resolved through the same four layers as every other number:
-                // a data component first, then the profile's row, then NONE for the thirty-one
-                // weapons that have none. **It is the one stat whose component name is the same as
-                // the field it feeds** -- reach_profile is the bayonet, shot_reach is the barrel --
-                // and that is worth a test rather than a comment, because a swapped pair would
-                // make the arcabuz's left click six and a half blocks long and nothing else would
-                // notice.
-                readOr(stack, ModComponents.SHOT_REACH, WeaponTables.shotReach(profile)));
+                knockback,
+                shotReach);
     }
 
     private static WeaponStats bareHands() {

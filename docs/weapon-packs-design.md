@@ -88,7 +88,7 @@ salga del mod (template, `ejemplo.yaml`, built-in) cumple cuatro reglas:
 
 1. **Cabecera completa en cada archivo**: qué es un weapon pack, dónde van los assets
    (`resourcepacks/`), el orden de merge, y `version`.
-2. **Cada campo lleva unidad + rango + default**: `cooldown: 14  # ticks (1 = 0.05 s); si se
+2. **Cada campo lleva unidad + rango + default**: `attack_speed: 1.6  # toques/s; si se
    omite, el del molde`. Un número sin unidad es una pregunta.
 3. **Enums listados con su significado**, no sólo sus valores: `special: parry # la ventana de
    0,6 s que devuelve sólo el golpe parriado`.
@@ -129,18 +129,28 @@ weapons:
     stats:
       damage: 4.5                   # corazones = dmg/2. Si lo declarás, REEMPLAZA el atributo del
                                     # ítem entero (el rebalance vanilla de espadas no lo toca)
-      attack_speed: 1.6             # por segundo (vanilla: espada 1.6, puño 4.0). Vacío = molde
-      cooldown: 14                  # ticks duros hasta el próximo golpe (1 tick = 0.05 s)
-      durability: 220               # usos; vacío = el del ítem original
-      charge: { can_charge: false } # si acepta carga. La carga NUNCA resta: el piso es 0, en código
+      attack_speed: 1.6             # toques/s = el tempo. vanilla: espada 1.6, puño 4.0. NO existe
+                                    # campo `cooldown`: el intervalo ES este (20 / toques por s)
+      durability: 220               # usos; vacío = el del ítem original (sólo aplica a `creates`)
+      charge:
+        can_charge: false           # la puerta. La carga NUNCA resta: el piso es 0, en código
+        bonus: 1.0                  # el multiplicador a carga completa (guerra: 1.0)
+        full_charge_ticks: 50       # ticks hasta carga completa
+      knockback: { horizontal: 1.2, vertical: 0.3 }  # empuje del golpe; techos 1.6/0.45 -- el
+                                    # código clamapea aunque el pack pase de largo
 
-    # ── CONO: banda O números crudos. Los números crudos ganan sobre la banda.
-    cone: small                     # atajo: very_small|small|medium|wide|very_wide|maximum
-    reach:                          # control fino (opcional, en reemplazo de cone):
-      distance: 2.6                 # metros, 1.0–6.0
-      horizontal: 22                # grados ± desde la mirada, 5–85
-      vertical: 18                  # grados ± sobre/horizonte, 5–85 (la mirada decide)
+    # ── ALCANCE Y CONO: dos parámetros SEPARADOS (decisión 2026-10-09). Sin bandas: el radio va
+    # en crudo por eje. `cone: small` ya no existe, y quien lo escriba recibe el warning con el
+    # mapa exacto a poner, no un "campo desconocido".
+    reach: { distance: 2.6 }        # metros, 1.0–6.0. SÓLO la distancia
+    cone:                           # radio en grados, por eje, 5–85 cada uno
+      horizontal: 22                # grados ± desde la mirada
+      vertical: 18                  # grados ± sobre/horizonte (la mirada decide)
       # La correa NO se puede apagar: cerca la holgura es max(d·tanθ, min(0.65·semi, 0.8)).
+
+    guard: { points: 1, arc: 90, regen: 40, stun: 100 }   # aguante del arma: espada 1/90/40/100,
+                                    # escudo 3/120/40/100; points 0 = no cubre
+    shot: { distance: 6.5, horizontal: 32, vertical: 32 }  # segundo alcance (tiro), si lo hay
 
     special: parry                  # click derecho: none|multi_hit|parry|slam|shove|lunge|sweep|throw|fusee
                                     #  · parry = ventana 0,6 s que devuelve sólo el golpe parriado (cd 5 s)
@@ -168,13 +178,16 @@ weapons:
                                     #    y su receta en un datapack (referencia el id libremente)
 ```
 
-### Control fino del cono — y su correa
+### Alcance y cono: dos parámetros separados — y su correa
 
-`reach: {distance, horizontal, vertical}` son metros y grados crudos (el mismo `ReachProfile` de
-los perfiles). Rango que el resolver valida: distancia 1.0–6.0, horizontal 5–85°, vertical
-5–85°. **La correa del cono se aplica después igual**: `permitido = max(distancia·tan(ángulo),
-min(0.65·semiextensión, 0.8))`. El pack elige dentro del rango; no puede desactivar la holgura
-de cercanía — eso es invariante, no número.
+**Decisión del General (2026-10-09): radio en crudo, no por tamaños, y `reach` aparte.**
+`reach` es sólo distancia en metros (1.0–6.0); `cone` es el radio en grados por eje
+(horizontal/vertical, 5–85°). Las seis bandas de `ConeSize` eran apodos de unos ángulos, y un
+apodo no deja elegir: quien escriba `cone: small` recibe un warning con el mapa exacto a poner.
+Cada campo se hereda por separado del molde, así que se puede tocar la distancia sin tocar el
+ángulo y al revés. **La correa se aplica después igual**:
+`permitido = max(distancia·tan(ángulo), min(0.65·semiextensión, 0.8))` — el pack elige dentro
+del rango; no puede desactivar la holgura de cercanía, eso es invariante, no número.
 
 ## 5. Los arquetipos: tipos de arma genéricos
 
@@ -196,7 +209,7 @@ sobre perfiles que ya existen (14 valores, enum cerrado):
 | `axe` | `AXE` | hachas de combate | sin especial |
 
 **Un arquetipo es un paquete**: molde de movimiento (pose de `ViewModelDefaults`) + números de
-tipo (alcance, cooldown, cono) + sprite slash genérico + set de sonidos. Las mecánicas especiales
+tipo (alcance, ángulos, tempo) + sprite slash genérico + set de sonidos. Las mecánicas especiales
 (carga, parry, sweep) son **datos** (`charge_profile`, `special`) que el arquetipo declara y el
 pack puede retocar — no vienen pegadas al molde.
 

@@ -41,13 +41,18 @@ public final class WeaponPackLoader {
     private static final String BUILT_IN_RESOURCE = "data/cortescombat/weapon_packs/builtin.yaml";
     private static final Set<String> ROOT_KEYS = Set.of("version", "archetypes", "weapons");
     private static final Set<String> ENTRY_KEYS = Set.of("creates", "match", "archetype",
-            "profile", "stats", "special", "cone", "reach", "texture", "sounds", "animation",
-            "display");
+            "profile", "stats", "special", "cone", "reach", "shot", "texture", "sounds",
+            "animation", "display", "guard");
     private static final Set<String> MATCH_KEYS = Set.of("tag", "id");
-    private static final Set<String> STATS_KEYS = Set.of("damage", "attack_speed", "cooldown",
-            "durability", "charge");
-    private static final Set<String> CHARGE_KEYS = Set.of("can_charge");
-    private static final Set<String> REACH_KEYS = Set.of("distance", "horizontal", "vertical");
+    private static final Set<String> STATS_KEYS = Set.of("damage", "attack_speed", "durability",
+            "charge", "max_targets", "knockback");
+    private static final Set<String> CHARGE_KEYS = Set.of("can_charge", "bonus",
+            "full_charge_ticks");
+    private static final Set<String> REACH_KEYS = Set.of("distance");
+    private static final Set<String> CONE_KEYS = Set.of("horizontal", "vertical");
+    private static final Set<String> SHOT_KEYS = Set.of("distance", "horizontal", "vertical");
+    private static final Set<String> GUARD_KEYS = Set.of("points", "arc", "regen", "stun");
+    private static final Set<String> KNOCKBACK_KEYS = Set.of("horizontal", "vertical");
     private static final Set<String> TEXTURE_KEYS = Set.of("slash");
     private static final Set<String> SOUND_KEYS = Set.of("swing", "hit", "charged");
     private static final Set<String> ANIMATION_KEYS = Set.of("pose");
@@ -225,32 +230,85 @@ public final class WeaponPackLoader {
         if (map.get("stats") instanceof Map<?, ?> statsMap) {
             unknownKeys(origin, where + ".stats", statsMap, STATS_KEYS, warnings);
             Boolean canCharge = null;
+            Float chargeBonus = null;
+            Integer fullChargeTicks = null;
             if (statsMap.get("charge") instanceof Map<?, ?> chargeMap) {
                 unknownKeys(origin, where + ".stats.charge", chargeMap, CHARGE_KEYS, warnings);
                 canCharge = bool(origin, where + ".stats.charge", chargeMap, "can_charge", warnings);
+                chargeBonus = number(origin, where + ".stats.charge", chargeMap, "bonus", warnings);
+                fullChargeTicks = whole(origin, where + ".stats.charge", chargeMap,
+                        "full_charge_ticks", warnings);
             } else if (statsMap.get("charge") != null) {
                 warnings.add(origin + " :: " + where
                         + ".stats.charge no es un mapa -- se ignora (¿`charge: {can_charge: ...}`?)");
             }
+            WeaponPackSpec.Knockback knockback = null;
+            if (statsMap.get("knockback") instanceof Map<?, ?> kbMap) {
+                unknownKeys(origin, where + ".stats.knockback", kbMap, KNOCKBACK_KEYS, warnings);
+                knockback = new WeaponPackSpec.Knockback(
+                        number(origin, where + ".stats.knockback", kbMap, "horizontal", warnings),
+                        number(origin, where + ".stats.knockback", kbMap, "vertical", warnings));
+            } else if (statsMap.get("knockback") != null) {
+                warnings.add(origin + " :: " + where + ".stats.knockback no es un mapa -- se ignora");
+            }
             stats = new WeaponPackSpec.Stats(
                     number(origin, where + ".stats", statsMap, "damage", warnings),
                     number(origin, where + ".stats", statsMap, "attack_speed", warnings),
-                    whole(origin, where + ".stats", statsMap, "cooldown", warnings),
                     whole(origin, where + ".stats", statsMap, "durability", warnings),
-                    canCharge);
+                    canCharge, chargeBonus, fullChargeTicks,
+                    whole(origin, where + ".stats", statsMap, "max_targets", warnings),
+                    knockback);
         } else if (map.get("stats") != null) {
             warnings.add(origin + " :: " + where + ".stats no es un mapa -- se ignora");
+        }
+
+        // **El cono es radio crudo y `reach` sólo distancia -- dos parámetros separados**
+        // (decisión del General, 2026-10-09). La banda `cone: small` era el apodo de unos
+        // ángulos, y un apodo no deja elegir: quien escriba la forma vieja recibe el mapa a
+        // escribir, no un "campo desconocido" que lo deja adivinando.
+        WeaponPackSpec.Cone cone = null;
+        if (map.get("cone") instanceof Map<?, ?> coneMap) {
+            unknownKeys(origin, where + ".cone", coneMap, CONE_KEYS, warnings);
+            cone = new WeaponPackSpec.Cone(
+                    number(origin, where + ".cone", coneMap, "horizontal", warnings),
+                    number(origin, where + ".cone", coneMap, "vertical", warnings));
+        } else if (map.get("cone") instanceof String band) {
+            warnings.add(origin + " :: " + where + ".cone: la banda '" + band
+                    + "' ya no existe -- radio en crudo: cone: {horizontal: 22, vertical: 18}");
+        } else if (map.get("cone") != null) {
+            warnings.add(origin + " :: " + where + ".cone no es un mapa {horizontal, vertical}");
         }
 
         WeaponPackSpec.Reach reach = null;
         if (map.get("reach") instanceof Map<?, ?> reachMap) {
             unknownKeys(origin, where + ".reach", reachMap, REACH_KEYS, warnings);
             reach = new WeaponPackSpec.Reach(
-                    number(origin, where + ".reach", reachMap, "distance", warnings),
-                    number(origin, where + ".reach", reachMap, "horizontal", warnings),
-                    number(origin, where + ".reach", reachMap, "vertical", warnings));
+                    number(origin, where + ".reach", reachMap, "distance", warnings));
         } else if (map.get("reach") != null) {
             warnings.add(origin + " :: " + where + ".reach no es un mapa -- se ignora");
+        }
+
+        WeaponPackSpec.ShotReach shot = null;
+        if (map.get("shot") instanceof Map<?, ?> shotMap) {
+            unknownKeys(origin, where + ".shot", shotMap, SHOT_KEYS, warnings);
+            shot = new WeaponPackSpec.ShotReach(
+                    number(origin, where + ".shot", shotMap, "distance", warnings),
+                    number(origin, where + ".shot", shotMap, "horizontal", warnings),
+                    number(origin, where + ".shot", shotMap, "vertical", warnings));
+        } else if (map.get("shot") != null) {
+            warnings.add(origin + " :: " + where + ".shot no es un mapa -- se ignora");
+        }
+
+        WeaponPackSpec.Guard guard = null;
+        if (map.get("guard") instanceof Map<?, ?> guardMap) {
+            unknownKeys(origin, where + ".guard", guardMap, GUARD_KEYS, warnings);
+            guard = new WeaponPackSpec.Guard(
+                    whole(origin, where + ".guard", guardMap, "points", warnings),
+                    number(origin, where + ".guard", guardMap, "arc", warnings),
+                    whole(origin, where + ".guard", guardMap, "regen", warnings),
+                    whole(origin, where + ".guard", guardMap, "stun", warnings));
+        } else if (map.get("guard") != null) {
+            warnings.add(origin + " :: " + where + ".guard no es un mapa -- se ignora");
         }
 
         WeaponPackSpec.Sounds sounds = null;
@@ -300,8 +358,7 @@ public final class WeaponPackLoader {
                 text(origin, where, map, "profile", warnings),
                 stats,
                 text(origin, where, map, "special", warnings),
-                text(origin, where, map, "cone", warnings),
-                reach, slash, sounds, pose, display);
+                cone, reach, shot, slash, sounds, pose, display, guard);
     }
 
     private static ArchetypeSpec parseArchetype(String origin, String name, Object raw,
