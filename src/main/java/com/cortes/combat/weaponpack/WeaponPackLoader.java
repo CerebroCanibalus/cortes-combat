@@ -161,7 +161,9 @@ public final class WeaponPackLoader {
                 packs.addAll(one.packs());
                 warnings.addAll(one.warnings());
             } catch (ParseException e) {
-                throw e;
+                // Un archivo roto no aborta la carga entera: se nombra completo (con su línea,
+                // si SnakeYAML la trae) y los demás archivos siguen entrando.
+                warnings.add(e.getMessage());
             } catch (IOException | RuntimeException e) {
                 // Un archivo ilegible no tira la carga entera: se nombra y se salta.
                 warnings.add(file.getFileName() + " :: ilegible: " + e.getMessage());

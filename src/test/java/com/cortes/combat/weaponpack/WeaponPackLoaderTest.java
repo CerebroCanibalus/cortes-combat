@@ -158,6 +158,22 @@ class WeaponPackLoaderTest {
         assertTrue(builtIn.warnings().isEmpty());
     }
 
+    /** Un archivo roto no aborta el directorio: se nombra y los demás siguen entrando. */
+    @Test
+    void aBrokenFileDoesNotAbortTheDirectory() throws Exception {
+        Files.writeString(tempDir.resolve("a-bueno.yaml"), "version: 1\nweapons: []\n",
+                StandardCharsets.UTF_8);
+        Files.writeString(tempDir.resolve("b-roto.yaml"), "version: 99\n",
+                StandardCharsets.UTF_8);
+
+        WeaponPackLoader.Result result = WeaponPackLoader.loadDirectory(tempDir);
+        assertEquals(1, result.packs().size(), "el bueno entró");
+        assertEquals("a-bueno.yaml", result.packs().get(0).origin());
+        assertEquals(1, result.warnings().size(), "y el roto quedó como warning, no como crash");
+        assertTrue(result.warnings().get(0).contains("b-roto.yaml"),
+                "el warning nombra el archivo malo, no el estado del mundo");
+    }
+
     /** El pipeline completo: texto -> DTO -> resolver. Un archivo de dos líneas es un arma. */
     @Test
     void fromTextToResolvedWeapon() {

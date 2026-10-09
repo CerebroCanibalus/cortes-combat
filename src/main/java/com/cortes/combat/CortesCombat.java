@@ -209,6 +209,10 @@ public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
                 com.cortes.combat.data.RecipeBookPopulation.class);
         NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class,
                 event -> CortesCommand.register(event.getDispatcher()));
+        // Los weapon packs: config/cortescombat/weapons/*.yaml + el builtin del classpath, en
+        // ese orden de precedencia. Nunca lanza -- un YAML roto queda como warning nombrado y
+        // el mod carga sin esa entrada, no sin cargar.
+        com.cortes.combat.weaponpack.WeaponPackStore.reload();
         LOGGER.info("Cortés Combat loading");
     }
 }

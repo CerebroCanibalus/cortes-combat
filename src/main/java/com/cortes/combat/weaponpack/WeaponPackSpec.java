@@ -44,7 +44,7 @@ public record WeaponPackSpec(String origin, List<Entry> weapons, Map<String, Arc
         }
 
         /** El tag se acepta con o sin '#': el catálogo de tags no lleva almohadilla. */
-        public boolean matches(String itemId, Collection<String> itemTags) {
+        public boolean matches(String itemId, java.util.function.Predicate<String> hasTag) {
             if (creates != null) {
                 return creates.equals(itemId);
             }
@@ -55,7 +55,7 @@ public record WeaponPackSpec(String origin, List<Entry> weapons, Map<String, Arc
                 return false;
             }
             String wanted = tag.startsWith("#") ? tag.substring(1) : tag;
-            return itemTags.contains(wanted);
+            return hasTag.test(wanted);
         }
 
         public String identity() {

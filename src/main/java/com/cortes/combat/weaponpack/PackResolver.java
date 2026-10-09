@@ -31,13 +31,23 @@ public final class PackResolver {
     /** {@code null} = el ítem no está en ningún pack: la capa 2 no opina, siguen las de abajo. */
     public static ResolvedWeapon resolve(String itemId, Collection<String> itemTags,
                                          List<WeaponPackSpec> packs) {
+        return resolve(itemId, itemTags::contains, packs);
+    }
+
+    /**
+     * La firma real: un predicado de tags, no una colección. El caller del juego no tiene la
+     * lista de tags de un ítem -- tiene {@code stack.is(TagKey)}, que es preguntarle al bind --
+     * y forzarlo a armar una colección sería inventar datos que el juego no expone.
+     */
+    public static ResolvedWeapon resolve(String itemId, java.util.function.Predicate<String> hasTag,
+                                         List<WeaponPackSpec> packs) {
         Map<String, ArchetypeSpec> archetypes = new LinkedHashMap<>(ArchetypeSpec.builtins());
         Entry winner = null;
         String winnerOrigin = null;
         for (WeaponPackSpec pack : packs) {
             pack.archetypes().forEach(archetypes::put);
             for (Entry entry : pack.weapons()) {
-                if (!entry.matches(itemId, itemTags)) {
+                if (!entry.matches(itemId, hasTag)) {
                     continue;
                 }
                 // Ganar es: más específico, o igual de específico y más abajo (>= con orden de
@@ -90,6 +100,7 @@ public final class PackResolver {
                 stats != null ? stats.attackSpeed() : null,
                 stats != null ? stats.cooldown() : null,
                 stats != null ? stats.durability() : null,
+                entry.reach(),
                 slash, pose,
                 sounds != null ? sounds.swing() : null,
                 sounds != null ? sounds.hit() : null,

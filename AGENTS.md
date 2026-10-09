@@ -183,6 +183,7 @@ Pasos 1–10 hechos ⊕ verificados en cliente real. Librería de viewmodel, gua
 | 15 | compat / conversión de armas de otros mods | pendiente |
 | — | **arcabuz** (arma 31, fuera del catálogo de 30) | HECHO, sin receta de crafteo |
 | — | tercera persona (`thirdperson/`) | HECHO y verificado |
+| — | **weapon packs YAML** (docs/weapon-packs-design.md v3) | **FASES 1–3 HECHAS**: resolver puro, loader + SnakeYAML jarJar, puentes en `WeaponStats.of()` y `WeaponPackAttributes` — 951 tests, **⊥ probado en cliente** |
 
 ## Decisiones tomadas
 
@@ -1273,5 +1274,7 @@ Saboteados a propósito, uno por uno. **6 sabotajes → 6 muertes por su razón:
 | 11 | `/cc weapons` trae 11 vanilla. Arcabuz: feedback por objetivo, flash a 1,7 m, sonido de carga completa, `CombatFeedback.CHARGED`. | deuda |
 | 12 | Sonido de carga completa del viewmodel e impacto de golpe cargado. | deuda |
 | 13 | **La red de redstone se ENCOGE cuando termina una sobrecarga**: la estrella publica radio 100 y el firestone a 40 cargas publica 60, y al cortarse el fusio el radio vuelve al de la carga real -- los cables de mas pierden membresia, recalculan con `-1`, y `max(i, j)` **nunca devuelve el punto perdido** (el toggle los reengancha). Instrumentado: `[red] reactor X dado de baja ... por refreshState` ya nombra al que borra. Fix honesto: **el radio de un reactor solo deberia crecer durante su vida**. | **CERRADO 2026-10-08**: high-water persistido (`publishedRadius`, guardado en NBT); `lit` false publica cero, que es una decision y no un encogimiento |
+
+| 14 | **Weapon packs (fases 1–3 hechas):** resolver + loader + puentes (`WeaponStats.of()` = componente > pack > tabla; atributos en `LOWEST` = el pack declara y reemplaza el atributo entero). **Sin cablear:** cone (la banda `cone:` sólo se ignora; el reach crudo SÍ va), `cooldown` (sin call site identificado) y `durability` (sólo aplica a `creates`, fase 4). Después: poses, sonidos, Nivel B, tags `category`, `/cc reload` y `/cc weapons source`. **Nada probado en cliente todavía.** | pendiente |
 
 **El lector nuevo empieza por `ARCHITECTURE.md`, luego esta seccion, luego `docs/api-trampas.md`.**

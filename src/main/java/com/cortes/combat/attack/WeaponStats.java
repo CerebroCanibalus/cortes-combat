@@ -7,6 +7,9 @@ import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.item.WeaponProfileTags;
 import com.cortes.combat.item.WeaponTables;
+import com.cortes.combat.weaponpack.ResolvedWeapon;
+import com.cortes.combat.weaponpack.WeaponPackSpec;
+import com.cortes.combat.weaponpack.WeaponPackStore;
 import com.cortes.combat.registry.ModComponents;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
@@ -128,12 +131,43 @@ public final class WeaponStats {
         if (stack == null || stack.isEmpty()) {
             return bareHands();
         }
-        WeaponProfile profile = readProfile(stack);
+        // **La capa 2 resuelta una vez y preguntada por todos los campos.** El orden de cada
+        // número es el mismo en todas partes: componente > pack > tabla del perfil. Un solo
+        // resolve por `of()` y no uno por campo, porque el fast-path del store es una lectura
+        // y el resolver completo es un par de listas cortas -- barato, pero no regalado.
+        ResolvedWeapon pack = WeaponPackStore.resolve(stack);
+        WeaponProfile profile = readProfile(stack, pack);
+
+        ChargeProfile charge = readOr(stack, ModComponents.CHARGE_PROFILE, null);
+        if (charge == null) {
+            charge = WeaponTables.charge(profile);
+            if (pack != null && pack.canCharge() != null) {
+                // El pack sólo declara la puerta; bonus y ticks siguen siendo del molde.
+                charge = new ChargeProfile(pack.canCharge(), charge.bonus(),
+                        charge.fullChargeTicks());
+            }
+        }
+
+        ReachProfile reach = readOr(stack, ModComponents.REACH_PROFILE, null);
+        if (reach == null) {
+            WeaponPackSpec.Reach declared = pack == null ? null : pack.reach();
+            reach = declared != null
+                    ? new ReachProfile(declared.distance(), declared.horizontal(),
+                            declared.vertical())
+                    : WeaponTables.reach(profile);
+        }
+
+        SpecialType special = readOr(stack, ModComponents.SPECIAL, null);
+        if (special == null) {
+            special = pack != null && pack.special() != null ? pack.special()
+                    : WeaponTables.special(profile);
+        }
+
         return new WeaponStats(
                 profile,
-                readOr(stack, ModComponents.REACH_PROFILE, WeaponTables.reach(profile)),
-                readOr(stack, ModComponents.CHARGE_PROFILE, WeaponTables.charge(profile)),
-                readOr(stack, ModComponents.SPECIAL, WeaponTables.special(profile)),
+                reach,
+                charge,
+                special,
                 readOr(stack, ModComponents.KNOCKBACK_PROFILE, WeaponTables.knockback(profile)),
                 // The second cone, resolved through the same four layers as every other number:
                 // a data component first, then the profile's row, then NONE for the thirty-one
@@ -155,10 +189,16 @@ public final class WeaponStats {
                 ReachProfile.NONE);
     }
 
-    private static WeaponProfile readProfile(ItemStack stack) {
+    private static WeaponProfile readProfile(ItemStack stack, ResolvedWeapon pack) {
         WeaponProfile explicit = stack.get(ModComponents.WEAPON_PROFILE);
         if (explicit != null) {
             return explicit;
+        }
+        // **La capa 2 entre la API de Java y nuestros tags.** Un pack manda sobre el molde del
+        // tag: la regla que el packmate aprende en una línea es "el YAML manda, el tag molde es
+        // el fallback", y este es exactamente el punto donde esa frase se vuelve código.
+        if (pack != null && pack.profile() != null) {
+            return pack.profile();
         }
         return deriveProfile(stack);
     }
