@@ -125,7 +125,9 @@ public class CortesLanguageProvider extends LanguageProvider {
     add("enchantment.cortescombat.gold_echo", spanish ? "Eco de Oro" : "Echo of Gold");
     add("enchantment.cortescombat.life_steal", spanish ? "Robo de Vida" : "Life Steal");
     add("enchantment.cortescombat.wind_walker", spanish ? "Velocidad del Viento" : "Wind Speed");
-    add("enchantment.cortescombat.wind_digger", spanish ? "Velocidad del Viento" : "Wind Speed");
+    add("enchantment.cortescombat.miner_frenzy", spanish ? "Fiebre del Minero" : "Miner's Fever");
+    add("enchantment.cortescombat.golden_hands", spanish ? "Manos Doradas" : "Golden Hands");
+    add("enchantment.cortescombat.golden_harvest", spanish ? "Cosecha Dorada" : "Golden Harvest");
     add("enchantment.cortescombat.feather_weight", spanish ? "Peso Pluma" : "Feather Weight");
     add("enchantment.cortescombat.phantom_strike", spanish ? "Golpe Fantasma" : "Phantom Strike");
     add("enchantment.cortescombat.phantom_block", spanish ? "Golpe Fantasma" : "Phantom Strike");

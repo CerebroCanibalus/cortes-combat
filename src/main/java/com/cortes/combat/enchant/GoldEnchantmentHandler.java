@@ -1,6 +1,7 @@
 package com.cortes.combat.enchant;
 
 import com.cortes.combat.CortesCombat;
+import com.cortes.combat.registry.ModAttachments;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
@@ -51,6 +52,23 @@ public final class GoldEnchantmentHandler {
                     });
 
     private static final int MARK_TICKS = 100;
+
+    /**
+     * The drops midas on a tool turns to gold. <b>An explicit list and not a tag or a predicate
+     * over hardness</b>: the question is "did this block come out of the ground with a metal in
+     * it", and vanilla's own ore set answers it by naming nine items, where a hardness rule would
+     * turn a netherrack into gold.
+     */
+    private static final java.util.Set<net.minecraft.world.item.Item> ORES =
+            java.util.Set.of(net.minecraft.world.item.Items.COAL,
+                    net.minecraft.world.item.Items.RAW_IRON,
+                    net.minecraft.world.item.Items.RAW_GOLD,
+                    net.minecraft.world.item.Items.RAW_COPPER,
+                    net.minecraft.world.item.Items.DIAMOND,
+                    net.minecraft.world.item.Items.EMERALD,
+                    net.minecraft.world.item.Items.LAPIS_LAZULI,
+                    net.minecraft.world.item.Items.REDSTONE,
+                    net.minecraft.world.item.Items.QUARTZ);
 
     private GoldEnchantmentHandler() {
     }
@@ -133,7 +151,116 @@ public final class GoldEnchantmentHandler {
 
     // ------------------------------------------------------------------ the mark
 
-    /** Life steal and the mark, both reading the number the target actually lost. */
+    /** Miner's frenzy, written on every block and read by the attribute pass. */
+    @net.neoforged.bus.api.SubscribeEvent
+    public static void onBreakBlock(net.neoforged.neoforge.event.level.BlockEvent.BreakEvent event) {
+        if (!(event.getPlayer() instanceof Player player) || !(player.level() instanceof ServerLevel level)) {
+            return;
+        }
+        int frenzy = level(player.getMainHandItem(), ModEnchantments.MINER_FRENZY);
+        if (frenzy <= 0) {
+            return;
+        }
+        int now = (int) level.getGameTime();
+        int ceiling = GoldEnchantRules.frenzyMaxStacks(frenzy);
+        FrenzyState current = player.getData(ModAttachments.FRENZY).asOf(now);
+        player.setData(ModAttachments.FRENZY, current.broken(now, ceiling));
+    }
+
+    /**
+     * The four that happen to a block's drops: golden hands, midas on a tool, the phantom block
+     * and the golden harvest -- all of them answering one question with the same list.
+     *
+     * <p><b>Cancelled only after the moves are made.</b> The event carries the drop entities
+     * themselves, so moving them out and then cancelling is what stops vanilla from spawning a
+     * second copy. Cancelling first would leave a list as a corpse nobody reads.</p>
+     */
+    @net.neoforged.bus.api.SubscribeEvent
+    public static void onBlockDrops(net.neoforged.neoforge.event.level.BlockDropsEvent event) {
+        if (!(event.getBreaker() instanceof Player player)) {
+            return;
+        }
+        ItemStack tool = event.getTool();
+        java.util.List<net.minecraft.world.entity.item.ItemEntity> drops = event.getDrops();
+
+        // **The shovel first, and it is the only one that does not care what was broken.**
+        // Golden hands is a shovel enchantment because the shovel is the tool that clears ground:
+        // a trench over lava, a shaft over a drop, a beach under water. Anywhere the botin would
+        // fall into the world, it falls into the inventory instead.
+        if (level(tool, ModEnchantments.GOLDEN_HANDS) > 0) {
+            for (net.minecraft.world.entity.item.ItemEntity entity : drops) {
+                player.getInventory().placeItemBackInInventory(entity.getItem());
+            }
+            event.setCanceled(true);
+            return;
+        }
+
+        // **The hoe: the field comes back and the second level pays double.** Replanting reads the
+        // state the event holds, and writing age zero is all of it; the double is applied to the
+        // list, and the two never read each other's work because they are on the same pass.
+        int harvest = level(tool, ModEnchantments.GOLDEN_HARVEST);
+        if (harvest > 0
+                && event.getState().getBlock() instanceof net.minecraft.world.level.block.CropBlock) {
+            if (GoldEnchantRules.harvestReplants(harvest)
+                    && event.getState().hasProperty(net.minecraft.world.level.block.CropBlock.AGE)) {
+                event.getLevel().setBlock(event.getPos(),
+                        event.getState().setValue(net.minecraft.world.level.block.CropBlock.AGE, 0),
+                        net.minecraft.world.level.block.Block.UPDATE_ALL);
+            }
+            if (GoldEnchantRules.harvestDoubles(harvest)) {
+                doubleUp(drops);
+                event.setCanceled(true);
+                return;
+            }
+        }
+
+        // **Phantom block, and the experience is left alone on purpose:** the event sets it and
+        // vanilla halves it per level of fortune, so an item that doubled the block AND the levels
+        // would turn every shaft into a level ten.
+        if (GoldEnchantRules.toolDropsTwice(level(tool, ModEnchantments.PHANTOM_BLOCK),
+                roll(event.getLevel()))) {
+            doubleUp(drops);
+            event.setCanceled(true);
+            return;
+        }
+
+        // **Midas on a tool: the drop is replaced, not added to.** A coal vein that becomes gold
+        // is worth mining; a coal vein that also pays in gold would be a different game -- one
+        // that pays in gold for what it came for anyway.
+        int midas = level(tool, ModEnchantments.MIDAS_TOOL);
+        if (midas <= 0) {
+            return;
+        }
+        Random random = roll(event.getLevel());
+        if (!GoldEnchantRules.toolMidasTurned(midas, random)) {
+            return;
+        }
+        int bonus = GoldEnchantRules.toolMidasBonusNuggets(midas);
+        for (net.minecraft.world.entity.item.ItemEntity entity : drops) {
+            ItemStack stack = entity.getItem();
+            if (!ORES.contains(stack.getItem())) {
+                continue;
+            }
+            entity.setItem(new ItemStack(net.minecraft.world.item.Items.GOLD_INGOT,
+                    stack.getCount()));
+            if (bonus > 0) {
+                drops.add(new net.minecraft.world.entity.item.ItemEntity(event.getLevel(),
+                        entity.getX(), entity.getY(), entity.getZ(),
+                        new ItemStack(net.minecraft.world.item.Items.GOLD_NUGGET, bonus)));
+            }
+            return;
+        }
+    }
+
+    /** Copies every drop once, which is the whole of a doubled block. */
+    private static void doubleUp(java.util.List<net.minecraft.world.entity.item.ItemEntity> drops) {
+        int size = drops.size();
+        for (int i = 0; i < size; i++) {
+            net.minecraft.world.entity.item.ItemEntity original = drops.get(i);
+            drops.add(new net.minecraft.world.entity.item.ItemEntity(original.level(),
+                    original.getX(), original.getY(), original.getZ(), original.getItem().copy()));
+        }
+    }
     @net.neoforged.bus.api.SubscribeEvent
     public static void onIncomingDamage(LivingIncomingDamageEvent event) {
         if (!(event.getEntity().level() instanceof ServerLevel)) {
@@ -185,6 +312,15 @@ public final class GoldEnchantmentHandler {
                 CortesCombat.MODID + ":wind_walker", AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL,
                 GoldEnchantRules.windMovementBonus(level(player.getMainHandItem(),
                         ModEnchantments.WIND_WALKER)));
+        // **The frenzy, and it is the same pass as the other two.** The stack is read from the
+        // attachment, resolved against the current game time so a window that closed pays nothing,
+        // and written only by the break event -- this reads, the block one writes.
+        FrenzyState frenzy = player.getData(ModAttachments.FRENZY)
+                .asOf((int) player.level().getGameTime());
+        int frenzyLevel = level(player.getMainHandItem(), ModEnchantments.MINER_FRENZY);
+        apply(player, net.minecraft.world.entity.ai.attributes.Attributes.BLOCK_BREAK_SPEED,
+                CortesCombat.MODID + ":miner_frenzy", AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL,
+                GoldEnchantRules.frenzyBonus(frenzyLevel, frenzy.stacks()));
         // **An offset and not a ratio on this one, because vanilla's own is an offset.**
         // `SwordItem.createAttributes` puts `attackSpeed - 4.0` on the same attribute with ADD_VALUE,
         // so a speed bonus has to be added in the same unit or it stops meaning "ten percent faster".

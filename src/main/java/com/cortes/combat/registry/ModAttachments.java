@@ -128,6 +128,10 @@ public final class ModAttachments {
      * bookkeeping only, not gameplay. An attachment rather than a static map because a map
      * needs a logout cleanup hook and returns null on the first tick, which crashed the server.
      */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<com.cortes.combat.enchant.FrenzyState>> FRENZY =
+            ATTACHMENT_TYPES.register("frenzy", () -> AttachmentType.builder(
+                    () -> com.cortes.combat.enchant.FrenzyState.EMPTY).build());
+
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<SyncState>> LAST_SYNCED =
             ATTACHMENT_TYPES.register("last_synced", () -> AttachmentType.builder(() -> SyncState.NEVER)
                     .serialize(SyncState.CODEC)

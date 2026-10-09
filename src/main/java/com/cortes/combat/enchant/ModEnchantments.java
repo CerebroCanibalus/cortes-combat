@@ -74,9 +74,17 @@ public final class ModEnchantments {
     public static final DeferredHolder<Enchantment, Enchantment> MIDAS_TOOL = tool("midas_tool",
             "Toque de Midas", 3, 1, 25, 50, 25);
 
-    /** Wind on a tool: ten percent dig speed per level. */
-    public static final DeferredHolder<Enchantment, Enchantment> WIND_DIGGER = tool("wind_digger",
-            "Velocidad del Viento", 3, 1, 10, 30, 10);
+    /** Wind on a tool: ten percent dig speed per level. Replaced by the frenzy. */
+    public static final DeferredHolder<Enchantment, Enchantment> MINER_FRENZY = tool("miner_frenzy",
+            "Fiebre del Minero", 3, 1, 20, 40, 20);
+
+    /** Manos Doradas: whatever the golden shovel breaks comes straight into the inventory. */
+    public static final DeferredHolder<Enchantment, Enchantment> GOLDEN_HANDS = tool("golden_hands",
+            "Manos Doradas", 1, 1, 25, 50, 25);
+
+    /** Cosecha Dorada: the golden hoe replants what it cuts, and doubles it at the second level. */
+    public static final DeferredHolder<Enchantment, Enchantment> GOLDEN_HARVEST = tool(
+            "golden_harvest", "Cosecha Dorada", 2, 1, 20, 45, 20);
 
     /** Phantom block: a tenth of the time, the drop comes out twice. */
     public static final DeferredHolder<Enchantment, Enchantment> PHANTOM_BLOCK = tool("phantom_block",
@@ -107,13 +115,14 @@ public final class ModEnchantments {
                 HolderSet.direct(supported));
     }
 
-    /** A tool enchantment: the three vanilla golden tools, and only those. */
+    /** A tool enchantment: the four vanilla golden tools, and only those. */
     private static DeferredHolder<Enchantment, Enchantment> tool(String id, String name, int maxLevel,
                                                                  int anvilCost, int minBase,
                                                                  int maxBase, int maxScale) {
         return build(id, name, maxLevel, anvilCost, minBase, maxBase, maxScale,
                 HolderSet.direct(List.of(Items.GOLDEN_PICKAXE.builtInRegistryHolder(),
                         Items.GOLDEN_SHOVEL.builtInRegistryHolder(),
+                        Items.GOLDEN_HOE.builtInRegistryHolder(),
                         Items.GOLDEN_AXE.builtInRegistryHolder())));
     }
 

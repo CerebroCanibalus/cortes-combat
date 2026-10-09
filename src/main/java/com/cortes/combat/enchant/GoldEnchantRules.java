@@ -54,6 +54,56 @@ public final class GoldEnchantRules {
     /** The second drop, ten percent of the time, on a golden tool. */
     public static final float TOOL_DOUBLE_DROP_CHANCE = 0.10F;
 
+    // ------------------------------------------------------------------ miner's frenzy
+
+    /** The bonus one broken block adds, and the window before the stack starts to fall. */
+    public static final float FRENZY_PER_BLOCK = 0.05F;
+    public static final int FRENZY_WINDOW_TICKS = 80;
+
+    /**
+     * The ceiling as a count of blocks: five per level, so a level three pick may hold fifteen
+     * and sit at seventy five percent.
+     *
+     * <p><b>The ceiling is what makes this an enchantment and not a tax.</b> Without a level that
+     * raises it, the bonus would be the same for everyone and the choice would be "take it or
+     * not"; with it, a pick built for a whole chunk is a different tool than one built for a
+     * single shaft.</p>
+     */
+    public static int frenzyMaxStacks(int level) {
+        return 5 * clampLevel(level, 3);
+    }
+
+    /** The movement-side bonus of the frenzy, as a ratio of the base dig speed. */
+    public static float frenzyBonus(int level, int stacks) {
+        if (stacks <= 0 || level <= 0) {
+            return 0.0F;
+        }
+        return Math.min(stacks, frenzyMaxStacks(level)) * FRENZY_PER_BLOCK;
+    }
+
+    /** Whether a stack written at {@code lastTick} has gone stale at {@code now}. */
+    public static boolean frenzyExpired(int lastTick, long now) {
+        return now - lastTick > FRENZY_WINDOW_TICKS;
+    }
+
+    // ------------------------------------------------------------------ the hoe and the shovel
+
+    /**
+     * Whether the golden harvest replants, and whether it doubles.
+     *
+     * <p><b>Both are answers, not numbers.</b> Replanting is what makes the enchantment a
+     * farming tool at one level -- you cut the field and the field comes back -- and the double
+     * at two is the reward for committing to it. A percentage here would make the first cut after
+     * a long walk a coin flip, which is the opposite of what a hoe is for.</p>
+     */
+    public static boolean harvestReplants(int level) {
+        return clampLevel(level, 2) >= 1;
+    }
+
+    public static boolean harvestDoubles(int level) {
+        return clampLevel(level, 2) >= 2;
+    }
+
     private GoldEnchantRules() {
     }
 
