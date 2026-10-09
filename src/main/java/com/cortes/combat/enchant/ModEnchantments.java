@@ -116,30 +116,21 @@ public final class ModEnchantments {
     }
 
     /**
-     * A tool enchantment: the four vanilla golden tools, and ours.
+     * A tool enchantment: the four vanilla golden tools, and only those.
      *
-     * <p><b>Ours, filtered by name, because the families of the thirty are the families of a
-     * weapon list.</b> A golden shovel and a golden hoe exist twice in this mod -- once as a
-     * vanilla tool and once as one of ours with a copper and gold tier -- and leaving the second
-     * one out would mean the enchantment table offers an enchantment to the copy nobody uses.</p>
+     * <p><b>The mod's own thirty have no golden shovel, hoe or pickaxe</b> -- read out of the
+     * generated lang, where the golden set is alabarda, daga, martillo, ropera and shotel. So the
+     * shovel and the hoe a player will ever enchant here are vanilla's, and adding a filter over
+     * family names would be code for a case this mod does not have.</p>
      */
     private static DeferredHolder<Enchantment, Enchantment> tool(String id, String name, int maxLevel,
                                                                  int anvilCost, int minBase,
                                                                  int maxBase, int maxScale) {
-        List<Holder<Item>> supported = new ArrayList<>();
-        supported.add(Items.GOLDEN_PICKAXE.builtInRegistryHolder());
-        supported.add(Items.GOLDEN_SHOVEL.builtInRegistryHolder());
-        supported.add(Items.GOLDEN_HOE.builtInRegistryHolder());
-        supported.add(Items.GOLDEN_AXE.builtInRegistryHolder());
-        for (DeferredItem<? extends Item> item : ModItems.weapons()) {
-            String path = item.getId().getPath();
-            if (path.contains("golden") && (path.contains("shovel") || path.contains("hoe")
-                    || path.contains("pickaxe"))) {
-                supported.add(item);
-            }
-        }
         return build(id, name, maxLevel, anvilCost, minBase, maxBase, maxScale,
-                HolderSet.direct(supported));
+                HolderSet.direct(List.of(Items.GOLDEN_PICKAXE.builtInRegistryHolder(),
+                        Items.GOLDEN_SHOVEL.builtInRegistryHolder(),
+                        Items.GOLDEN_HOE.builtInRegistryHolder(),
+                        Items.GOLDEN_AXE.builtInRegistryHolder())));
     }
 
     /**
