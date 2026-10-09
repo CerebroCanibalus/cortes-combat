@@ -128,9 +128,13 @@ public final class ModEnchantments {
                                                                   HolderSet<Item> supported) {
         return ENCHANTMENTS.register(id, () -> new Enchantment(
                 Component.translatable("enchantment." + CortesCombat.MODID + "." + id),
+                // **`dynamicCost(base, perLevel)` and not what it looks like, read out of
+                // `Enchantment.Cost`: cost = base + perLevelAboveFirst * (level - 1).** Passing
+                // the same two numbers to both min and max would make every level of every one of
+                // the nine cost the same, and above thirty -- which no table can reach.
                 Enchantment.definition(supported, supported, 2, maxLevel,
-                        Enchantment.dynamicCost(maxScale, minBase),
-                        Enchantment.dynamicCost(maxScale, maxBase),
+                        Enchantment.dynamicCost(5, Math.max(1, minBase / 5)),
+                        Enchantment.dynamicCost(minBase, Math.max(1, maxBase / 5)),
                         anvilCost, EquipmentSlotGroup.MAINHAND),
                 HolderSet.empty(), DataComponentMap.EMPTY));
     }
