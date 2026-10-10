@@ -46,11 +46,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SabrePoseMatchesJavaTest {
 
     private static final Path POSE =
-            Path.of("src", "main", "resources", "data", "cortescombat", "poses", "shotel.json");
+            Path.of("src", "main", "resources", "assets", "cortescombat", "poses", "shotel.json");
 
     /** The pose directory, walked so a new file is checked the day it is added. */
     private static final Path POSES =
-            Path.of("src", "main", "resources", "data", "cortescombat", "poses");
+            Path.of("src", "main", "resources", "assets", "cortescombat", "poses");
 
     private static WeaponPose sable() {
         assertTrue(Files.isRegularFile(POSE),

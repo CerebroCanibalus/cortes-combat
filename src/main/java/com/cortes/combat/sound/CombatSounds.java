@@ -1,6 +1,8 @@
 package com.cortes.combat.sound;
 
 import com.cortes.combat.core.weapon.WeaponProfile;
+import com.cortes.combat.weaponpack.ResolvedWeapon;
+import com.cortes.combat.weaponpack.WeaponPackStore;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
@@ -54,6 +56,35 @@ public final class CombatSounds {
                             ModSounds.Kind kind, float pitchScale) {
         String name = ModSounds.of(profile, kind);
         SoundEvent event = event(name);
+
+        // **Lo que el pack declara para este Kind manda sobre el sonido del perfil** (fase 7).
+        // Tres campos y tres Kind, y el tercero es el que no parece: `swing` del YAML es el
+        // MISS -- literalmente "the swing found nothing", el barrido que no conectó. Los demás
+        // Kinds (CHARGE, PARRY, LUNGE...) no tienen campo en el YAML y siguen con los nuestros.
+        // El id viaja registrado por WeaponPackSounds, así que el packet al cliente es legal.
+        if (at instanceof net.minecraft.world.entity.LivingEntity living) {
+            ResolvedWeapon pack = WeaponPackStore.resolve(living.getMainHandItem());
+            if (pack != null) {
+                String custom = switch (kind) {
+                    case HIT -> pack.hit();
+                    case CHARGED_HIT -> pack.charged();
+                    case MISS -> pack.swing();
+                    default -> null;
+                };
+                if (custom != null) {
+                    ResourceLocation id = ResourceLocation.tryParse(custom);
+                    SoundEvent registered = id == null ? null
+                            : BuiltInRegistries.SOUND_EVENT.get(id);
+                    if (registered != null) {
+                        event = registered;
+                    } else if (REPORTED.add("pack:" + custom)) {
+                        com.cortes.combat.CortesCombat.LOGGER.warn(
+                                "[sonido] '{}' del pack declarado pero no registrado -- ¿el "
+                                + "archivo quedó fuera del config que corre el server?", custom);
+                    }
+                }
+            }
+        }
 
         // One line per event per session, because the alternative is silence with nothing to read.
         //
