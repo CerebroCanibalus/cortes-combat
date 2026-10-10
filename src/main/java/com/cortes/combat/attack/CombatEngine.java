@@ -256,6 +256,11 @@ public final class CombatEngine {
 
         apply(player, target, stats, result, chargeRatio, smash);
 
+        // **Y el tajo sigue de largo.** El golpe de melé ya cobró; la onda es lo que pasa del
+        // cuerpo. Ver fireSweepingWave: sólo la espada, sólo a carga completa, sólo con el
+        // encantamiento -- y saltea a este objetivo para no cobrarlo dos veces.
+        fireSweepingWave(player, target, stats, result.damage(), chargeRatio);
+
         int extra = com.cortes.combat.item.WeaponTables.maxTargets(stats.profile()) - 1;
         if (extra > 0) {
             // **The weapon's own cone, not a derived one.** The halberd's sweep deliberately reads a
@@ -692,23 +697,40 @@ public final class CombatEngine {
         }
         ItemStack weapon = player.getWeaponItem();
         float enchanted = EnchantmentHelper.modifyDamage(level, weapon, target, source, base) - base;
-        return Math.max(0.0F, enchanted) + sweepingEdgeBonus(level, player, target, weapon);
+        return Math.max(0.0F, enchanted);
     }
 
     /**
-     * The crowd charge: Sweeping Edge, reworked so a packed room hurts.
+     * La onda de filo: el golpe a carga completa con Sweeping Edge dispara un espadazo que viaja.
      *
-     * <p>The level is read off the weapon and the count off the world, and the formula they feed
-     * lives in {@link com.cortes.combat.weapon.SweepingEdge}, where a bare JVM can walk it. This
-     * method exists only to produce the second argument.</p>
+     * <p><b>Lo que reemplaza.</b> Sweeping Edge era un crowd charge: daño plano que crecía con los
+     * cuerpos alrededor del objetivo. El problema era de raíz -- el jugador no controlaba la
+     * variable -- y el dueño lo cambió por esto: la onda se dispara con <b>un golpe a carga
+     * completa</b>, así que el encantamiento pasa a ser una decisión de distancia y le da a la carga
+     * de la espada una razón de existir. Ver {@code weapon/SweepingEdge}.</p>
+     *
+     * <p><b>El daño entra ya resuelto.</b> Es la porción del daño cargado que este golpe resolvió, y
+     * se multiplica acá: la onda no tiene una segunda opinión sobre cuánto pega una espada, que es la
+     * misma regla que el tooltip sigue.</p>
+     *
+     * <p><b>Y saltea al objetivo.</b> El id del que ya cobró el melé viaja con la onda para que no lo
+     * cobre dos veces: la onda es el seguimiento del tajo más allá del cuerpo.</p>
      */
-    private static float sweepingEdgeBonus(net.minecraft.server.level.ServerLevel level,
-                                           Player player, Entity target, ItemStack weapon) {
-        int sweeping = sweepingEdgeLevel(level, weapon);
-        if (sweeping <= 0) {
-            return 0.0F;
+    private static void fireSweepingWave(Player player, Entity aimed, WeaponStats stats,
+                                         float chargedDamage, float chargeRatio) {
+        if (stats.profile() != WeaponProfile.SWORD
+                || chargeRatio < DamageResolver.FULL_CHARGE
+                || !(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
+            return;
         }
-        return com.cortes.combat.weapon.SweepingEdge.bonus(sweeping, crowdAround(player, target));
+        int enchant = sweepingEdgeLevel(level, player.getWeaponItem());
+        if (!com.cortes.combat.weapon.SweepingEdge.fires(enchant)) {
+            return;
+        }
+        float waveDamage = chargedDamage * com.cortes.combat.weapon.SweepingEdge.share(enchant);
+        com.cortes.combat.entity.SlashWave.fire(level, player, player.getEyePosition(),
+                player.getLookAngle(), enchant, waveDamage, aimed.getId());
+        debug(player, "onda de filo nivel " + enchant + " dano=" + waveDamage);
     }
 
     /**
@@ -748,30 +770,6 @@ public final class CombatEngine {
                 .registryOrThrow(Registries.ENCHANTMENT)
                 .getHolderOrThrow(Enchantments.DENSITY);
         return player.getWeaponItem().getEnchantmentLevel(density);
-    }
-
-    /**
-     * How many other living things are packed around the target.
-     *
-     * <p>Around the <em>target</em> and not the player, because the enchantment's question is "is
-     * this victim in a crowd", not "is the player". The player and the victim are both excluded:
-     * the victim is not packed around itself, and the player is not a body the sword is counting.
-     * Dead, removed and spectator entities are skipped for the same reason every other scan in this
-     * project skips them -- a corpse is not a crowd.</p>
-     */
-    private static int crowdAround(Player player, Entity target) {
-        AABB box = target.getBoundingBox().inflate(com.cortes.combat.weapon.SweepingEdge.CROWD_RADIUS);
-        int count = 0;
-        for (LivingEntity other : player.level().getEntitiesOfClass(LivingEntity.class, box)) {
-            if (other == player || other == target) {
-                continue;
-            }
-            if (!other.isAlive() || other.isSpectator() || other.isRemoved()) {
-                continue;
-            }
-            count++;
-        }
-        return count;
     }
 
     /**

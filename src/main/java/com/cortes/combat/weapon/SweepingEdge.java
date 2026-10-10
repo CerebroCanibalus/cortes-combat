@@ -1,71 +1,114 @@
 package com.cortes.combat.weapon;
 
 /**
- * Sweeping Edge, reworked from an area effect into a crowd charge.
+ * Sweeping Edge, reworkeado de crowd charge a <b>la onda de filo</b>: un golpe a carga completa
+ * dispara un espadazo que viaja, atraviesa y hace una porción del daño cargado.
  *
- * <h2>Why the vanilla identity had to go</h2>
+ * <h2>Por qué la versión anterior se fue</h2>
  *
- * <p>In 1.21.1 Sweeping Edge multiplies the damage of the sweep that a sword performs when it kills
- * the attack's charge -- and it is <b>dead in this mod</b>, because the sweep is ours and only the
- * halberd and the hoe have it. An enchantment that modifies a swing the weapon will never make is a
- * line on an item that does nothing, which is the same shape as the sable's dead {@code BREAK} track
- * and the shovel's copied special.</p>
+ * <p>El crowd charge (daño plano que crecía con los cuerpos alrededor del objetivo) tenía un
+ * problema de raíz: <b>el jugador no controlaba la variable</b>. El bonus dependía de cuántos mobs
+ * hubiera apretados, que es una situación y no una decisión, y el nivel del encantamiento quedaba
+ * en segundo lugar frente al tamaño de la multitud. Un número que sube por lo que el mundo puso
+ * ahí no se aprende.</p>
  *
- * <p>It also stopped being wanted on its own terms: the design already has two area weapons, and a
- * third source of "hits everything in the arc" would be a third number to learn for a motion nobody
- * asked for twice.</p>
+ * <h2>La versión nueva, y por qué es una decisión</h2>
  *
- * <h2>The new identity: a crowd charge</h2>
+ * <p>La onda se dispara con <b>un golpe a carga completa</b>, y eso hace dos cosas a la vez: le da
+ * a la carga de la espada una razón de existir -- contra un solo enemigo cargar pierde en DPS, que
+ * es algo que el diseño ya tenía anotado -- y convierte el encantamiento en una elección de
+ * distancia. <b>El costo es la carga misma</b>: veinticinco ticks de compromiso, sin cooldown
+ * extra.</p>
  *
- * <p><b>It still hits one thing.</b> What the level buys is damage against the thing you aimed at,
- * and that damage grows with how many other bodies are packed around it. So the enchantment rewards
- * walking into a crowd and picking one target out of it -- the opposite of an area weapon, which
- * rewards the crowd itself. A sword with Sweeping Edge III is a crowd's worst enemy precisely
- * because it refuses to be distracted by it.</p>
+ * <p>Y no es "otro AoE": la onda es un <em>proyectil</em>. Viaja, se puede esquivar, la pared la
+ * frena, y una guardia la devuelve. Un barrido de cono no se esquiva.</p>
  *
- * <p>Pure on purpose: the level and the count are both plain integers, so the formula can be walked
- * in a bare JVM. The half that needs a world -- counting the bodies around a target -- lives in
- * {@code CombatEngine} and only produces the second argument.</p>
+ * <p>Pura a propósito: nivel adentro, números afuera, todo entero o {@code double} plano. El único
+ * consumidor que necesita un mundo es {@code CombatEngine}, que es quien dispara.</p>
  */
 public final class SweepingEdge {
 
-    /**
-     * How much damage one enemy packed around the target adds, per enchantment level.
-     *
-     * <p><b>Half a point, and it is a first number to validate in playtest.</b> It is deliberately
-     * small: the enchantment's whole promise is that it is worth more the more bodies are around,
-     * and a bonus that is large per enemy would make the level of the enchantment secondary to the
-     * size of the crowd, which is not something the player can control. At half a point per body
-     * per level, level I against four packed enemies is two extra damage -- a real swing without
-     * being a different weapon.</p>
-     */
-    public static final float DAMAGE_PER_ENEMY_PER_LEVEL = 0.5F;
+    /** El nivel máximo, que es el del encantamiento de vanilla. */
+    public static final int MAX_LEVEL = 3;
 
     /**
-     * How far around the target another body has to be to count as part of the crowd, in blocks.
+     * Bloques por tick de la onda.
      *
-     * <p>Measured from the target's own bounding box, so a wide mob counts bodies a little further
-     * out and a narrow one does not. Three blocks is a room's corner, not a battlefield: the point
-     * is "packed together", and vanilla's own sweep box is tighter than this, around one block.
-     * Three is the smallest number that reliably catches the second and third mob of a spawn group.</p>
+     * <p>Uno, que a veinte ticks por segundo son veinte bloques por segundo: más rápido que una
+     * flecha (unos treinta, pero con gravedad) y lo bastante lento para que a ocho bloques se vea
+     * venir. El alcance y la vida salen de acá, así que este número es el que decide si la onda es
+     * un latigazo o un objeto que viaja.</p>
      */
-    public static final double CROWD_RADIUS = 3.0;
+    public static final double SPEED = 1.0;
+
+    /** El empuje de la onda, muy leve: la onda corta, no empuja. */
+    public static final double PUSH = 0.12;
 
     private SweepingEdge() {
     }
 
+    /** Un nivel de encantamiento dentro de los que existen. */
+    public static int clampLevel(int level) {
+        return Math.max(0, Math.min(MAX_LEVEL, level));
+    }
+
+    /** Si este nivel dispara la onda. Cero es una espada sin el encantamiento. */
+    public static boolean fires(int level) {
+        return clampLevel(level) >= 1;
+    }
+
+    /** Qué porción del daño cargado lleva la onda. */
+    public static float share(int level) {
+        return switch (clampLevel(level)) {
+            case 1 -> 0.40F;
+            case 2 -> 0.60F;
+            case 3 -> 0.80F;
+            default -> 0.0F;
+        };
+    }
+
+    /** El ancho del tajo, en bloques: la caja que barre y lo que se ve. */
+    public static double width(int level) {
+        return switch (clampLevel(level)) {
+            case 1 -> 0.7;
+            case 2 -> 1.0;
+            case 3 -> 1.4;
+            default -> 0.0;
+        };
+    }
+
+    /** Hasta dónde llega, en bloques. */
+    public static double distance(int level) {
+        return switch (clampLevel(level)) {
+            case 1 -> 8.0;
+            case 2 -> 10.0;
+            case 3 -> 12.0;
+            default -> 0.0;
+        };
+    }
+
+    /** A cuántos enemigos atraviesa antes de apagarse. */
+    public static int pierce(int level) {
+        return switch (clampLevel(level)) {
+            case 1 -> 3;
+            case 2 -> 4;
+            case 3 -> 5;
+            default -> 0;
+        };
+    }
+
     /**
-     * The flat damage the enchantment adds to a hit on the aimed target.
+     * Cuántos ticks vive la onda antes de apagarse sola.
      *
-     * @param level   the Sweeping Edge level on the weapon, zero when it has none
-     * @param enemies how many other living things sit inside {@link #CROWD_RADIUS} of the target
-     * @return the bonus, never negative, and zero for a weapon without the enchantment or a target
-     *         standing alone
+     * <p>Derivado del alcance y no un número aparte: dos números para "hasta dónde llega" es la
+     * clase de copia que se desincroniza, y acá la distancia <em>es</em> la vida por la velocidad.
+     * El techo de uno se suma para que el último tick todavía recorra su bloque.</p>
      */
-    public static float bonus(int level, int enemies) {
-        if (level <= 0 || enemies <= 0) {
-            return 0.0F;
+    public static int lifeTicks(int level) {
+        double reach = distance(level);
+        if (reach <= 0.0) {
+            return 0;
         }
-        return DAMAGE_PER_ENEMY_PER_LEVEL * level * enemies;
+        return (int) Math.ceil(reach / SPEED) + 1;
     }
 }

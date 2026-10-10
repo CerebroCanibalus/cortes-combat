@@ -62,6 +62,7 @@ public class CortesCombatClient {
         modEventBus.addListener(CortesCombatClient::registerParticles);
         modEventBus.addListener(CortesCombatClient::registerLayers);
         modEventBus.addListener(CortesCombatClient::onClientSetup);
+        modEventBus.addListener(CortesCombatClient::registerEntityRenderers);
     }
 
     /**
@@ -162,6 +163,20 @@ public class CortesCombatClient {
     // registraría dos veces el mismo MRL que FlatInventoryIcon.onRegisterAdditional, y nadie
     // lo llamaba. Un solo sitio para el registro del icono: FlatInventoryIcon.)
     @net.neoforged.bus.api.SubscribeEvent
+    /**
+     * El renderer de la onda de filo: <b>el de vanilla</b>, porque hoy dibuja una flecha.
+     *
+     * <p>{@code ThrownItemRenderer} dibuja el {@code ItemStack} que devuelve
+     * {@code ItemSupplier#getItem()} de la entidad, así que el placeholder no cuesta ni una línea
+     * de render ni un asset: el día del modelo propio se cambia esta línea y la lógica de la onda
+     * no se entera. Está anotado como placeholder en {@code SlashWave}.</p>
+     */
+    private static void registerEntityRenderers(
+            net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(com.cortes.combat.registry.ModEntities.SLASH_WAVE.get(),
+                net.minecraft.client.renderer.entity.ThrownItemRenderer::new);
+    }
+
     public static void onClientSetup(FMLClientSetupEvent event) {
         // **The arcabuz's fuse frame, first, and on this event rather than in the constructor.**
         //

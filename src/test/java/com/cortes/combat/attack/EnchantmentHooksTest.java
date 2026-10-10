@@ -63,35 +63,37 @@ class EnchantmentHooksTest {
     }
 
     /**
-     * The crowd charge is a damage bonus, not a second area weapon.
+     * Sweeping Edge ya no es un bonus de daño: es una onda que vuela.
      *
-     * <p>The reworked Sweeping Edge is deliberate that way: the design already has the halberd and
-     * the hoe for area, and a third source of "hits everything in the arc" is the thing it was
-     * retuned away from. So the assertion is paired: the bonus feeds the damage, and the target
-     * count still comes from the one table that ever decided it.</p>
+     * <p>El test cambia con el encantamiento y conserva lo que lo hacía útil: <b>una fórmula pura
+     * sin llamador es el bug que esta clase sigue encontrando</b>. La tabla de niveles puede estar
+     * perfecta y el encantamiento no hacer nada si nadie dispara la onda -- así que la aserción es
+     * que el motor la dispara, y que la dispara salteando al objetivo que el melé ya cobró.</p>
      */
     @Test
-    @DisplayName("Sweeping Edge adds damage but never targets")
-    void theCrowdChargeStaysSingleTarget() {
+    @DisplayName("Sweeping Edge dispara la onda, y la onda saltea al objetivo del golpe")
+    void sweepingEdgeFiresTheWave() {
         String engine = read();
 
-        assertTrue(engine.contains("SweepingEdge.bonus("),
-                "**the crowd charge has to reach the damage.** A pure formula with no caller is "
-                        + "the bug this class keeps finding: the table would be right and the "
-                        + "enchantment would do nothing");
-        assertTrue(engine.contains("sweepingEdgeBonus("),
-                "and through the engine's own helper, so the level and the count meet here");
+        assertTrue(engine.contains("SlashWave.fire("),
+                "**la onda tiene que tener llamador.** Una fórmula pura sin nadie que la dispare es "
+                        + "el bug que esta clase sigue encontrando: la tabla quedaría bien y el "
+                        + "encantamiento no haría nada");
+        assertTrue(engine.contains("fireSweepingWave("),
+                "y a través del helper del motor, donde el nivel, la carga y el daño resuelto se "
+                        + "encuentran");
+        assertTrue(engine.contains("aimed.getId()"),
+                "**y saltea al objetivo del melé**: la onda es el seguimiento del tajo más allá del "
+                        + "cuerpo, no un segundo cobro al mismo");
 
-        // The target count is still the weapon's own row, untouched by the enchantment: the extra
-        // bodies are still collected from the area cap and nowhere else.
+        // El cono del golpe sigue contando lo que siempre contó: la onda es un proyectil aparte y
+        // no le suma objetivos a la espada.
         assertTrue(engine.contains("WeaponTables.maxTargets(stats.profile())"),
-                "**the number of things one swing hits is still `maxTargets`.** If Sweeping Edge "
-                        + "ever started adding targets it would appear here, next to this line, "
-                        + "and a second area weapon nobody decided would be born");
-
+                "el número de cosas que pega UN golpe sigue siendo `maxTargets`; la onda no le "
+                        + "agrega objetivos al cono");
         assertFalse(engine.contains("maxTargets(profile, ") || engine.contains("maxTargets(profile,"),
-                "and the table takes no enchantment argument: the count is a fact about the "
-                        + "weapon, not about the item's enchantments");
+                "y la tabla no toma un encantamiento: el conteo es un hecho del arma, no del item's "
+                        + "enchantments");
     }
 
     /**

@@ -4,54 +4,83 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The crowd charge: more bodies around the target, more damage on the one you hit.
+ * Las reglas de la onda de filo, en JVM pelada.
  *
- * <p>Pure, on purpose: the whole formula is two integers in and one float out, so it can be walked
- * in a bare JVM. The half that needs a world -- counting the bodies -- lives in
- * {@code CombatEngine#crowdAround} and only ever produces the second argument.</p>
+ * <p>Lo que se afirma acá no son "los números" sino <b>la forma de la tabla</b>: que subir de nivel
+ * siempre pega más lejos, más fuerte, más ancho y a más gente; que el nivel cero no dispara nada; y
+ * que la vida de la onda <b>alcanza para recorrer su propio alcance</b>, que es la invariante que
+ * ata los dos números que podrían desincronizarse (la distancia y la vida).</p>
  */
 class SweepingEdgeTest {
 
     @Test
-    @DisplayName("more bodies around the target means more damage")
-    void growsWithTheCrowd() {
-        float alone = SweepingEdge.bonus(1, 0);
-        float one = SweepingEdge.bonus(1, 1);
-        float four = SweepingEdge.bonus(1, 4);
-
-        assertEquals(0.0F, alone, 0.0F, "a target standing alone is not a crowd");
-        assertTrue(one > alone);
-        assertTrue(four > one, "the whole point: the number climbs with the bodies");
-        assertEquals(SweepingEdge.DAMAGE_PER_ENEMY_PER_LEVEL * 4, four, 1.0E-6F);
+    @DisplayName("nivel cero no dispara: una espada sin el encantamiento no tiene onda")
+    void zeroDoesNotFire() {
+        assertFalse(SweepingEdge.fires(0), "sin encantamiento no hay onda");
+        assertEquals(0.0F, SweepingEdge.share(0), 1.0E-6F, "y no lleva daño");
+        assertEquals(0, SweepingEdge.pierce(0), "ni atraviesa a nadie");
+        assertEquals(0, SweepingEdge.lifeTicks(0), "ni vive");
     }
 
     @Test
-    @DisplayName("the level multiplies the crowd, and level zero is no enchantment")
-    void scalesWithLevel() {
-        assertEquals(0.0F, SweepingEdge.bonus(0, 10), 0.0F,
-                "no enchantment, no bonus, no matter how big the crowd");
-        assertEquals(SweepingEdge.bonus(1, 3) * 3, SweepingEdge.bonus(3, 3), 1.0E-6F,
-                "level III against the same three is three times level I");
+    @DisplayName("los tres niveles, con los números que el dueno aprobo")
+    void theThreeLevels() {
+        assertEquals(0.40F, SweepingEdge.share(1), 1.0E-6F);
+        assertEquals(0.60F, SweepingEdge.share(2), 1.0E-6F);
+        assertEquals(0.80F, SweepingEdge.share(3), 1.0E-6F);
+
+        assertEquals(0.7, SweepingEdge.width(1), 1.0E-6);
+        assertEquals(1.0, SweepingEdge.width(2), 1.0E-6);
+        assertEquals(1.4, SweepingEdge.width(3), 1.0E-6);
+
+        assertEquals(8.0, SweepingEdge.distance(1), 1.0E-6);
+        assertEquals(10.0, SweepingEdge.distance(2), 1.0E-6);
+        assertEquals(12.0, SweepingEdge.distance(3), 1.0E-6);
+
+        assertEquals(3, SweepingEdge.pierce(1));
+        assertEquals(4, SweepingEdge.pierce(2));
+        assertEquals(5, SweepingEdge.pierce(3));
     }
 
     @Test
-    @DisplayName("the bonus is never negative, whatever the data says")
-    void neverNegative() {
-        assertEquals(0.0F, SweepingEdge.bonus(-1, 5), 0.0F);
-        assertEquals(0.0F, SweepingEdge.bonus(2, -3), 0.0F);
-        assertTrue(SweepingEdge.bonus(5, 20) > 0.0F);
+    @DisplayName("y la tabla solo crece: ningun nivel pega menos que el anterior")
+    void theTableOnlyGrows() {
+        for (int level = 2; level <= SweepingEdge.MAX_LEVEL; level++) {
+            assertTrue(SweepingEdge.share(level) > SweepingEdge.share(level - 1),
+                    "nivel " + level + ": la porcion de dano sube");
+            assertTrue(SweepingEdge.width(level) > SweepingEdge.width(level - 1),
+                    "nivel " + level + ": el tajo se ensancha");
+            assertTrue(SweepingEdge.distance(level) > SweepingEdge.distance(level - 1),
+                    "nivel " + level + ": llega mas lejos");
+            assertTrue(SweepingEdge.pierce(level) > SweepingEdge.pierce(level - 1),
+                    "nivel " + level + ": atraviesa a mas");
+        }
     }
 
     @Test
-    @DisplayName("the crowd radius is tight enough to mean packed, wide enough to catch a group")
-    void theRadiusIsReasonable() {
-        // Sanity on the one geometric number, so a typo cannot turn the enchantment into a
-        // battlefield-wide buff or a strictly-self count.
-        assertTrue(SweepingEdge.CROWD_RADIUS > 0.0);
-        assertTrue(SweepingEdge.CROWD_RADIUS <= 5.0,
-                "the enchantment is about bodies packed around a target, not about the whole room");
+    @DisplayName("**la vida alcanza para recorrer el alcance**: la distancia y la vida no se desincronizan")
+    void lifeReachesItsOwnDistance() {
+        for (int level = 1; level <= SweepingEdge.MAX_LEVEL; level++) {
+            double travelled = SweepingEdge.lifeTicks(level) * SweepingEdge.SPEED;
+            assertTrue(travelled >= SweepingEdge.distance(level),
+                    "nivel " + level + ": la onda vive " + SweepingEdge.lifeTicks(level)
+                            + " ticks y recorre " + travelled + ", y su alcance es "
+                            + SweepingEdge.distance(level)
+                            + " -- una onda que muere antes de llegar promete un alcance que no da");
+        }
+    }
+
+    @Test
+    @DisplayName("los niveles fuera de rango se clampean y no explotan")
+    void levelsAreClamped() {
+        assertEquals(SweepingEdge.share(3), SweepingEdge.share(9), 1.0E-6F,
+                "un nivel de mas vale lo que el maximo, no un indice fuera de la tabla");
+        assertEquals(0.0F, SweepingEdge.share(-4), 1.0E-6F, "y uno negativo no dispara");
+        assertFalse(SweepingEdge.fires(-1), "ni enciende");
+        assertEquals(0, SweepingEdge.pierce(-1), "ni atraviesa");
     }
 }

@@ -122,6 +122,7 @@ public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         modEventBus.addListener(com.cortes.combat.registry.ModBlockEntities::registerCapabilities);
         ModCreativeTabs.TABS.register(modEventBus);
         ModParticleTypes.PARTICLE_TYPES.register(modEventBus);
+        com.cortes.combat.registry.ModEntities.ENTITY_TYPES.register(modEventBus);
         com.cortes.combat.registry.ModEffects.register(modEventBus);
         // **Gold, and it is two registrations.** The enchantments are their own registry, and the
         // mark they all feed is an effect -- both are declarations, so both go on the mod bus, and
