@@ -41,8 +41,7 @@ class WeaponTooltipTest {
                 WeaponTables.special(profile), WeaponTables.knockback(profile),
                 WeaponTables.maxTargets(profile), maxDamage, maxDamage,
                 !WeaponTables.shotReach(profile).isNone(), WeaponKinds.fights(profile),
-                com.cortes.combat.state.ArcabuzState.RELOAD_TICKS,
-                com.cortes.combat.state.ParryState.COOLDOWN_TICKS);
+                EnchantmentNumbers.base());
     }
 
     /**
@@ -62,8 +61,7 @@ class WeaponTooltipTest {
                         WeaponTables.charge(WeaponProfile.NONE),
                         SpecialType.NONE, WeaponTables.knockback(WeaponProfile.NONE),
                         1, 0, 0, false, false,
-                        com.cortes.combat.state.ArcabuzState.RELOAD_TICKS,
-                        com.cortes.combat.state.ParryState.COOLDOWN_TICKS),
+                        EnchantmentNumbers.base()),
                 "NONE is not a weapon. Printing numbers on it is the tooltip form of the bug that "
                         + "made a dirt block inherit a sword's charge");
 
@@ -176,7 +174,9 @@ class WeaponTooltipTest {
                         WeaponTables.special(WeaponProfile.SABRE),
                         WeaponTables.knockback(WeaponProfile.SABRE),
                         WeaponTables.maxTargets(WeaponProfile.SABRE), 250, 250, false, true,
-                        com.cortes.combat.state.ArcabuzState.RELOAD_TICKS, shortened)),
+                        new EnchantmentNumbers(
+                                com.cortes.combat.state.ArcabuzState.RELOAD_TICKS, shortened,
+                                com.cortes.combat.state.StreakState.WINDOW_TICKS))),
                 "**y con Reflejo de Acero II el mismo renglon dice tres.** El numero tiene que venir "
                         + "del arma que el jugador tiene en la mano");
     }
@@ -422,8 +422,7 @@ class WeaponTooltipTest {
                         WeaponTables.charge(WeaponProfile.SWORD),
                         WeaponTables.special(WeaponProfile.SWORD),
                         WeaponTables.knockback(WeaponProfile.SWORD), 1, 250, 250, false, true,
-                com.cortes.combat.state.ArcabuzState.RELOAD_TICKS,
-                com.cortes.combat.state.ParryState.COOLDOWN_TICKS),
+                EnchantmentNumbers.base()),
                 "the reach comes off a component any mod can write; a null one must not take the "
                         + "render thread down");
     }

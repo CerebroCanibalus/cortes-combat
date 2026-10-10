@@ -165,8 +165,7 @@ public final class WeaponTooltip {
                                              int maxDamage,
                                              boolean hasShotCone,
                                              boolean fights,
-                                             int reloadTicks,
-                                             int parryCooldownTicks) {
+                                             EnchantmentNumbers numbers) {
 
         if (profile == WeaponProfile.NONE || reach == null) {
             return NOTHING;
@@ -268,7 +267,7 @@ public final class WeaponTooltip {
         // **The weapon's own mechanic, for the seven that have one.** Last, because it is the line
         // that explains everything above it rather than a stat of its own -- and in NOTE's dim grey
         // for the same reason: it is an aside the player reads once, not a number they compare.
-        lines.addAll(mechanicLines(profile, reloadTicks, parryCooldownTicks));
+        lines.addAll(mechanicLines(profile, numbers));
 
         return List.copyOf(lines);
     }
@@ -285,8 +284,7 @@ public final class WeaponTooltip {
      * the gun's. Only the sentence around them is written by hand, and it is the only part of this
      * tooltip that could not be read off a table -- it is language, not a fact.</p>
      */
-    static List<TooltipLine> mechanicLines(WeaponProfile profile, int reloadTicks,
-                                           int parryCooldownTicks) {
+    static List<TooltipLine> mechanicLines(WeaponProfile profile, EnchantmentNumbers numbers) {
         return switch (profile) {
             // The fall, and both numbers are MaceFall's own: the ceiling the damage stops at and
             // the height it takes to get there.
@@ -305,16 +303,18 @@ public final class WeaponTooltip {
             // does not produce -- the exact bug this tooltip was rewritten to stop.
             case SABRE -> List.of(TooltipLine.of(MECHANIC + "sabre",
                     decimal(com.cortes.combat.state.ParryState.WINDOW_TICKS / 20.0F),
-                    decimal(parryCooldownTicks / 20.0F),
+                    decimal(numbers.parryCooldownTicks() / 20.0F),
                     TooltipColor.NOTE));
 
             case HALBERD -> List.of(TooltipLine.plain(MECHANIC + "halberd", TooltipColor.NOTE));
 
             case ROPERA -> List.of(TooltipLine.plain(MECHANIC + "ropera", TooltipColor.NOTE));
 
-            // The escalation, and the window it lives in, from StreakState.
+            // The escalation, and the window it lives in, from StreakState -- with Ritmo de Hierro
+            // lengthening it. Same rule as the parry's cooldown above: the line prints the number
+            // the weapon produces, not the design constant.
             case WARHAMMER -> List.of(TooltipLine.of(MECHANIC + "warhammer",
-                    decimal(com.cortes.combat.state.StreakState.WINDOW_TICKS / 20.0F),
+                    decimal(numbers.streakWindowTicks() / 20.0F),
                     TooltipColor.NOTE));
 
             // **The arcabuz, and its numbers are the only ones in the tooltip in seconds.** A
@@ -323,7 +323,7 @@ public final class WeaponTooltip {
             // rather than the ordinary one, because the gun's claim is about the blast.
             case ARCABUZ -> List.of(
                     TooltipLine.of(ARCABUZ_RELOAD,
-                            decimal(reloadTicks / 20.0F),
+                            decimal(numbers.reloadTicks() / 20.0F),
                             TooltipColor.NOTE),
                     TooltipLine.of(ARCABUZ_SHOT,
                             decimal(com.cortes.combat.item.ArcabuzStats.maximumShotDamage()),

@@ -34,9 +34,12 @@ public final class CombatEnchantRules {
     /** E5 -- Filo Fugaz. */
     public static final String FLEETING_EDGE_ID = "fleeting_edge";
 
+    /** E4 -- Ritmo de Hierro. */
+    public static final String RHYTHM_OF_IRON_ID = "rhythm_of_iron";
+
     /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
     public static final java.util.List<String> IDS =
-            java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID, FLEETING_EDGE_ID);
+            java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID, FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID);
 
     // ---------------------------------------------------------------- E2 · Reflejo de Acero (shotel)
 
@@ -106,6 +109,34 @@ public final class CombatEnchantRules {
             case 2 -> 60;
             default -> 0;
         };
+    }
+
+    // ---------------------------------------------------------------- E4 · Ritmo de Hierro (martillo)
+
+    /** El nivel máximo, el del archivo de encantamiento. */
+    public static final int RHYTHM_OF_IRON_MAX_LEVEL = 2;
+
+    /** Cuánto se alarga la ventana por nivel: un segundo. */
+    public static final int RHYTHM_OF_IRON_TICKS_PER_LEVEL = 20;
+
+    /**
+     * La ventana de la cadena del martillo con Ritmo de Hierro: 80 → 100 → 120 ticks.
+     *
+     * <p><b>Es el número más peligroso de los cuatro, y el que más necesita playtest.</b> El
+     * escalado del martillo no tiene tope, así que alargar la ventana no sube el daño por golpe:
+     * sube <em>el techo al que la cadena puede llegar antes de que el mundo te obligue a
+     * parar</em>. En un pasillo con un mob, seis segundos y cuatro segundos son lo mismo; contra
+     * tres mobs que se turnan, no. La regla del proyecto es que si queda fuerte se cambia con el
+     * dato medido, y este es el número a medir.</p>
+     *
+     * <p>Por ticks fijos y no por fracción, a diferencia de Audacia: la ventana del martillo no se
+     * deriva de nada del arma -- son cuatro segundos de diseño -- así que no hay una escala con la
+     * que ser proporcional.</p>
+     */
+    public static int streakWindow(int level) {
+        int clamped = clamp(level, RHYTHM_OF_IRON_MAX_LEVEL);
+        return com.cortes.combat.state.StreakState.WINDOW_TICKS
+                + RHYTHM_OF_IRON_TICKS_PER_LEVEL * clamped;
     }
 
     /**

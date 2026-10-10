@@ -176,6 +176,27 @@ class EnchantmentHooksTest {
     }
 
     /**
+     * **Ritmo de Hierro decide la ventana con la que la cadena sigue.**
+     *
+     * <p>El estado del martillo puede llevar la ventana perfecta y la cadena seguir midiendo con
+     * cuatro segundos si nadie lee el nivel del arma: la forma de siempre. La asercion es que el
+     * nivel entra en {@code onHit}, y que el campo se setea ahi -- donde el golpe aterriza -- y no
+     * en cada tick.</p>
+     */
+    @Test
+    @DisplayName("Ritmo de Hierro decide la ventana de la cadena")
+    void rhythmOfIronSetsTheWindow() {
+        String engine = read();
+
+        assertTrue(engine.contains("CombatEnchantments.RHYTHM_OF_IRON"),
+                "**la tabla de ventanas necesita quien la lea.** Sin esto el encantamiento esta "
+                        + "escrito, probado y el martillo sigue encadenando cuatro segundos");
+        assertTrue(engine.contains(".onHit(window)"),
+                "**y el numero entra en el estado.** La ventana viaja con la cadena y no se relee "
+                        + "del item en cada tick: ver StreakState");
+    }
+
+    /**
      * NeoForge's attack hook is fired again, for the target the player aimed at.
      *
      * <p>{@code Player#attack} opens with {@code CommonHooks.onPlayerAttackTarget}, and a replaced

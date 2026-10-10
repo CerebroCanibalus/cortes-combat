@@ -9,24 +9,53 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  * <p>By design there is no reset on taking damage. The only thing that breaks the streak is
  * the 4s window running out, which makes the warhammer a weapon of commitment rather than a
  * weapon that works against whoever stands still.</p>
+ *
+ * <h2>Why the window is a field and not just the constant</h2>
+ *
+ * <p><b>Ritmo de Hierro lengthens it, and the length belongs to the streak and not to the
+ * weapon.</b> The window is decided when the streak's first hit lands and then travels with the
+ * state: reading it back off the item every tick would let a player start a streak with the
+ * enchanted hammer and swap to an unenchanted one mid-chain, and the streak would collapse on a
+ * rule it was never started under. It is the same rule the lunge follows with its material, and
+ * for the same reason -- <b>what a legal action was judged by has to be what it is still judged
+ * by.</b></p>
  */
-public record StreakState(int hits, int ticksSinceLastHit) {
+public record StreakState(int hits, int ticksSinceLastHit, int windowTicks) {
 
-    /** 4 seconds, per DESIGN.md. */
+    /** 4 seconds, per DESIGN.md. The window a warhammer has with no enchantment on it. */
     public static final int WINDOW_TICKS = 80;
 
     public static final StreakState EMPTY = new StreakState(0, WINDOW_TICKS);
+
     public static final Codec<StreakState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.INT.fieldOf("hits").forGetter(StreakState::hits),
-            Codec.INT.fieldOf("ticks_since_last_hit").forGetter(StreakState::ticksSinceLastHit)
+            Codec.INT.fieldOf("ticks_since_last_hit").forGetter(StreakState::ticksSinceLastHit),
+            // Defaulted rather than required: a streak written before this field existed was a
+            // streak at the base window, and a missing field has to read as exactly that instead
+            // of failing the load of a whole player.
+            Codec.INT.optionalFieldOf("window_ticks", WINDOW_TICKS)
+                    .forGetter(StreakState::windowTicks)
     ).apply(instance, StreakState::new));
 
-    public boolean isActive() {
-        return hits > 0 && ticksSinceLastHit < WINDOW_TICKS;
+    /** A streak at the base window: the one a warhammer with no enchantment runs. */
+    public StreakState(int hits, int ticksSinceLastHit) {
+        this(hits, ticksSinceLastHit, WINDOW_TICKS);
     }
 
-    public StreakState onHit() {
-        return new StreakState(hits + 1, 0);
+    public boolean isActive() {
+        return hits > 0 && ticksSinceLastHit < windowTicks;
+    }
+
+    /**
+     * One more hit, and the window it will be judged by from here on.
+     *
+     * <p>The window is re-read on every hit rather than kept from the first one: a player who
+     * enchants the hammer mid-fight is holding a different weapon, and the chain should be worth
+     * what the weapon in their hand is worth. What it is <em>not</em> is re-read from the item on
+     * every tick -- see the class note.</p>
+     */
+    public StreakState onHit(int windowTicks) {
+        return new StreakState(hits + 1, 0, windowTicks);
     }
 
     public StreakState tick() {
@@ -34,7 +63,7 @@ public record StreakState(int hits, int ticksSinceLastHit) {
             return this;
         }
         int since = ticksSinceLastHit + 1;
-        return since >= WINDOW_TICKS ? EMPTY : new StreakState(hits, since);
+        return since >= windowTicks ? EMPTY : new StreakState(hits, since, windowTicks);
     }
 
     /**

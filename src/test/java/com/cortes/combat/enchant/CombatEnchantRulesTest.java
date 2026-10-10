@@ -108,6 +108,19 @@ class CombatEnchantRulesTest {
     }
 
     @Test
+    @DisplayName("Ritmo de Hierro: 80 -> 100 -> 120 ticks, un segundo por nivel")
+    void rhythmOfIronLevels() {
+        assertEquals(80, CombatEnchantRules.streakWindow(0),
+                "sin el encantamiento son los cuatro segundos del diseno");
+        assertEquals(100, CombatEnchantRules.streakWindow(1));
+        assertEquals(120, CombatEnchantRules.streakWindow(2));
+        assertEquals(120, CombatEnchantRules.streakWindow(9),
+                "un nivel de mas vale lo que el maximo");
+        assertEquals(80, CombatEnchantRules.streakWindow(-1),
+                "y uno negativo, lo de siempre");
+    }
+
+    @Test
     @DisplayName("los niveles fuera de rango se clampean")    void levelsAreClamped() {
         assertEquals(CombatEnchantRules.parryCooldown(100, 2),
                 CombatEnchantRules.parryCooldown(100, 9),

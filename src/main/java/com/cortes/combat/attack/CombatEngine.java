@@ -642,7 +642,15 @@ public final class CombatEngine {
             com.cortes.combat.particle.SlashParticles.damageIndicator(level, target, result.damage());
         }
         if (stats.profile() == WeaponProfile.WARHAMMER) {
-            StreakState streak = player.getData(ModAttachments.HAMMER_STREAK.get()).onHit();
+            // **Ritmo de Hierro decide la ventana con la que la cadena sigue, y se lee acá y no en
+            // cada tick.** El nivel sale del arma que golpeó, así que la cadena vale lo que el arma
+            // en la mano vale; a partir de este momento viaja en el estado, y cambiar de martillo a
+            // mitad de cadena no la colapsa con una regla con la que nunca empezó. Ver StreakState.
+            int window = com.cortes.combat.enchant.CombatEnchantRules.streakWindow(
+                    com.cortes.combat.enchant.CombatEnchantments.level(
+                            player.level().registryAccess(), player.getMainHandItem(),
+                            com.cortes.combat.enchant.CombatEnchantments.RHYTHM_OF_IRON));
+            StreakState streak = player.getData(ModAttachments.HAMMER_STREAK.get()).onHit(window);
             player.setData(ModAttachments.HAMMER_STREAK.get(), streak);
             // After the increment, so the first landed hit is one and sounds at the floor. The pitch
             // reads the new streak rather than taking a count as an argument, so a caller cannot

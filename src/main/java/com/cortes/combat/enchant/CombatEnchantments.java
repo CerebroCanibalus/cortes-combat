@@ -44,6 +44,10 @@ public final class CombatEnchantments {
     public static final ResourceKey<Enchantment> FLEETING_EDGE =
             key(CombatEnchantRules.FLEETING_EDGE_ID);
 
+    /** E4 -- Ritmo de Hierro: la ventana de la cadena del martillo. */
+    public static final ResourceKey<Enchantment> RHYTHM_OF_IRON =
+            key(CombatEnchantRules.RHYTHM_OF_IRON_ID);
+
     /**
      * El nivel de un encantamiento propio sobre un ítem, por clave.
      *
