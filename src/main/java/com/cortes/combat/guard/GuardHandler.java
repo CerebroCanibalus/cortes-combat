@@ -230,6 +230,13 @@ public final class GuardHandler {
         player.setData(ModAttachments.GUARD_LAST_BLOCK.get(),
                 last.charged(now, attackerId, targetId));
 
+        // **Contragolpe: el bloqueo que costó aguante abre una ventana ofensiva.** Se arma acá y no
+        // en la rama de arriba, y esa es la distinción entera del encantamiento: el segundo corte
+        // del mismo swing bloquea igual -- la guardia se sostiene -- pero no rearma nada. El premio
+        // es por el golpe que se pagó, no por el que ya estaba pagado.
+        player.setData(ModAttachments.CONTRAGOLPE.get(),
+                com.cortes.combat.state.ContragolpeWindow.armedAt(now));
+
         event.setBlocked(true);
         // The fraction, not a flag. The event starts with `dmgBlocked` at the FULL incoming
         // damage, which is why the first version's `setBlockedDamage(0)` blocked nothing -- zero

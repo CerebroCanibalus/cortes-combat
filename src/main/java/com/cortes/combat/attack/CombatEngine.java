@@ -347,9 +347,32 @@ public final class CombatEngine {
             // both: re-armed between them it would eat the second cut of the sabre's own charge,
             // which is the one double hit in this game that is meant to land.
             target.invulnerableTime = 0;
-            boolean hurt = target.hurt(
-                    damageSource(player, result.ignoredArmour(), result.axeCharged()),
-                    result.damage());
+            // **Contragolpe: el golpe que cobra la ventana entra por donde la armadura ya no
+            // cubre.** La armadura se baja para ESTE golpe y se devuelve enseguida -- ver
+            // ripostePierce, que es donde vive la decisión y por qué no se suma daño.
+            LivingEntity armoured = target instanceof LivingEntity wearer ? wearer : null;
+            net.minecraft.world.entity.ai.attributes.AttributeInstance armour = armoured == null
+                    ? null
+                    : armoured.getAttribute(
+                            net.minecraft.world.entity.ai.attributes.Attributes.ARMOR);
+            net.minecraft.world.entity.ai.attributes.AttributeModifier pierced =
+                    ripostePierce(player, armour);
+            if (pierced != null) {
+                armour.addTransientModifier(pierced);
+            }
+            boolean hurt;
+            try {
+                hurt = target.hurt(
+                        damageSource(player, result.ignoredArmour(), result.axeCharged()),
+                        result.damage());
+            } finally {
+                // En un `finally` y no después: `hurt` puede tirar por un mod de terceros, y una
+                // armadura que queda baja para siempre es exactamente el bug que este encantamiento
+                // no puede dejar atrás.
+                if (pierced != null) {
+                    armour.removeModifier(pierced);
+                }
+            }
             target.invulnerableTime = AttackTiming.IFRAME_TICKS;
             if (hurt) {
                 landed++;
@@ -845,6 +868,74 @@ public final class CombatEngine {
         player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
                 net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED, ticks, 0, false, false, false));
     }
+
+    /**
+     * E7 · Contragolpe: la armadura que el golpe que sigue a un bloqueo deja de contar.
+     *
+     * <h2>Por qué se baja la armadura y no se suma daño</h2>
+     *
+     * <p><b>La cuenta la hace vanilla, y sólo puede hacerla ella.</b> {@code CombatRules.getDamageAfterAbsorb}
+     * corre en el <em>defensor</em>, dentro de {@code LivingEntity#hurt}, y lee
+     * {@code getArmorValue()} y {@code ARMOR_TOUGHNESS} en ese momento. Sumar daño por nuestra
+     * cuenta para simular un cuarto menos de armadura sería una <b>segunda copia de la fórmula de
+     * armadura de Minecraft</b> -- con su clamp, su rama dependiente del daño y su dureza -- y una
+     * copia que se desincroniza en la próxima versión no falla: pega un número que nadie eligió.</p>
+     *
+     * <p>Bajando la armadura, el número que vanilla usa <em>es</em> el que le dejamos, y el resto
+     * del cálculo queda intacto por construcción. Se devuelve en el mismo tick, así que nada más lo
+     * ve -- ni el HUD del defensor, que se sincroniza al final del tick.</p>
+     *
+     * <h2>Y por qué no el tipo de daño del martillo</h2>
+     *
+     * <p>Porque {@code bypasses_armor} es un booleano y esto es un cuarto. Pero sobre todo porque
+     * vanilla anida {@code bypasses_armor} dentro de {@code bypasses_shield}: un golpe que ignora la
+     * armadura también pasa por encima de un escudo levantado. <b>Contragolpe es un encantamiento de
+     * guardia</b>, y un premio que atravesara la guardia del rival sería el chiste contado al
+     * revés.</p>
+     *
+     * @return el modificador a poner y sacar, o {@code null} si no hay ventana abierta, no hay
+     *         encantamiento o el objetivo no tiene atributos que bajar
+     */
+    private static net.minecraft.world.entity.ai.attributes.AttributeModifier ripostePierce(
+            Player attacker, net.minecraft.world.entity.ai.attributes.AttributeInstance armour) {
+        if (armour == null) {
+            return null;
+        }
+        long now = attacker.level().getGameTime();
+        com.cortes.combat.state.ContragolpeWindow window =
+                attacker.getData(ModAttachments.CONTRAGOLPE.get());
+        if (!window.isOpen(now)) {
+            return null;
+        }
+        float ignored = com.cortes.combat.enchant.CombatEnchantRules.riposteArmourIgnored(
+                com.cortes.combat.enchant.CombatEnchantments.level(
+                        attacker.level().registryAccess(), attacker.getMainHandItem(),
+                        com.cortes.combat.enchant.CombatEnchantments.RIPOSTE));
+        if (ignored <= 0.0F) {
+            // Ventana abierta sin el encantamiento: no se gasta. El bloqueo fue real, pero el arma
+            // en la mano no es la que promete el premio, y gastarla seria cobrarle al jugador algo
+            // que no recibio.
+            return null;
+        }
+        // **"Tu siguiente ataque" es uno.** La ventana se gasta en el golpe que la usa: si
+        // sobreviviera, un bloqueo daria cuarenta ticks de penetracion en vez de un golpe.
+        attacker.setData(ModAttachments.CONTRAGOLPE.get(), window.spent());
+        return new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                RIPOSTE_MODIFIER_ID, -ignored,
+                net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation
+                        .ADD_MULTIPLIED_TOTAL);
+    }
+
+    /**
+     * El id del modificador de Contragolpe.
+     *
+     * <p>Un id fijo y no uno por golpe: se saca con el mismo objeto que se puso, y una identidad
+     * nueva por golpe seria una entrada nueva en el mapa de atributos del objetivo cada vez --
+     * una fuga lenta de memoria por pegar.</p>
+     */
+    private static final net.minecraft.resources.ResourceLocation RIPOSTE_MODIFIER_ID =
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                    com.cortes.combat.CortesCombat.MODID, "contragolpe");
 
     /**
      * The Knockback enchantment's push for one target.

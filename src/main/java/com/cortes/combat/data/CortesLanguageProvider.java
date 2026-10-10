@@ -140,6 +140,7 @@ public class CortesLanguageProvider extends LanguageProvider {
     add("enchantment.cortescombat.audacity", spanish ? "Audacia" : "Audacity");
     add("enchantment.cortescombat.fleeting_edge", spanish ? "Filo Fugaz" : "Fleeting Edge");
     add("enchantment.cortescombat.rhythm_of_iron", spanish ? "Ritmo de Hierro" : "Iron Rhythm");
+    add("enchantment.cortescombat.riposte", spanish ? "Contragolpe" : "Riposte");
     }
 
     /**

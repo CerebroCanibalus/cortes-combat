@@ -48,6 +48,9 @@ public final class CombatEnchantments {
     public static final ResourceKey<Enchantment> RHYTHM_OF_IRON =
             key(CombatEnchantRules.RHYTHM_OF_IRON_ID);
 
+    /** E7 -- Contragolpe: la ventana ofensiva que abre un bloqueo de verdad. */
+    public static final ResourceKey<Enchantment> RIPOSTE = key(CombatEnchantRules.RIPOSTE_ID);
+
     /**
      * El nivel de un encantamiento propio sobre un ítem, por clave.
      *

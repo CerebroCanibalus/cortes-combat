@@ -37,9 +37,12 @@ public final class CombatEnchantRules {
     /** E4 -- Ritmo de Hierro. */
     public static final String RHYTHM_OF_IRON_ID = "rhythm_of_iron";
 
+    /** E7 -- Contragolpe, el genérico de guardia. */
+    public static final String RIPOSTE_ID = "riposte";
+
     /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
-    public static final java.util.List<String> IDS =
-            java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID, FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID);
+    public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID,
+            FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID);
 
     // ---------------------------------------------------------------- E2 · Reflejo de Acero (shotel)
 
@@ -137,6 +140,36 @@ public final class CombatEnchantRules {
         int clamped = clamp(level, RHYTHM_OF_IRON_MAX_LEVEL);
         return com.cortes.combat.state.StreakState.WINDOW_TICKS
                 + RHYTHM_OF_IRON_TICKS_PER_LEVEL * clamped;
+    }
+
+    // ---------------------------------------------------------------- E7 · Contragolpe (guardia)
+
+    /** El nivel máximo, el del archivo de encantamiento. */
+    public static final int RIPOSTE_MAX_LEVEL = 2;
+
+    /**
+     * Qué porción de la armadura del objetivo deja de contar en el golpe que cobra la ventana.
+     *
+     * <p><b>Una fracción y no un booleano, y eso es todo el encantamiento.</b> El proyecto ya tiene
+     * un "ignora la armadura del todo" -- el martillo a carga completa, con su tipo de daño en
+     * {@code bypasses_armor} -- y no sirve acá por dos razones. Una es de balance: un cuarto o la
+     * mitad es un premio, y el 100 % en cada golpe de una ventana de dos segundos no lo es. La otra
+     * es que {@code bypasses_armor} <b>arrastra consecuencias que no elegimos</b>: vanilla lo anida
+     * dentro de {@code bypasses_shield}, así que un golpe que ignora la armadura también pasa por
+     * encima de un escudo levantado -- y Contragolpe es, precisamente, un encantamiento de guardia.
+     * Que su premio ignorara la guardia del rival sería el chiste contado al revés.</p>
+     *
+     * <p>Se aplica bajando la armadura del objetivo durante ese único golpe, no sumando daño: la
+     * cuenta la hace vanilla ({@code CombatRules.getDamageAfterAbsorb}) con el número que le
+     * dejemos, así que no hay una copia de su aritmética que se desincronice en la próxima
+     * versión.</p>
+     */
+    public static float riposteArmourIgnored(int level) {
+        return switch (clamp(level, RIPOSTE_MAX_LEVEL)) {
+            case 1 -> 0.25F;
+            case 2 -> 0.50F;
+            default -> 0.0F;
+        };
     }
 
     /**

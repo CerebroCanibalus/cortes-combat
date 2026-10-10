@@ -121,6 +121,29 @@ class CombatEnchantRulesTest {
     }
 
     @Test
+    @DisplayName("Contragolpe: un cuarto de armadura menos, y la mitad en el nivel dos")
+    void riposteLevels() {
+        assertEquals(0.0F, CombatEnchantRules.riposteArmourIgnored(0), 1.0E-6F,
+                "sin el encantamiento no ignora nada: la ventana se abre igual pero no cobra");
+        assertEquals(0.25F, CombatEnchantRules.riposteArmourIgnored(1), 1.0E-6F);
+        assertEquals(0.50F, CombatEnchantRules.riposteArmourIgnored(2), 1.0E-6F);
+        assertEquals(0.50F, CombatEnchantRules.riposteArmourIgnored(9), 1.0E-6F,
+                "un nivel de mas vale lo que el maximo");
+        assertEquals(0.0F, CombatEnchantRules.riposteArmourIgnored(-1), 1.0E-6F);
+    }
+
+    @Test
+    @DisplayName("y nunca es el 100%: el martillo ya es el que ignora la armadura del todo")
+    void riposteIsNeverComplete() {
+        for (int level = 0; level <= CombatEnchantRules.RIPOSTE_MAX_LEVEL; level++) {
+            assertTrue(CombatEnchantRules.riposteArmourIgnored(level) < 1.0F,
+                    "nivel " + level + ": Contragolpe baja la armadura, no la saltea. El 'ignora "
+                            + "todo' del martillo arrastra bypasses_shield, y un premio de guardia "
+                            + "que atraviesa la guardia es el chiste contado al reves");
+        }
+    }
+
+    @Test
     @DisplayName("los niveles fuera de rango se clampean")    void levelsAreClamped() {
         assertEquals(CombatEnchantRules.parryCooldown(100, 2),
                 CombatEnchantRules.parryCooldown(100, 9),

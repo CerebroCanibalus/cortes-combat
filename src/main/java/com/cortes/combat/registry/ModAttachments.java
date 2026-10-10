@@ -4,6 +4,7 @@ import com.cortes.combat.CortesCombat;
 import com.cortes.combat.state.ArcabuzState;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
+import com.cortes.combat.state.ContragolpeWindow;
 import com.cortes.combat.state.GuardState;
 import com.cortes.combat.guard.GuardStamp;
 import com.cortes.combat.state.FallDeferral;
@@ -85,6 +86,18 @@ public final class ModAttachments {
             ATTACHMENT_TYPES.register("parry", () -> AttachmentType.builder(() -> ParryState.READY)
                     .serialize(ParryState.CODEC)
                     .build());
+
+    /**
+     * Contragolpe: la ventana ofensiva que abre un bloqueo de verdad.
+     *
+     * <p><b>Sin {@code serialize}, y es una decisión.</b> Son dos segundos que mueren solos: un
+     * estado que ninguna sesión sobrevive no se escribe en el NBT, y una ventana que reaparece
+     * después de reconectar sería un premio que el jugador no ganó. Mismo criterio que las
+     * confirmaciones en vuelo del coyote.</p>
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<ContragolpeWindow>> CONTRAGOLPE =
+            ATTACHMENT_TYPES.register("contragolpe",
+                    () -> AttachmentType.builder(() -> ContragolpeWindow.NONE).build());
 
     /**
      * The ropera's lunge in progress: where the player has been measured to, and how far into the

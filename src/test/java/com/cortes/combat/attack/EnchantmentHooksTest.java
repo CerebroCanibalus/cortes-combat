@@ -197,6 +197,43 @@ class EnchantmentHooksTest {
     }
 
     /**
+     * **Contragolpe: la ventana se arma en el bloqueo que costó aguante, y se cobra en un golpe.**
+     *
+     * <p>Dos archivos, dos aserciones, y las dos importan por separado. Armar la ventana en el lugar
+     * equivocado de {@code GuardHandler} la rearmaría con el segundo corte de un mismo swing -- que
+     * bloquea pero ya estaba pagado -- y el premio dejaría de ser "por el golpe que pagaste". Y del
+     * otro lado, la ventana puede abrirse perfecto y el golpe siguiente no leerla, que es la fórmula
+     * sin llamador de siempre.</p>
+     */
+    @Test
+    @DisplayName("Contragolpe se arma en el bloqueo que cuesta aguante y se cobra en el golpe")
+    void riposteArmsAndIsCollected() {
+        String guard = readGuard();
+        String engine = read();
+
+        assertTrue(guard.contains("ContragolpeWindow.armedAt(now)"),
+                "**la ventana se arma en `GuardHandler`**");
+        // **Y despues del `state.block(..)`, que es la posicion y no el texto.** Armar la ventana
+        // antes de esa linea la rearmaria con el segundo corte de un mismo swing -- la rama de
+        // arriba bloquea igual pero ya pago su punto -- y el premio dejaria de ser "por el golpe
+        // que pagaste". La primera version de esta asercion solo miraba el texto y no mordia:
+        // verificada moviendo el armado a la rama de arriba.
+        int paid = guard.indexOf("state.block(");
+        int armed = guard.indexOf("ContragolpeWindow.armedAt(now)");
+        assertTrue(paid > 0 && armed > paid,
+                "**y despues del `state.block(..)` que gasta el punto**, no antes: la rama del "
+                        + "corte que ya pago bloquea pero no rearma nada");
+        assertTrue(engine.contains("CombatEnchantments.RIPOSTE"),
+                "y se cobra: el nivel del encantamiento tiene que leerse en el golpe");
+        assertTrue(engine.contains(".spent()"),
+                "**y se gasta.** 'Tu siguiente ataque' es uno: sin esto un bloqueo daria cuarenta "
+                        + "ticks de penetracion de armadura");
+        assertTrue(engine.contains("addTransientModifier("),
+                "y la armadura se baja durante el golpe y se devuelve: ver ripostePierce para por "
+                        + "que no se suma dano en vez de esto");
+    }
+
+    /**
      * NeoForge's attack hook is fired again, for the target the player aimed at.
      *
      * <p>{@code Player#attack} opens with {@code CommonHooks.onPlayerAttackTarget}, and a replaced
@@ -233,6 +270,17 @@ class EnchantmentHooksTest {
     private static String readSpecial() {
         Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "special",
                 "SpecialHandler.java");
+        try {
+            return Files.readString(file, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new AssertionError("could not read " + file + ": " + e.getMessage(), e);
+        }
+    }
+
+    /** Y el de la guardia, que es donde Contragolpe arma su ventana. */
+    private static String readGuard() {
+        Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "guard",
+                "GuardHandler.java");
         try {
             return Files.readString(file, StandardCharsets.UTF_8);
         } catch (IOException e) {
