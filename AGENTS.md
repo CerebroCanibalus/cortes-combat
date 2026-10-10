@@ -183,6 +183,7 @@ Pasos 1–10 hechos ⊕ verificados en cliente real. Librería de viewmodel, gua
 | 15 | compat / conversión de armas de otros mods | pendiente |
 | — | **arcabuz** (arma 31, fuera del catálogo de 30) | HECHO, sin receta de crafteo |
 | — | tercera persona (`thirdperson/`) | HECHO y verificado |
+| — | **coyote time del golpe** (buffer de confirmación cliente→server) | HECHO ⊕ 960 tests, **⊥ playtest** — ver la sección propia |
 | — | **weapon packs YAML** (docs/weapon-packs-design.md v3) | **FASES 1–5, 7, 8 HECHAS y VERIFICADAS EN CLIENTE** (2026-10-10, tres playtests) — 958 tests. Faltan: fase 6 (poses + sprite slash) y modo `strict` |
 
 ## Decisiones tomadas
@@ -605,7 +606,7 @@ deducen de un número:
 
 ## Estado técnico actual
 
-**958 tests unitarios verdes.** Todo lo testeable corre en JVM pelada; lo que necesita el juego queda
+**960 tests unitarios verdes.** Todo lo testeable corre en JVM pelada; lo que necesita el juego queda
 en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardState`, `ConeSize`, `WeaponTooltip`
 y los `viewmodel/*` puros.
 
@@ -617,8 +618,8 @@ y los `viewmodel/*` puros.
   Cero componente de Minecraft en la capa que decide.
 - **5 data components**: `weapon_profile` (14 perfiles), `reach_profile`, `charge_profile`, `special`,
   `arcabuz_fuse`.
-- **6 attachments**: `charge`, `guard_stamina`, `cooldown`, `hammer_streak`, `parry`, `arcabuz`,
-  `last_synced`.
+- **13 attachments**: `charge`, `guard_stamina`, `guard_last_block`, `cooldown`, `hammer_streak`,
+  `parry`, `lunge`, `lunge_hits`, `frenzy`, `last_synced`, `arcabuz`, `fall_deferral`, `pending_hit`.
 - **14 canales** de viewmodel: `WINDUP`, `STRIKE`, `CHOP`, `RECOVER`, `COOLDOWN`, `HOLD`, `GUARD`,
   `BREAK`, `PARRY`, `LUNGE`, `SWEEP`, `HELD`, `RELOAD`, `SHOOT`.
 - **9 perfiles** en `ViewModelDefaults`: espada, manos, ropera, daga, sable, alabarda, hacha,
@@ -915,6 +916,46 @@ durability 1). Y **arreglos que salieron del playtest**:
   no disco, pero sólo un Contains lo distingue.
 - **La prueba dura de "esto es 100% ajeno al mod"**: `grep jugadorsito src/` = **0 hits**. No
   es una promesa, es la misma aserción que hace `WeaponPackBuiltInTest` para los tags.
+
+### El coyote time del golpe (2026-10-10)
+
+**El reporte:** *"el golpe a veces se pierde pese a que el indicador de UI muestra que deberías dar
+el golpe"*. Tenía razón, y la causa está en que **la misma pregunta se responde en tres lugares con
+tres tolerancias distintas**:
+
+| Quién | Cuándo mira | Con qué |
+|---|---|---|
+| El indicador (`CombatAim.stillAiming` → `ClientCombatState.setAiming`) | cada tick | el scan **cacheado** del último tick que escaneó, revalidado con `stillHittable` |
+| El `release` (`SwingInputHandler.resolveTargetId`) | al soltar el botón | un scan **fresco** y estricto (`ConeTargeting.findTargetForHeldItem`) |
+| El server (`CombatEngine.resolveTarget`) | al llegar el paquete | `Reach.inCone` con **su** copia del mundo (posiciones y rotación viajan por red) |
+
+Un mob que da un paso lateral sale del cono entre el tick que dibujó el indicador y el `release` →
+el cliente manda `NO_TARGET` y el miss queda decidido **sin preguntarle nada al server**.
+
+**La solución, en dos mitades:**
+
+- **Cliente — el swing recuerda su objetivo** (`swingTargetId`): se setea en el press (donde el cono
+  ya lo encontró), se refresca con cada scan exitoso. Si el scan del release da vacío, manda el
+  recordado **si pasa el cono con slack** (`ConeTargeting.stillInSlackCone`: +10° por eje, +0,5
+  bloques). Slack generoso donde sólo cuesta un paquete, estricto donde cuesta daño.
+- **Server — ventana de confirmación** (`PendingHit` + `HitCoyote`): si el id llega, la entidad
+  existe y está viva, pero `Reach.inCone` falla, **ya no whiffea al instante**. Guarda la intención
+  (entidad, **carga congelada del release**, id del arma, `dueTick`) y **revalida el mismo cono
+  estricto cada tick durante 5 ticks**. Conecta → `CombatEngine.landTheHit` (extraído para que el
+  golpe diferido use **el mismo camino** que el instantáneo, sin una segunda definición). Vence → el
+  sonido de miss recién ahí. El brazo se juega **en el release** (el swing pasó entonces); el
+  cooldown ya se pagó ahí; la ventana no cobra nada.
+
+**La invariante que NO se toca:** el cono del server nunca se relaja — la ventana perdona *timing*
+(lag, interpolación, un tick de desfase entre copias del mundo), jamás *apuntado*: si el jugador
+giró la vista, el primer re-chequeo falla. Cierres: release nuevo cancela el pendiente (en
+`resolveSwing`, después del gate de swing abierto para que un release perdido no lo cancele),
+cambio de arma cancela (el golpe es del arma que lo tiró), muerte limpia (sin `copyOnDeath`), y el
+attachment **sin codec** porque es una confirmación en vuelo, no un estado (patrón `FallDeferral`).
+
+`PendingHitTest` fija el borde de expiración; **sabotaje verificado** (`>=` → `>` hace fallar el
+build). **⊥ playtest todavía** — la prueba es pegar en el borde del cono contra un mob que se mueve
+lateral, y con lag.
 
 ---
 
