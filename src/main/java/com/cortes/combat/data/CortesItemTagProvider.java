@@ -77,7 +77,7 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
     @Override
     protected void addTags(HolderLookup.Provider registries) {
         materialTags();
-        everyWeaponIsABlade();
+        enchantClasses();
         copperToolsFight();
         profileTags();
         categoryTags();
@@ -210,13 +210,76 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         }
     }
 
-    private void everyWeaponIsABlade() {
-        var swords = tag(CortesTier.swordsTag());
+    /**
+     * Las clases de encantamiento: qué arma nuestra hereda cuáles.
+     *
+     * <h2>Lo que este método reemplaza, y por qué era un problema de diseño</h2>
+     *
+     * <p>Antes estaba {@code everyWeaponIsABlade()}, que metía <b>las treinta</b> en
+     * {@code #minecraft:swords}. Como {@code #minecraft:enchantable/sword} <em>es</em> ese tag, y de
+     * ahí cuelgan Knockback, Looting y Sweeping Edge (más Sharpness por {@code sharp_weapon} y
+     * Smite/Bane por {@code weapon}), cada arma nuestra heredaba el set de espada entero: un martillo
+     * con Sweeping Edge, una alabarda que saquea mejor. <b>El tag es la decisión</b>, así que
+     * discriminar es dejar de usar el de vanilla.
+     *
+     * <h2>Cómo se discrimina</h2>
+     *
+     * <p>Estos tags son la mitad; la otra son <b>seis overrides</b> en
+     * {@code src/main/resources/data/minecraft/enchantment/} — copias completas del JSON de vanilla
+     * con <b>sólo</b> {@code supported_items} (y {@code primary_items} en Fire Aspect) apuntando a la
+     * <b>unión</b> con estos tags. Unión y no reemplazo: lo vanilla queda como estaba y lo nuestro se
+     * agrega. {@code sharpness} y {@code smite} lo hacen por eso; {@code fire_aspect} es el único que
+     * <b>quita</b> algo, y es una decisión del dueño (el quemado va a lo contundente, que no tiene
+     * Sharpness con el que competir).
+     *
+     * <p><b>La durabilidad sí es para todas.</b> Unbreaking, Mending y Vanishing cuelgan de
+     * {@code #minecraft:enchantable/durability}, que incluye {@code #swords}: sacar las armas de ahí
+     * sin reponerlas les habría quitado los tres en silencio, que es la forma de bug que este archivo
+     * ya pagó una vez ({@code materialTags}).
+     */
+    private void enchantClasses() {
+        TagKey<Item> blade = own("enchantable/blade");
+        TagKey<Item> blunt = own("enchantable/blunt");
+        TagKey<Item> all = own("enchantable/all");
+        TagKey<Item> loot = own("enchantable/loot");
+        TagKey<Item> shove = own("enchantable/shove");
+        TagKey<Item> gun = own("enchantable/gun");
+        TagKey<Item> durability = TagKey.create(Registries.ITEM,
+                ResourceLocation.withDefaultNamespace("enchantable/durability"));
+
         for (WeaponFamily family : WeaponFamily.values()) {
             for (WeaponMaterial material : family.materialsInOrder()) {
-                swords.add(ModItems.weapon(family.itemName(material)).get());
+                Item item = ModItems.weapon(family.itemName(material)).get();
+                tag(all).add(item);
+                tag(durability).add(item);
+                if (family == WeaponFamily.MARTILLO) {
+                    tag(blunt).add(item);
+                } else {
+                    tag(blade).add(item);
+                }
+                if (family == WeaponFamily.DAGA) {
+                    tag(loot).add(item);
+                }
             }
         }
+        // El arcabuz es la treinta y uno y pelea con la bayoneta: entra a la clase que pelea y a la
+        // de durabilidad, y a ninguna otra -- no es filo, no es contundente y no saquea.
+        tag(all).add(ModItems.ARCABUZ.get());
+        tag(durability).add(ModItems.ARCABUZ.get());
+        // Y la clase del arma de fuego, que es de uno: el arcabuz es el único que carga mecha, y es
+        // la que le da Quick Charge de vanilla (ver el override del JSON) en vez de un encantamiento
+        // nuestro que dijera lo mismo.
+        tag(gun).add(ModItems.ARCABUZ.get());
+
+        // El empuje es de lo pesado, y lo pesado incluye lo vanilla reworkeado: hacha, pala y maza.
+        tag(shove).addTag(ItemTags.AXES).addTag(ItemTags.SHOVELS).add(Items.MACE);
+        tag(shove).addTag(blunt);
+    }
+
+    /** Un tag de encantamiento nuestro, por id. */
+    private static TagKey<Item> own(String path) {
+        return TagKey.create(Registries.ITEM,
+                ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, path));
     }
 
     /**

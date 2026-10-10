@@ -202,8 +202,36 @@ public record ArcabuzState(int fuseTicks, int reloadTicks, boolean loaded, boole
      * rather than depending on two packets arriving in an order.</p>
      */
     public ArcabuzState startReload() {
-        return new ArcabuzState(0, RELOAD_TICKS, false, reloadHeld);
+        return startReload(RELOAD_TICKS);
     }
+
+    /**
+     * Lo mismo, con la recarga que este arcabuz va a tardar <b>de verdad</b>.
+     *
+     * <p>{@code startReload()} queda como el valor de fábrica; el servidor le pasa el número real,
+     * que sale de Quick Charge (ver {@code Arcabuz#reloadTicks}). El piso del número vive en
+     * {@link #reloadTicksFor}, no acá: una recarga siempre cuesta algo aunque los encantamientos
+     * sumen más de lo que hay.</p>
+     */
+    public ArcabuzState startReload(int totalTicks) {
+        return new ArcabuzState(0, totalTicks, false, reloadHeld);
+    }
+
+    /**
+     * Segundos de recarga a ticks, <b>con piso</b>.
+     *
+     * <p>Es la mitad pura de Quick Charge en el arcabuz: el helper de vanilla
+     * ({@code EnchantmentHelper#modifyCrossbowChargingTime}) devuelve segundos y esto los vuelve el
+     * número de ticks que corre el servidor. El piso existe porque un encantamiento que restara más
+     * tiempo del que hay daría una recarga de cero y un disparo instantáneo, que es el mismo regalo
+     * que este proyecto rechaza en la carga ("nunca resta, y el piso se fuerza en código").</p>
+     */
+    public static int reloadTicksFor(float seconds) {
+        return Math.max(MIN_RELOAD_TICKS, (int) Math.floor(seconds * 20.0F));
+    }
+
+    /** Lo mínimo que una recarga puede costar, en ticks: un segundo. */
+    public static final int MIN_RELOAD_TICKS = 20;
 
     /**
      * What the state becomes when the stack in hand says the chamber is loaded.

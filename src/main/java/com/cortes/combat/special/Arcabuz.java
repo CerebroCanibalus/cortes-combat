@@ -159,7 +159,8 @@ public final class Arcabuz {
             // button went down, or came up a second time. Relying on the held packet having
             // arrived first is what broke this: the reload began in a state whose only clock was
             // a flag the press had just cleared, so the gun took the reload and never filled.
-            player.setData(ModAttachments.ARCABUZ.get(), state.startReload().withHeld(true));
+            int reloadTotal = reloadTicks(player.getMainHandItem(), player);
+            player.setData(ModAttachments.ARCABUZ.get(), state.startReload(reloadTotal).withHeld(true));
             // **The press sound is NOT played here, and its absence is the fix.**
             //
             // It used to be, and this is the line that has to go for the reload to be able to
@@ -175,13 +176,13 @@ public final class Arcabuz {
             //
             // The press is still the moment it sounds at -- the count arrives here, on the press --
             // so what is lost is only the server's inability to stop it.
-            trace(player, state, "recarga empezada (" + ArcabuzState.RELOAD_TICKS + " ticks)");
+            trace(player, state, "recarga empezada (" + reloadTotal + " ticks)");
             // **And this packet, which is the whole of "no hay forma de saber que estoy
             // recargando".** The server said nothing at all on the press: the RELOAD channel had a
             // track on the arcabuz's profile and no signal from anywhere to move it, so the gun sat
             // in its unloaded pose for two and a half seconds with nothing on screen. The count
             // travels rather than a flag so the motion is exactly as long as the reload.
-            ModNetworking.sendArcabuzFuse(player, false, 0, false, ArcabuzState.RELOAD_TICKS);
+            ModNetworking.sendArcabuzFuse(player, false, 0, false, reloadTotal);
         }
 
         // A press mid-fuse, or a press that restarted nothing, is what a cooldown looks like.
@@ -408,8 +409,9 @@ public final class Arcabuz {
         // gun would carry on tipping its muzzle down and come back up on its own, for a reload
         // that no longer exists.
         if (previous.isReloading() && !step.state().isReloading() && !step.reloadDone()) {
+            int cancellingTotal = reloadTicks(player.getMainHandItem(), player);
             LOG.info("[arcabuz] recarga CANCELADA (boton soltado en {} de {})",
-                    ArcabuzState.RELOAD_TICKS - previous.reloadTicks(), ArcabuzState.RELOAD_TICKS);
+                    cancellingTotal - previous.reloadTicks(), cancellingTotal);
             ModNetworking.sendArcabuzFuse(player, false, 0, false, 0);
         }
         if (step.reloadDone() && player.level() instanceof ServerLevel level) {
@@ -702,6 +704,25 @@ private static void blast(ServerPlayer player, ServerLevel level, Vec3 muzzle,
      * and the fuse is twenty ticks long enough that "it lit but never fired" is the kind of thing
      * only a log can answer.</p>
      */
+    /**
+     * Los ticks que esta recarga va a tardar, <b>Quick Charge incluido</b>.
+     *
+     * <p>El encantamiento es <b>el de vanilla</b> y lo lee <b>el helper de vanilla</b>: se le pasa la
+     * base en segundos (nuestros cincuenta ticks) y devuelve los segundos ya modificados, que
+     * {@link ArcabuzState#reloadTicksFor} pasa a ticks con piso. Así el servidor, el cliente y el
+     * tooltip sacan el número de <em>una</em> aritmética, que es la única forma de que no se
+     * desincronicen -- y el piso vive en la parte pura, donde un test lo camina.</p>
+     */
+    public static int reloadTicks(net.minecraft.world.item.ItemStack gun,
+                                  net.minecraft.world.entity.LivingEntity user) {
+        float seconds = ArcabuzState.RELOAD_TICKS / 20.0F;
+        if (user != null) {
+            seconds = net.minecraft.world.item.enchantment.EnchantmentHelper
+                    .modifyCrossbowChargingTime(gun, user, seconds);
+        }
+        return ArcabuzState.reloadTicksFor(seconds);
+    }
+
     private static void trace(ServerPlayer player, ArcabuzState state, String message) {
         if (com.cortes.combat.CombatTrace.isEnabled()) {
             com.cortes.combat.CombatTrace.server(player.getName().getString(),

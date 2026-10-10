@@ -40,7 +40,8 @@ class WeaponTooltipTest {
                 WeaponTables.reach(profile), WeaponTables.charge(profile),
                 WeaponTables.special(profile), WeaponTables.knockback(profile),
                 WeaponTables.maxTargets(profile), maxDamage, maxDamage,
-                !WeaponTables.shotReach(profile).isNone(), WeaponKinds.fights(profile));
+                !WeaponTables.shotReach(profile).isNone(), WeaponKinds.fights(profile),
+                com.cortes.combat.state.ArcabuzState.RELOAD_TICKS);
     }
 
     /**
@@ -59,7 +60,8 @@ class WeaponTooltipTest {
                         WeaponTables.reach(WeaponProfile.NONE),
                         WeaponTables.charge(WeaponProfile.NONE),
                         SpecialType.NONE, WeaponTables.knockback(WeaponProfile.NONE),
-                        1, 0, 0, false, false),
+                        1, 0, 0, false, false,
+                        com.cortes.combat.state.ArcabuzState.RELOAD_TICKS),
                 "NONE is not a weapon. Printing numbers on it is the tooltip form of the bug that "
                         + "made a dirt block inherit a sword's charge");
 
@@ -383,7 +385,8 @@ class WeaponTooltipTest {
                 WeaponTooltip.linesFor(WeaponProfile.SWORD, 6.0F, 10, null,
                         WeaponTables.charge(WeaponProfile.SWORD),
                         WeaponTables.special(WeaponProfile.SWORD),
-                        WeaponTables.knockback(WeaponProfile.SWORD), 1, 250, 250, false, true),
+                        WeaponTables.knockback(WeaponProfile.SWORD), 1, 250, 250, false, true,
+                com.cortes.combat.state.ArcabuzState.RELOAD_TICKS),
                 "the reach comes off a component any mod can write; a null one must not take the "
                         + "render thread down");
     }

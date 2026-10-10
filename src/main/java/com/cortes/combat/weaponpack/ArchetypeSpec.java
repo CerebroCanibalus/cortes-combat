@@ -12,10 +12,18 @@ import java.util.Map;
  * <p><b>El arquetipo es el tipo, no la cultura.</b> Nueve tipos de arma mapeados a perfiles que
  * ya existen -- la ropera no es una greatsword y el sable no es una katana. Dos de los nueve
  * traen una mecánica encendida porque es identidad del tipo ({@code rapier} carga lunge, es lo
- * que hace a la ropera ropera; {@code sabre} parry, {@code polearm} sweep) y los demás vienen
+ * que hace a la ropera ropera; {@code sabre} parry, {@code polearm} multi_hit, que es el barrido
+ * de la alabarda) y los demás vienen
  * limpios: <b>la mecánica especial no es gratis</b>, la enciende el pack. El único false explícito
  * es {@code hammer}, porque nuestro molde WARHAMPER carga y un martillo ajeno no hereda la
  * carga de la nuestra.
+ *
+ * <p><b>{@code polearm} declaraba {@code SWEEP} y era un botón muerto.</b> La alabarda real corre
+ * {@code MULTI_HIT} ({@code WeaponTables#SPECIAL}, y {@code WeaponTables} ya lo dice al pasar por
+ * el miembro {@code SWEEP} del enum, "leftover del rework de la pala"), y ni {@code SpecialHandler}
+ * ni {@code SpecialInputHandler} miran {@code SWEEP}. ∴ un pack con {@code archetype: polearm}
+ * recibía un click derecho que no hacía nada, en silencio. Corregido a {@code MULTI_HIT}, que es
+ * el que se maneja.
  *
  * <p>Los números no viven acá: los arquetipos heredan todo de {@code WeaponTables} por perfil
  * (decisión 1 de §14). {@code slash} y {@code pose} son la referencia al asset genérico, que
@@ -42,7 +50,7 @@ public record ArchetypeSpec(WeaponProfile profile, SpecialType special, Boolean 
         map.put("mace", new ArchetypeSpec(WeaponProfile.MACE, SpecialType.NONE, null, null, null));
         // La lanza NO hereda el lunge de la ropera: placeholder para las lanzas de versiones futuras.
         map.put("spear", new ArchetypeSpec(WeaponProfile.ROPERA, SpecialType.NONE, null, null, null));
-        map.put("polearm", new ArchetypeSpec(WeaponProfile.HALBERD, SpecialType.SWEEP, null, null, null));
+        map.put("polearm", new ArchetypeSpec(WeaponProfile.HALBERD, SpecialType.MULTI_HIT, null, null, null));
         map.put("axe", new ArchetypeSpec(WeaponProfile.AXE, SpecialType.NONE, null, null, null));
         return Map.copyOf(map);
     }

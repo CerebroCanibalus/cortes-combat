@@ -164,7 +164,8 @@ public final class WeaponTooltip {
                                              int damageLeft,
                                              int maxDamage,
                                              boolean hasShotCone,
-                                             boolean fights) {
+                                             boolean fights,
+                                             int reloadTicks) {
 
         if (profile == WeaponProfile.NONE || reach == null) {
             return NOTHING;
@@ -266,7 +267,7 @@ public final class WeaponTooltip {
         // **The weapon's own mechanic, for the seven that have one.** Last, because it is the line
         // that explains everything above it rather than a stat of its own -- and in NOTE's dim grey
         // for the same reason: it is an aside the player reads once, not a number they compare.
-        lines.addAll(mechanicLines(profile));
+        lines.addAll(mechanicLines(profile, reloadTicks));
 
         return List.copyOf(lines);
     }
@@ -283,7 +284,7 @@ public final class WeaponTooltip {
      * the gun's. Only the sentence around them is written by hand, and it is the only part of this
      * tooltip that could not be read off a table -- it is language, not a fact.</p>
      */
-    static List<TooltipLine> mechanicLines(WeaponProfile profile) {
+    static List<TooltipLine> mechanicLines(WeaponProfile profile, int reloadTicks) {
         return switch (profile) {
             // The fall, and both numbers are MaceFall's own: the ceiling the damage stops at and
             // the height it takes to get there.
@@ -316,7 +317,7 @@ public final class WeaponTooltip {
             // rather than the ordinary one, because the gun's claim is about the blast.
             case ARCABUZ -> List.of(
                     TooltipLine.of(ARCABUZ_RELOAD,
-                            decimal(com.cortes.combat.state.ArcabuzState.RELOAD_TICKS / 20.0F),
+                            decimal(reloadTicks / 20.0F),
                             TooltipColor.NOTE),
                     TooltipLine.of(ARCABUZ_SHOT,
                             decimal(com.cortes.combat.item.ArcabuzStats.maximumShotDamage()),

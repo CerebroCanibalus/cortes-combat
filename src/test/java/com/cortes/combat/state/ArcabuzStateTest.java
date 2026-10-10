@@ -488,4 +488,18 @@ class ArcabuzStateTest {
                 "a real change returns a different instance, because the caller sends a packet "
                         + "exactly when this returns something new");
     }
+
+    @Test
+    @DisplayName("Quick Charge: segundos a ticks con piso, y una recarga nunca cuesta cero")
+    void reloadSecondsBecomeTicksWithAFloor() {
+        assertEquals(50, ArcabuzState.reloadTicksFor(2.5F),
+                "la base: nuestros cincuenta ticks en segundos, de vuelta a cincuenta");
+        assertEquals(45, ArcabuzState.reloadTicksFor(2.25F),
+                "Quick Charge I: el helper de vanilla resta un cuarto de segundo");
+        assertEquals(ArcabuzState.MIN_RELOAD_TICKS, ArcabuzState.reloadTicksFor(0.5F),
+                "**y el piso**: encantamientos que resten mas de lo que hay no pueden regalar un "
+                        + "disparo instantaneo -- el piso se fuerza en codigo, no se confia en el dato");
+        assertEquals(ArcabuzState.MIN_RELOAD_TICKS, ArcabuzState.reloadTicksFor(-3.0F),
+                "ni un numero negativo lo baja");
+    }
 }

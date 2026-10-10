@@ -2,6 +2,7 @@ package com.cortes.combat.weaponpack;
 
 import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.core.weapon.WeaponProfile;
+import com.cortes.combat.item.WeaponTables;
 import com.cortes.combat.weaponpack.WeaponPackSpec.Entry;
 import org.junit.jupiter.api.Test;
 
@@ -48,7 +49,16 @@ class PackResolverTest {
         assertEquals(SpecialType.NONE, arch.get("spear").special(),
                 "**la lanza NO hereda el lunge de la ropera** -- placeholder de versiones futuras");
         assertEquals(SpecialType.PARRY, arch.get("sabre").special(), "el sable parryea");
-        assertEquals(SpecialType.SWEEP, arch.get("polearm").special(), "el asta barre");
+        // **La invariante, no el número: el arquetipo no puede discrepar del perfil que mapea.**
+        // Afirmaba `SWEEP`, y `SWEEP` es el bug: un leftover del rework de la pala que ningún
+        // handler mira (`SpecialHandler`/`SpecialInputHandler` sólo ramifican con `MULTI_HIT`), y
+        // el especial del arquetipo es justo el que se usa cuando la entrada del pack no declara
+        // el suyo. Declararlo ahí daba un click derecho muerto, en silencio. Preguntarle a la
+        // tabla del perfil es lo que convierte esto de "un número correcto hoy" en "no puede
+        // volver a desincronizarse".
+        assertEquals(WeaponTables.special(WeaponProfile.HALBERD), arch.get("polearm").special(),
+                "el asta barre con el especial que la alabarda REALMENTE corre (multi_hit), no "
+                        + "con el valor muerto del enum");
 
         ArchetypeSpec hammer = arch.get("hammer");
         assertEquals(WeaponProfile.WARHAMMER, hammer.profile(), "molde warhammer");

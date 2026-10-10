@@ -28,6 +28,15 @@ public final class ArcabuzFuseState {
 
     private static volatile int fuseTicks = 0;
     private static volatile int reloadTicks = 0;
+    /**
+     * La recarga que el servidor mandó en el press, para el denominador del progreso.
+     *
+     * <p><b>Se recibe y no se lee de la constante, y esa es la corrección.</b> El contador se
+     * envejece solo desde el número que llegó; dividirlo por {@code ArcabuzState.RELOAD_TICKS}
+     * funcionaba sólo mientras todas las recargas duraban lo mismo. Con Quick Charge la barra
+     * arrancaría a un 20 % de progreso en un arma que todavía no empezó a cargar.</p>
+     */
+    private static volatile int reloadTotal = 0;
     private static volatile boolean loaded = false;
 
     private ArcabuzFuseState() {
@@ -53,6 +62,7 @@ public final class ArcabuzFuseState {
      */
     public static void accept(boolean lit, int ticks, boolean hasFirestone, int reloading) {
         reloadTicks = Math.max(reloading, 0);
+        reloadTotal = reloadTicks;
         // **Every packet the client receives, with all four numbers, because the alternative is
         // guessing.**
         //
@@ -221,7 +231,7 @@ public final class ArcabuzFuseState {
         if (reloadTicks <= 0) {
             return 0.0F;
         }
-        int total = Math.max(1, com.cortes.combat.state.ArcabuzState.RELOAD_TICKS);
+        int total = Math.max(1, reloadTotal);
         float elapsed = 1.0F - ((float) reloadTicks / (float) total);
         return Math.max(0.0F, Math.min(1.0F, elapsed));
     }
@@ -267,6 +277,7 @@ public final class ArcabuzFuseState {
     public static void clear() {
         fuseTicks = 0;
         reloadTicks = 0;
+        reloadTotal = 0;
         loaded = false;
     }
 }

@@ -12,6 +12,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -147,7 +148,14 @@ public final class CombatTooltipHandler {
                 stack.getMaxDamage() - stack.getDamageValue(),
                 stack.getMaxDamage(),
                 stats.hasOwnShotCone(),
-                com.cortes.combat.item.WeaponKinds.fights(stats.profile()));
+                com.cortes.combat.item.WeaponKinds.fights(stats.profile()),
+                // **La recarga REAL, no la base.** Con Quick Charge el arma llena antes y el número
+                // que el jugador lee tiene que ser el del arma que tiene en la mano: un tooltip que
+                // promete 2,5 s y entrega 2,0 es un número lindo y falso, que es la clase de bug
+                // que este archivo ya pagó una vez.
+                event.getEntity() instanceof LivingEntity user
+                        ? com.cortes.combat.special.Arcabuz.reloadTicks(stack, user)
+                        : com.cortes.combat.state.ArcabuzState.RELOAD_TICKS);
 
         List<Component> tooltip = event.getToolTip();
         if (lines.isEmpty()) {

@@ -117,7 +117,7 @@ los defaults. Los números se heredan de ese molde salvo que los cambies.
 | `hammer` | martillos | ninguno (la carga la encendés vos con `charge:`) |
 | `mace` | mazas | ninguno |
 | `spear` | lanzas | ninguno (sin lunge, a propósito) |
-| `polearm` | armas de asta | **sweep** (barrido) |
+| `polearm` | armas de asta | **multi_hit** (el barrido de la alabarda) |
 | `axe` | hachas de combate | ninguno |
 
 **Sin YAML**: las categorías `#cortescombat:category/<arquetipo>` hacen el mismo trabajo desde
@@ -144,7 +144,7 @@ Todo va dentro de una entrada de `weapons:`. Identidad: `match: {id|tag}` o `cre
 | `cone` | `{horizontal, vertical}` en grados, 5–85 | Radio crudo por eje. **`cone: small` ya no existe** |
 | `guard` | `{points, arc, regen, stun}` | Aguante: espada 1/90/40/100, escudo 3/120 |
 | `shot` | `{distance, horizontal, vertical}` | Segundo alcance (tiro) |
-| `special` | `none\|multi_hit\|parry\|slam\|shove\|lunge\|sweep\|throw\|fusee` | Click derecho |
+| `special` | `none\|multi_hit\|parry\|slam\|shove\|lunge\|throw\|fusee` | Click derecho |
 | `profile` | los 14 perfiles o `none` | `none` = excluye el item del combate |
 | `texture.slash` | id de textura | PNG 32x160 con 5 frames |
 | `sounds.swing/hit/charged` | ids de `sounds.json` | `swing` suena cuando el golpe **no** conecta |
