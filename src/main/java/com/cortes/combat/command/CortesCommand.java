@@ -71,6 +71,10 @@ public final class CortesCommand {
                                 .executes(CortesCommand::teleportAhead)))
                 .then(Commands.literal("stats")
                         .executes(CortesCommand::showStats))
+                .then(Commands.literal("reload")
+                        .executes(CortesCommand::reloadPacks))
+                .then(Commands.literal("packs")
+                        .executes(CortesCommand::showPacks))
                 .then(Commands.literal("viewmodel")
                         .executes(CortesCommand::showViewmodel))
                 .then(Commands.literal("cone")
@@ -251,6 +255,51 @@ public final class CortesCommand {
     }
 
     /** Print the resolved stats of the held weapon. This is the one that catches surprises. */
+    /**
+     * {@code /cc reload}: releer los weapon packs sin reiniciar. Los stats y los sonidos ya se
+     * resuelven contra la tabla nueva al instante; lo que NO se recarga acá son los assets del
+     * resource pack (atlas de sprites, sounds.json, modelos): esos piden F3+T.
+     */
+    private static int reloadPacks(CommandContext<CommandSourceStack> ctx) {
+        var summary = com.cortes.combat.weaponpack.WeaponPackStore.reload();
+        if (summary == null) {
+            ctx.getSource().sendFailure(Component.literal(
+                    "No se pudo leer los weapon packs -- el log nombra el archivo."));
+            return 0;
+        }
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "[weaponpack] " + summary.packs() + " packs, " + summary.entries()
+                        + " entradas, " + summary.warnings() + " warnings (en el log)."
+                        + " Assets nuevos: F3+T."), false);
+        return summary.entries();
+    }
+
+    /** {@code /cc packs}: qué hay cargado, y qué entrada matchea el arma de la mano. */
+    private static int showPacks(CommandContext<CommandSourceStack> ctx) {
+        var packs = com.cortes.combat.weaponpack.WeaponPackStore.packs();
+        if (packs.isEmpty()) {
+            ctx.getSource().sendSuccess(() -> Component.literal(
+                    "Sin weapon packs. Crea config/cortescombat/weapons/*.yaml "
+                            + "(guía: docs/armas-custom.md)."), false);
+            return 0;
+        }
+        for (var pack : packs) {
+            ctx.getSource().sendSuccess(() -> Component.literal(
+                    pack.origin() + " — " + pack.weapons().size() + " entradas"), false);
+        }
+        ServerPlayer player = player(ctx);
+        if (player != null) {
+            var resolved = com.cortes.combat.weaponpack.WeaponPackStore
+                    .resolve(player.getMainHandItem());
+            ctx.getSource().sendSuccess(() -> Component.literal(
+                    resolved != null
+                            ? "en mano: " + player.getMainHandItem().getHoverName().getString()
+                            + " ← " + resolved.source()
+                            : "en mano: ninguna entrada matchea el arma actual"), false);
+        }
+        return packs.size();
+    }
+
     private static int showStats(CommandContext<CommandSourceStack> ctx) {
         ServerPlayer player = player(ctx);
         if (player == null) {
@@ -277,6 +326,14 @@ public final class CortesCommand {
                 "especial=" + stats.special().id()
                         + " knockback=h" + stats.knockback().horizontal()
                         + "/v" + stats.knockback().vertical()), false);
+        // **De dónde salió cada número**, que es lo que convierte una duda en una dirección.
+        // Sin pack la respuesta sigue siendo una fuente: el árbol completo (molde → vanilla →
+        // NONE), no "ninguna".
+        var pack = com.cortes.combat.weaponpack.WeaponPackStore.resolve(
+                player.getMainHandItem());
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "source=" + (pack != null ? "pack " + pack.source()
+                        : "sin pack (tag molde → vanilla → NONE)")), false);
 
         // The charge a swing is being held to right now, in the numbers the rule uses. The report
         // that prompted this was "every click registers as a charge", and a tap being read as a

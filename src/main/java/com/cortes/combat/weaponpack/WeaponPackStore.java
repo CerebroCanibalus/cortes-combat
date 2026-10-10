@@ -39,8 +39,12 @@ public final class WeaponPackStore {
     private WeaponPackStore() {
     }
 
+    /** Lo que `/cc reload` reporta. {@code null} = no se pudo cargar (el log nombra la causa). */
+    public record Summary(int packs, int entries, int warnings) {
+    }
+
     /** Built-in + {@code config/cortescombat/weapons/*.yaml}, en orden de precedencia. */
-    public static synchronized void reload() {
+    public static synchronized Summary reload() {
         WeaponPackLoader.Result result;
         try {
             result = WeaponPackLoader.loadAll(
@@ -48,7 +52,7 @@ public final class WeaponPackStore {
         } catch (RuntimeException e) {
             // Un loader roto no tumbara el mod: se queda sin packs y el mensaje nombra la causa.
             CortesCombat.LOGGER.error("[weaponpack] no se pudo cargar: {}", e.getMessage());
-            return;
+            return null;
         }
         for (String warning : result.warnings()) {
             CortesCombat.LOGGER.warn("[weaponpack] {}", warning);
@@ -58,6 +62,7 @@ public final class WeaponPackStore {
         empty = packs.stream().allMatch(pack -> pack.weapons().isEmpty());
         int entries = packs.stream().mapToInt(pack -> pack.weapons().size()).sum();
         CortesCombat.LOGGER.info("[weaponpack] {} packs, {} entradas de arma", packs.size(), entries);
+        return new Summary(packs.size(), entries, result.warnings().size());
     }
 
     /** {@code true} cuando ningún pack declara un arma: el fast-path. */
