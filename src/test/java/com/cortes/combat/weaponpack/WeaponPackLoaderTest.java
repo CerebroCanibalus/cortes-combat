@@ -196,6 +196,24 @@ class WeaponPackLoaderTest {
                 "y el warning dice el mapa a escribir, no un 'desconocido' que deja adivinando");
     }
 
+    /** `creates` es el Nivel B: el id que el mod va a registrar, con su display. */
+    @Test
+    void createsParsesItsIdAndDisplay() {
+        WeaponPackLoader.Result result = WeaponPackLoader.fromYaml("crea.yaml", """
+                version: 1
+                weapons:
+                  - creates: mymod:ruby_knife
+                    archetype: dagger
+                    display: { name: "Cuchillo de Rubí", tab: cortescombat }
+                """);
+        WeaponPackSpec.Entry entry = result.packs().get(0).weapons().get(0);
+        assertEquals("mymod:ruby_knife", entry.creates());
+        assertEquals(2, entry.specificity(), "un creates es identidad de nivel id");
+        assertEquals("Cuchillo de Rubí", entry.display().name());
+        assertEquals("cortescombat", entry.display().tab());
+        assertTrue(result.warnings().isEmpty());
+    }
+
     /** El pipeline completo: texto -> DTO -> resolver. Un archivo de dos líneas es un arma. */
     @Test
     void fromTextToResolvedWeapon() {

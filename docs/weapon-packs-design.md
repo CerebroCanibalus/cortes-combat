@@ -171,11 +171,16 @@ weapons:
                                     # (una pose es de ambos lados: el server lo ofrece como resource pack)
 
     display:                        # SÓLO en `creates` — renombrar un item ajeno pisa su idioma
-      name: "Cuchillo de Rubí"
-      tab: cortescombat             # pestaña de creativo; vacío = la nuestra
-    # creates: mymod:ruby_knife      # ← ÍTEM NUEVO: el id que registra el mod. Su icono va en
-                                    #    resourcepacks/mi-pack/assets/mymod/models/item/ruby_knife.json
-                                    #    y su receta en un datapack (referencia el id libremente)
+      name: "Cuchillo de Rubí"      # nombre del ítem creado (va como CUSTOM_NAME del item)
+      tab: cortescombat             # pestaña de creativo; vacío = la nuestra. Otra tab = warning
+                                    # + el ítem existe pero sin pestaña (usa /give)
+    # creates: mymod:ruby_knife      # ← ÍTEM NUEVO: el id que registra el mod. Nace con los
+                                    #    atributos de una espada de hierro y los pisa lo que
+                                    #    declares. Su icono va en el resource pack (arriba):
+                                    #    assets/mymod/models/item/ruby_knife.json + textura.
+                                    #    El template resourcepacks/cortescombat-weapon-pack/
+                                    #    trae esa estructura escrita desde la primera ejecución.
+                                    #    Su receta, en un datapack (referencia el id libremente)
 ```
 
 ### Alcance y cono: dos parámetros separados — y su correa

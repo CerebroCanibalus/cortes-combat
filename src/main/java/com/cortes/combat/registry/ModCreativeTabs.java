@@ -40,6 +40,10 @@ public final class ModCreativeTabs {
                     .icon(ModItems::tabIcon)
                     .displayItems((parameters, output) -> {
                         ModItems.weapons().forEach(item -> output.accept(item.get()));
+                    // Los que crean los weapon packs -- la lista sólo trae los que apuntan a
+                    // nuestra pestaña; una tab ajena queda fuera con warning en el registro.
+                    com.cortes.combat.weaponpack.WeaponPackItems.created()
+                            .forEach(output::accept);
                         output.accept(ModItems.ARCABUZ.get());
                         // The two things that are not weapons, after all of them that are, and in
                         // the order a player needs them: the gun, then what to put in it. The

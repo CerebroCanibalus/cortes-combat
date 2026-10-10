@@ -213,6 +213,10 @@ public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         // ese orden de precedencia. Nunca lanza -- un YAML roto queda como warning nombrado y
         // el mod carga sin esa entrada, no sin cargar.
         com.cortes.combat.weaponpack.WeaponPackStore.reload();
+        // El template de assets en resourcepacks/ -- si su carpeta no existe todavía. Al lado
+        // del reload y no en un lifecycle event: es escritura de disco de una sola vez y aquí
+        // ya sabemos que los packs cargaron.
+        com.cortes.combat.weaponpack.WeaponPackTemplate.writeIfMissing();
         LOGGER.info("Cortés Combat loading");
     }
 }

@@ -66,6 +66,15 @@ public final class WeaponPackStore {
     }
 
     /**
+     * Los packs parseados, en orden de precedencia. Sólo lo consume
+     * {@link WeaponPackItems} en el {@code RegisterEvent} -- la lista se lee durante el
+     * registro y no cambia después, así que viaja como copia inmutable.
+     */
+    public static List<WeaponPackSpec> packs() {
+        return packs;
+    }
+
+    /**
      * La capa 2 contra un stack concreto, o {@code null} si ningún pack habla de este ítem.
      *
      * <p>Los tags se resuelven con {@code stack.is} -- preguntarle al bind de datos, no inventar
