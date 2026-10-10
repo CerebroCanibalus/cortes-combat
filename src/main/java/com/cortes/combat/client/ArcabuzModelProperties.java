@@ -102,13 +102,19 @@ public final class ArcabuzModelProperties {
      *
      * <p>{@code inventory}, and not a bare {@code ResourceLocation}: that is the variant
      * {@code ModelManager} files its item models under. <b>And it has to be registered as a
-     * load</b> -- {@link CortesCombatClient#onRegisterAdditionalModels} -- because an override
+     * load</b> -- {@code FlatInventoryIcon#onRegisterAdditional} -- because an override
      * target is baked into the parent model and never published, so asking for it by name would
      * otherwise find the missing model.</p>
      */
+    /**
+     * The flat sprite's model, as a <b>standalone</b> -- the only variant NeoForge accepts in
+     * {@code RegisterAdditional} ("Side-loaded models must use the 'standalone' variant", thrown
+     * the first time the listener was actually wired). Same id as {@code FlatInventoryIcon}'s,
+     * because the mixin asks for exactly the model that got baked.
+     */
     public static final net.minecraft.client.resources.model.ModelResourceLocation ICON_MODEL =
-            net.minecraft.client.resources.model.ModelResourceLocation.inventory(
-                    ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "item/arcabuz_icon"));
+            net.minecraft.client.resources.model.ModelResourceLocation.standalone(
+                    ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "arcabuz_icon"));
 
     /**
      * Registers both predicates. Client side, once, at startup.

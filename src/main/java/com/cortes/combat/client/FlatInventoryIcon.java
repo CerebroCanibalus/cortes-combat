@@ -87,8 +87,11 @@ public final class FlatInventoryIcon {
      * inside the first. A three-argument form reads more naturally and does not compile, which
      * is {@code javac} answering a question about an API rather than a guess about it.</p>
      */
-    private static final ModelResourceLocation ICON = new ModelResourceLocation(
-            ResourceLocation.fromNamespaceAndPath("cortescombat", "arcabuz_icon"), "inventory");
+    // **Standalone, no inventory:** NeoForge's RegisterAdditional rejects any other variant
+    // ("Side-loaded models must use the 'standalone' variant") -- and this is the file that
+    // threw it the first time the listener below was actually wired.
+    private static final ModelResourceLocation ICON = ModelResourceLocation.standalone(
+            ResourceLocation.fromNamespaceAndPath("cortescombat", "arcabuz_icon"));
 
     /**
      * Ask for the icon, because nothing else does.

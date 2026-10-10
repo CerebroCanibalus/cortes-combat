@@ -93,7 +93,10 @@ public final class WeaponPackItems {
         }
 
         String tab = entry.display() == null ? null : entry.display().tab();
-        boolean ours = tab == null || tab.equals(CortesCombat.MODID + ":combat");
+        // **Both spellings of ours**: the guide says `tab: cortescombat` and rejecting the
+        // player's own example with a warning is teaching them the wrong string.
+        boolean ours = tab == null || tab.equals(CortesCombat.MODID + ":combat")
+                || tab.equals(CortesCombat.MODID);
         if (!ours) {
             CortesCombat.LOGGER.warn("[weaponpack] {} :: display.tab '{}' no está soportada: sólo "
                     + "cortescombat:combat. El ítem existe y funciona, pero no aparece en una "

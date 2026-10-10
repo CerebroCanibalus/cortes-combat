@@ -173,7 +173,7 @@ serializador. `InventoryChangeTrigger.hasItems` ⊘ tiene overload de `TagKey<It
 
 Pasos 1–10 hechos ⊕ verificados en cliente real. Librería de viewmodel, guardia unificada
 **cerrada como postura**, **las siete armas nuevas con sus animaciones**, y el **arcabuz como arma
-31**. **930 tests verdes.** Animaciones **casi completas** según playtest. Receta del arcabuz y **tooltips de stats**, que reemplazan los de las armas vanilla también.
+31**. **958 tests verdes.** Animaciones **casi completas** según playtest. Receta del arcabuz y **tooltips de stats**, que reemplazan los de las armas vanilla también.
 
 | # | Paso | Estado |
 |---|---|---|
@@ -183,7 +183,7 @@ Pasos 1–10 hechos ⊕ verificados en cliente real. Librería de viewmodel, gua
 | 15 | compat / conversión de armas de otros mods | pendiente |
 | — | **arcabuz** (arma 31, fuera del catálogo de 30) | HECHO, sin receta de crafteo |
 | — | tercera persona (`thirdperson/`) | HECHO y verificado |
-| — | **weapon packs YAML** (docs/weapon-packs-design.md v3) | **FASES 1–3 HECHAS**: resolver puro, loader + SnakeYAML jarJar, puentes en `WeaponStats.of()` y `WeaponPackAttributes` — 951 tests, **⊥ probado en cliente** |
+| — | **weapon packs YAML** (docs/weapon-packs-design.md v3) | **FASES 1–5, 7, 8 HECHAS y VERIFICADAS EN CLIENTE** (2026-10-10, tres playtests) — 958 tests. Faltan: fase 6 (poses + sprite slash) y modo `strict` |
 
 ## Decisiones tomadas
 
@@ -605,7 +605,7 @@ deducen de un número:
 
 ## Estado técnico actual
 
-**930 tests unitarios verdes.** Todo lo testeable corre en JVM pelada; lo que necesita el juego queda
+**958 tests unitarios verdes.** Todo lo testeable corre en JVM pelada; lo que necesita el juego queda
 en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardState`, `ConeSize`, `WeaponTooltip`
 y los `viewmodel/*` puros.
 
@@ -715,6 +715,10 @@ rechazan un press, 6 silenciosos a propósito. **Lee los campos, ⊘ recalcula n
 
 ## Próximos pasos
 
+0. **Weapon packs — lo único que falta (ya con cliente abierto):** **fase 6** = loader de poses
+   por YAML + integración al `PoseSolver` + sprite slash por YAML (los dos tocan sistemas
+   cerrados del cliente), y **modo `strict`** de la fase 8. El playtest de todo lo demás está
+   **cerrado** (2026-10-10).
 1. **Rotar el worldmodel en la guardia** (3ª persona) — mixin sobre `ItemInHandLayer`.
 2. **Arcabuz**: feedback por objetivo y el flash a 1.7 m (los dos siguen abiertos).
 3. **Paso 11: supervivencia (`FoodData`)** — el cambio más caro, en commit propio. **Los umbrales
@@ -875,6 +879,42 @@ complicar el combate.
    hacía nada. Ahora `SpecialRightClickMixin` lee el resultado real de `useItemOn` / `interact` y
    sólo entonces dispara: **el motor decide, la especial acompaña**. El aire sigue yendo por el
    press, y los dos caminos son disjuntos — que es lo que evita que un click sean dos especiales.
+
+### La ronda del playtest de weapon packs (2026-10-10)
+
+**El sistema entero funcionó en cliente**: los 3 caminos (YAML sobre vanilla, `creates` ajeno,
+tag-molde por datapack) + el caso extremo `dalilandia:chistorron` (60.0 damage, 12/s, charge
+instantánea ×6, reach 6.0, cono 85/85, knockback 1.6/0.45 = techos exactos clampeados bien,
+durability 1). Y **arreglos que salieron del playtest**:
+
+1. **Ropera daño 5.0 → 6.5** (`WeaponFamily.ROPERA`); el lunge sube solo por
+   `LUNGE_DAMAGE_SHARE=0.75`. Los stats del tooltip eran correctos y la *sensación* no — el
+   número era el bug.
+2. **Icono del arcabuz: la causa raíz era un listener sin cablear.** `FlatInventoryIcon.
+   onRegisterAdditional` existía, estaba escrito y **nadie lo llamaba** → la variante plana
+   nunca se registraba → cubo morado en inventario. Además NeoForge exige
+   `ModelResourceLocation.standalone()` en `RegisterAdditional` (el de nombre completo queda
+   "unused" en el bake), y el JSON vive en `models/arcabuz_icon.json` (no `models/item/`).
+   **Un listener huérfano no da error — sólo `icono=false` en el log.**
+3. **Alias de tab** aceptado en `WeaponPackItems` (`cortescombat` y `cortescombat:combat`).
+
+**Las trampas de entorno que costaron rondas (las cuatro, juntas):**
+
+- **`Failed to load options` en `latest.log` es LA causa de "no carga mi resource pack".**
+  Una línea rota en `options.txt` (`key_key.pickItem:key.mouse.middle`, formato que el datafix
+  de NeoForge parsea como número) hizo que MC descartara options entero → `resourcePacks`
+  default vacío → el pack jamás entró en el ResourceManager →
+  `FileNotFoundException: jugadorsito:models/...`. **Dos causas de distancia del síntoma.**
+  Fix: eliminar la línea (MC regenera el default).
+- **`-replace 'resourcePacks:\[\]'` matchea DENTRO de `incompatibleResourcePacks:[]`** —
+  cuatro veces seguidas. **Sólo línea exacta** (`-eq` / `-like`), nunca regex con corchetes
+  sobre options.txt.
+- **`Add-Content`/`Set-Content` de PowerShell sin `-Encoding` corrompe acentos** (`Dalí` →
+  `Dal?` en el YAML). El `write`/`edit` de la herramienta escribe UTF-8 bien; PowerShell no.
+  Verificación: `Contains('texto con ñ')` + scan CJK/FFFD — los `?` de la consola son display,
+  no disco, pero sólo un Contains lo distingue.
+- **La prueba dura de "esto es 100% ajeno al mod"**: `grep jugadorsito src/` = **0 hits**. No
+  es una promesa, es la misma aserción que hace `WeaponPackBuiltInTest` para los tags.
 
 ---
 
@@ -1275,6 +1315,6 @@ Saboteados a propósito, uno por uno. **6 sabotajes → 6 muertes por su razón:
 | 12 | Sonido de carga completa del viewmodel e impacto de golpe cargado. | deuda |
 | 13 | **La red de redstone se ENCOGE cuando termina una sobrecarga**: la estrella publica radio 100 y el firestone a 40 cargas publica 60, y al cortarse el fusio el radio vuelve al de la carga real -- los cables de mas pierden membresia, recalculan con `-1`, y `max(i, j)` **nunca devuelve el punto perdido** (el toggle los reengancha). Instrumentado: `[red] reactor X dado de baja ... por refreshState` ya nombra al que borra. Fix honesto: **el radio de un reactor solo deberia crecer durante su vida**. | **CERRADO 2026-10-08**: high-water persistido (`publishedRadius`, guardado en NBT); `lit` false publica cero, que es una decision y no un encogimiento |
 
-| 14 | **Weapon packs (fases 1–4 hechas):** resolver + loader + puentes (`WeaponStats.of()` = componente > pack > tabla; guard en `GuardStats.of()`; atributos en `LOWEST`) + **Nivel B** (`WeaponPackItems` en `RegisterEvent` de ITEM: nace con atributos de espada de hierro, nombre vía `CUSTOM_NAME` — 1.21.1 no tiene `displayName` —, tab ajena = warning + `/give`, y el template en `resourcepacks/cortescombat-weapon-pack/` que no pisa lo del usuario). **Expuesto ya:** perfil, special, damage, attack_speed (el tempo — **no hay campo `cooldown`**), reach (sólo distancia), cone (radio crudo por eje; la banda vieja da warning con el mapa a escribir), charge (puerta+bonus+ticks), knockback (clampeado 1.6/0.45), shot, guard. **Encontrados SIN cablear:** `max_targets` (3 callers con `stats.profile()`), `pull` (proyectiles, fuera de diseño), `firesOnPress`/`canHoldDown` (input), `durability` (pensado para `creates`: el ítem nace de1 usos — falta decidir si se puede setear ajenos). **Tests JVM no pueden cargar clases de Minecraft** (el template falló con `NoClassDefFoundError: ItemLike` vía `CortesCombat.LOGGER` → logger en el wrapper, I/O puro adentro). **Fase 5 (tags category) hecha:** `categoryTags()` en el datagen itera `ArchetypeSpec.builtins().keySet()` (sin lista huérfana), 9 archivos vacíos en `generated/tags/item/category/`, `builtin.yaml` traduce los9 → arquetipo, `WeaponPackBuiltInTest` (4) afirma el sistema completo: arquetipos = traductores = archivos. **Fase 7 (sonidos) HECHA:** `WeaponPackSounds` registra los ids del YAML en `Registries.SOUND_EVENT` (el `ClientboundSoundPacket` serializa holder por id — un id crudo no viajaría) y `CombatSounds.play` elige pack sobre perfil: **HIT→`hit`, CHARGED_HIT→`charged`, MISS→`swing`** (el `swing` del YAML es literalmente "the swing found nothing"); CHARGE/PARRY/LUNGE sin campo, siguen con los nuestros. **Fase 6 PARCIAL:** `shotel.json` movido a `assets/cortescombat/poses/` (el `SabrePoseMatchesJavaTest` falló con su mensaje diseñado para esto ✓); **falta el loader de poses + integración al solver y el sprite slash por YAML**: los dos tocan sistemas cerrados del cliente (binding de sprites con índice cerrada, y dos formatos de pose WeaponPose vs ViewModelProfile) y **no se pueden verificar sin abrir cliente** → van en la ronda del primer playtest. **Fase 8 HECHA:** `/cc reload` (relee config sin reiniciar; `WeaponPackStore.reload()` devuelve `Summary(packs, entries, warnings)`), `/cc packs` (lista cargados + qué entrada matchea el arma en mano) y `source=` en `/cc stats` (`pack id=...` vs `sin pack (tag molde → vanilla → NONE)`). **Guía de usuario: `docs/armas-custom.md`** (3 casos: otros mods, los nuestros, `creates` + referencia de campos + troubleshooting). Pendiente de la8: modo `strict` (campo desconocido = error de carga, hoy es warning). **Nada probado en cliente todavía.** | pendiente |
+| 14 | **Weapon packs (fases 1–4 hechas):** resolver + loader + puentes (`WeaponStats.of()` = componente > pack > tabla; guard en `GuardStats.of()`; atributos en `LOWEST`) + **Nivel B** (`WeaponPackItems` en `RegisterEvent` de ITEM: nace con atributos de espada de hierro, nombre vía `CUSTOM_NAME` — 1.21.1 no tiene `displayName` —, tab ajena = warning + `/give`, y el template en `resourcepacks/cortescombat-weapon-pack/` que no pisa lo del usuario). **Expuesto ya:** perfil, special, damage, attack_speed (el tempo — **no hay campo `cooldown`**), reach (sólo distancia), cone (radio crudo por eje; la banda vieja da warning con el mapa a escribir), charge (puerta+bonus+ticks), knockback (clampeado 1.6/0.45), shot, guard. **Encontrados SIN cablear:** `max_targets` (3 callers con `stats.profile()`), `pull` (proyectiles, fuera de diseño), `firesOnPress`/`canHoldDown` (input), `durability` (pensado para `creates`: el ítem nace de1 usos — falta decidir si se puede setear ajenos). **Tests JVM no pueden cargar clases de Minecraft** (el template falló con `NoClassDefFoundError: ItemLike` vía `CortesCombat.LOGGER` → logger en el wrapper, I/O puro adentro). **Fase 5 (tags category) hecha:** `categoryTags()` en el datagen itera `ArchetypeSpec.builtins().keySet()` (sin lista huérfana), 9 archivos vacíos en `generated/tags/item/category/`, `builtin.yaml` traduce los9 → arquetipo, `WeaponPackBuiltInTest` (4) afirma el sistema completo: arquetipos = traductores = archivos. **Fase 7 (sonidos) HECHA:** `WeaponPackSounds` registra los ids del YAML en `Registries.SOUND_EVENT` (el `ClientboundSoundPacket` serializa holder por id — un id crudo no viajaría) y `CombatSounds.play` elige pack sobre perfil: **HIT→`hit`, CHARGED_HIT→`charged`, MISS→`swing`** (el `swing` del YAML es literalmente "the swing found nothing"); CHARGE/PARRY/LUNGE sin campo, siguen con los nuestros. **Fase 6 PARCIAL:** `shotel.json` movido a `assets/cortescombat/poses/` (el `SabrePoseMatchesJavaTest` falló con su mensaje diseñado para esto ✓); **falta el loader de poses + integración al solver y el sprite slash por YAML**: los dos tocan sistemas cerrados del cliente (binding de sprites con índice cerrada, y dos formatos de pose WeaponPose vs ViewModelProfile) y **no se pueden verificar sin abrir cliente** → van en la ronda del primer playtest. **Fase 8 HECHA:** `/cc reload` (relee config sin reiniciar; `WeaponPackStore.reload()` devuelve `Summary(packs, entries, warnings)`), `/cc packs` (lista cargados + qué entrada matchea el arma en mano) y `source=` en `/cc stats` (`pack id=...` vs `sin pack (tag molde → vanilla → NONE)`). **Guía de usuario: `docs/armas-custom.md`** (3 casos: otros mods, los nuestros, `creates` + referencia de campos + troubleshooting). Pendiente de la8: modo `strict` (campo desconocido = error de carga, hoy es warning). **VERIFICADO EN CLIENTE (2026-10-10, 3 playtests):** los 3 caminos cerrados — YAML sobre vanilla (`iron_sword` con stats custom; tooltip 12.0 Damage = 5 corazones × 2), `creates` (`jugadorsito:daga_de_prueba` con icono+textura en resource pack ajeno — **0 hits de `jugadorsito` en `src/`**, la prueba dura de que es 100% externo — y `dalilandia:chistorron` con stats ridículos: 60.0 damage, 12/s, charge instantánea ×6, reach 6.0, cono 85/85, knockback 1.6/0.45 = techos exactos clampeados bien, durability 1) — y tag-molde por datapack (`blaze_rod` → `profile=ropera` tras `/reload`). `/cc reload` y `/cc packs` OK; sonidos del arquetipo como default (`daga_miss` en el pack sin sounds). **Faltan sólo: fase 6 (poses + sprite slash) y modo `strict`.** | **CERRADO salvo fase 6 + strict** |
 
 **El lector nuevo empieza por `ARCHITECTURE.md`, luego esta seccion, luego `docs/api-trampas.md`.**

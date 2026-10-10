@@ -38,7 +38,7 @@ public enum WeaponFamily {
      * a second thing to manage, and the design says no.</p>
      */
     ROPERA("ropera", "Ropera", "Ropera", WeaponProfile.ROPERA, WeaponShape.ROPERA,
-            5.0F, 2.0F),
+            6.5F, 2.0F),
 
     /**
      * The halberd: the widest cone in the game after the sabre's, and a long reach paid for

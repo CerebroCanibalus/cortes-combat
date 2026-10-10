@@ -53,6 +53,11 @@ public class CortesCombatClient {
         // `NeoForge.EVENT_BUS` means the listener never fires, so the arcabuz would keep drawing as
         // a rotating 3D model in every slot and nothing would say so -- the same shape of silent
         // failure as the missing `@SubscribeEvent` that cost the arcabuz its fuse frames.
+        // **Both listeners, and the second one was the half nobody wired.** `onRegisterAdditional`
+        // is what makes the game BAKE the flat icon (a model nobody references is a file on disk,
+        // not a model), and without it `onBakingResult` ran every launch, found nothing, and said
+        // `icono=false` -- a correct handler asking a map that nothing had filled.
+        modEventBus.addListener(FlatInventoryIcon::onRegisterAdditional);
         modEventBus.addListener(FlatInventoryIcon::onBakingResult);
         modEventBus.addListener(CortesCombatClient::registerParticles);
         modEventBus.addListener(CortesCombatClient::registerLayers);
@@ -153,21 +158,9 @@ public class CortesCombatClient {
      * the model bakes without complaint -- a predicate nobody registered is indistinguishable from
      * a predicate that is simply never satisfied.</p>
      */
-    /**
-     * The flat sprite's model, loaded as a top-level model so the renderer can ask for it by name.
-     *
-     * <p><b>Without this the mixin would be handed the missing model and the slot would draw a
-     * cube of nothing.</b> A model only reaches {@code ModelManager} if something lists it as a
-     * load: an item's inventory model, or a model a blockstate points at. The icon was neither
-     * while it was only an override target -- override targets are baked into the parent model, not
-     * published -- so asking for it by name had nothing to ask.</p>
-     */
-    @net.neoforged.bus.api.SubscribeEvent
-    public static void onRegisterAdditionalModels(
-            net.neoforged.neoforge.client.event.ModelEvent.RegisterAdditional event) {
-        event.register(ArcabuzModelProperties.ICON_MODEL);
-    }
-
+    // (onRegisterAdditionalModels se borró de esta clase: con el id del icono corregido
+    // registraría dos veces el mismo MRL que FlatInventoryIcon.onRegisterAdditional, y nadie
+    // lo llamaba. Un solo sitio para el registro del icono: FlatInventoryIcon.)
     @net.neoforged.bus.api.SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         // **The arcabuz's fuse frame, first, and on this event rather than in the constructor.**
