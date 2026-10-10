@@ -82,8 +82,33 @@ class CombatEnchantRulesTest {
     }
 
     @Test
-    @DisplayName("los niveles fuera de rango se clampean")
-    void levelsAreClamped() {
+    @DisplayName("Filo Fugaz: cero sin el encantamiento, 40 -> 60 ticks con el")
+    void fleetingEdgeLevels() {
+        assertEquals(0, CombatEnchantRules.fleetingEdgeTicks(0),
+                "sin el encantamiento la duracion es cero, y el handler usa ese cero para no "
+                        + "aplicar nada: un efecto de duracion cero existe y no hace nada, que es "
+                        + "peor que no ponerlo");
+        assertEquals(40, CombatEnchantRules.fleetingEdgeTicks(1));
+        assertEquals(60, CombatEnchantRules.fleetingEdgeTicks(2));
+    }
+
+    @Test
+    @DisplayName("y no es lineal: el segundo nivel suma veinte ticks, no duplica")
+    void fleetingEdgeIsNotLinear() {
+        assertTrue(CombatEnchantRules.fleetingEdgeTicks(2)
+                        < CombatEnchantRules.fleetingEdgeTicks(1) * 2,
+                "60 no es el doble de 40: el nivel uno es salir del rango de lo que apunalaste y el "
+                        + "dos es reposicionarse de verdad, y un buff de cuatro segundos se pisaria "
+                        + "con el gate de 'ya lo tengo' casi siempre");
+        assertEquals(CombatEnchantRules.fleetingEdgeTicks(2),
+                CombatEnchantRules.fleetingEdgeTicks(9),
+                "y un nivel de mas vale lo que el maximo");
+        assertEquals(0, CombatEnchantRules.fleetingEdgeTicks(-1),
+                "mientras que uno negativo no da nada");
+    }
+
+    @Test
+    @DisplayName("los niveles fuera de rango se clampean")    void levelsAreClamped() {
         assertEquals(CombatEnchantRules.parryCooldown(100, 2),
                 CombatEnchantRules.parryCooldown(100, 9),
                 "un nivel de mas vale lo que el maximo, no un descuento inventado");

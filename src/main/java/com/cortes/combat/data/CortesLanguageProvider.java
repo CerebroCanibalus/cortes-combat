@@ -138,6 +138,7 @@ public class CortesLanguageProvider extends LanguageProvider {
     // marcas), un encantamiento que dice lo que hace tiene que decirlo en el idioma del que lo lee.
     add("enchantment.cortescombat.steel_reflex", spanish ? "Reflejo de Acero" : "Steel Reflex");
     add("enchantment.cortescombat.audacity", spanish ? "Audacia" : "Audacity");
+    add("enchantment.cortescombat.fleeting_edge", spanish ? "Filo Fugaz" : "Fleeting Edge");
     }
 
     /**

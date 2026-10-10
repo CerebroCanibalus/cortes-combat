@@ -435,6 +435,13 @@ public final class CombatEngine {
                         damageSource(player, result.ignoredArmour(), result.axeCharged()));
             }
 
+            // **Filo Fugaz: la daga compra tempo con el golpe.** Una vez por TAJO y no por corte: el
+            // buff es del jugador, y aplicarlo dos veces en el mismo tick es el mismo buff. El gate
+            // de "ya lo tengo" vive en el helper, y sin él la daga a seis ticks renovaría la
+            // velocidad en cada golpe -- el premio dejaría de ser un premio y pasaría a ser
+            // permanente mientras haya algo que apuñalar.
+            applyFleetingEdge(player, stats);
+
             // **The immunity is set AGAIN after the effects, and this is the whole of the fix.**
             // Wind Burst is a POST_ATTACK effect on the attacker: its `ExplodeEffect` explodes at
             // the player, and that explosion calls `ServerPlayer#onExplosionHit`, which overwrites
@@ -792,6 +799,43 @@ public final class CombatEngine {
                 .registryOrThrow(Registries.ENCHANTMENT)
                 .getHolderOrThrow(Enchantments.DENSITY);
         return player.getWeaponItem().getEnchantmentLevel(density);
+    }
+
+    /**
+     * E5 · Filo Fugaz: un golpe de daga que aterriza te da Velocidad, una vez.
+     *
+     * <h2>Las dos decisiones que están acá y no en la tabla</h2>
+     *
+     * <p><b>El gate de "ya lo tengo".</b> Si el jugador ya tiene Velocidad -- de este encantamiento,
+     * de una poción, o de lo que sea -- no se aplica nada. Sin ese gate la daga, que pega cada seis
+     * ticks, renovaría el efecto en cada golpe y el buff sería permanente mientras hubiera algo
+     * enfrente: un premio que se puede sostener indefinidamente no es un premio, es un estado. La
+     * regla del diseño es "no se refresca si ya está activo", y vive acá porque es una pregunta
+     * sobre el jugador y no sobre el arma.</p>
+     *
+     * <p><b>La puerta del perfil.</b> El archivo de datos ya limita el encantamiento a
+     * {@code #cortescombat:profile/dagger}, pero este hook vive en el camino <em>genérico</em> del
+     * golpe: cualquier arma pasa por acá. Un datapack que cambie los ítems del encantamiento, o un
+     * pack que se equivoque de perfil, le daría Velocidad a una espada -- y una espada con velocidad
+     * gratis pelea distinto. La puerta cuesta una línea y es la que el diseño pide.</p>
+     *
+     * <p>El efecto va sin partículas ni icono: el brillo de Velocidad que el jugador ya conoce es el
+     * mismo de la poción, y agregar partículas propias taparía justo lo que el jugador tiene que
+     * leer -- de dónde le vino la velocidad.</p>
+     */
+    private static void applyFleetingEdge(Player player, WeaponStats stats) {
+        if (stats.profile() != WeaponProfile.DAGGER) {
+            return;
+        }
+        int ticks = com.cortes.combat.enchant.CombatEnchantRules.fleetingEdgeTicks(
+                com.cortes.combat.enchant.CombatEnchantments.level(player.level().registryAccess(),
+                        player.getMainHandItem(),
+                        com.cortes.combat.enchant.CombatEnchantments.FLEETING_EDGE));
+        if (ticks <= 0 || player.hasEffect(net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED)) {
+            return;
+        }
+        player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED, ticks, 0, false, false, false));
     }
 
     /**

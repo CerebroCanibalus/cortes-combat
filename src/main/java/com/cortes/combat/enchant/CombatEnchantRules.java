@@ -31,8 +31,12 @@ public final class CombatEnchantRules {
     /** E3 -- Audacia. */
     public static final String AUDACITY_ID = "audacity";
 
+    /** E5 -- Filo Fugaz. */
+    public static final String FLEETING_EDGE_ID = "fleeting_edge";
+
     /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
-    public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID);
+    public static final java.util.List<String> IDS =
+            java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID, FLEETING_EDGE_ID);
 
     // ---------------------------------------------------------------- E2 · Reflejo de Acero (shotel)
 
@@ -76,6 +80,32 @@ public final class CombatEnchantRules {
         int clamped = clamp(level, AUDACITY_MAX_LEVEL);
         float factor = 1.0F - AUDACITY_REDUCTION_PER_LEVEL * clamped;
         return Math.max(1, Math.round(baseTicks * factor));
+    }
+
+    // ---------------------------------------------------------------- E5 · Filo Fugaz (daga)
+
+    /** El nivel máximo, el del archivo de encantamiento. */
+    public static final int FLEETING_EDGE_MAX_LEVEL = 2;
+
+    /**
+     * Cuántos ticks dura la Velocidad que la daga se gana al conectar: 40 → 60.
+     *
+     * <p><b>No es lineal, y no es un descuido.</b> El nivel uno son dos segundos -- lo justo para
+     * salir del rango de lo que acabás de apuñalar -- y el dos son tres, que es una ventana de
+     * reposicionamiento de verdad. Una progresión lineal (40 → 80) convertiría el segundo nivel en
+     * un buff de cuatro segundos que se pisa con el gate de abajo y se siente igual que el primero
+     * casi siempre.</p>
+     *
+     * <p><b>El cero no es un caso especial: es la ausencia del encantamiento</b>, y devuelve cero
+     * ticks, que es lo que el llamador usa para no aplicar nada. Ver el gate en el handler: un
+     * efecto de duración cero es un efecto que existe y no hace nada, que es peor que no ponerlo.</p>
+     */
+    public static int fleetingEdgeTicks(int level) {
+        return switch (clamp(level, FLEETING_EDGE_MAX_LEVEL)) {
+            case 1 -> 40;
+            case 2 -> 60;
+            default -> 0;
+        };
     }
 
     /**

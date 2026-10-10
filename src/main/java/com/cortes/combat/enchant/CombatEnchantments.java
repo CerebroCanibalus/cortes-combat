@@ -40,6 +40,10 @@ public final class CombatEnchantments {
     /** E3 -- Audacia: el cooldown del lunge de la ropera. */
     public static final ResourceKey<Enchantment> AUDACITY = key(CombatEnchantRules.AUDACITY_ID);
 
+    /** E5 -- Filo Fugaz: la Velocidad que la daga se gana al conectar. */
+    public static final ResourceKey<Enchantment> FLEETING_EDGE =
+            key(CombatEnchantRules.FLEETING_EDGE_ID);
+
     /**
      * El nivel de un encantamiento propio sobre un ítem, por clave.
      *

@@ -156,6 +156,26 @@ class EnchantmentHooksTest {
     }
 
     /**
+     * **Filo Fugaz se aplica, y no se renueva si ya está.**
+     *
+     * <p>El gate es la mitad del encantamiento: la daga pega cada seis ticks y la Velocidad dura
+     * cuarenta, así que sin él cada golpe la renovaría y el buff pasaría a ser permanente mientras
+     * haya algo enfrente. Es la diferencia entre un premio y un estado, y es una línea.</p>
+     */
+    @Test
+    @DisplayName("Filo Fugaz tiene llamador, y el gate de 'ya lo tengo'")
+    void fleetingEdgeHasItsGate() {
+        String engine = read();
+
+        assertTrue(engine.contains("CombatEnchantments.FLEETING_EDGE"),
+                "**la tabla de duraciones necesita quien la lea.** Sin esto el encantamiento esta "
+                        + "escrito, probado y no hace nada");
+        assertTrue(engine.contains("hasEffect(net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED)"),
+                "**y el gate de 'ya lo tengo'.** Sin el, la daga a seis ticks renovaria la "
+                        + "Velocidad en cada golpe y el premio se volveria un estado");
+    }
+
+    /**
      * NeoForge's attack hook is fired again, for the target the player aimed at.
      *
      * <p>{@code Player#attack} opens with {@code CommonHooks.onPlayerAttackTarget}, and a replaced
