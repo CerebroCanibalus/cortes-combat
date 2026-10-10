@@ -104,6 +104,14 @@ public final class CombatEngine {
 
         float ratio = chargedRatio(charge, stats.charge());
         resolveTarget(player, targetId, stats, ratio);
+
+        // **La onda de filo sale con el tajo, acierte o no.** Ver fireSweepingWave: vive acá porque
+        // `resolveSwing` es el único lugar donde un tajo existe exactamente una vez -- `landTheHit`
+        // corre dos veces cuando la ventana de coyote confirma. Un tajo cargado al aire también la
+        // dispara, que es lo que el diseño dice ("al dar un ataque cargado", no "al acertar"), y
+        // `targetId` viaja como el objetivo a saltear para que el melé y la onda no cobren dos veces
+        // al mismo cuerpo.
+        fireSweepingWave(player, targetId, stats, ratio);
         return ratio;
     }
 
@@ -256,10 +264,10 @@ public final class CombatEngine {
 
         apply(player, target, stats, result, chargeRatio, smash);
 
-        // **Y el tajo sigue de largo.** El golpe de melé ya cobró; la onda es lo que pasa del
-        // cuerpo. Ver fireSweepingWave: sólo la espada, sólo a carga completa, sólo con el
-        // encantamiento -- y saltea a este objetivo para no cobrarlo dos veces.
-        fireSweepingWave(player, target, stats, result.damage(), chargeRatio);
+        // **La onda de filo NO se dispara acá, a propósito.** Este método corre dos veces para un
+        // solo tajo cuando la ventana de coyote confirma el golpe diferido, así que dispararla acá
+        // sería un segundo cobro del mismo espadazo. Sale de `resolveSwing`, una vez por tajo,
+        // acierte o no -- ver fireSweepingWave.
 
         int extra = com.cortes.combat.item.WeaponTables.maxTargets(stats.profile()) - 1;
         if (extra > 0) {
@@ -709,15 +717,25 @@ public final class CombatEngine {
      * completa</b>, así que el encantamiento pasa a ser una decisión de distancia y le da a la carga
      * de la espada una razón de existir. Ver {@code weapon/SweepingEdge}.</p>
      *
-     * <p><b>El daño entra ya resuelto.</b> Es la porción del daño cargado que este golpe resolvió, y
-     * se multiplica acá: la onda no tiene una segunda opinión sobre cuánto pega una espada, que es la
-     * misma regla que el tooltip sigue.</p>
+     * <p><b>Sale con el tajo, acierte o no, y por eso vive acá y no en {@code landTheHit}.</b> El
+     * diseño dice "al dar un ataque cargado", no "al acertar": un tajo cargado al aire también tiene
+     * que soltar la onda. Y hay una segunda razón, más dura: {@code landTheHit} corre <b>dos veces</b>
+     * cuando la ventana de coyote confirma el golpe diferido, así que dispararla allá sería un segundo
+     * cobro del mismo tajo -- una onda por tajo es la invariante, y el único lugar donde el tajo
+     * existe exactamente una vez es acá.</p>
      *
-     * <p><b>Y saltea al objetivo.</b> El id del que ya cobró el melé viaja con la onda para que no lo
-     * cobre dos veces: la onda es el seguimiento del tajo más allá del cuerpo.</p>
+     * <p><b>El daño es el del arma, no el del objetivo.</b> Se resuelve con la misma
+     * {@code DamageResolver.resolve} que el melé usa para elegir la fuente, pero <b>sin</b> el
+     * {@code enchantBonus} por objetivo: la onda atraviesa a varios y Sharpness es igual para todos
+     * pero Smite no, así que el único número honesto es el cargado del arma. Es la misma regla que el
+     * tooltip sigue -- un número, una definición.</p>
+     *
+     * <p><b>Y saltea al objetivo apuntado.</b> El id viaja con la onda para que no lo cobre dos
+     * veces: la onda es el seguimiento del tajo más allá del cuerpo. Un whiff manda
+     * {@code NO_TARGET}, que no es ninguna entidad y no saltea a nadie.</p>
      */
-    private static void fireSweepingWave(Player player, Entity aimed, WeaponStats stats,
-                                         float chargedDamage, float chargeRatio) {
+    private static void fireSweepingWave(Player player, int aimedId, WeaponStats stats,
+                                         float chargeRatio) {
         if (stats.profile() != WeaponProfile.SWORD
                 || chargeRatio < DamageResolver.FULL_CHARGE
                 || !(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
@@ -727,9 +745,13 @@ public final class CombatEngine {
         if (!com.cortes.combat.weapon.SweepingEdge.fires(enchant)) {
             return;
         }
-        float waveDamage = chargedDamage * com.cortes.combat.weapon.SweepingEdge.share(enchant);
+        float base = (float) player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        StreakState streak = player.getData(ModAttachments.HAMMER_STREAK.get());
+        float charged = DamageResolver.resolve(base, stats.charge(), stats.profile(), chargeRatio,
+                streak, player.fallDistance).damage();
+        float waveDamage = charged * com.cortes.combat.weapon.SweepingEdge.share(enchant);
         com.cortes.combat.entity.SlashWave.fire(level, player, player.getEyePosition(),
-                player.getLookAngle(), enchant, waveDamage, aimed.getId());
+                player.getLookAngle(), enchant, waveDamage, aimedId);
         debug(player, "onda de filo nivel " + enchant + " dano=" + waveDamage);
     }
 

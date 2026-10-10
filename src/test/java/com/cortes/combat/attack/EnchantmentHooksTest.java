@@ -12,8 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * That the three enchantment hooks a replaced attack flow drops are actually called, and that the
- * crowd charge stays single-target.
+ * That the three enchantment hooks a replaced attack flow drops are actually called, and that
+ * Sweeping Edge's wave has one caller that fires it once per swing.
  *
  * <h2>The hole this exists for, which this project has paid for four times</h2>
  *
@@ -67,11 +67,16 @@ class EnchantmentHooksTest {
      *
      * <p>El test cambia con el encantamiento y conserva lo que lo hacía útil: <b>una fórmula pura
      * sin llamador es el bug que esta clase sigue encontrando</b>. La tabla de niveles puede estar
-     * perfecta y el encantamiento no hacer nada si nadie dispara la onda -- así que la aserción es
-     * que el motor la dispara, y que la dispara salteando al objetivo que el melé ya cobró.</p>
+     * perfecta y el encantamiento no hacer nada si nadie dispara la onda.</p>
+     *
+     * <p>Y afirma la invariante que el gap destapó: <b>una onda por tajo, no por acierto</b>. El
+     * llamador tiene que estar en {@code resolveSwing} y no en {@code landTheHit}, porque
+     * {@code landTheHit} corre dos veces cuando la ventana de coyote confirma el golpe diferido --
+     * un tajo al aire tiene que soltar la onda, y un tajo que confirma tarde no tiene que soltar
+     * dos.</p>
      */
     @Test
-    @DisplayName("Sweeping Edge dispara la onda, y la onda saltea al objetivo del golpe")
+    @DisplayName("Sweeping Edge dispara la onda: una por tajo, y saltea al objetivo del golpe")
     void sweepingEdgeFiresTheWave() {
         String engine = read();
 
@@ -79,12 +84,29 @@ class EnchantmentHooksTest {
                 "**la onda tiene que tener llamador.** Una fórmula pura sin nadie que la dispare es "
                         + "el bug que esta clase sigue encontrando: la tabla quedaría bien y el "
                         + "encantamiento no haría nada");
-        assertTrue(engine.contains("fireSweepingWave("),
-                "y a través del helper del motor, donde el nivel, la carga y el daño resuelto se "
-                        + "encuentran");
-        assertTrue(engine.contains("aimed.getId()"),
-                "**y saltea al objetivo del melé**: la onda es el seguimiento del tajo más allá del "
-                        + "cuerpo, no un segundo cobro al mismo");
+
+        // **Un solo llamador, y en resolveSwing.** Tres aserciones que dicen lo mismo desde tres
+        // lados: la posición prueba dónde está, el conteo prueba que no hay un segundo, y el conteo
+        // cuenta el NOMBRE del método y no el texto de una llamada -- la primera versión de este
+        // guard afirmaba el string exacto del llamador y un segundo llamador con otro argumento se
+        // le colaba. Se verificó saboteando: metido un segundo llamador en `landTheHit`, el guard
+        // tiene que morir.
+        int call = engine.indexOf("fireSweepingWave(player, targetId");
+        int land = engine.indexOf("static void landTheHit(");
+        assertTrue(call > 0 && land > 0 && call < land,
+                "**la onda sale con el tajo, no con el acierto**: el llamador tiene que estar en "
+                        + "`resolveSwing` (que corre una vez por tajo) y no en `landTheHit` (que "
+                        + "corre dos veces cuando la ventana de coyote confirma el golpe diferido)");
+        int occurrences = 0;
+        for (int i = engine.indexOf("fireSweepingWave("); i >= 0;
+                i = engine.indexOf("fireSweepingWave(", i + 1)) {
+            occurrences++;
+        }
+        assertTrue(occurrences == 2,
+                "**una declaración y UN llamador**, y el conteo da " + occurrences + ". Un segundo "
+                        + "cobro del mismo tajo saldría de un segundo llamador, no de un bug en la "
+                        + "onda -- y un llamador con otro argumento es exactamente cómo se escapaba "
+                        + "la versión anterior de esta aserción");
 
         // El cono del golpe sigue contando lo que siempre contó: la onda es un proyectil aparte y
         // no le suma objetivos a la espada.
