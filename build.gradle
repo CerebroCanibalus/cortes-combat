@@ -194,6 +194,15 @@ dependencies {
     // META-INF/jarjar/metadata.json. **No relocaliza** -- es negociación por versión: si otro mod
     // trae SnakeYAML, NeoForge elige una copia que cumpla el rango. Por eso el `strictly` es
     // banda y no adorno: `[2.0,3.0)` dice hasta dónde este mod puede convivir.
+    // SnakeYAML para el parser de weapon packs. **Tres declaraciones, y cada una es una
+    // puerta distinta** (verificado en docs.neoforged.net/toolchain/docs/dependencies/
+    // nonmclibs): en 1.21.8 y abajo -- este mod es 1.21.1 -- NeoForge NO carga dependencias
+    // externas que no sean mods, así que `implementation` sólo alcanza para COMPILAR y las
+    // runs revientan con NoClassDefFoundError hasta que la lib entra por
+    // `additionalRuntimeClasspath`. (Desde 1.21.9 basta con implementation: cargan todo lo
+    // que esté en el classpath.) Y producción se sirve con jarJar, que es la tercera puerta.
+    implementation(group: 'org.yaml', name: 'snakeyaml', version: '2.3')
+    additionalRuntimeClasspath 'org.yaml:snakeyaml:2.3'
     jarJar(implementation(group: 'org.yaml', name: 'snakeyaml')) {
         version {
             strictly '[2.0,3.0)'

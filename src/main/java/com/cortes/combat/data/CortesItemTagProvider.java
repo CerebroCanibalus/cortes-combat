@@ -13,7 +13,9 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.tags.IntrinsicHolderTagsProvider;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.common.data.ExistingFileHelper;
@@ -78,6 +80,7 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         everyWeaponIsABlade();
         copperToolsFight();
         profileTags();
+        categoryTags();
     }
 
     /**
@@ -182,6 +185,28 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
             for (Item item : ours.getOrDefault(profile, List.of())) {
                 appender.add(item);
             }
+        }
+    }
+
+    /**
+     * Los nueve tags de categoría -- la llave por la que un tercero entra sin escribir YAML.
+     *
+     * <p><b>La lista sale de {@code ArchetypeSpec.builtins()}, no de un literal acá</b>: un
+     * arquetipo nuevo sin su tag (o al revés) sería dos listas que divergen en silencio, y esta
+     * es exactamente la clase de divergencia que sólo se nota cuando un packmate mete su item
+     * en un tag que nadie consulta.
+     *
+     * <p><b>Los nueve nacen vacíos, y es la especificación</b> (decisión #9): el archivo es el
+     * camino donde un datapack escribe después -- el patrón de los cuatro vacíos de
+     * {@code profile/}, donde {@code tag(...)} sin miembros es lo correcto y en
+     * {@code materialTags()} era el bug. Vacío aquí significa "nadie lo pobló todavía", no
+     * "este tipo no existe".
+     */
+    private void categoryTags() {
+        for (String type : com.cortes.combat.weaponpack.ArchetypeSpec.builtins().keySet()) {
+            tag(TagKey.create(Registries.ITEM,
+                    ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID,
+                            "category/" + type)));
         }
     }
 

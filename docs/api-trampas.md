@@ -2,6 +2,16 @@
 
 Extraido de AGENTS.md (compactacion 2026-10-07). Todas verificadas con javap/fuentes, ninguna de memoria.
 
+**Build / toolchain (ModDevGradle, MC 1.21.1)**
+- **Toda lib externa necesita TRES declaraciones en 1.21.8 y abajo.** NeoForge no carga
+  dependencias que no sean mods, así que `implementation` **sólo compila**: las runs revientan
+  con `NoClassDefFoundError` al crear el mod instance y la puerta de las runs es
+  **`additionalRuntimeClasspath 'g:a:v'`** (docs → Dependencies → Non-Minecraft Dependencies).
+  Producción: `jarJar(implementation(...)) { version { strictly; prefer } }`. Desde 1.21.9
+  basta `implementation` -- **mirar el número de MC antes de copiar la receta**. Síntoma
+  exacto: snakeyaml ausente de `build/moddev/dataRunVmArgs.txt` + `NoClassDefFoundError:
+  org/yaml/snakeyaml/Yaml` en `WeaponPackLoader.fromYaml` desde el constructor del mod.
+
 null`** — `Component.copy()` NPEa adentro del
 serializador. `InventoryChangeTrigger.hasItems` **⊘ tiene overload de `TagKey<Item>`** →
 `ItemPredicate.Builder.item().of(tag).build()`.

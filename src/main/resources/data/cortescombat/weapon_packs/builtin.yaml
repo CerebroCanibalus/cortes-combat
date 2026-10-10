@@ -1,7 +1,28 @@
 # ═══ WEAPON PACKS BUILT-IN de Cortés Combat ══════════════════════════════════
-# Traducciones que el propio mod declara: tags de categoría a arquetipo, y los
-# defaults de compat que shippeemos. Vive en el classpath y tiene MENOR
-# prioridad que cualquier archivo de config/cortescombat/weapons/*.yaml.
+# El traductor de categorías: la llave por la que un tercero entra sin escribir YAML.
+# Un datapack pone su item en #cortescombat:category/<tipo> y esto lo convierte en
+# arquetipo -- molde de movimiento, mecánica y defaults. Vive en el classpath y tiene
+# MENOR prioridad que cualquier archivo de config/cortescombat/weapons/*.yaml: un pack
+# de usuario puede reescribir cualquiera de estas entradas (id gana, y el archivo
+# alfabético posterior gana en empate).
 # (Los nueve arquetipos no están acá: son código, en ArchetypeSpec.)
 version: 1
-weapons: []
+weapons:
+  - match: { tag: "#cortescombat:category/dagger" }
+    archetype: dagger
+  - match: { tag: "#cortescombat:category/sword" }
+    archetype: sword
+  - match: { tag: "#cortescombat:category/rapier" }
+    archetype: rapier
+  - match: { tag: "#cortescombat:category/sabre" }
+    archetype: sabre
+  - match: { tag: "#cortescombat:category/hammer" }
+    archetype: hammer
+  - match: { tag: "#cortescombat:category/mace" }
+    archetype: mace
+  - match: { tag: "#cortescombat:category/spear" }
+    archetype: spear
+  - match: { tag: "#cortescombat:category/polearm" }
+    archetype: polearm
+  - match: { tag: "#cortescombat:category/axe" }
+    archetype: axe

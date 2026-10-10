@@ -1,4 +1,13 @@
-// 1.21.1	2026-10-09T14:12:32.0335095	Tags for minecraft:item mod id cortescombat
+// 1.21.1	2026-10-09T18:24:57.3063657	Tags for minecraft:item mod id cortescombat
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/axe.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/dagger.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/hammer.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/mace.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/polearm.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/rapier.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/sabre.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/spear.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/sword.json
 85cde72e10b24d086f8f684a75887bd8f9185d99 data/cortescombat/tags/item/profile/arcabuz.json
 cea51846590e1c97af683c95ff9a128fe42ad950 data/cortescombat/tags/item/profile/axe.json
 86b0b39f82ee1e7cf1b4386e7d0e126c116d7de4 data/cortescombat/tags/item/profile/dagger.json
