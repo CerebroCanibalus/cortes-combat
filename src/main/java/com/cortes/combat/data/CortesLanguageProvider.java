@@ -132,6 +132,12 @@ public class CortesLanguageProvider extends LanguageProvider {
     add("enchantment.cortescombat.phantom_strike", spanish ? "Golpe Fantasma" : "Phantom Strike");
     add("enchantment.cortescombat.phantom_block", spanish ? "Golpe Fantasma" : "Phantom Strike");
     add("effect.cortescombat.death_marked", spanish ? "Marcado de muerte" : "Marked for Death");
+
+    // **La identidad de las armas nuevas, y son descriptivas: se traducen las dos.** Al revés que
+    // los nombres de las armas icónicas (Ropera, Alabarda, Arcabuz quedan en español porque son
+    // marcas), un encantamiento que dice lo que hace tiene que decirlo en el idioma del que lo lee.
+    add("enchantment.cortescombat.steel_reflex", spanish ? "Reflejo de Acero" : "Steel Reflex");
+    add("enchantment.cortescombat.audacity", spanish ? "Audacia" : "Audacity");
     }
 
     /**

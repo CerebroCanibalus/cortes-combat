@@ -6,6 +6,8 @@ import com.cortes.combat.attack.DamageResolver;
 import com.cortes.combat.attack.Knockback;
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.core.weapon.WeaponProfile;
+import com.cortes.combat.enchant.CombatEnchantRules;
+import com.cortes.combat.enchant.CombatEnchantments;
 import com.cortes.combat.sound.CombatSounds;
 import com.cortes.combat.sound.ModSounds;
 import com.cortes.combat.core.weapon.SpecialType;
@@ -150,9 +152,13 @@ public final class SpecialHandler {
         // moved the player in the first place.
 
         // Four swings, on the same hard cooldown as an attack so that the answer to "what does
-        // this button cost" stays one number per button.
-        AttackCooldown.consume(player, Math.round(WeaponStats.attackInterval(player)
-                * LungeDamage.COOLDOWN_FACTOR));
+        // this button cost" stays one number per button. **Audacia** takes a fifth of it per level,
+        // as a fraction and not as fixed ticks: the cooldown is derived from the weapon's interval,
+        // so a flat discount would be nearly free on a slow weapon and everything on a fast one.
+        int swings = Math.round(WeaponStats.attackInterval(player) * LungeDamage.COOLDOWN_FACTOR);
+        AttackCooldown.consume(player, CombatEnchantRules.lungeCooldown(swings,
+                CombatEnchantments.level(level.registryAccess(), player.getMainHandItem(),
+                        CombatEnchantments.AUDACITY)));
 
         CombatSounds.play(level, player, WeaponProfile.ROPERA, ModSounds.Kind.LUNGE);
 
@@ -187,7 +193,13 @@ public final class SpecialHandler {
         if (!state.canActivate()) {
             return;
         }
-        player.setData(ModAttachments.PARRY.get(), state.activate());
+        // **Reflejo de Acero: el nivel entra, el cooldown sale de las reglas puras.** El número que
+        // el cliente dibuja en la barra se lee de vuelta del estado armado y no se recalcula: un
+        // segundo cálculo del mismo cooldown es la copia que se desincroniza, y el jugador vería una
+        // barra que dura una cosa y una ventana que se abre en otra.
+        ParryState armed = state.activate(CombatEnchantments.level(level.registryAccess(),
+                player.getMainHandItem(), CombatEnchantments.STEEL_REFLEX));
+        player.setData(ModAttachments.PARRY.get(), armed);
 
         player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
                 net.minecraft.world.effect.MobEffects.MOVEMENT_SLOWDOWN,
@@ -195,7 +207,7 @@ public final class SpecialHandler {
                 SLOWNESS_AMPLIFIER,
                 false, false, false));
 
-        ModNetworking.sendParryState(player, true, ParryState.COOLDOWN_TICKS);
+        ModNetworking.sendParryState(player, true, armed.cooldownTicks());
     }
 
     /**

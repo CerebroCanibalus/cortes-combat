@@ -41,14 +41,14 @@ class ParryTest {
         void length() {
             assertEquals(12, ParryState.WINDOW_TICKS,
                     "the decision was half a second, and 12 ticks at 20 tps is 0.6 of one");
-            assertEquals(12, ParryState.READY.activate().activeTicks(),
+            assertEquals(12, ParryState.READY.activate(0).activeTicks(),
                     "what activate() opens is what the constant says");
         }
 
         @Test
         @DisplayName("closes on its own, with nothing having hit it")
         void runsOut() {
-            ParryState state = ParryState.READY.activate();
+            ParryState state = ParryState.READY.activate(0);
             for (int i = 0; i < ParryState.WINDOW_TICKS; i++) {
                 state = state.tick();
             }
@@ -59,7 +59,7 @@ class ParryTest {
         @Test
         @DisplayName("cannot be refreshed by a second press")
         void notHoldable() {
-            ParryState state = ParryState.READY.activate();
+            ParryState state = ParryState.READY.activate(0);
             assertTrue(state.isParrying());
 
             for (int i = 0; i < 6; i++) {
@@ -82,21 +82,40 @@ class ParryTest {
         @DisplayName("is five seconds before the next one, and the cooldown survives the parry")
         void cooldown() {
             assertEquals(100, ParryState.COOLDOWN_TICKS, "five seconds at 20 tps");
-            assertEquals(100, ParryState.READY.activate().cooldownTicks(),
+            assertEquals(100, ParryState.READY.activate(0).cooldownTicks(),
                     "the lockout starts on the press, not on the hit: a parry that connects and "
                             + "one that whiffs cost the same five seconds");
 
-            ParryState spent = ParryState.READY.activate().consume();
+            ParryState spent = ParryState.READY.activate(0).consume();
             assertEquals(0, spent.activeTicks(), "the window is spent");
             assertEquals(100, spent.cooldownTicks(),
                     "consuming the parry must NOT restart the cooldown -- that would be a second "
                             + "five seconds, so a successful parry would cost ten");
         }
 
+        /**
+         * **El nivel del encantamiento llega al estado, y la ventana no se toca.**
+         *
+         * <p>Es la mitad que un test de la tabla pura no puede ver: {@code CombatEnchantRules} puede
+         * estar perfecta y el parry seguir costando cinco segundos si {@code activate} ignorara el
+         * nivel. Es la forma que este proyecto ya pagó cuatro veces -- una función probada y sin
+         * llamador -- y la razón de que el nivel entre por parámetro en vez del cooldown ya
+         * calculado: así el llamador no puede olvidarse.</p>
+         */
+        @Test
+        @DisplayName("Reflejo de Acero acorta el lockout y deja la ventana donde estaba")
+        void theEnchantmentShortensTheLockout() {
+            assertEquals(60, ParryState.READY.activate(2).cooldownTicks(),
+                    "Reflejo de Acero II baja el cooldown de cinco segundos a tres");
+            assertEquals(ParryState.WINDOW_TICKS, ParryState.READY.activate(2).activeTicks(),
+                    "**y la ventana no cambia.** El encantamiento compra frecuencia, no duracion: "
+                            + "una ventana mas larga seria la postura que el parry no es");
+        }
+
         @Test
         @DisplayName("counts down and does not go negative")
         void countdown() {
-            ParryState state = ParryState.READY.activate();
+            ParryState state = ParryState.READY.activate(0);
             for (int i = 0; i < 400; i++) {
                 state = state.tick();
                 assertTrue(state.activeTicks() >= 0, "active went negative at tick " + i);

@@ -129,13 +129,19 @@ public final class CombatTooltipHandler {
 
     /** And print ours in their place. */
     @SubscribeEvent
-    public static void onItemTooltip(ItemTooltipEvent event) {
-        ItemStack stack = event.getItemStack();
+    public static void onItemTooltip(ItemTooltipEvent event) {        ItemStack stack = event.getItemStack();
         if (!showsTooltip(stack)) {
             return;
         }
 
         WeaponStats stats = WeaponStats.of(stack);
+        // **Los dos números que dependen del encantamiento, leídos del arma que el jugador tiene.**
+        // La recarga por Quick Charge y el cooldown del parry por Reflejo de Acero: un tooltip que
+        // promete 2,5 s de recarga y entrega 2,0, o cinco segundos de cooldown sobre un arma de tres,
+        // es un número lindo y falso -- la clase de bug que este archivo ya pagó una vez.
+        int reload = event.getEntity() instanceof LivingEntity user
+                ? com.cortes.combat.special.Arcabuz.reloadTicks(stack, user)
+                : com.cortes.combat.state.ArcabuzState.RELOAD_TICKS;
         List<TooltipLine> lines = WeaponTooltip.linesFor(
                 stats.profile(),
                 (float) (BASE_ATTACK_DAMAGE + baseModifier(stack, Item.BASE_ATTACK_DAMAGE_ID)),
@@ -149,13 +155,8 @@ public final class CombatTooltipHandler {
                 stack.getMaxDamage(),
                 stats.hasOwnShotCone(),
                 com.cortes.combat.item.WeaponKinds.fights(stats.profile()),
-                // **La recarga REAL, no la base.** Con Quick Charge el arma llena antes y el número
-                // que el jugador lee tiene que ser el del arma que tiene en la mano: un tooltip que
-                // promete 2,5 s y entrega 2,0 es un número lindo y falso, que es la clase de bug
-                // que este archivo ya pagó una vez.
-                event.getEntity() instanceof LivingEntity user
-                        ? com.cortes.combat.special.Arcabuz.reloadTicks(stack, user)
-                        : com.cortes.combat.state.ArcabuzState.RELOAD_TICKS);
+                reload,
+                parryCooldownTicks(event, stack));
 
         List<Component> tooltip = event.getToolTip();
         if (lines.isEmpty()) {
@@ -168,6 +169,29 @@ public final class CombatTooltipHandler {
             tooltip.add(Component.translatable(line.key(), line.args().toArray())
                     .withStyle(formatFor(line.color())));
         }
+    }
+
+    /**
+     * El cooldown del parry que el arma realmente tiene, en ticks.
+     *
+     * <p><b>Reflejo de Acero lo baja de 100 a 80 o 60, y el renglón del sable imprime el número.</b>
+     * Dejar la constante sería un tooltip prometiendo cinco segundos sobre un arma de tres -- la
+     * misma clase de número lindo y falso que la recarga del arcabuz. La cuenta sale de
+     * {@code CombatEnchantRules}, la misma que usa {@code SpecialHandler} al abrir la ventana, así
+     * que no hay una segunda definición del cooldown: hay una, y los tres lectores la comparten.</p>
+     *
+     * <p>Sin jugador no hay registro que consultar -- el tooltip se dibuja también en el creativo y
+     * en el JEI -- y queda la base, que es lo que el ítem vale sin encantamiento. Es una respuesta
+     * honesta a una pregunta que en ese contexto no tiene respuesta.</p>
+     */
+    private static int parryCooldownTicks(ItemTooltipEvent event, ItemStack stack) {
+        if (!(event.getEntity() instanceof LivingEntity user)) {
+            return com.cortes.combat.state.ParryState.COOLDOWN_TICKS;
+        }
+        return com.cortes.combat.enchant.CombatEnchantRules.parryCooldown(
+                com.cortes.combat.state.ParryState.COOLDOWN_TICKS,
+                com.cortes.combat.enchant.CombatEnchantments.level(user.level().registryAccess(),
+                        stack, com.cortes.combat.enchant.CombatEnchantments.STEEL_REFLEX));
     }
 
     /**

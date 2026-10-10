@@ -40,7 +40,7 @@ class ParryCooldownCountdownTest {
     @DisplayName("the lockout actually runs down, and the sabre can parry again")
     void cooldownFinishes() {
         var tells = new java.util.ArrayList<Integer>();
-        ParryState state = ParryState.READY.activate();
+        ParryState state = ParryState.READY.activate(0);
 
         assertFalse(state.canActivate(), "straight after the press it is not ready");
         state = walk(state, ParryState.COOLDOWN_TICKS - 1, tells);
@@ -63,8 +63,8 @@ class ParryCooldownCountdownTest {
         var a = new java.util.ArrayList<Integer>();
         var b = new java.util.ArrayList<Integer>();
 
-        ParryState missed = walk(ParryState.READY.activate(), ParryState.COOLDOWN_TICKS, a);
-        ParryState hit = walk(ParryState.READY.activate().consume(), ParryState.COOLDOWN_TICKS, b);
+        ParryState missed = walk(ParryState.READY.activate(0), ParryState.COOLDOWN_TICKS, a);
+        ParryState hit = walk(ParryState.READY.activate(0).consume(), ParryState.COOLDOWN_TICKS, b);
 
         assertEquals(0, missed.cooldownTicks());
         assertEquals(0, hit.cooldownTicks(),
@@ -76,7 +76,7 @@ class ParryCooldownCountdownTest {
     @DisplayName("the client is told once, on the tick the window closes")
     void tellsOnce() {
         var tells = new java.util.ArrayList<Integer>();
-        walk(ParryState.READY.activate(), 400, tells);
+        walk(ParryState.READY.activate(0), 400, tells);
 
         assertEquals(1, tells.size(),
                 "one packet, not one per tick for five seconds. Told at tick "
@@ -102,7 +102,7 @@ class ParryCooldownCountdownTest {
     @Test
     @DisplayName("and a press inside the window is still refused after a whole lockout's worth of ticks")
     void stillNotHoldable() {
-        ParryState state = ParryState.READY.activate();
+        ParryState state = ParryState.READY.activate(0);
         var tells = new java.util.ArrayList<Integer>();
         state = walk(state, 5, tells);
 

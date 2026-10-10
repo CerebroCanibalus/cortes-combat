@@ -119,6 +119,43 @@ class EnchantmentHooksTest {
     }
 
     /**
+     * **Los dos encantamientos de cooldown tienen llamador, y donde tienen que estar.**
+     *
+     * <p>Es el mismo agujero que el resto de esta clase, una familia más arriba: la tabla de
+     * {@code CombatEnchantRules} puede estar perfecta, con sus tests verdes, y el arma seguir
+     * cobrando los cinco segundos de siempre si nadie lee el nivel del arma. La aserción no es "el
+     * número es sesenta" -- eso lo afirma {@code ParryTest} sobre el estado -- sino que el
+     * <b>nivel entra</b>, que es la parte que vive en un archivo que ningún test puede ejecutar sin
+     * un servidor.</p>
+     *
+     * <p>Y la aserción negativa es la que más vale: {@code ParryState.COOLDOWN_TICKS} no puede
+     * aparecer en este archivo. Si vuelve, es que alguien cambió el número que se le manda al
+     * cliente por la constante, y la barra del HUD pasaría a durar cinco segundos sobre un arma que
+     * se destraba en tres.</p>
+     */
+    @Test
+    @DisplayName("Reflejo de Acero y Audacia llegan al cooldown que se cobra")
+    void theCooldownEnchantmentsReachTheCooldown() {
+        String special = readSpecial();
+
+        assertTrue(special.contains(".activate(CombatEnchantments.level("),
+                "**el nivel del arma tiene que entrar en `activate`.** La regla pura no sirve de "
+                        + "nada si el parry abre su ventana con el cooldown de siempre: es una "
+                        + "funcion probada y sin llamador, la forma que esta clase existe para cazar");
+        assertTrue(special.contains("CombatEnchantments.STEEL_REFLEX"),
+                "y el que se lee en el parry es Reflejo de Acero");
+        assertTrue(special.contains("CombatEnchantRules.lungeCooldown("),
+                "Audacia, en cambio, no puede pasar por el estado: el cooldown del lunge lo cobra "
+                        + "`AttackCooldown.consume`, asi que la regla se llama ahi");
+        assertTrue(special.contains("CombatEnchantments.AUDACITY"),
+                "y con el nivel de Audacia del arma en la mano");
+        assertFalse(special.contains("ParryState.COOLDOWN_TICKS"),
+                "**y la constante no puede volver.** El numero que se le manda al cliente sale del "
+                        + "estado armado, no de la constante: con la constante, la barra del HUD "
+                        + "duraria cinco segundos sobre un arma que se destraba en tres");
+    }
+
+    /**
      * NeoForge's attack hook is fired again, for the target the player aimed at.
      *
      * <p>{@code Player#attack} opens with {@code CommonHooks.onPlayerAttackTarget}, and a replaced
@@ -138,6 +175,23 @@ class EnchantmentHooksTest {
     private static String read() {
         Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "attack",
                 "CombatEngine.java");
+        try {
+            return Files.readString(file, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new AssertionError("could not read " + file + ": " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * The other file these hooks live in.
+     *
+     * <p>The parry and the lunge are specials, not swings, so their cooldowns are paid in
+     * {@code SpecialHandler} and not in the engine. Reading it from here rather than from a second
+     * test class keeps the "a hook with no caller" question in one place.</p>
+     */
+    private static String readSpecial() {
+        Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "special",
+                "SpecialHandler.java");
         try {
             return Files.readString(file, StandardCharsets.UTF_8);
         } catch (IOException e) {

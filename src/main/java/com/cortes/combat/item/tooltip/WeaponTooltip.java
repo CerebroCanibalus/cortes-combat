@@ -165,7 +165,8 @@ public final class WeaponTooltip {
                                              int maxDamage,
                                              boolean hasShotCone,
                                              boolean fights,
-                                             int reloadTicks) {
+                                             int reloadTicks,
+                                             int parryCooldownTicks) {
 
         if (profile == WeaponProfile.NONE || reach == null) {
             return NOTHING;
@@ -267,7 +268,7 @@ public final class WeaponTooltip {
         // **The weapon's own mechanic, for the seven that have one.** Last, because it is the line
         // that explains everything above it rather than a stat of its own -- and in NOTE's dim grey
         // for the same reason: it is an aside the player reads once, not a number they compare.
-        lines.addAll(mechanicLines(profile, reloadTicks));
+        lines.addAll(mechanicLines(profile, reloadTicks, parryCooldownTicks));
 
         return List.copyOf(lines);
     }
@@ -284,7 +285,8 @@ public final class WeaponTooltip {
      * the gun's. Only the sentence around them is written by hand, and it is the only part of this
      * tooltip that could not be read off a table -- it is language, not a fact.</p>
      */
-    static List<TooltipLine> mechanicLines(WeaponProfile profile, int reloadTicks) {
+    static List<TooltipLine> mechanicLines(WeaponProfile profile, int reloadTicks,
+                                           int parryCooldownTicks) {
         return switch (profile) {
             // The fall, and both numbers are MaceFall's own: the ceiling the damage stops at and
             // the height it takes to get there.
@@ -296,10 +298,14 @@ public final class WeaponTooltip {
             // The throw, which is the one thing about a trident that a reach cannot describe.
             case TRIDENT -> List.of(TooltipLine.plain(MECHANIC + "trident", TooltipColor.NOTE));
 
-            // The parry, and the two numbers are ParryState's own window and cooldown, in seconds.
+            // The parry, and the two numbers are ParryState's own window and the cooldown this
+            // weapon actually has, in seconds. **The cooldown is passed in and not read from the
+            // constant**, because Reflejo de Acero shortens it and a tooltip that kept printing
+            // five seconds on a three second weapon would be a number the player reads and the game
+            // does not produce -- the exact bug this tooltip was rewritten to stop.
             case SABRE -> List.of(TooltipLine.of(MECHANIC + "sabre",
                     decimal(com.cortes.combat.state.ParryState.WINDOW_TICKS / 20.0F),
-                    decimal(com.cortes.combat.state.ParryState.COOLDOWN_TICKS / 20.0F),
+                    decimal(parryCooldownTicks / 20.0F),
                     TooltipColor.NOTE));
 
             case HALBERD -> List.of(TooltipLine.plain(MECHANIC + "halberd", TooltipColor.NOTE));

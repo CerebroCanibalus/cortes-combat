@@ -41,7 +41,8 @@ class WeaponTooltipTest {
                 WeaponTables.special(profile), WeaponTables.knockback(profile),
                 WeaponTables.maxTargets(profile), maxDamage, maxDamage,
                 !WeaponTables.shotReach(profile).isNone(), WeaponKinds.fights(profile),
-                com.cortes.combat.state.ArcabuzState.RELOAD_TICKS);
+                com.cortes.combat.state.ArcabuzState.RELOAD_TICKS,
+                com.cortes.combat.state.ParryState.COOLDOWN_TICKS);
     }
 
     /**
@@ -61,7 +62,8 @@ class WeaponTooltipTest {
                         WeaponTables.charge(WeaponProfile.NONE),
                         SpecialType.NONE, WeaponTables.knockback(WeaponProfile.NONE),
                         1, 0, 0, false, false,
-                        com.cortes.combat.state.ArcabuzState.RELOAD_TICKS),
+                        com.cortes.combat.state.ArcabuzState.RELOAD_TICKS,
+                        com.cortes.combat.state.ParryState.COOLDOWN_TICKS),
                 "NONE is not a weapon. Printing numbers on it is the tooltip form of the bug that "
                         + "made a dirt block inherit a sword's charge");
 
@@ -148,6 +150,40 @@ class WeaponTooltipTest {
                         linesFor(WeaponProfile.SABRE, damage, 10, 250),
                         "tooltip.cortescombat.damage"),
                 "the base line is one cut: the second only exists at a full charge");
+    }
+
+    /**
+     * **El cooldown del parry que el renglón imprime es el del arma, no la constante.**
+     *
+     * <p>Reflejo de Acero lo baja de cinco segundos a tres, y el renglón del sable promete un número
+     * en segundos. Dejarlo clavado en {@code ParryState.COOLDOWN_TICKS} sería un tooltip diciendo
+     * cinco sobre un arma de tres -- la misma clase de número lindo y falso que la recarga del
+     * arcabuz, y el mismo bug que este proyecto ya pagó. Por eso el valor entra por parámetro, y
+     * esto lo afirma con el mismo perfil dos veces: el encantamiento tiene que verse acá, que es el
+     * único lugar donde el jugador lee lo que la maniobra le va a costar.</p>
+     */
+    @Test
+    @DisplayName("el renglon del sable imprime el cooldown del arma, no la constante")
+    void theSabrePrintsItsOwnCooldown() {
+        assertEquals("5.0", cooldownArg(linesFor(WeaponProfile.SABRE, 6.0F, 10, 250)),
+                "sin encantamiento son cinco segundos, que es la constante");
+
+        int shortened = com.cortes.combat.enchant.CombatEnchantRules.parryCooldown(
+                com.cortes.combat.state.ParryState.COOLDOWN_TICKS, 2);
+        assertEquals("3.0", cooldownArg(WeaponTooltip.linesFor(WeaponProfile.SABRE, 6.0F, 10,
+                        WeaponTables.reach(WeaponProfile.SABRE),
+                        WeaponTables.charge(WeaponProfile.SABRE),
+                        WeaponTables.special(WeaponProfile.SABRE),
+                        WeaponTables.knockback(WeaponProfile.SABRE),
+                        WeaponTables.maxTargets(WeaponProfile.SABRE), 250, 250, false, true,
+                        com.cortes.combat.state.ArcabuzState.RELOAD_TICKS, shortened)),
+                "**y con Reflejo de Acero II el mismo renglon dice tres.** El numero tiene que venir "
+                        + "del arma que el jugador tiene en la mano");
+    }
+
+    /** El segundo argumento del renglón del sable: la ventana es el primero, el cooldown el otro. */
+    private static String cooldownArg(List<TooltipLine> lines) {
+        return lineFor(lines, "tooltip.cortescombat.mechanic.sabre").args().get(1);
     }
 
     /**
@@ -386,7 +422,8 @@ class WeaponTooltipTest {
                         WeaponTables.charge(WeaponProfile.SWORD),
                         WeaponTables.special(WeaponProfile.SWORD),
                         WeaponTables.knockback(WeaponProfile.SWORD), 1, 250, 250, false, true,
-                com.cortes.combat.state.ArcabuzState.RELOAD_TICKS),
+                com.cortes.combat.state.ArcabuzState.RELOAD_TICKS,
+                com.cortes.combat.state.ParryState.COOLDOWN_TICKS),
                 "the reach comes off a component any mod can write; a null one must not take the "
                         + "render thread down");
     }

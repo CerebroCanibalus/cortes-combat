@@ -53,8 +53,20 @@ public record ParryState(int activeTicks, int cooldownTicks) {
         return isReady() && !isParrying();
     }
 
-    public ParryState activate() {
-        return new ParryState(WINDOW_TICKS, COOLDOWN_TICKS);
+    /**
+     * Opens the window, at a cooldown the weapon's own enchantment may have shortened.
+     *
+     * <p><b>The level goes in, and not the ticks.</b> A caller that passed the cooldown would be a
+     * caller that can forget the enchantment -- and the whole rule would live at the call site,
+     * where no test can reach it. Taking the level means level zero is the base cooldown by
+     * construction, and {@link com.cortes.combat.enchant.CombatEnchantRules#parryCooldown} is the
+     * only place the number is decided. The window is untouched either way: what the enchantment
+     * buys is frequency, not duration.</p>
+     */
+    public ParryState activate(int enchantLevel) {
+        return new ParryState(WINDOW_TICKS,
+                com.cortes.combat.enchant.CombatEnchantRules.parryCooldown(COOLDOWN_TICKS,
+                        enchantLevel));
     }
 
     /**
