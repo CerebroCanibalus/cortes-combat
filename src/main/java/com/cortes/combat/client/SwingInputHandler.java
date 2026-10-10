@@ -100,6 +100,24 @@ public final class SwingInputHandler {
     private static Item openItem;
 
     /**
+     * The entity this open swing was thrown at: whatever the press found, kept current by every
+     * successful scan since.
+     *
+     * <p><b>The coyote fallback's memory, and why the release needs one.</b> The crosshair showed
+     * this target, the press opened on it, and then the release ran its own fresh scan -- a scan
+     * that can come up empty a few pixels of mob movement later, or against a world one frame
+     * ahead of the one the indicator drew from. Sending {@link SwingPayload#NO_TARGET} there makes
+     * the miss a certainty before the server is asked anything, which is the report "el indicador
+     * muestra que deberías dar el golpe y se pierde". With a memory, the release asks the server
+     * instead of deciding alone -- and the server still refuses anything out of the strict cone.</p>
+     *
+     * <p>Reset at the start of every press, so a refused or abandoned swing cannot leak its
+     * target into the next one; no other clear is needed, because every path that reads it runs
+     * under a press that set it.</p>
+     */
+    private static int swingTargetId = SwingPayload.NO_TARGET;
+
+    /**
      * The tick the next swing becomes legal, computed locally.
      *
      * <p>This exists because the server's cooldown arrives a round trip late, and a double click
@@ -162,6 +180,7 @@ public final class SwingInputHandler {
     private static void press(Minecraft mc) {
         claim = Claim.NOT_OURS;
         firedOnPress = false;
+        swingTargetId = SwingPayload.NO_TARGET;
         LocalPlayer player = mc.player;
         if (player == null || mc.level == null || player.isSpectator() || player.isUsingItem()) {
             debug("press RECHAZADO: sin jugador, spectator o usando item");
@@ -280,6 +299,9 @@ public final class SwingInputHandler {
         predictedTicks = 0;
         chargeSoundPlayed = false;
         openItem = player.getMainHandItem().getItem();
+        // The swing's own target, remembered for the release's fallback. See swingTargetId.
+        swingTargetId = target.map(net.minecraft.world.entity.Entity::getId)
+                .orElse(SwingPayload.NO_TARGET);
         claim = Claim.OURS;
         debug("press NUESTRO: objetivo=" + target.map(net.minecraft.world.entity.Entity::getId)
                 .orElse(SwingPayload.NO_TARGET));
@@ -490,11 +512,29 @@ public final class SwingInputHandler {
      * <p>Resolved on the release and not on the press, which is the other half of why the attack
      * resolves there: the target is wherever the player was looking when they committed, so a
      * player who starts a swing, adjusts onto a mob and lets go hits the mob.</p>
+     *
+     * <p><b>And the coyote fallback, when the fresh scan comes up empty.</b> The scan is the
+     * strict question and it goes first; only a scan that finds nothing asks the swing's own
+     * memory, and only against the slack cone ({@link ConeTargeting#stillInSlackCone}) -- a target
+     * the player has since turned away from fails even that. What is sent is an <em>intention</em>:
+     * the server re-checks the strict cone on arrival and on every tick of its pending window, so
+     * a generous gate here costs at most one packet while a strict one here would cost the hit.</p>
      */
     private static int resolveTargetId(LocalPlayer player) {
-        return ConeTargeting.findTargetForHeldItem(player)
-                .map(net.minecraft.world.entity.Entity::getId)
-                .orElse(SwingPayload.NO_TARGET);
+        Optional<LivingEntity> fresh = ConeTargeting.findTargetForHeldItem(player);
+        if (fresh.isPresent()) {
+            swingTargetId = fresh.get().getId();
+            return swingTargetId;
+        }
+        if (swingTargetId != SwingPayload.NO_TARGET
+                && player.level().getEntity(swingTargetId) instanceof LivingEntity remembered
+                && ConeTargeting.stillInSlackCone(player, remembered,
+                        com.cortes.combat.attack.MaceAir.reachFor(
+                                WeaponStats.of(player.getMainHandItem()), player))) {
+            debug("release: scan vacio, recordado " + swingTargetId + " aun en el slack");
+            return swingTargetId;
+        }
+        return SwingPayload.NO_TARGET;
     }
 
     private static boolean isOnBlock(Minecraft mc) {

@@ -101,6 +101,45 @@ public final class ConeTargeting {
     }
 
     /**
+     * Degrees each cone angle is widened by when the coyote fallback asks whether the swing's
+     * remembered target still belongs to this swing, plus half a block of reach.
+     *
+     * <p><b>Only the client's gate uses it, and only to decide whether to SEND an id.</b> The
+     * server re-checks the strict cone itself -- on arrival and again on every tick of the pending
+     * window -- so slack here cannot land a hit the cone would refuse; it can only stop a swing
+     * whose target stepped a few degrees out between the press and the release from being
+     * discarded as a whiff before the server ever saw it. Generous where it only costs a packet,
+     * strict where it costs damage.</p>
+     */
+    public static final float COYOTE_SLACK_DEGREES = 10.0F;
+
+    /** Extra reach the coyote fallback accepts, in blocks. Same argument as the angle slack. */
+    public static final float COYOTE_SLACK_REACH = 0.5F;
+
+    /**
+     * {@link #stillHittable} measured against the widened cone, for the coyote fallback in
+     * {@code SwingInputHandler}.
+     *
+     * <p>Shares {@link #isCandidate} and {@link #inCone} with the strict path on purpose: a second
+     * approximation of "roughly in the cone" written from scratch is how the crosshair and the
+     * swing learn to disagree, which is the exact disagreement this whole fallback exists to
+     * repair.</p>
+     */
+    public static boolean stillInSlackCone(LocalPlayer player, LivingEntity target, ReachProfile reach) {
+        if (player == null || player.level() == null || target == null || reach == null) {
+            return false;
+        }
+        if (!isCandidate(player, target) || target.level() != player.level()) {
+            return false;
+        }
+        ReachProfile slack = new ReachProfile(
+                reach.distance() + COYOTE_SLACK_REACH,
+                reach.horizontalAngle() + COYOTE_SLACK_DEGREES,
+                reach.verticalAngle() + COYOTE_SLACK_DEGREES);
+        return inCone(player.getEyePosition(), player.getLookAngle(), target.getBoundingBox(), slack);
+    }
+
+    /**
      * What an entity has to be before a swing is allowed to pick it, in one place.
      *
      * <p>{@code isRemoved} is in the list on top of what vanilla's own check covers because

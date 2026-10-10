@@ -9,6 +9,7 @@ import com.cortes.combat.guard.GuardStamp;
 import com.cortes.combat.state.FallDeferral;
 import com.cortes.combat.state.ParryState;
 import com.cortes.combat.state.LungeState;
+import com.cortes.combat.state.PendingHit;
 import com.cortes.combat.state.StreakState;
 import com.cortes.combat.state.SyncState;
 import net.minecraft.world.entity.LivingEntity;
@@ -171,6 +172,19 @@ public final class ModAttachments {
             ATTACHMENT_TYPES.register("fall_deferral", () -> AttachmentType
                     .<FallDeferral>builder(() -> FallDeferral.NONE)
                     .serialize(FallDeferral.CODEC)
+                    .build());
+
+    /**
+     * A swing waiting for the cone to agree with the aim it was thrown with. See {@link PendingHit}.
+     *
+     * <p><b>No codec and no {@code copyOnDeath}, and it is one reason for both:</b> this is a
+     * confirmation in flight, not a state. Nothing reads it across a save or a death, and a swing
+     * interrupted by either should end rather than resume -- the arm already swung for everyone
+     * watching, and resuming a hit after a respawn would be an attack nobody threw.</p>
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<PendingHit>> PENDING_HIT =
+            ATTACHMENT_TYPES.register("pending_hit", () -> AttachmentType
+                    .<PendingHit>builder(() -> PendingHit.NONE)
                     .build());
 
     private ModAttachments() {

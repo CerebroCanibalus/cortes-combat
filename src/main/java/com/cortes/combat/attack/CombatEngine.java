@@ -94,6 +94,14 @@ public final class CombatEngine {
         // finds nothing open and stops here.
         AttackCooldown.consume(player, interval);
 
+        // **A new swing supersedes any confirmation the previous one still awaited.** The pending
+        // window is five ticks and the fastest weapon in the game can legally fire again inside
+        // them; without this line a stale pending hit would land a swing nobody is throwing any
+        // more, at a charge an earlier release decided. Placed after the open-swing gate above,
+        // so a stray or replayed release cannot cancel a legitimate window either.
+        player.setData(com.cortes.combat.registry.ModAttachments.PENDING_HIT.get(),
+                com.cortes.combat.state.PendingHit.NONE);
+
         float ratio = chargedRatio(charge, stats.charge());
         resolveTarget(player, targetId, stats, ratio);
         return ratio;
@@ -149,13 +157,47 @@ public final class CombatEngine {
         // reach gets a swing that visibly happens and does nothing, which is worse than a wrong
         // number, because it looks like lag.
         if (!Reach.inCone(player, target, com.cortes.combat.attack.MaceAir.reachFor(stats, player))) {
+            // **The coyote window, and what this branch used to be: an instant miss.**
+            //
+            // <p>The entity exists, is alive and is the one the client aimed at -- only the
+            // geometry disagrees, and geometry across the wire is one tick behind (entity
+            // positions and the player's own rotation both arrive over the network). Rather than
+            // spend the swing on that disagreement, the aim is registered and re-checked every
+            // tick for {@link com.cortes.combat.state.PendingHit#WINDOW_TICKS} ticks by
+            // {@link HitCoyote}, against this same strict cone. The window forgives timing, never
+            // aim: a player who has turned away fails the first re-check, and a target that left
+            // for good expires with the miss sound it would have played right now.</p>
+            //
+            // <p>The arm swings here, on the release, because the swing happened then -- delaying
+            // the animation to the confirmation would show every watcher a player who waits half a
+            // second before attacking. Only the damage and the miss sound wait.</p>
             debug(player, "objetivo " + targetId + " (" + target.getName().getString()
-                    + ") FUERA del cono, alcance=" + stats.reach().distance());
+                    + ") FUERA del cono: coyote "
+                    + com.cortes.combat.state.PendingHit.WINDOW_TICKS + " ticks, alcance="
+                    + stats.reach().distance());
             swingArm(player);
-            playMiss(player, stats);
+            openPending(player, targetId, chargeRatio);
             return;
         }
-        debug(player, "objetivo " + targetId + " (" + target.getName().getString()
+        landTheHit(player, target, stats, chargeRatio, true);
+    }
+
+    /**
+     * The aimed hit, fully applied: the event hook, the arm, the damage, the extras.
+     *
+     * <p><b>Extracted so the coyote window can land the same swing a few ticks later without a
+     * second copy of any of it.</b> {@code resolveTarget} runs the validation that decides
+     * <em>whether</em> this is owed; this runs everything after that verdict, from the same two
+     * call sites, with one difference between them.</p>
+     *
+     * @param swingNow whether the arm still has its swing to play. {@code true} from the release,
+     *         where the swing is happening; {@code false} from {@link HitCoyote}'s confirmation,
+     *         where the arm already swung when the window opened and a second one would read as a
+     *         second attack.
+     */
+    static void landTheHit(Player player, LivingEntity target, WeaponStats stats,
+                           float chargeRatio, boolean swingNow) {
+        debug(player, "objetivo " + target.getId() + " (" + target.getName().getString()
                 + ") VALIDO, aplicando dano");
 
         // **NeoForge's own attack hook, which `Player#attack` fires and a replaced flow drops.**
@@ -164,11 +206,13 @@ public final class CombatEngine {
         // before the target was looked at, which is the same rule a whiff obeys -- an attempt costs
         // whether or not it lands.
         if (!net.neoforged.neoforge.common.CommonHooks.onPlayerAttackTarget(player, target)) {
-            debug(player, "objetivo " + targetId + " cancelado por AttackEntityEvent");
+            debug(player, "objetivo " + target.getId() + " cancelado por AttackEntityEvent");
             return;
         }
 
-        swingArm(player);
+        if (swingNow) {
+            swingArm(player);
+        }
 
         float base = (float) player.getAttributeValue(Attributes.ATTACK_DAMAGE);
         StreakState streak = player.getData(ModAttachments.HAMMER_STREAK.get());
@@ -526,11 +570,29 @@ public final class CombatEngine {
      * stands, and treating the server's refusal as silence would leave the one case where the
      * player is right about aiming and wrong about the outcome with no way to tell it apart.</p>
      */
-    private static void playMiss(Player player, WeaponStats stats) {
+    static void playMiss(Player player, WeaponStats stats) {
         if (player.level() instanceof net.minecraft.server.level.ServerLevel level) {
             com.cortes.combat.sound.CombatSounds.play(
                     level, player, stats.profile(), ModSounds.Kind.MISS);
         }
+    }
+
+    /**
+     * Registers the swing so {@link HitCoyote} can confirm it while the cone comes back into
+     * agreement, with the charge frozen at the value the release closed at.
+     *
+     * <p>The weapon travels as its registry id string rather than as an {@code Item}, for the
+     * same reason every field of {@link com.cortes.combat.state.PendingHit} is a plain type: the
+     * state stays loadable outside the game, and the swap check at connection compares ids
+     * rather than references.</p>
+     */
+    private static void openPending(Player player, int targetId, float chargeRatio) {
+        String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                .getKey(player.getMainHandItem().getItem()).toString();
+        player.setData(com.cortes.combat.registry.ModAttachments.PENDING_HIT.get(),
+                new com.cortes.combat.state.PendingHit(targetId, chargeRatio, itemId,
+                        player.level().getGameTime()
+                                + com.cortes.combat.state.PendingHit.WINDOW_TICKS));
     }
 
     /**
