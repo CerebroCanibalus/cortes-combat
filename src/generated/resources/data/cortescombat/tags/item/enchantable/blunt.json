@@ -4,6 +4,8 @@
     "cortescombat:iron_martillo",
     "cortescombat:golden_martillo",
     "cortescombat:diamond_martillo",
-    "cortescombat:netherite_martillo"
+    "cortescombat:netherite_martillo",
+    "minecraft:mace",
+    "#minecraft:shovels"
   ]
 }

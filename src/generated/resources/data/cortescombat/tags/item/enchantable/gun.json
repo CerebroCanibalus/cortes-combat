@@ -1,5 +1,6 @@
 {
   "values": [
-    "cortescombat:arcabuz"
+    "cortescombat:arcabuz",
+    "#minecraft:enchantable/crossbow"
   ]
 }

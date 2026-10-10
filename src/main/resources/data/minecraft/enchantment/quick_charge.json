@@ -40,6 +40,6 @@
     "mainhand",
     "offhand"
   ],
-  "supported_items": ["#minecraft:enchantable/crossbow", "#cortescombat:enchantable/gun"],
+  "supported_items": "#cortescombat:enchantable/gun",
   "weight": 5
 }

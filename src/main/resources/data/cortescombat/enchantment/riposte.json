@@ -12,16 +12,10 @@
     "base": 18,
     "per_level_above_first": 20
   },
-  "primary_items": [
-    "#minecraft:swords",
-    "#cortescombat:profile/sword"
-  ],
+  "primary_items": "#cortescombat:enchantable/sword",
   "slots": [
     "mainhand"
   ],
-  "supported_items": [
-    "#minecraft:swords",
-    "#cortescombat:profile/sword"
-  ],
+  "supported_items": "#cortescombat:enchantable/sword",
   "weight": 2
 }

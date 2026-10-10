@@ -110,6 +110,20 @@ suscribirse a eventos.
 
 ### Trampas del build
 
+- **`supported_items` / `primary_items` de un encantamiento NO aceptan una lista de tags.** El
+  campo acepta **un** tag (`"#ns:tag"`) o una lista de **ids directos** — pero un `#` adentro de una
+  lista se parsea como nombre de ítem y **el registro entero falla al cargar el mundo**, con un error
+  que nombra el *string* (`Not a valid resource location: #cortescombat:enchantable/blade`) y ningún
+  archivo. Verificado contra las fuentes: `Enchantment.EnchantmentDefinition` lo declara como
+  `RegistryCodecs.homogeneousList(ITEM)`, y el camino de lista usa ids directos. **La unión va
+  adentro de un tag** (`tag(x).addTag(otro)`, que sí funciona: `#minecraft:axes` dentro de un tag es
+  legal) y el JSON referencia **un solo nombre**. Los overrides de vanilla de la ronda de
+  encantamientos estuvieron **rotos y sin verificar** por esto hasta el primer intento de crear un
+  mundo. Guard: `CombatEnchantmentFilesTest.itemListsCarryNoTags`, verificado mordiendo.
+- **Un test que sólo pregunta si el archivo existe no ve un archivo que existe y no se puede leer.**
+  El test viejo de los encantamientos comprobaba archivo + tag + idioma y las tres pasaban mientras
+  el juego crasheaba. Lo que faltaba era comprobar la **forma del campo contra la gramática del
+  codec** — no más cobertura, otra pregunta.
 - **La expansión del TOML es Groovy.** Un backtick en los comentarios del template rompe el parser
   (`Unexpected input '('`) — error que apunta lejos de la causa. Comentarios en texto plano.
 - **Toda propiedad usada en el TOML tiene que declararse** en el mapa `replaceProperties` de

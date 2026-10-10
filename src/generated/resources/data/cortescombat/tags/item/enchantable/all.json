@@ -30,6 +30,7 @@
     "cortescombat:golden_shotel",
     "cortescombat:diamond_shotel",
     "cortescombat:netherite_shotel",
-    "cortescombat:arcabuz"
+    "cortescombat:arcabuz",
+    "#minecraft:enchantable/weapon"
   ]
 }

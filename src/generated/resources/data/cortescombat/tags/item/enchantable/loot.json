@@ -6,6 +6,7 @@
     "cortescombat:iron_daga",
     "cortescombat:golden_daga",
     "cortescombat:diamond_daga",
-    "cortescombat:netherite_daga"
+    "cortescombat:netherite_daga",
+    "#minecraft:enchantable/sword"
   ]
 }

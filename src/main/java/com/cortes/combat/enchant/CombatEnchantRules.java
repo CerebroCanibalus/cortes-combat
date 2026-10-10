@@ -44,6 +44,18 @@ public final class CombatEnchantRules {
     public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID,
             FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID);
 
+    /**
+     * Los genéricos, que se ponen por <b>clase</b> y no por molde.
+     *
+     * <p>La distinción es del diseño (§F) y tiene consecuencia en los datos: un encantamiento de
+     * <b>identidad</b> es de una familia, así que su alcance es el tag del molde
+     * ({@code #cortescombat:profile/sabre}); un <b>genérico</b> es de un eje que cruza familias
+     * (Contragolpe = lo que puede cubrir = las espadas), así que su alcance es una clase
+     * ({@code #cortescombat:enchantable/sword}). Un test que exigiera molde a todos estaba afirmando
+     * la regla de uno solo.</p>
+     */
+    public static final java.util.List<String> GENERIC_IDS = java.util.List.of(RIPOSTE_ID);
+
     // ---------------------------------------------------------------- E2 · Reflejo de Acero (shotel)
 
     /** El nivel máximo, el del archivo de encantamiento. */

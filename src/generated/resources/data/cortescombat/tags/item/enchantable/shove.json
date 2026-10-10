@@ -1,8 +1,6 @@
 {
   "values": [
     "#minecraft:axes",
-    "#minecraft:shovels",
-    "minecraft:mace",
     "#cortescombat:enchantable/blunt"
   ]
 }

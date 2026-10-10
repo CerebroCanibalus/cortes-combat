@@ -244,6 +244,7 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         TagKey<Item> loot = own("enchantable/loot");
         TagKey<Item> shove = own("enchantable/shove");
         TagKey<Item> gun = own("enchantable/gun");
+        TagKey<Item> sword = own("enchantable/sword");
         TagKey<Item> durability = TagKey.create(Registries.ITEM,
                 ResourceLocation.withDefaultNamespace("enchantable/durability"));
 
@@ -272,8 +273,41 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         tag(gun).add(ModItems.ARCABUZ.get());
 
         // El empuje es de lo pesado, y lo pesado incluye lo vanilla reworkeado: hacha, pala y maza.
-        tag(shove).addTag(ItemTags.AXES).addTag(ItemTags.SHOVELS).add(Items.MACE);
+        // Con `blunt` ya completo (martillos + maza + pala), el empuje es hacha + lo contundente, y
+        // la maza y la pala entran por ahi sin nombrarlas dos veces.
+        tag(shove).addTag(ItemTags.AXES);
         tag(shove).addTag(blunt);
+
+        // **Y cada clase se COMPLETA con los tags de vanilla que su encantamiento ya tenia.**
+        //
+        // <p><b>Esto no es cosmético: es la unica forma en que el override del JSON carga.</b> El
+        // campo {@code supported_items} de un encantamiento acepta UN tag ({@code "#ns:tag"}) o una
+        // lista de ids <em>directos</em> -- pero <b>no una lista de tags</b>: el {@code #} de una
+        // lista se parsea como id de item y el registro entero falla al cargar el mundo, con un
+        // error que nombra el string y no el archivo. Los tags, en cambio, si pueden contener otros
+        // tags ({@code shove} lo hace tres lineas mas arriba). Asi que la union vive donde viven las
+        // uniones, y el JSON referencia un solo nombre.</p>
+        //
+        // <p>Verificado contra las fuentes de 1.21.1: {@code Enchantment.EnchantmentDefinition}
+        // declara {@code supported_items} como {@code RegistryCodecs.homogeneousList(ITEM)}, cuyo
+        // camino de lista usa ids directos y no acepta {@code #}.</p>
+        tag(blade).addTag(vanilla("enchantable/sharp_weapon"));
+        tag(all).addTag(vanilla("enchantable/weapon"));
+        // Lo "contundente" del diseno es martillo + maza + pala, y no solo los cinco martillos: es
+        // la clase a la que van Fire Aspect y el empuje, y las tres armas que castigan armadura.
+        tag(blunt).add(Items.MACE).addTag(ItemTags.SHOVELS);
+        tag(loot).addTag(vanilla("enchantable/sword"));
+        tag(gun).addTag(vanilla("enchantable/crossbow"));
+        // La clase de la espada: las de vanilla y las nuestras del molde espada. El molde es un tag
+        // aparte a proposito -- `profile/sword` es la lista canonica de que armas nuestras usan ese
+        // molde, y meterle las de vanilla la ensuciaria para su otro lector (WeaponStats).
+        tag(sword).addTag(vanilla("enchantable/sword"));
+        tag(sword).addTag(own("profile/sword"));
+    }
+
+    /** Un tag de vanilla por id, para completar una clase de encantamiento con su alcance original. */
+    private static TagKey<Item> vanilla(String path) {
+        return TagKey.create(Registries.ITEM, ResourceLocation.withDefaultNamespace(path));
     }
 
     /** Un tag de encantamiento nuestro, por id. */

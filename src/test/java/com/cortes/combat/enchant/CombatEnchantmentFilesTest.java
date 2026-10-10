@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -11,34 +12,60 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Los archivos de los encantamientos de combate propios: que existan, y que lo que nombran exista.
+ * Los archivos de encantamiento: que existan, y que su forma sea la que el juego puede leer.
  *
- * <h2>El agujero que este test tapa</h2>
+ * <h2>El agujero que este test tapa, y costó un mundo</h2>
  *
- * <p>Estos encantamientos son <b>datos</b> y su comportamiento es <b>código</b>, y las dos mitades no
- * se conocen. Un archivo que declare {@code supported_items: "#cortescombat:profile/sable"} sobre un
- * tag que no existe -- o que existe vacío -- es un encantamiento que <b>no se puede poner en ninguna
- * arma y no dice por qué</b>: la mesa simplemente no lo ofrece. Este proyecto ya pagó esa forma una
- * vez, con un tag que nada llenaba.</p>
+ * <p>La primera versión de esta clase comprobaba tres cosas y las tres pasaban: el archivo existe,
+ * el tag que nombra existe, y el idioma está. <b>Y el juego crasheaba al crear un mundo.</b></p>
  *
- * <p>Y un encantamiento sin su línea de idioma no falla: imprime su clave en la pantalla. Por eso el
- * test camina {@link CombatEnchantRules#IDS} -- la lista real, no una copia -- y comprueba las tres
- * cosas que un archivo puede romper en silencio: que esté, que el tag que nombra esté, y que se lea
- * en los dos idiomas.</p>
+ * <p>El motivo: {@code supported_items} acepta <b>un tag</b> ({@code "#ns:tag"}) o <b>una lista de
+ * ids directos</b>, pero <b>no una lista de tags</b>. Verificado contra las fuentes de 1.21.1:
+ * {@code Enchantment.EnchantmentDefinition} declara el campo como
+ * {@code RegistryCodecs.homogeneousList(ITEM)}, y el camino de lista usa ids directos. Un {@code #}
+ * adentro de una lista se parsea como nombre de ítem y el registro entero falla -- con un error que
+ * nombra el <em>string</em> y no el archivo, así que la primera pista es un stack trace de
+ * {@code RegistryDataLoader} y ninguna mención a este mod.</p>
+ *
+ * <p>Lo que faltaba no era más cobertura: era comprobar la <b>forma</b> del campo contra la
+ * gramática del codec. Un test que sólo pregunta si el archivo existe no puede ver un archivo que
+ * existe y no se puede leer, que es exactamente el estado en el que estaba.</p>
  */
 class CombatEnchantmentFilesTest {
 
     private static final Path ENCHANTMENT_DIR =
             Path.of("src", "main", "resources", "data", "cortescombat", "enchantment");
-    private static final Path PROFILE_TAGS =
-            Path.of("src", "generated", "resources", "data", "cortescombat", "tags", "item", "profile");
+    private static final Path VANILLA_ENCHANTMENTS =
+            Path.of("src", "main", "resources", "data", "minecraft", "enchantment");
+    private static final Path OUR_ITEM_TAGS =
+            Path.of("src", "generated", "resources", "data", "cortescombat", "tags", "item");
+    private static final Path PROFILE_TAGS = OUR_ITEM_TAGS.resolve("profile");
 
-    /** El único tag que estos encantamientos pueden nombrar, y de dónde sale su archivo. */
+    /** El único tag que los encantamientos de identidad pueden nombrar, y de dónde sale su archivo. */
     private static final Pattern PROFILE_TAG =
             Pattern.compile("\"#cortescombat:profile/([a-z_]+)\"");
+
+    /** Un campo de items, con su valor crudo: la lista entre corchetes o el string entre comillas. */
+    private static final Pattern ITEM_FIELD = Pattern.compile(
+            "\"(supported_items|primary_items)\":\\s*(\\[[^]]*\\]|\"[^\"]*\")");
+
+    /** Un tag nuestro nombrado en cualquier parte del archivo. */
+    private static final Pattern OUR_TAG =
+            Pattern.compile("\"#cortescombat:([a-z_/]+)\"");
+
+    private static List<Path> allEnchantmentFiles() throws IOException {
+        List<Path> files = new ArrayList<>();
+        for (Path dir : List.of(ENCHANTMENT_DIR, VANILLA_ENCHANTMENTS)) {
+            try (var walk = Files.walk(dir)) {
+                walk.filter(path -> path.toString().endsWith(".json")).forEach(files::add);
+            }
+        }
+        return files;
+    }
 
     @Test
     @DisplayName("cada encantamiento tiene su archivo de datos")
@@ -51,16 +78,83 @@ class CombatEnchantmentFilesTest {
         }
     }
 
+    /**
+     * **La aserción que faltaba, y la que costó un mundo.**
+     *
+     * <p>Un {@code #} adentro de la lista es un archivo que existe, pasa todos los otros tests, y
+     * hace que <b>ningún mundo cargue</b>. Se verifica sobre los doce archivos -- los cinco nuestros
+     * y los siete overrides de vanilla -- porque el que rompió era uno de vanilla.</p>
+     */
     @Test
-    @DisplayName("**el tag que cada archivo nombra existe en disco**: un tag que nada llena es el bug")
+    @DisplayName("**supported_items no puede ser una LISTA con tags**: es un mundo que no carga")
+    void itemListsCarryNoTags() throws IOException {
+        List<Path> files = allEnchantmentFiles();
+        assertTrue(files.size() >= 12,
+                "esperaba los 12 archivos de encantamiento, encontre " + files.size()
+                        + ": si esta lista encogio, el test dejo de mirar algo");
+
+        for (Path file : files) {
+            String json = Files.readString(file, StandardCharsets.UTF_8);
+            Matcher fields = ITEM_FIELD.matcher(json);
+            while (fields.find()) {
+                String value = fields.group(2);
+                if (!value.startsWith("[")) {
+                    continue;
+                }
+                assertFalse(value.contains("#"),
+                        file.getFileName() + ": `" + fields.group(1) + "` es una LISTA con un tag ("
+                                + value + "). El codec de 1.21.1 lee una lista como ids DIRECTOS: el "
+                                + "`#` se parsea como nombre de item y el registro falla al cargar el "
+                                + "mundo entero. La union va adentro de un tag nuestro -- ver "
+                                + "CortesItemTagProvider.enchantClasses()");
+            }
+        }
+    }
+
+    /**
+     * Y todo tag nuestro que un encantamiento nombra tiene que existir de verdad.
+     *
+     * <p>El otro lado del mismo agujero: un tag mal escrito no rompe el registro -- el encantamiento
+     * simplemente no se puede poner en ningún arma, y la mesa no dice por qué. Este proyecto ya pagó
+     * esa forma una vez, con un tag que nada llenaba.</p>
+     */
+    @Test
+    @DisplayName("**todo tag nuestro que nombran existe en el datagen**: uno que nada define es el bug")
+    void ourTagsExist() throws IOException {
+        for (Path file : allEnchantmentFiles()) {
+            String json = Files.readString(file, StandardCharsets.UTF_8);
+            Matcher tags = OUR_TAG.matcher(json);
+            int checked = 0;
+            while (tags.find()) {
+                Path tag = OUR_ITEM_TAGS.resolve(tags.group(1) + ".json");
+                assertTrue(Files.exists(tag),
+                        file.getFileName() + " declara #cortescombat:" + tags.group(1) + " y ese tag "
+                                + "no existe (se esperaba " + tag + "). El encantamiento no se podria "
+                                + "poner en ninguna arma y la mesa no diria por que");
+                checked++;
+            }
+            assertTrue(checked > 0 || file.startsWith(VANILLA_ENCHANTMENTS),
+                    file.getFileName() + " no nombra ningun tag nuestro. Si es un override de "
+                            + "vanilla puede ser a proposito (cambia el alcance a un tag de vanilla y "
+                            + "nada mas); si es NUESTRO, le falta la clase");
+        }
+    }
+
+    @Test
+    @DisplayName("**el tag de molde de cada encantamiento de identidad existe**: un tag que nada llena es el bug")
     void theSupportedTagExists() throws IOException {
         for (String id : CombatEnchantRules.IDS) {
+            if (CombatEnchantRules.GENERIC_IDS.contains(id)) {
+                // Un generico se pone por clase y no por molde: ver GENERIC_IDS. Su tag tambien se
+                // comprueba, pero en ourTagsExist, que no tiene opinion sobre cual tag es.
+                continue;
+            }
             String json = Files.readString(ENCHANTMENT_DIR.resolve(id + ".json"),
                     StandardCharsets.UTF_8);
             Matcher matcher = PROFILE_TAG.matcher(json);
             assertTrue(matcher.find(),
                     id + " no nombra un tag de perfil en supported_items: los encantamientos de "
-                            + "identidad se ponen por perfil, y una lista de items escrita a mano "
+                            + "identidad se ponen por molde, y una lista de items escrita a mano "
                             + "seria una segunda verdad sobre que armas son de la familia");
 
             // Puede nombrar el mismo tag mas de una vez (supported y primary): hay que revisar
@@ -70,8 +164,7 @@ class CombatEnchantmentFilesTest {
                 Path tag = PROFILE_TAGS.resolve(m.group(1) + ".json");
                 assertTrue(Files.exists(tag),
                         id + " declara #cortescombat:profile/" + m.group(1) + " y ese tag no existe "
-                                + "(se esperaba " + tag + "). El encantamiento no se podria poner en "
-                                + "ninguna arma y la mesa no diria por que");
+                                + "(se esperaba " + tag + ")");
             }
             assertTrue(checked >= 2,
                     id + " deberia nombrar el tag en supported_items Y en primary_items, y solo lo "

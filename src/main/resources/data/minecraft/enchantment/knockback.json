@@ -29,6 +29,6 @@
   "slots": [
     "mainhand"
   ],
-  "supported_items": ["#minecraft:enchantable/sword", "#cortescombat:enchantable/shove"],
+  "supported_items": "#cortescombat:enchantable/shove",
   "weight": 5
 }

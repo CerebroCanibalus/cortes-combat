@@ -1,4 +1,4 @@
-// 1.21.1	2026-10-10T14:21:10.9986677	Tags for minecraft:item mod id cortescombat
+// 1.21.1	2026-10-10T17:56:34.7347713	Tags for minecraft:item mod id cortescombat
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/axe.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/dagger.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/hammer.json
@@ -8,12 +8,13 @@
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/sabre.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/spear.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/sword.json
-cff59521f91577e72d4fc1e1906eca0ec9611e1a data/cortescombat/tags/item/enchantable/all.json
-2d04155bc96ac0d6a62b0908afcc03f4d1d0473c data/cortescombat/tags/item/enchantable/blade.json
-7434350fe1774b1664443eb91f68ceb9f0f0a44d data/cortescombat/tags/item/enchantable/blunt.json
-85cde72e10b24d086f8f684a75887bd8f9185d99 data/cortescombat/tags/item/enchantable/gun.json
-86b0b39f82ee1e7cf1b4386e7d0e126c116d7de4 data/cortescombat/tags/item/enchantable/loot.json
-80310fe40d59ecfb9bc84913128420a54e3272b6 data/cortescombat/tags/item/enchantable/shove.json
+de1a714d5453882d208166b7d607e5dee121805c data/cortescombat/tags/item/enchantable/all.json
+508192ad9f0e1da0f231d396c8139d243dcfd8db data/cortescombat/tags/item/enchantable/blade.json
+0e501179b5dba0c8d5d4ec5090383a8d5e1899ff data/cortescombat/tags/item/enchantable/blunt.json
+584495753b463bb0dbc2b49405c96317614c8879 data/cortescombat/tags/item/enchantable/gun.json
+6f0c6c78a546829fc28bbde32f25cb9a95cd701f data/cortescombat/tags/item/enchantable/loot.json
+631fc0284b48c40d78fe0aee61e377518c21be29 data/cortescombat/tags/item/enchantable/shove.json
+57f39d6fee925b3989ee48d1a81a34802bfcd91c data/cortescombat/tags/item/enchantable/sword.json
 85cde72e10b24d086f8f684a75887bd8f9185d99 data/cortescombat/tags/item/profile/arcabuz.json
 cea51846590e1c97af683c95ff9a128fe42ad950 data/cortescombat/tags/item/profile/axe.json
 86b0b39f82ee1e7cf1b4386e7d0e126c116d7de4 data/cortescombat/tags/item/profile/dagger.json
