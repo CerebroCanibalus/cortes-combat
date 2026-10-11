@@ -111,6 +111,10 @@ public final class CombatEnchantments {
     public static final ResourceKey<Enchantment> MECHA_CORTA =
             key(CombatEnchantRules.MECHA_CORTA_ID);
 
+    /** Alabarda -- Barredor. */
+    public static final ResourceKey<Enchantment> BARREDOR =
+            key(CombatEnchantRules.BARREDOR_ID);
+
     /**
      * El nivel de un encantamiento propio sobre un ítem, por clave.
      *
@@ -122,6 +126,22 @@ public final class CombatEnchantments {
     public static int level(HolderLookup.Provider registries, ItemStack stack,
                             ResourceKey<Enchantment> enchantment) {
         return stack.getEnchantmentLevel(registries.holderOrThrow(enchantment));
+    }
+
+    /**
+     * El nivel de Barredor del arma en la mano principal del que la sostiene, o cero.
+     *
+     * <p>Vive aca y no en {@code MaceAir} porque este archivo <b>ya</b> nombra tipos de Minecraft
+     * (su {@code level} declara un {@code HolderLookup.Provider}) y {@code MaceAir} se carga en
+     * tests de JVM pelada. Un helper alla adentro habria matado tres tests con
+     * {@code NoClassDefFoundError} antes de la primera asercion.</p>
+     *
+     * <p>Y es un metodo y no dos lineas repetidas en cuatro sitios de display, porque el sitio que
+     * se olvide de leer el nivel es el sitio que dibuja el cono viejo -- que es exactamente el bug
+     * que el veto C4 describe.</p>
+     */
+    public static int barredorLevel(net.minecraft.world.entity.LivingEntity holder) {
+        return level(holder.level().registryAccess(), holder.getMainHandItem(), BARREDOR);
     }
 
     private static ResourceKey<Enchantment> key(String id) {

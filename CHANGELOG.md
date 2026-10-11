@@ -630,3 +630,54 @@ Que un guard muerde es parte de escribirlo, no una tarea posterior:
 - **El `weapon_overrides.json` (paso 12) sigue sin existir**, y el "tags genericos para que el
   usuario meta su arma" quedo fuera por decision del usuario: tiene una idea mejor para eso. Esta
   ronda es mantenibilidad del mod y nada mas.
+
+### La tanda de los encantamientos unicos — tres bugs de los tests, y una regla que crecio
+
+**20 encantamientos en cuatro tandas** (los 6 base mas Punta Fina, Filo Astillado, Apunalar,
+Sanguijuela, Aventurero, Culata, Estocada, Segundo Aliento, Guardia Firme, Cicatrizador,
+Destripamiento, Quebranto, Desvio Vampirico, Mecha Corta y Barredor). Lo que costo cada uno:
+
+- **`antiHealingReduction` sin clampear**: con un amplifier alto la reduccion **pasaba de 1** y
+  `1 - reduccion` daba **negativo** -- o sea, curarse hacia **dano**. El test lo cazo.
+- **`DRAIN_PER_LEVEL` en positivo**: el robo **sumaba** vida maxima en vez de restarla. El techo del
+  enemigo subia y el robo era un regalo para los dos lados. **La cuenta se ve bien leida y al reves**,
+  que es la peor forma de fallar.
+- **`GuardFree.READY` en cero**: con cero, "listo" era `now - 0 >= 60` y el primer bloqueo gratis de
+  una partida no llegaba hasta el tick sesenta del mundo. Ahora es `-INTERVAL_TICKS` y el test lo
+  afirma.
+
+**Y la regla de los tests crecio un grado, que es lo que hay que llevarse de esta ronda:**
+
+- *"Nada en `src/test` puede nombrar un tipo de Minecraft"* **es mas larga de lo que parece: la clase
+  que el test CARGA tampoco.** `MaceAir` llamaba a `CombatEnchantments.level(...)`, cuya firma declara
+  un `HolderLookup.Provider`, y **los tres tests de `MaceAir` murieron con `NoClassDefFoundError`
+  antes de la primera asercion** -- sin que el archivo de test nombrara nada. La regla real es "la
+  clase que un test carga no puede **nombrar** un tipo de Minecraft, ni en su firma ni en un metodo al
+  que llame".
+- **Y el sabotaje puede mentir.** Un `Replace` multi-linea de PowerShell se comio una llamada y dejo
+  `MaceAir` **sin compilar**; `gradlew test` fallo en `compileTestJava` y **los XML de resultados
+  quedaron los de la corrida anterior**, asi que dos sabotajes reportaron "murio 1 test" cuando en
+  realidad **no habian corrido**. La verificacion ahora mira **el exit del build** ademas de los
+  muertos. Es la misma leccion de siempre con otra cara: *la salida de los comandos es informacion*.
+
+### La tanda de los "del cliente" — la azada, Mecha Corta y Barredor
+
+- **La animacion de la azada iba al reves** (hacia la derecha). El yaw del tajo paso de 112 a **-112**,
+  y **el roll se quedo en negativo** -- que es lo que el test cazo cuando yo lo inverti tambien: el
+  roll es lo que hace que la hoja se de vuelta como una guadana en vez de barrer recto. **El test
+  estaba bien escrito**: afirma la **magnitud** del yaw (`Math.abs`) y el **signo** del roll por
+  separado, asi que invertir la direccion no lo rompio y girar el roll si.
+- **Mecha Corta no necesitaba arte**, y el documento decia que si. Los cinco frames del arcabuz son
+  **archivos separados** y el que se dibuja lo elige un **predicado**; no hay animacion de atlas que
+  re-temporizar. **Lo que si habia era un numero escondido**: `progress()` dividia por la constante
+  `ArcabuzState.FUSE_TICKS`, asi que con una mecha de diez ticks el progreso llegaba a 0,5 cuando la
+  mecha se apagaba. El total ahora viaja y `light()` lo toma por argumento.
+- **Barredor y el veto C4.** El documento tiene un veto escrito para el alcance extendido: *"obliga al
+  HUD del cono a releer el nivel; si se olvida, el indicador miente"*. Barredor extiende el cono del
+  **barrido** de la alabarda, asi que el guard no pregunta si el encantamiento existe: pregunta por
+  **el servidor y los cuatro sitios de display** -- el crosshair, los corchetes, `/cc cone` y
+  `/cc hud`. El que se olvide es el que miente.
+- **"+1/+2 objetivos" se cayo al escribir el codigo.** El barrido **no tiene tope de objetivos**
+  (`targetsInCone` devuelve todos), asi que no hay un numero del que sumar. Lo que hace el
+  encantamiento es agrandar el area, y **un area mas grande alcanza mas objetivos por si sola** -- el
+  efecto que el jugador ve es el que el documento prometia, por otro mecanismo.

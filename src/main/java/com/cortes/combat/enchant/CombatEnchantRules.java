@@ -85,12 +85,15 @@ public final class CombatEnchantRules {
     /** Arcabuz -- Mecha Corta: la mecha dura menos. */
     public static final String MECHA_CORTA_ID = "mecha_corta";
 
+    /** Alabarda -- Barredor: el barrido cubre mas. */
+    public static final String BARREDOR_ID = "barredor";
+
     /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
     public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID,
             FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID, DRY_POWDER_ID, PUNTA_FINA_ID,
             FILO_ASTILLADO_ID, APUNALAR_ID, SANGUJUELA_ID, AVENTURERO_ID, CULATA_ID, ESTOCADA_ID,
             SEGUNDO_ALIENTO_ID, GUARDIA_FIRME_ID, CICATRIZADOR_ID, DESTRIPAMIENTO_ID, QUEBRANTO_ID,
-            VAMPIRICO_ID, MECHA_CORTA_ID);
+            VAMPIRICO_ID, MECHA_CORTA_ID, BARREDOR_ID);
 
     /** Los genericos, que se ponen por clase y no por molde. */
 
@@ -624,6 +627,36 @@ public final class CombatEnchantRules {
             case 1 -> 15;
             case 2 -> 10;
             default -> baseTicks;
+        };
+    }
+
+    /**
+     * Barredor (alabarda): cuanto crece el cono del barrido con este nivel.
+     *
+     * <h2>Y el HUD tiene que enterarse, que es el punto entero</h2>
+     *
+     * <p>El documento de diseno tiene un veto escrito para esto -- el <b>C4</b>, "alcance extendido"
+     * -- y no es un veto contra el encantamiento: es un veto contra <b>olvidarse del indicador</b>.
+     * La razon esta escrita ahi y vale repetirla: un alcance que crece y un crosshair que no lo
+     * dice convierten al indicador en una mentira, y una mentira del indicador se reporta como
+     * <em>"no noto el encantamiento"</em> y no como un bug.</p>
+     *
+     * <p>Por eso {@code MaceAir.displayedFor} pregunta por este numero: el cono que el jugador ve es
+     * el del <b>barrido</b> cuando el arma tiene Barredor. Es el mismo trato que el arcabuz, donde el
+     * indicador describe el disparo y no la bayoneta -- <b>el boton que el jugador esta por apretar es
+     * el que manda</b>.</p>
+     *
+     * <p>{@code base} entra como argumento por la misma razon que en {@link #fuseTicks}: el 1,35 de
+     * fabrica vive en {@code HalberdSweep}, que es donde vive el barrido, y esta tabla no tiene por
+     * que saber de barridos.</p>
+     */
+    public static final int BARREDOR_MAX_LEVEL = 2;
+
+    public static float sweepScale(int level, float base) {
+        return switch (clamp(level, BARREDOR_MAX_LEVEL)) {
+            case 1 -> base * 1.15F;
+            case 2 -> base * 1.30F;
+            default -> base;
         };
     }
 

@@ -1,6 +1,7 @@
 package com.cortes.combat.special;
 
 import com.cortes.combat.core.weapon.ReachProfile;
+import com.cortes.combat.enchant.CombatEnchantRules;
 
 /**
  * The halberd's sweep, as numbers.
@@ -81,9 +82,26 @@ public final class HalberdSweep {
      * {@code ReachProfile} has no way to know that.</p>
      */
     public static ReachProfile reachFor(ReachProfile weapon) {
+        return reachFor(weapon, 0);
+    }
+
+    /**
+     * The same, with Barredor's level folded in.
+     *
+     * <p><b>The level is an argument rather than something this class looks up</b>, and the reason is
+     * the same one that puts every other number here: this file is the formula, the stack is the
+     * world, and a formula that reads the world cannot be checked without one. The call site reads the
+     * enchantment; this multiplies.</p>
+     *
+     * <p>Both scales move together, and that is the decision rather than a convenience. A sweep that
+     * grew longer without growing wider would be a thrust with a longer reach -- and the halberd
+     * already has a thrust. What Barredor sells is <em>more of the arc</em>, so the arc is what
+     * grows.</p>
+     */
+    public static ReachProfile reachFor(ReachProfile weapon, int level) {
         return new ReachProfile(
-                weapon.distance() * RANGE_SCALE,
-                weapon.horizontalAngle() * WIDTH_SCALE,
+                weapon.distance() * CombatEnchantRules.sweepScale(level, RANGE_SCALE),
+                weapon.horizontalAngle() * CombatEnchantRules.sweepScale(level, WIDTH_SCALE),
                 weapon.verticalAngle());
     }
 

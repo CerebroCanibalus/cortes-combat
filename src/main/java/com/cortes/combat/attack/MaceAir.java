@@ -107,7 +107,36 @@ public final class MaceAir {
      * {@link #reachFor(WeaponStats, LivingEntity)}, so the marker and the hit read the same cone on
      * the same frame.</p>
      */
-    public static ReachProfile displayedFor(WeaponStats stats, LivingEntity holder) {
-        return reachFor(stats.profile(), stats.displayedReach(), airborne(holder));
+    public static ReachProfile displayedFor(WeaponStats stats, LivingEntity holder, int sweepLevel) {
+        return reachFor(stats.profile(), displayedCone(stats, sweepLevel), airborne(holder));
+    }
+
+    /**
+     * El cono que se muestra, con el barrido de Barredor adentro.
+     *
+     * <p><b>Esto existe por el veto C4 del documento de diseno</b> -- "alcance extendido: obliga al
+     * HUD del cono a releer el nivel; si se olvida, <em>el indicador miente</em>". Barredor extiende
+     * el cono del barrido de la alabarda, y este metodo es el "releer el nivel" que el veto pide.</p>
+     *
+     * <p><b>Y el cono que se muestra pasa a ser el del barrido, no el del tajo.</b> Es la misma
+     * decision que tomo el arcabuz, donde el indicador describe el disparo y no la bayoneta: el boton
+     * que el jugador esta por apretar es el que manda, y con Barredor el boton interesante de la
+     * alabarda es el derecho. El tajo sigue pegando en su cono propio -- lo unico que cambia es cual
+     * de los dos dibuja el marcador.</p>
+     *
+     * <p><b>{@code sweepLevel} entra como argumento, y no es un capricho: es lo que deja a esta clase
+     * cargarse en un test.</b> Leer el encantamiento aca adentro obligaba a nombrar
+     * {@code CombatEnchantments}, cuya firma declara un {@code HolderLookup.Provider}, y los tres
+     * tests de {@code MaceAir} morian con {@code NoClassDefFoundError} <em>antes de la primera
+     * asercion</em>. Es la misma linea del proyecto: la clase que un test carga no puede nombrar un
+     * tipo de Minecraft ni de refilon. El sitio de display -- que no se testea -- es quien lee el
+     * nivel y lo pasa.</p>
+     */
+    private static ReachProfile displayedCone(WeaponStats stats, int sweepLevel) {
+        ReachProfile shown = stats.displayedReach();
+        if (stats.profile() != WeaponProfile.HALBERD) {
+            return shown;
+        }
+        return com.cortes.combat.special.HalberdSweep.reachFor(shown, sweepLevel);
     }
 }

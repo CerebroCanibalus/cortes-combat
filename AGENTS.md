@@ -649,6 +649,15 @@ tiene los números, y el hook vive donde el número se cobra.
 | `quebranto` | pesadas (clase `heavy`) | −8 % de armadura por stack, **máx 3**, 4 s, reaplicar refresca | `CombatEngine.applyOnHitEffects` |
 | `desvio_vampirico` | shotel (molde `sabre`) | al **parriar** robás **1 ♥ de vida máxima** y cada parry **suma otro**; el nivel es el **tope** (L1 1 ♥ · L4 4 ♥), 10 s, refresca | `ParryHandler` -- **dos efectos**, `VAMPIRIC` (el acumulado) y `DRAINED` (1 ♥ por parry) |
 | `mecha_corta` | arcabuz (molde `arcabuz`) | la mecha **20 → 15 → 10** ticks | `Arcabuz.light(fuse)` (el total por argumento) + `ArcabuzFuseState.progress(totalTicks)` -- **el cliente divide por el total, no por la constante** |
+| `barredor` | alabarda (molde `halberd`) | el cono del **barrido** crece **×1,15/×1,30** (sobre el ×1,35 base), en distancia **y** en ancho | `HalberdSweep.reachFor(reach, nivel)` + **`MaceAir.displayedFor(stats, holder, sweepLevel)`**: el HUD muestra el cono del **barrido**, y los **4 sitios de display** leen el nivel (`CombatEnchantments.barredorLevel`) |
+
+> **La linea "nada en `src/test` puede nombrar un tipo de Minecraft" es mas larga de lo que parece: la
+> clase QUE EL TEST CARGA tampoco.** `MaceAir` llamaba a `CombatEnchantments.level(...)`, cuya firma
+> declara un `HolderLookup.Provider`, y **los tres tests de `MaceAir` murieron con
+> `NoClassDefFoundError` antes de la primera asercion** — sin que el archivo de test nombrara nada.
+> La regla real es *"la clase que un test carga no puede **nombrar** un tipo de Minecraft, ni en su
+> firma ni en un metodo al que llame"*, y el nivel de Barredor entra como **argumento** por eso: el
+> sitio de display, que no se testea, es quien lee el encantamiento y lo pasa.
 
 > **5 efectos nuevos, y las cuentas viven en `CombatEnchantRules` (pura) y no en los efectos.** Un
 > `MobEffect` extiende una clase de Minecraft, así que un método suyo **no se puede cargar en un

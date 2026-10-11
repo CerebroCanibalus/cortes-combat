@@ -356,6 +356,23 @@ class CombatEnchantRulesTest {
     }
 
     @Test
+    @DisplayName("**Barredor: el cono crece 1,15 y 1,30, sobre la base que le pasen**")
+    void barredor() {
+        assertEquals(1.35F, CombatEnchantRules.sweepScale(0, 1.35F), 1.0E-6,
+                "sin encantamiento, el barrido de fabrica");
+        assertEquals(1.5525F, CombatEnchantRules.sweepScale(1, 1.35F), 1.0E-6);
+        assertEquals(1.755F, CombatEnchantRules.sweepScale(2, 1.35F), 1.0E-6);
+        assertEquals(1.755F, CombatEnchantRules.sweepScale(9, 1.35F), 1.0E-6,
+                "un nivel de mas vale el maximo");
+        assertTrue(CombatEnchantRules.sweepScale(1, 1.35F) < CombatEnchantRules.sweepScale(2, 1.35F),
+                "y los dos niveles son distintos: un L2 que valiera lo mismo que el L1 es un nivel "
+                        + "que el jugador paga y no recibe");
+        assertEquals(2.0F, CombatEnchantRules.sweepScale(0, 2.0F), 1.0E-6,
+                "**la base es un argumento**: el 1,35 de fabrica vive en HalberdSweep, y esta tabla "
+                        + "no tiene por que saber de barridos");
+    }
+
+    @Test
     @DisplayName("los niveles fuera de rango se clampean")    void levelsAreClamped() {
         assertEquals(CombatEnchantRules.parryCooldown(100, 2),
                 CombatEnchantRules.parryCooldown(100, 9),

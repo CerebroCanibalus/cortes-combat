@@ -67,7 +67,8 @@ public final class ConeDebugRenderer {
         // The shot's cone when there is one: the debug draw has to describe what the player is being shown, or /cc cone reports a different weapon from the HUD.
         // And the air bonus on top, for the same reason: the HUD draws the maza wider while it
         // falls, so a cone that did not would report a weapon the player is not holding.
-        ReachProfile reach = com.cortes.combat.attack.MaceAir.displayedFor(stats, player);
+        ReachProfile reach = com.cortes.combat.attack.MaceAir.displayedFor(stats, player,
+                com.cortes.combat.enchant.CombatEnchantments.barredorLevel(player));
         Vec3 eye = player.getEyePosition();
         Vec3 look = player.getLookAngle();
 

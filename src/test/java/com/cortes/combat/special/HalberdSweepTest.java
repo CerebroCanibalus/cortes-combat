@@ -110,6 +110,25 @@ class HalberdSweepTest {
 
     /** The arc is drawn at the edge of what happened, not at a distance inherited from before. */
     @Test
+    @DisplayName("**Barredor: el barrido llega mas lejos Y mas ancho, y el vertical no se toca**")
+    void barredorGrowsTheArc() {
+        ReachProfile base = HalberdSweep.reachFor(HALBERD);
+        ReachProfile one = HalberdSweep.reachFor(HALBERD, 1);
+        ReachProfile two = HalberdSweep.reachFor(HALBERD, 2);
+
+        assertTrue(one.distance() > base.distance(), "el L1 llega mas lejos que el barrido pelado");
+        assertTrue(two.distance() > one.distance(), "y el L2 mas que el L1");
+        assertTrue(one.horizontalAngle() > base.horizontalAngle(),
+                "**y el arco tambien se abre.** Un barrido que creciera solo en distancia seria una "
+                        + "estocada con mas alcance, y la alabarda ya tiene una estocada: lo que "
+                        + "Barredor vende es mas arco, asi que el arco es lo que crece");
+        assertEquals(base.verticalAngle(), two.verticalAngle(), 1.0E-6,
+                "**el vertical NO se toca**, ni con el nivel maximo: la alabarda ya tiene el cono "
+                        + "mas alto del juego y abrirlo tambien convertiria el barrido en un cono");
+        assertEquals(35.0F, two.verticalAngle(), 1.0E-6);
+    }
+
+    @Test
     @DisplayName("the arc is drawn at a share of the reach it belongs to")
     void theArcFollowsTheReach() {
         ReachProfile sweep = HalberdSweep.reachFor(HALBERD);

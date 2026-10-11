@@ -162,6 +162,7 @@ public class CortesLanguageProvider extends LanguageProvider {
     add("enchantment.cortescombat.quebranto", spanish ? "Quebranto" : "Sunder");
     add("enchantment.cortescombat.desvio_vampirico", spanish ? "Desvío Vampírico" : "Vampiric Deflection");
     add("enchantment.cortescombat.mecha_corta", spanish ? "Mecha Corta" : "Short Fuse");
+    add("enchantment.cortescombat.barredor", spanish ? "Barredor" : "Sweeper");
     }
 
     /**

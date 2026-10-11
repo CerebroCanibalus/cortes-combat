@@ -121,7 +121,8 @@ public final class CombatAim {
         // The displayed cone with the air bonus applied, like the brackets it sits next to: the aim
         // marker's job is to say where the swing goes, and the maza's cone grows while it falls.
         ClientCombatState.setAiming(stillAiming(player, held,
-                com.cortes.combat.attack.MaceAir.displayedFor(WeaponStats.of(held), player)));
+                com.cortes.combat.attack.MaceAir.displayedFor(WeaponStats.of(held), player,
+                        com.cortes.combat.enchant.CombatEnchantments.barredorLevel(player))));
     }
 
     /**

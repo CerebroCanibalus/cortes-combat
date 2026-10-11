@@ -42,7 +42,8 @@ public final class HudGeometryDump {
         int guiHeight = mc.getWindow().getGuiScaledHeight();
         // The cone the brackets actually drew, which is the one /cc hud exists to explain.
         ReachProfile reach = com.cortes.combat.attack.MaceAir.displayedFor(
-                WeaponStats.of(player.getMainHandItem()), player);
+                WeaponStats.of(player.getMainHandItem()), player,
+                com.cortes.combat.enchant.CombatEnchantments.barredorLevel(player));
         double fov = mc.options.fov().get();
 
         ConeGauge.Geometry g = ConeGauge.geometry(reach.horizontalAngle(), guiWidth, guiHeight,

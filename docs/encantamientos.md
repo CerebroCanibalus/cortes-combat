@@ -6,9 +6,9 @@
 > esto**: entre los dos había **nueve nombres para mecánicas distintas**, y esa era la primera cosa a
 > limpiar.
 >
-> **Estado (2026-10-11):** **21 encantamientos implementados** y en la mesa. Además, dos arreglos de
+> **Estado (2026-10-11):** **22 encantamientos implementados** y en la mesa. Además, dos arreglos de
 > cliente: **la animación de la azada** (iba hacia la derecha) y **Mecha Corta**, que resultó no
-> necesitar arte — ver §6. Los ~12 restantes tienen sus números **aprobados hasta el playtest final**.
+> necesitar arte — ver §6. Los ~11 restantes tienen sus números **aprobados hasta el playtest final**.
 
 ---
 
@@ -168,9 +168,17 @@ Ya tiene Density, Breach y Wind Burst de vanilla. Caída Astuta, Peso Muerto y O
 
 | Encantamiento | Niv | Efecto | Hook |
 |---|---|---|---|
-| **Barredor** | 2 | el barrido alcanza **+1/+2 objetivos** **y** el área crece **×1,15/×1,30** (sobre el ×1,35 de base) | `HalberdSweep` (objetivos y escalas). **El HUD del cono lee el nivel** -- confirmado por el dueño |
+| **Barredor** | 2 | el cono del barrido crece **×1,15/×1,30** (sobre el ×1,35 de base), en distancia **y** en ancho | ✅ **HECHO** -- `HalberdSweep.reachFor(reach, nivel)` + **los 4 sitios de display leen el nivel** (`MaceAir.displayedFor(stats, holder, sweepLevel)`, que a su vez llama a `CombatEnchantments.barredorLevel`) |
 | **Segunda Pasada** | 2 | si el barrido **no mató a nadie**, devuelve el **30 %/50 %** del cooldown | tras el barrido |
 | **Destripamiento** | 2 | los ataques **cargados** causan **Sangrado**: **1 ♥ cada 2 s durante 6 s** (L1) / **durante 10 s** (L2) | `MobEffect` propio **Sangrado** (`applyEffectTick`) |
+
+> **"+1/+2 objetivos" se cayó al escribir el código, y hay que decirlo.** El barrido **no tiene tope de
+> objetivos**: `SpecialHandler.targetsInCone` devuelve **todos** los que estén en el cono, y el barrido
+> los golpea a todos. Un "+1/+2 objetivos" no tiene dónde aplicarse porque no hay un número del que
+> sumar. **Lo que sí hace el encantamiento es agrandar el área, y un área más grande alcanza más
+> objetivos por sí sola** -- así que el efecto que el jugador ve es el que el documento prometía, por
+> un mecanismo distinto del que el documento describía. Si el dueño quiere un tope, es una decisión
+> nueva y se toma sobre el número, no sobre el texto.
 
 > **"Sweeping" no se usa como nombre**: es Sweeping Edge, la onda de filo. ∴ **Barredor**.
 > **Muralla queda descartada** (reemplazada por Destripamiento).

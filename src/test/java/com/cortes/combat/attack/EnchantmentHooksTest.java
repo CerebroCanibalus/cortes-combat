@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -499,6 +501,45 @@ class EnchantmentHooksTest {
         String model = readFile("src/main/java/com/cortes/combat/client/ArcabuzModelProperties.java");
         assertTrue(model.contains("CombatEnchantRules.fuseTicks("),
                 "y el predicado -- que es quien tiene el stack -- es el que calcula el total");
+    }
+
+    /**
+     * **Barredor: el nivel tiene que llegar al servidor Y al indicador.**
+     *
+     * <p>Es el unico encantamiento del proyecto con un <b>veto</b> escrito para el, el C4 del
+     * documento de diseno: "alcance extendido: obliga al HUD del cono a releer el nivel; si se
+     * olvida, <em>el indicador miente</em>". Asi que este guard no pregunta si el encantamiento
+     * existe: pregunta por las dos mitades, y por <b>todos</b> los sitios que dibujan el cono.</p>
+     */
+    @Test
+    @DisplayName("Barredor: el servidor agranda el barrido y los cuatro sitios de display lo dicen")
+    void barredorReachesBothSides() {
+        String special = readFile("src/main/java/com/cortes/combat/special/SpecialHandler.java");
+        assertTrue(special.contains("HalberdSweep.reachFor(stats.reach(), barredor)"),
+                "**el servidor no agranda el barrido**: el encantamiento existe, se puede poner en "
+                        + "la alabarda, y el area no cambia");
+        assertTrue(special.contains("CombatEnchantments.BARREDOR"),
+                "y el nivel sale del stack que tiro el barrido");
+
+        String air = readFile("src/main/java/com/cortes/combat/attack/MaceAir.java");
+        assertTrue(air.contains("HalberdSweep.reachFor(shown, sweepLevel)"),
+                "**y el indicador no lo dibuja.** Un alcance que crece y un crosshair que no lo dice "
+                        + "es la mentira que el veto C4 existe para prevenir, y se reporta como 'no "
+                        + "noto el encantamiento' y no como un bug");
+
+        // **Y los cuatro, no uno.** El veto habla del HUD, pero el cono lo dibujan cuatro sitios y
+        // el que se olvide es el que miente: el crosshair, los corchetes, `/cc cone` y `/cc hud`.
+        List<String> blind = new ArrayList<>();
+        for (String file : List.of("CombatAim.java", "CooldownBracketLayer.java",
+                "ConeDebugRenderer.java", "HudGeometryDump.java")) {
+            if (!readFile("src/main/java/com/cortes/combat/client/" + file).contains("barredorLevel(")) {
+                blind.add(file);
+            }
+        }
+        assertTrue(blind.isEmpty(),
+                "**estos sitios siguen dibujando el cono viejo: " + blind + ".** El alcance del "
+                        + "barrido crece con Barredor y el marcador tiene que crecer con el, o el "
+                        + "jugador se cree fuera de rango de un barrido que lo alcanza");
     }
 
     /** Y el arcabuz, donde vive la recarga que Pólvora Seca acorta. */

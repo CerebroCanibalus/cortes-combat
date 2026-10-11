@@ -222,7 +222,15 @@ public final class SpecialHandler {
     private static final int SLOWNESS_AMPLIFIER = 3;
 
     private static void sweep(ServerPlayer player, ServerLevel level, WeaponStats stats) {
-        var reach = HalberdSweep.reachFor(stats.reach());
+        // **Barredor, y el nivel sale del stack que tiro el barrido.**
+        //
+        // El barrido cubre mas con el encantamiento, y el cono que el HUD dibuja tiene que decir lo
+        // mismo -- ver `MaceAir.displayedFor`, que pregunta por este numero. Un alcance que crece y un
+        // indicador que no lo dice es la mentira que el veto C4 del documento de diseno existe para
+        // prevenir.
+        int barredor = CombatEnchantments.level(player.level().registryAccess(),
+                player.getMainHandItem(), CombatEnchantments.BARREDOR);
+        var reach = HalberdSweep.reachFor(stats.reach(), barredor);
         List<LivingEntity> targets = targetsInCone(player, reach);
 
         // The sound and the sweep particle happen whether or not anything was hit. The swing is an
