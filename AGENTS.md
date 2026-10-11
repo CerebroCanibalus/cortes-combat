@@ -662,6 +662,7 @@ tiene los números, y el hook vive donde el número se cobra.
 | `gripa` | daga (molde `dagger`) | stacks de **Moco**: 1 de daño por stack cada 20/15 ticks, máx 4/6, y **estornuda** cada 40 (partícula del panda) | `ModEffects.MOCO` + `MocoEffect` -- **sin arte nuevo** |
 | `corte_gemelo` | shotel (molde `sabre`) | el golpe normal da un **segundo corte al 50 %**; **L1 cada 4 s**, **L2 siempre** | `state/CorteGemelo` (el reloj) + `CombatEngine.lastRoundOnHit` |
 | `capacitor` | shotel (molde `sabre`) | el proyectil parriado vuelve como **rayo**: **3/4 + el daño base**, y **quema 4 s** | `ParryHandler` -- la rama de `ParrySource.cameThroughTheAir`, **que ya existía** |
+| `rey_de_las_moscas` | arcabuz (molde `arcabuz`) | el disparo deja una **nube de moscas** en el objetivo: **4 de daño cada 10 ticks, 4 s, radio 3**. El **dueño queda afuera** | `MobCloud` (entidad invisible) + `MobCloudRenderer` (**vacío, pero REGISTRADO**) + rama al tope de `Arcabuz.fire` -- **la munición sigue siendo Firestone, no carne podrida todavia** |
 | `retirada` | ropera (molde `ropera`) | **agachado**, el lunge sale **para atrás** y el golpe al frente (100 %) se cobra **en el press** | `SpecialHandler.retreat` + `LungeMotion` (el **signo** del impulso) — **el golpe va a `Lunge.prehit`**, al mismo conjunto que barre la marcha, para no cobrar dos veces |
 
 > **La linea "nada en `src/test` puede nombrar un tipo de Minecraft" es mas larga de lo que parece: la

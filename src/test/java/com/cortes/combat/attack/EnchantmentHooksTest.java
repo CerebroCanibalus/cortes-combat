@@ -305,6 +305,48 @@ class EnchantmentHooksTest {
                         + "golpe que ya estaba pagado");
     }
 
+    /**
+     * **Rey de las Moscas, y su cadena entera.**
+     *
+     * <p>Lo que importa no es que la nube exista sino que <b>se dibuje</b>: un EntityType sin
+     * renderer no es una entidad invisible, es un NPE en el render thread, y eso se cayo en las
+     * fuentes antes que en un cliente.</p>
+     */
+    @Test
+    @DisplayName("Rey de las Moscas deja una nube que se dibuja y que lastima")
+    void theFlyLordLeavesAWorkingCloud() {
+        String arcabuz = readArcabuz();
+        assertTrue(arcabuz.contains("CombatEnchantments.REY_DE_LAS_MOSCAS"),
+                "**El disparo nunca pregunta por Rey de las Moscas**, asi que el encantamiento se "
+                        + "puede poner en el arcabuz y el disparo hace lo de siempre");
+        assertTrue(arcabuz.contains("com.cortes.combat.registry.ModEntities.MOB_CLOUD.get()"),
+                "**El disparo no suelta la nube**");
+
+        String cloud = readFile("src/main/java/com/cortes/combat/entity/MobCloud.java");
+        assertTrue(cloud.contains("CombatEnchantRules.MOSCAS_DAMAGE"),
+                "**La nube no lastima**: es un enjambre de moscas que no le hace nada a nadie");
+        assertTrue(cloud.contains("MoscaParticles.swarm("),
+                "**Y no suelta moscas**, asi que es una caja invisible y silenciosa");
+        assertTrue(cloud.contains("if (age % DAMAGE_TICKS != 0)"),
+                "**Y lastima cada tick** en vez de cada diez, que es un disparo que mata solo");
+
+        // El renderer, que no dibuja nada y aun asi tiene que existir. EntityRenderDispatcher
+        // dereferencia el renderer en shouldRender y en render SIN GUARDA de nulo, asi que un
+        // EntityType sin renderer registrado no es una entidad invisible: es un NPE en el render
+        // thread la primera vez que alguien mira hacia ahi.
+        //
+        // Se afirma por separado y no el emparejamiento exacto: casar la indentacion y el fin de
+        // linea hace un guard que falla por una razon que no tiene nada que ver con lo que afirma
+        // -- que en este repo es CRLF en unos archivos y LF en otros.
+        String client = readFile("src/main/java/com/cortes/combat/client/CortesCombatClient.java");
+        assertTrue(client.contains("ModEntities.MOB_CLOUD.get(),"),
+                "**La nube no esta registrada como entidad**, asi que el disparo no tiene nada "
+                        + "que soltar");
+        assertTrue(client.contains("MobCloudRenderer::new);"),
+                "**Nadie le registra un renderer a la nube**, y un EntityType sin renderer es un "
+                        + "NPE en el cliente, no una entidad invisible");
+    }
+
     @Test
     @DisplayName("Filo Fugaz se fue con Adrenalina")    void fleetingEdgeIsGone() {
         // **El test viejo vivio aca y su asercion era la mitad del encantamiento que ya no existe.**

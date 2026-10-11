@@ -1,0 +1,11 @@
+{
+  "anvil_cost": 2,
+  "description": { "translate": "enchantment.cortescombat.rey_de_las_moscas" },
+  "max_cost": { "base": 45, "per_level_above_first": 20 },
+  "max_level": 1,
+  "min_cost": { "base": 18, "per_level_above_first": 20 },
+  "primary_items": "#cortescombat:profile/arcabuz",
+  "slots": [ "mainhand" ],
+  "supported_items": "#cortescombat:profile/arcabuz",
+  "weight": 2
+}

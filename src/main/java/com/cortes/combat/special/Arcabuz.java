@@ -483,6 +483,41 @@ public final class Arcabuz {
             return;
         }
 
+        // **Rey de las Moscas: el disparo deja una nube en vez de estallar.**
+        //
+        // Va aca, al tope y antes de resolver el cono, porque no es un bonus sobre el disparo --
+        // es OTRA arma. El disparo normal cuesta una Firestone y devuelve daño inmediato sobre
+        // diez cuerpos; este cuesta carne podrida y devuelve una nube que lastima por cuatro
+        // segundos a todo el que se quede adentro. Los dos no pueden cobrarse juntos: seria el
+        // golpe entero y encima el area, que es la forma en que un encantamiento deja de ser una
+        // eleccion.
+        //
+        // El cono igual se consulta: es lo que decide DONDE cae la nube, y sin un objetivo no hay
+        // nube que valga un disparo al aire.
+        int flies = CombatEnchantments.level(level.registryAccess(), player.getMainHandItem(),
+                CombatEnchantments.REY_DE_LAS_MOSCAS);
+        if (flies > 0) {
+            List<LivingEntity> seen = targetsInCone(player, level, stats.shotReach());
+            if (seen.isEmpty()) {
+                trace(player, player.getData(ModAttachments.ARCABUZ.get()),
+                        "rey de las moscas: sin objetivo, disparo perdido");
+                return;
+            }
+            LivingEntity landing = seen.get(0);
+            com.cortes.combat.entity.MobCloud cloud = new com.cortes.combat.entity.MobCloud(
+                    com.cortes.combat.registry.ModEntities.MOB_CLOUD.get(), level);
+            // A la altura de la caja y no a los pies, que es la regla que ya pagan el fogonazo y
+            // la sangre: `getY` es el suelo y una nube en el piso es polvo en los tobillos.
+            var box = landing.getBoundingBox();
+            cloud.setPos((box.minX + box.maxX) * 0.5,
+                    (box.minY + box.maxY) * 0.5 - 0.5, (box.minZ + box.maxZ) * 0.5);
+            cloud.setOwner(player);
+            level.addFreshEntity(cloud);
+            ModNetworking.sendFeedback(player, CombatFeedback.HIT);
+            CombatSounds.play(level, landing, WeaponProfile.ARCABUZ, ModSounds.Kind.HIT);
+            return;
+        }
+
         // Found and hit are two numbers, and both are on the log line: `encontrados` is what the
         // cone saw and `golpeados` is what it capped to and actually damaged, so the cap biting
         // is legible in the log rather than a number somebody has to reconstruct.

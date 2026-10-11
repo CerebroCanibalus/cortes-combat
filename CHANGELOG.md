@@ -946,3 +946,37 @@ en la sesion; ahora pide la linea de uso.
 
 1060 tests verdes (eran 1054). Las moscas quedan **listas pero sin cablear**: Rey de las Moscas las
 dispara con una llamada, y esta anotado como falta en el guard correspondiente.
+
+### Rey de las Moscas deja la nube - y un EntityType sin renderer no es invisible
+
+La nube existe, se dibuja con las moscas que le suelta adentro, y lastima por proximidad cuatro
+segundos. El encantamiento esta declarado, en `IDS`, con archivo, tag e idioma en los ocho.
+
+**Lo que costo no fue la nube: fue descubrir que un EntityType sin renderer registrado no es una
+entidad invisible sino un NPE en el cliente.** Verificado en las fuentes de 1.21.1:
+`EntityRenderDispatcher#shouldRender` toma `getRenderer(entity)` y lo dereferencia EN LA LINEA
+SIGUIENTE, sin guarda -- lo mismo en `render`. El mapa devuelve null para lo que nadie registro, y
+null no es "no dibujar". Asi que `MobCloudRenderer` existe, tiene el cuerpo del `render` VACIO, y
+ese vacio es correcto: la nube la dibujan las particulas, no el renderer. Diez lineas que son el
+precio de no tener un cliente que se cae.
+
+**Y el daño es de la nube, no de un efecto.** "No reinfecta" queda resuelto sin apilar nada: el
+cobro sale del reloj de la nube, asi que hay una sola verdad por nube, y dos disparos al mismo
+sitio son dos nubes cobrando cada una la suya. El dueño queda afuera (veto C2), igual que en el
+reventon de Sentencia y en la nube de Santa Muerte.
+
+**LO QUE NO ESTA HECHO, y es la mitad del diseño: la munición.** El diseño dice que gasta carne
+podrida y no Firestone -- que es la identidad entera del encantamiento (munición gratis). Hoy
+gasta Firestone igual que un disparo normal, o sea que lo que cambia es QUÉ devuelve (un area que
+dura) y no QUÉ cuesta. `firestoneSlot` es el sitio, y es un refactor del bucle del arma que no se
+toco en esta ronda.
+
+**Y una trampa de Herramienta, tercera vez en la sesion y la mas cara:** un `String.Replace` de
+PowerShell reemplaza TODAS las ocurrencias. El sabotaje del renderer usaba `SlashWaveRenderer::new);`
+como texto de reversión, y ese string esta en dos sitios -- asi que la reversión puso el renderer
+de la nube donde iba el de la onda, rompió la compilación, y el script reportó `EXIT=1 muertos=0`
+cuatro veces seguidas antes de que mirara el archivo. **Un sabotaje que no compila no es sabotaje,
+y una reversión que pisa no es una reversión.**
+
+1061 tests verdes. Faltan tres cosas y ninguna es chica: **la munición de Rey de las Moscas**,
+**Pala Antimaterial** y **Mungus**.

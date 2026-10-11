@@ -1,6 +1,7 @@
 package com.cortes.combat.registry;
 
 import com.cortes.combat.CortesCombat;
+import com.cortes.combat.entity.MobCloud;
 import com.cortes.combat.entity.SlashWave;
 
 import net.minecraft.world.entity.EntityType;
@@ -39,6 +40,25 @@ public final class ModEntities {
                     .clientTrackingRange(8)
                     .updateInterval(1)
                     .build("slash_wave"));
+
+    /**
+     * La nube de moscas de Rey de las Moscas.
+     *
+     * <p><b>Tamaño chico y a proposito.</b> El volumen que lastima lo infla la logica contra
+     * {@code MOSCAS_RADIUS}, no la caja de la entidad -- una caja grande haria que la nube chocara
+     * contra paredes que no deberia tocar, y es {@code noPhysics} justo para que no choque con
+     * nada.</p>
+     *
+     * <p>{@code clientTrackingRange(10)} y no 8: el alcance del disparo es de ocho bloques, y el
+     * jugador que lo ve venir esta mas lejos que el que lo recibe.</p>
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<MobCloud>> MOB_CLOUD =
+            ENTITY_TYPES.register("mob_cloud", () -> EntityType.Builder
+                    .<MobCloud>of(MobCloud::new, MobCategory.MISC)
+                    .sized(0.1F, 0.1F)
+                    .clientTrackingRange(10)
+                    .updateInterval(1)
+                    .build("mob_cloud"));
 
     private ModEntities() {
     }

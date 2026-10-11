@@ -198,6 +198,14 @@ public class CortesCombatClient {
             net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(com.cortes.combat.registry.ModEntities.SLASH_WAVE.get(),
                 SlashWaveRenderer::new);
+        // **Y la nube de moscas, aunque su renderer no dibuje nada.**
+        //
+        // No es decoracion: `EntityRenderDispatcher` dereferencia el renderer en `shouldRender` y
+        // en `render` sin guarda de nulo, asi que un EntityType sin renderer registrado no es una
+        // entidad invisible sino un NPE en el render thread la primera vez que alguien mira hacia
+        // ahi. Lo que dibuja la nube son las particulas que el servidor le suelta adentro.
+        event.registerEntityRenderer(com.cortes.combat.registry.ModEntities.MOB_CLOUD.get(),
+                MobCloudRenderer::new);
     }
 
     public static void onClientSetup(FMLClientSetupEvent event) {
