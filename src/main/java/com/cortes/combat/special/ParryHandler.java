@@ -143,25 +143,34 @@ public final class ParryHandler {
         CombatSounds.play(level, attacker, WeaponProfile.SABRE, ModSounds.Kind.PARRY);
         ModNetworking.sendFeedback(player, CombatFeedback.GUARDED);
 
-        // **Desvio Vampirico: el parry roba vida maxima.**
+        // **Desvio Vampirico: el parry roba vida maxima, y CADA parry suma un corazon.**
         //
         // Dos efectos y no uno: ver DrainedEffect -- un solo efecto no puede sumarle al que desvia y
         // restarle al desviado, porque `createModifiers` no sabe a quien se lo estan aplicando.
         //
-        // **Y el piso se pregunta ANTES de aplicar nada.** Bajarle el techo a un cuerpo le baja la
-        // vida actual -- vanilla la clampea cada tick y no hay forma de evitarlo -- asi que lo unico
-        // que se puede garantizar es que no mate: si al enemigo le quedaria el techo por debajo de
-        // uno, el robo no se cobra. Un desvio sin premio es mejor que una ejecucion gratuita sobre
-        // cualquiera que este tocado, que es el veto que el proyecto ya tiene escrito.
+        // **El nivel es el TOPE del acumulado, no el tamano del robo.** Cada desvio suma un corazon
+        // al jugador y se lo quita al enemigo, y el nivel dice cuantos corazones aguanta la cadena:
+        // al cuatro hay que desviar cuatro veces para llegar. El acumulado ES el amplifier del
+        // efecto -- contarlo aparte seria una segunda verdad sobre cuanta vida maxima tiene el
+        // jugador, y la primera es el efecto.
+        //
+        // **Y el enemigo pierde UNO por parry, no el acumulado.** Aplicarle el total le bajaria el
+        // techo por todo lo que robaste en esta cadena, incluso lo que le robaste a otro.
         int vampiric = CombatEnchantments.level(player.level().registryAccess(),
                 player.getMainHandItem(), CombatEnchantments.VAMPIRICO);
         if (vampiric > 0) {
-            int amplifier = CombatEnchantRules.amplifierFor(vampiric);
-            if (CombatEnchantRules.canDrain(attacker.getMaxHealth(), amplifier)) {
+            MobEffectInstance current = player.getEffect(ModEffects.VAMPIRIC);
+            int alreadyStolen = current == null ? 0 : current.getAmplifier() + 1;
+            int stolen = CombatEnchantRules.vampiricoStolen(alreadyStolen, vampiric);
+            // El piso se pregunta ANTES de aplicar nada: bajarle el techo a un cuerpo le baja la
+            // vida actual (vanilla la clampea cada tick) y no hay forma de evitarlo, asi que lo
+            // unico que se puede garantizar es que no mate. Un desvio sin premio es mejor que un
+            // boton de borrar sobre cualquiera que este tocado.
+            if (CombatEnchantRules.canDrain(attacker.getMaxHealth(), 0)) {
                 player.addEffect(new MobEffectInstance(ModEffects.VAMPIRIC,
-                        VampiricEffect.DURATION_TICKS, amplifier, false, true));
+                        VampiricEffect.DURATION_TICKS, stolen - 1, false, true));
                 attacker.addEffect(new MobEffectInstance(ModEffects.DRAINED,
-                        DrainedEffect.DURATION_TICKS, amplifier, false, true));
+                        DrainedEffect.DURATION_TICKS, 0, false, true));
             }
         }
     }

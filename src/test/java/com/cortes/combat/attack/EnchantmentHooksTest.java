@@ -454,6 +454,10 @@ class EnchantmentHooksTest {
         assertTrue(parry.contains("CombatEnchantRules.canDrain("),
                 "**y el piso se pregunta antes de aplicar nada.** Sin eso el robo le baja el techo a "
                         + "cero a un cuerpo tocado, que es la ejecucion gratuita que el proyecto veta");
+        assertTrue(parry.contains("CombatEnchantRules.vampiricoStolen("),
+                "**y el acumulado se lee del efecto.** Sin eso cada parry daria el robo del nivel otra "
+                        + "vez, el tope no existiria y el encantamiento volveria a ser un premio de "
+                        + "una sola vez");
 
         String antiHealing = readFile("src/main/java/com/cortes/combat/effect/AntiHealingHandler.java");
         assertTrue(antiHealing.contains("LivingHealEvent") && antiHealing.contains("setAmount("),

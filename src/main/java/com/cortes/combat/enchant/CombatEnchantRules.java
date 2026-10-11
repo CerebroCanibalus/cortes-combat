@@ -570,6 +570,31 @@ public final class CombatEnchantRules {
     }
 
     /**
+     * Desvio Vampirico: cuantos corazones roba <b>este</b> parry, contando los que ya robaste.
+     *
+     * <h2>El nivel es el TOPE, no el tamano del robo</h2>
+     *
+     * <p><b>Y eso es lo que hace que el encantamiento sea del shotel.</b> Con un robo por nivel, el
+     * nivel compraba un numero mas grande en el primer parry y nada mas -- un premio que se cobra una
+     * vez. Asi, cada parry exitoso suma <b>un corazon</b> al acumulado y el nivel es cuantos
+     * corazones aguanta la cadena: al nivel cuatro hay que desviar <b>cuatro veces</b> para llegar al
+     * tope. El maximo final es el mismo, y la habilidad que lo desbloquea es la lectura repetida, que
+     * es la unica cosa que el sable sabe hacer.</p>
+     *
+     * <p><b>Y de paso arregla el problema de la vida actual.</b> Bajarle el techo a un cuerpo le baja
+     * la vida -- vanilla la clampea cada tick -- y con un robo grande de una sola vez eso era un
+     * golpe; con uno por parry es un desangrado lento que el enemigo puede contestar. El piso de
+     * {@link #canDrain} sigue siendo lo que garantiza que no mate.</p>
+     *
+     * <p><b>Devuelve el acumulado NUEVO</b> y no la diferencia, porque el llamador tiene que
+     * aplicarlo como el nivel del efecto: el acumulado ES el {@code amplifier}, y contarlo aparte
+     * seria una segunda verdad sobre cuanta vida maxima tiene el jugador.</p>
+     */
+    public static int vampiricoStolen(int alreadyStolen, int level) {
+        return Math.min(clamp(level, VAMPIRICO_MAX_LEVEL), Math.max(0, alreadyStolen) + 1);
+    }
+
+    /**
      * Un nivel dentro de los que el encantamiento tiene.
      *
      * <p>Clampear y no confiar en el dato es la regla del proyecto para todo número que entra desde

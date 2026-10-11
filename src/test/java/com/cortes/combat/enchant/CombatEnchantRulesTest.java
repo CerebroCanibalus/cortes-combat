@@ -326,6 +326,24 @@ class CombatEnchantRulesTest {
     }
 
     @Test
+    @DisplayName("**Desvio Vampirico: el nivel es el TOPE del acumulado, no el robo de una vez**")
+    void vampiricoAccumulates() {
+        assertEquals(1, CombatEnchantRules.vampiricoStolen(0, 1), "primer parry al nivel I: un corazon");
+        assertEquals(1, CombatEnchantRules.vampiricoStolen(1, 1),
+                "**y al nivel I no sube mas**: el tope es el nivel, asi que un segundo parry solo "
+                        + "refresca el timer");
+        assertEquals(2, CombatEnchantRules.vampiricoStolen(1, 4), "al nivel IV, el segundo suma");
+        assertEquals(4, CombatEnchantRules.vampiricoStolen(3, 4), "y el cuarto llega al tope");
+        assertEquals(4, CombatEnchantRules.vampiricoStolen(4, 4),
+                "**y ahi se queda**: cuatro corazones es el maximo que este encantamiento da");
+        assertEquals(0, CombatEnchantRules.vampiricoStolen(0, 0), "sin encantamiento no roba nada");
+
+        assertTrue(CombatEnchantRules.vampiricoStolen(2, 4) > CombatEnchantRules.vampiricoStolen(1, 4),
+                "**y cada parry suma**: es la identidad del sable -- la lectura repetida -- la que "
+                        + "desbloquea el tope, y un robo que no acumulara seria un premio de una vez");
+    }
+
+    @Test
     @DisplayName("los niveles fuera de rango se clampean")    void levelsAreClamped() {
         assertEquals(CombatEnchantRules.parryCooldown(100, 2),
                 CombatEnchantRules.parryCooldown(100, 9),

@@ -213,7 +213,7 @@ Ya tiene Density, Breach y Wind Burst de vanilla. Caída Astuta, Peso Muerto y O
 | Encantamiento | Niv | Efecto | Hook |
 |---|---|---|---|
 | **Reflejo de Acero** | 2 | parry **100 → 80 → 60** ticks | ✅ hecho |
-| **Desvío Vampírico** | **4** | al **parriar**, robás **vida máxima**: **+1/+2/+3/+4 ♥** al tuyo y se los quita al enemigo, **10 s**, refresca. **La vida actual del enemigo no baja** (sólo su techo) | `MobEffect` propio con `AttributeModifier` sobre `MAX_HEALTH` (patrón Contragolpe) |
+| **Desvío Vampírico** | **4** | al **parriar**, robás **1 ♥ de vida máxima**, y **cada parry exitoso suma otro**. El nivel es el **tope del acumulado** (L1 = 1 ♥ · L4 = 4 ♥): al cuatro hay que **desviar cuatro veces** para llegar. **10 s**, refresca. **La vida actual del enemigo no baja más de lo que el robo implica** (vanilla la clampea; ver el aviso) | `MobEffect` propio con `AttributeModifier` sobre `MAX_HEALTH` (patrón Contragolpe) |
 | **Corte Gemelo** | 2 | el **golpe normal** da **un golpe extra al 50 % del daño base**; **L1 cada 4 s**, **L2 siempre** | el mecanismo del doble golpe del sable ya existe (`IFRAME_TICKS = 3`) |
 | **Capacitor** | 2 | al **desviar un proyectil**, se convierte en un **rayo** (partículas `end_rod` en zigzag) que se devuelve, daña y **quema 4 s**: **3 (L1) / 4 (L2) + el daño base del arma** | la rama de proyectil de `ParrySource` -- **ya existe y tiene test** |
 
