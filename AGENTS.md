@@ -638,6 +638,10 @@ tiene los números, y el hook vive donde el número se cobra.
 | `punta_fina` | ropera (molde `ropera`) | +15 %/+25 % de daño a **1,5 bloques o menos** | `CombatEngine.perTargetBonus` |
 | `filo_astillado` | hacha (clase `axe`) | +6 %/+10 % de daño **por pieza de armadura** del rival (máx 4) | `CombatEngine.perTargetBonus` |
 | `apunalar` | daga (molde `dagger`) | +60 %/+90 % si pegás **desde más de 90° de la espalda** | `CombatEngine.perTargetBonus` |
+| `sanguijuela` | daga (molde `dagger`) | +8 %/+14 % del daño del golpe como **curación** | `CombatEngine.apply`, por golpe que aterriza |
+| `aventurero` | espada (clase `sword`) | **+20 % de XP por nivel**, máx 5 (al 5 = +100 %) | `enchant/AdventurerExperience` -- **al MORIR, no al golpear** |
+| `culata` | arcabuz (molde `arcabuz`) | la bayoneta empuja **+25 %/+50 %/+75 %** | `CombatEngine.enchantPush` |
+| `estocada` | ropera (molde `ropera`) | el golpe **del lunge** ignora **15 %/30 %** de armadura | `CombatEngine.lungePierce`, cobrado en `special/Lunge` |
 
 > **Los tres últimos comparten un solo canal** (`CombatEngine.perTargetBonus`), y es a propósito:
 > los tres son "un porcentaje del daño que depende de algo del objetivo o de la posición", y el modo

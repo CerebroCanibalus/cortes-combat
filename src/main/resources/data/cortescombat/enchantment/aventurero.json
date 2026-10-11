@@ -1,0 +1,21 @@
+{
+  "anvil_cost": 4,
+  "description": {
+    "translate": "enchantment.cortescombat.aventurero"
+  },
+  "max_cost": {
+    "base": 60,
+    "per_level_above_first": 20
+  },
+  "max_level": 5,
+  "min_cost": {
+    "base": 10,
+    "per_level_above_first": 12
+  },
+  "primary_items": "#cortescombat:enchantable/sword",
+  "slots": [
+    "mainhand"
+  ],
+  "supported_items": "#cortescombat:enchantable/sword",
+  "weight": 4
+}

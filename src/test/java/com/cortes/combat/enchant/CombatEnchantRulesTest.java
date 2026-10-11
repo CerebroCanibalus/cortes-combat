@@ -239,6 +239,48 @@ class CombatEnchantRulesTest {
     }
 
     @Test
+    @DisplayName("Sanguijuela: un porcentaje y no un flat, por el tamano de la daga")
+    void sanguijuela() {
+        assertEquals(0.0F, CombatEnchantRules.sanguijuela(0), 1.0E-6);
+        assertEquals(0.08F, CombatEnchantRules.sanguijuela(1), 1.0E-6);
+        assertEquals(0.14F, CombatEnchantRules.sanguijuela(2), 1.0E-6);
+        assertEquals(0.14F, CombatEnchantRules.sanguijuela(9), 1.0E-6, "un nivel de mas vale el maximo");
+    }
+
+    @Test
+    @DisplayName("Aventurero: veinte por ciento por nivel, y **al cinco el doble**")
+    void aventurero() {
+        assertEquals(0.0F, CombatEnchantRules.aventurero(0), 1.0E-6);
+        assertEquals(0.20F, CombatEnchantRules.aventurero(1), 1.0E-6);
+        assertEquals(1.00F, CombatEnchantRules.aventurero(5), 1.0E-6,
+                "**al cinco el doble**: es el numero que el diseno eligio para un encantamiento de "
+                        + "cinco niveles, y es el unico de la lista que llega al cien por ciento");
+        assertEquals(1.00F, CombatEnchantRules.aventurero(9), 1.0E-6);
+    }
+
+    @Test
+    @DisplayName("Culata: 25/50/75 %, con el nivel 3 como tope")
+    void culata() {
+        assertEquals(0.0F, CombatEnchantRules.culata(0), 1.0E-6);
+        assertEquals(0.25F, CombatEnchantRules.culata(1), 1.0E-6);
+        assertEquals(0.50F, CombatEnchantRules.culata(2), 1.0E-6);
+        assertEquals(0.75F, CombatEnchantRules.culata(3), 1.0E-6);
+        assertEquals(0.75F, CombatEnchantRules.culata(9), 1.0E-6);
+    }
+
+    @Test
+    @DisplayName("Estocada: 15/30 %, y **subir de nivel siempre sube**")
+    void estocada() {
+        assertEquals(0.0F, CombatEnchantRules.estocada(0), 1.0E-6,
+                "sin el encantamiento el lunge cobra la armadura entera");
+        assertEquals(0.15F, CombatEnchantRules.estocada(1), 1.0E-6);
+        assertEquals(0.30F, CombatEnchantRules.estocada(2), 1.0E-6);
+        assertEquals(0.30F, CombatEnchantRules.estocada(9), 1.0E-6);
+        assertTrue(CombatEnchantRules.estocada(2) > CombatEnchantRules.estocada(1),
+                "**y el nivel 2 vale mas que el 1**: un nivel que no cambia nada no es un nivel");
+    }
+
+    @Test
     @DisplayName("los niveles fuera de rango se clampean")    void levelsAreClamped() {
         assertEquals(CombatEnchantRules.parryCooldown(100, 2),
                 CombatEnchantRules.parryCooldown(100, 9),

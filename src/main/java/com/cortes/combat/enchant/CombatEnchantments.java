@@ -67,6 +67,22 @@ public final class CombatEnchantments {
     public static final ResourceKey<Enchantment> APUNALAR =
             key(CombatEnchantRules.APUNALAR_ID);
 
+    /** Daga -- Sanguijuela. */
+    public static final ResourceKey<Enchantment> SANGUJUELA =
+            key(CombatEnchantRules.SANGUJUELA_ID);
+
+    /** Espada -- Aventurero. */
+    public static final ResourceKey<Enchantment> AVENTURERO =
+            key(CombatEnchantRules.AVENTURERO_ID);
+
+    /** Arcabuz -- Culata. */
+    public static final ResourceKey<Enchantment> CULATA =
+            key(CombatEnchantRules.CULATA_ID);
+
+    /** Ropera -- Estocada Perforante. */
+    public static final ResourceKey<Enchantment> ESTOCADA =
+            key(CombatEnchantRules.ESTOCADA_ID);
+
     /**
      * El nivel de un encantamiento propio sobre un ítem, por clave.
      *

@@ -52,10 +52,22 @@ public final class CombatEnchantRules {
     /** Daga -- Apuñalar: el golpe por la espalda. */
     public static final String APUNALAR_ID = "apunalar";
 
+    /** Daga -- Sanguijuela: cura por cantidad de golpes, no por daño. */
+    public static final String SANGUJUELA_ID = "sanguijuela";
+
+    /** Espada -- Aventurero: más experiencia al matar. */
+    public static final String AVENTURERO_ID = "aventurero";
+
+    /** Arcabuz -- Culata: la bayoneta empuja. */
+    public static final String CULATA_ID = "culata";
+
+    /** Ropera -- Estocada Perforante: el golpe del lunge entra por donde la armadura no cubre. */
+    public static final String ESTOCADA_ID = "estocada";
+
     /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
     public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID,
             FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID, DRY_POWDER_ID, PUNTA_FINA_ID,
-            FILO_ASTILLADO_ID, APUNALAR_ID);
+            FILO_ASTILLADO_ID, APUNALAR_ID, SANGUJUELA_ID, AVENTURERO_ID, CULATA_ID, ESTOCADA_ID);
 
     /**
      * Los genéricos, que se ponen por <b>clase</b> y no por molde.
@@ -329,6 +341,82 @@ public final class CombatEnchantRules {
     public static double angleBetween(double a, double b) {
         double d = Math.abs(a - b) % 360.0;
         return d > 180.0 ? 360.0 - d : d;
+    }
+
+    // ---------------------------------------------------------------- los otros cuatro
+
+    /**
+     * Sanguijuela (daga): la fracción del daño hecho que vuelve como curación.
+     *
+     * <p><b>Es un porcentaje y no un flat, y el número de la daga es la razón.</b> La daga pega 1,6
+     * a seis ticks: un flat de medio corazón por golpe sería, contra esa base, más de un tercio del
+     * daño entero devuelto como vida. El porcentaje escala con lo que el arma hace, que es la única
+     * forma de que el encantamiento signifique lo mismo en una daga de madera que en una de
+     * netherite.</p>
+     */
+    public static final int SANGUJUELA_MAX_LEVEL = 2;
+
+    public static float sanguijuela(int level) {
+        return switch (clamp(level, SANGUJUELA_MAX_LEVEL)) {
+            case 1 -> 0.08F;
+            case 2 -> 0.14F;
+            default -> 0.0F;
+        };
+    }
+
+    /**
+     * Aventurero (espada): la fracción de experiencia extra al morir, por nivel.
+     *
+     * <p><b>Es un genérico a propósito</b> (decisión del dueño): le da a las espadas un propósito
+     * late-game, y se acepta que su mecánica funcione igual en cualquier arma. Un encantamiento de
+     * XP no es identidad y no se hace pasar por ella.</p>
+     */
+    public static final int AVENTURERO_MAX_LEVEL = 5;
+
+    /** Veinte por ciento por nivel: al cinco, el doble. */
+    public static final float AVENTURERO_PER_LEVEL = 0.20F;
+
+    public static float aventurero(int level) {
+        return AVENTURERO_PER_LEVEL * clamp(level, AVENTURERO_MAX_LEVEL);
+    }
+
+    /**
+     * Culata (arcabuz): la fracción de empuje extra de la bayoneta.
+     *
+     * <p>El arcabuz tiene dos botones, y el izquierdo es "se me acabó la pólvora, uso la bayoneta".
+     * Su función no es pegar -- para eso está el disparo -- sino <b>hacer espacio para recargar</b>,
+     * así que lo que el encantamiento sube es el empuje y no el daño.</p>
+     */
+    public static final int CULATA_MAX_LEVEL = 3;
+
+    public static float culata(int level) {
+        return switch (clamp(level, CULATA_MAX_LEVEL)) {
+            case 1 -> 0.25F;
+            case 2 -> 0.50F;
+            case 3 -> 0.75F;
+            default -> 0.0F;
+        };
+    }
+
+    /**
+     * Estocada Perforante (ropera): la fracción de armadura que el golpe <b>del lunge</b> ignora.
+     *
+     * <p>El lunge es el único ataque del juego que se resuelve por movimiento, y la ropera es la
+     * única que lo tiene. El encantamiento premia la única forma de pelear que ninguna otra arma
+     * puede copiar.</p>
+     *
+     * <p><b>Bajó de 25 %/50 % a 15 %/30 %</b> por pedido del dueño: contra una armadura completa, un
+     * 50 % es media armadura ignorada en cada lunge, y el lunge pega además con el 75 % del daño del
+     * arma.</p>
+     */
+    public static final int ESTOCADA_MAX_LEVEL = 2;
+
+    public static float estocada(int level) {
+        return switch (clamp(level, ESTOCADA_MAX_LEVEL)) {
+            case 1 -> 0.15F;
+            case 2 -> 0.30F;
+            default -> 0.0F;
+        };
     }
 
     /**

@@ -8,6 +8,7 @@ import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.enchant.CombatEnchantRules;
 import com.cortes.combat.enchant.CombatEnchantments;
+import com.cortes.combat.item.WeaponTables;
 import com.cortes.combat.reach.Reach;
 import com.cortes.combat.sound.ModSounds;
 import com.cortes.combat.registry.ModAttachments;
@@ -379,6 +380,19 @@ public final class CombatEngine {
             if (hurt) {
                 landed++;
                 anyLanded = true;
+                // **Sanguijuela: la daga devuelve parte del dano como vida.**
+                //
+                // Por golpe que ATERRIZA y no por swing: la daga es la mas rapida del juego y su
+                // gracia es la CANTIDAD de golpes, no el tamano de ninguno. El porcentaje va sobre
+                // el dano que el golpe cobro, que es el unico numero que significa lo mismo en una
+                // daga de madera que en una de netherite -- un flat de medio corazon seria, contra
+                // los 1,6 de base de la daga, mas de un tercio del dano entero devuelto como vida.
+                float leech = CombatEnchantRules.sanguijuela(CombatEnchantments.level(
+                        player.level().registryAccess(), player.getMainHandItem(),
+                        CombatEnchantments.SANGUJUELA));
+                if (leech > 0.0F) {
+                    player.heal(result.damage() * leech);
+                }
                 // **The wear the replaced flow dropped, and the reason nothing in this game has
                 // ever lost a point of durability.** Vanilla's own `postHurtEnemy` calls
                 // `hurtAndBreak(1, attacker, MAINHAND)` on a landed hit, and it lives on the item
@@ -982,6 +996,43 @@ public final class CombatEngine {
     }
 
     /**
+     * Estocada Perforante: la armadura que el golpe <b>del lunge</b> ignora, o {@code null}.
+     *
+     * <p><b>Mismo mecanismo que Contragolpe y ninguna de sus condiciones.</b> Baja la armadura para
+     * ESTE golpe y el llamador la devuelve enseguida, en un {@code finally}, porque una armadura que
+     * queda baja para siempre es el bug que ninguno de los dos puede dejar atrás. Lo que no comparte
+     * es la ventana: Contragolpe se gasta en un golpe que el jugador eligió, y esto se cobra en cada
+     * golpe del lunge mientras el arma tenga el encantamiento.</p>
+     *
+     * <p><b>Público y no privado</b> porque su llamador vive en otro paquete: el lunge se resuelve en
+     * {@code special/Lunge}, que es donde el movimiento cobra. La alternativa era una segunda copia
+     * de esta aritmética allá, y dos copias de "cuánta armadura ignora" se desincronizan.</p>
+     */
+    public static net.minecraft.world.entity.ai.attributes.AttributeModifier lungePierce(
+            Player player, LivingEntity target) {
+        net.minecraft.world.entity.ai.attributes.AttributeInstance armour = target == null ? null
+                : target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR);
+        if (armour == null) {
+            return null;
+        }
+        float ignored = CombatEnchantRules.estocada(CombatEnchantments.level(
+                player.level().registryAccess(), player.getMainHandItem(),
+                CombatEnchantments.ESTOCADA));
+        if (ignored <= 0.0F) {
+            return null;
+        }
+        return new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                ESTOCADA_MODIFIER_ID, -ignored,
+                net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation
+                        .ADD_MULTIPLIED_TOTAL);
+    }
+
+    /** El id del modificador de Estocada, para poder quitarlo exactamente. */
+    private static final net.minecraft.resources.ResourceLocation ESTOCADA_MODIFIER_ID =
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cortescombat",
+                    "estocada_pierce");
+
+    /**
      * El id del modificador de Contragolpe.
      *
      * <p>Un id fijo y no uno por golpe: se saca con el mismo objeto que se puso, y una identidad
@@ -1007,10 +1058,28 @@ public final class CombatEngine {
         if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
             return 0.0F;
         }
-        float strength = EnchantmentHelper.modifyKnockback(level, player.getWeaponItem(), target,
+        ItemStack weapon = player.getWeaponItem();
+        float strength = EnchantmentHelper.modifyKnockback(level, weapon, target,
                 damageSource(player, result.ignoredArmour(), result.axeCharged()),
                 NO_WEAPON_KNOCKBACK);
-        return ENCHANT_KNOCKBACK_SCALE * Math.max(0.0F, strength);
+        float push = ENCHANT_KNOCKBACK_SCALE * Math.max(0.0F, strength);
+
+        // **Culata: la bayoneta del arcabuz empuja mas, y es lo unico que hace.**
+        //
+        // El arcabuz tiene dos botones y el izquierdo es "se me acabo la polvora, uso la bayoneta":
+        // su funcion no es pegar -- para eso esta el disparo -- sino hacer espacio para recargar.
+        // Asi que el encantamiento sube el empuje y no el dano, y el extra se calcula como una
+        // FRACCION del empuje propio del arma: un numero absoluto sumado a un perfil que ya es de
+        // los mas altos (1,10) se saldria de la escala.
+        //
+        // El gate es el PERFIL y no el item: un weapon pack que declare un arma "tipo arcabuz"
+        // hereda el encantamiento, que es la regla de compatibilidad del proyecto.
+        if (WeaponStats.of(weapon).profile() == WeaponProfile.ARCABUZ) {
+            float culata = CombatEnchantRules.culata(CombatEnchantments.level(
+                    player.level().registryAccess(), weapon, CombatEnchantments.CULATA));
+            push += culata * WeaponTables.knockback(WeaponProfile.ARCABUZ).horizontal();
+        }
+        return push;
     }
 
     /**

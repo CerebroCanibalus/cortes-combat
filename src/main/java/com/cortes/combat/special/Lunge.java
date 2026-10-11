@@ -1,5 +1,6 @@
 package com.cortes.combat.special;
 
+import com.cortes.combat.attack.CombatEngine;
 import com.cortes.combat.attack.Knockback;
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.core.CombatFeedback;
@@ -266,7 +267,26 @@ public final class Lunge {
                             net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE), index);
             Knockback.apply(player, target, stats.knockback(), 0.0F);
             target.invulnerableTime = 0;
-            if (target.hurt(player.damageSources().playerAttack(player), damage)) {
+            // **Estocada Perforante: el golpe del lunge entra por donde la armadura no cubre.**
+            // La armadura se baja para ESTE golpe y se devuelve en un `finally`, que es donde vive
+            // la decision: una armadura que queda baja para siempre es el bug que este encantamiento
+            // no puede dejar atras. Ver `CombatEngine.lungePierce`.
+            net.minecraft.world.entity.ai.attributes.AttributeInstance armour = target.getAttribute(
+                    net.minecraft.world.entity.ai.attributes.Attributes.ARMOR);
+            net.minecraft.world.entity.ai.attributes.AttributeModifier pierced =
+                    CombatEngine.lungePierce(player, target);
+            if (pierced != null) {
+                armour.addTransientModifier(pierced);
+            }
+            boolean landed;
+            try {
+                landed = target.hurt(player.damageSources().playerAttack(player), damage);
+            } finally {
+                if (pierced != null) {
+                    armour.removeModifier(pierced);
+                }
+            }
+            if (landed) {
                 target.invulnerableTime = IFRAME_TICKS;
                 SlashParticles.hit(level, stats.profile(), target, false);
                 // The per-target hit, a sixth of a tone down from the weapon's own: a rising series

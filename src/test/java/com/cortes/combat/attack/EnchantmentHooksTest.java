@@ -331,6 +331,68 @@ class EnchantmentHooksTest {
                         + "en el motor");
     }
 
+    /**
+     * **Los cuatro de la segunda tanda tienen llamador, y en el lugar correcto.**
+     *
+     * <p>Cada uno tiene un hook distinto y por una razón distinta: Sanguijuela y Culata se cobran en
+     * el motor, Estocada en el lunge (que vive en otro paquete) y Aventurero <b>al morir el mob</b>,
+     * no al golpearlo. Un guard que pidiera los cuatro en el mismo archivo estaría afirmando que los
+     * cuatro se cobran en el mismo momento, que es justo lo que no pasa.</p>
+     */
+    @Test
+    @DisplayName("Sanguijuela, Culata, Estocada y Aventurero tienen llamador")
+    void theSecondBatchReachesTheirHooks() {
+        String engine = read();
+        // **Cada guard afirma el USO y no la llamada, y la diferencia costo una ronda.**
+        //
+        // La primera version afirmaba `CombatEnchantRules.sanguijuela(` y el sabotaje que borraba
+        // `player.heal(...)` NO la hacia morir: la regla se seguia llamando, el resultado se seguia
+        // asignando a `leech`, y `leech` no se usaba para nada. Es exactamente el bug del track
+        // BREAK del sable, y el guard tiene que afirmar el numero que llega, no la funcion que se
+        // invoca.
+        assertTrue(engine.contains("CombatEnchantRules.sanguijuela(")
+                        && engine.contains("player.heal("),
+                "**Sanguijuela no cura.** La regla puede estar llamada y el resultado sin usar -- "
+                        + "el encantamiento existe, se puede poner en la daga y no devuelve vida. "
+                        + "Saboteado borrando el `heal`: el guard tiene que morir");
+        assertTrue(engine.contains("CombatEnchantRules.culata(")
+                        && engine.contains("push += culata"),
+                "**Culata no empuja mas.** Mismo caso: la regla llamada y el resultado no sumado al "
+                        + "empuje. Saboteado borrando la suma");
+        assertTrue(engine.contains("CombatEnchantRules.estocada("),
+                "**Estocada no tiene llamador**: el lunge cobra la armadura entera");
+
+        // Y el uso de Estocada esta en OTRO archivo, que es la mitad que un guard de un solo archivo
+        // no ve: la regla puede estar bien y el lunge no pedirla nunca.
+        String lunge = readFile("src/main/java/com/cortes/combat/special/Lunge.java");
+        assertTrue(lunge.contains("lungePierce("),
+                "el lunge no pide la perforacion: Estocada seria un encantamiento del motor de melé "
+                        + "que nunca toca el unico ataque del que es dueño");
+        assertTrue(lunge.contains("removeModifier("),
+                "**y la armadura se devuelve.** Una que queda baja para siempre es el bug que este "
+                        + "encantamiento no puede dejar atras: el `finally` se quedo sin cuerpo");
+
+        String adventurer = readFile("src/main/java/com/cortes/combat/enchant/AdventurerExperience.java");
+        assertTrue(adventurer.contains("LivingExperienceDropEvent"),
+                "**Aventurero se cobra al MORIR y no al golpear.** El hook del golpe cobraria el "
+                        + "bonus por un mob que todavia no murio, y que puede morir despues por otra "
+                        + "cosa -- o no morir");
+        assertTrue(adventurer.contains("CombatEnchantRules.aventurero(")
+                        && adventurer.contains("setDroppedExperience("),
+                "**y el resultado se escribe en el evento.** Leer el nivel y no tocar la experiencia "
+                        + "es un encantamiento que no hace nada, con el build verde");
+    }
+
+    /** Un archivo del repo, leido como texto: para los hooks que viven fuera del motor. */
+    private static String readFile(String relative) {
+        Path file = Path.of(relative);
+        try {
+            return Files.readString(file, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new AssertionError("could not read " + file + ": " + e.getMessage(), e);
+        }
+    }
+
     /** Y el arcabuz, donde vive la recarga que Pólvora Seca acorta. */
     private static String readArcabuz() {
         Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "special",

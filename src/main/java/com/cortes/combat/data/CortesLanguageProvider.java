@@ -151,6 +151,10 @@ public class CortesLanguageProvider extends LanguageProvider {
     add("enchantment.cortescombat.punta_fina", spanish ? "Punta Fina" : "Fine Point");
     add("enchantment.cortescombat.filo_astillado", spanish ? "Filo Astillado" : "Chipped Edge");
     add("enchantment.cortescombat.apunalar", spanish ? "Apuñalar" : "Backstab");
+    add("enchantment.cortescombat.sanguijuela", spanish ? "Sanguijuela" : "Leech");
+    add("enchantment.cortescombat.aventurero", spanish ? "Aventurero" : "Adventurer");
+    add("enchantment.cortescombat.culata", spanish ? "Culata" : "Buttstroke");
+    add("enchantment.cortescombat.estocada", spanish ? "Estocada Perforante" : "Piercing Thrust");
     }
 
     /**
