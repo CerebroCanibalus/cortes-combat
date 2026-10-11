@@ -243,7 +243,6 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         TagKey<Item> all = own("enchantable/all");
         TagKey<Item> loot = own("enchantable/loot");
         TagKey<Item> shove = own("enchantable/shove");
-        TagKey<Item> gun = own("enchantable/gun");
         TagKey<Item> sword = own("enchantable/sword");
         TagKey<Item> durability = TagKey.create(Registries.ITEM,
                 ResourceLocation.withDefaultNamespace("enchantable/durability"));
@@ -267,10 +266,12 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         // de durabilidad, y a ninguna otra -- no es filo, no es contundente y no saquea.
         tag(all).add(ModItems.ARCABUZ.get());
         tag(durability).add(ModItems.ARCABUZ.get());
-        // Y la clase del arma de fuego, que es de uno: el arcabuz es el único que carga mecha, y es
-        // la que le da Quick Charge de vanilla (ver el override del JSON) en vez de un encantamiento
-        // nuestro que dijera lo mismo.
-        tag(gun).add(ModItems.ARCABUZ.get());
+        // **Y ya no hay clase `gun`.** Existía para darle a Quick Charge de vanilla el alcance del
+        // arcabuz, y esa reutilización se cayó en playtest: el efecto de Quick Charge es un número
+        // absoluto (−0,25 s por nivel) y sobre nuestra base de 2,5 s da la mitad de lo que el diseño
+        // pedía. La recarga es ahora **Pólvora Seca**, un encantamiento nuestro que se pone por
+        // MOLDE (`#cortescombat:profile/arcabuz`) como toda identidad -- así que la clase de arma de
+        // fuego no la lee nadie, y un tag que nada lee es una línea que hay que mantener sin motivo.
 
         // El empuje es de lo pesado, y lo pesado incluye lo vanilla reworkeado: hacha, pala y maza.
         // Con `blunt` ya completo (martillos + maza + pala), el empuje es hacha + lo contundente, y
@@ -297,7 +298,6 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         // la clase a la que van Fire Aspect y el empuje, y las tres armas que castigan armadura.
         tag(blunt).add(Items.MACE).addTag(ItemTags.SHOVELS);
         tag(loot).addTag(vanilla("enchantable/sword"));
-        tag(gun).addTag(vanilla("enchantable/crossbow"));
         // La clase de la espada: las de vanilla y las nuestras del molde espada. El molde es un tag
         // aparte a proposito -- `profile/sword` es la lista canonica de que armas nuestras usan ese
         // molde, y meterle las de vanilla la ensuciaria para su otro lector (WeaponStats).

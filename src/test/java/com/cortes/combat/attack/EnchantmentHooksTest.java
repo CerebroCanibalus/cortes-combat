@@ -234,6 +234,30 @@ class EnchantmentHooksTest {
     }
 
     /**
+     * **Pólvora Seca tiene llamador, y el número sale de las reglas puras.**
+     *
+     * <p>El mismo agujero que los otros cinco: la tabla puede estar perfecta y el arcabuz recargar
+     * en cincuenta ticks. Y una aserción negativa que vale: <b>el helper de Quick Charge de vanilla
+     * no puede volver</b>. Se probó primero, el playtest mostró que daba la mitad de lo que el
+     * diseño pedía, y una reutilización que da la mitad del número no es una reutilización.</p>
+     */
+    @Test
+    @DisplayName("Pólvora Seca llega a la recarga, y Quick Charge no vuelve")
+    void dryPowderReachesTheReload() {
+        String arcabuz = readArcabuz();
+
+        assertTrue(arcabuz.contains("CombatEnchantments.DRY_POWDER"),
+                "**la tabla de recargas necesita quien la lea.** Sin esto el encantamiento esta "
+                        + "escrito, probado y el arcabuz tarda lo mismo");
+        assertTrue(arcabuz.contains("CombatEnchantRules.reloadTicks("),
+                "y el numero sale de las reglas puras, no de una cuenta escrita al lado");
+        assertFalse(arcabuz.contains("modifyCrossbowChargingTime"),
+                "**y Quick Charge no vuelve.** El efecto de vanilla es un numero absoluto: sobre la "
+                        + "base del arcabuz daba la mitad de lo que el diseno pedia, y el playtest "
+                        + "lo midio (de 50 sin encantamiento, de 40 con Quick Charge II)");
+    }
+
+    /**
      * NeoForge's attack hook is fired again, for the target the player aimed at.
      *
      * <p>{@code Player#attack} opens with {@code CommonHooks.onPlayerAttackTarget}, and a replaced
@@ -277,9 +301,19 @@ class EnchantmentHooksTest {
         }
     }
 
+    /** Y el arcabuz, donde vive la recarga que Pólvora Seca acorta. */
+    private static String readArcabuz() {
+        Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "special",
+                "Arcabuz.java");
+        try {
+            return Files.readString(file, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new AssertionError("could not read " + file + ": " + e.getMessage(), e);
+        }
+    }
+
     /** Y el de la guardia, que es donde Contragolpe arma su ventana. */
-    private static String readGuard() {
-        Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "guard",
+    private static String readGuard() {        Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "guard",
                 "GuardHandler.java");
         try {
             return Files.readString(file, StandardCharsets.UTF_8);

@@ -705,22 +705,28 @@ private static void blast(ServerPlayer player, ServerLevel level, Vec3 muzzle,
      * only a log can answer.</p>
      */
     /**
-     * Los ticks que esta recarga va a tardar, <b>Quick Charge incluido</b>.
+     * Los ticks que esta recarga va a tardar, <b>Pólvora Seca incluida</b>.
      *
-     * <p>El encantamiento es <b>el de vanilla</b> y lo lee <b>el helper de vanilla</b>: se le pasa la
-     * base en segundos (nuestros cincuenta ticks) y devuelve los segundos ya modificados, que
-     * {@link ArcabuzState#reloadTicksFor} pasa a ticks con piso. Así el servidor, el cliente y el
-     * tooltip sacan el número de <em>una</em> aritmética, que es la única forma de que no se
-     * desincronicen -- y el piso vive en la parte pura, donde un test lo camina.</p>
+     * <p><b>Es nuestro encantamiento y no Quick Charge, y la razón está medida.</b> Se intentó
+     * reutilizar el de vanilla primero -- extender lo que ya existe antes de inventar -- y el efecto
+     * de Quick Charge es <b>−0,25 s por nivel</b>, un número absoluto: sobre la ballesta (1,25 s de
+     * base) es un −20 % que se nota, y sobre nuestro arcabuz (2,5 s) es un −10 % que apenas. El
+     * playtest lo desmintió con el log ({@code de 50} sin encantamiento, {@code de 40} con Quick
+     * Charge II, cuando el diseño pedía {@code 30}). Ver
+     * {@link com.cortes.combat.enchant.CombatEnchantRules#reloadTicks}.</p>
+     *
+     * <p>El servidor, el cliente y el tooltip siguen sacando el número de <em>una</em> aritmética,
+     * que era lo bueno del intento anterior y se conserva: esto es el único lugar donde la recarga
+     * se calcula, y el piso vive en la parte pura, donde un test lo camina.</p>
      */
     public static int reloadTicks(net.minecraft.world.item.ItemStack gun,
                                   net.minecraft.world.entity.LivingEntity user) {
-        float seconds = ArcabuzState.RELOAD_TICKS / 20.0F;
-        if (user != null) {
-            seconds = net.minecraft.world.item.enchantment.EnchantmentHelper
-                    .modifyCrossbowChargingTime(gun, user, seconds);
-        }
-        return ArcabuzState.reloadTicksFor(seconds);
+        int level = user == null
+                ? 0
+                : com.cortes.combat.enchant.CombatEnchantments.level(user.level().registryAccess(),
+                        gun, com.cortes.combat.enchant.CombatEnchantments.DRY_POWDER);
+        return com.cortes.combat.enchant.CombatEnchantRules.reloadTicks(
+                ArcabuzState.RELOAD_TICKS, level);
     }
 
     private static void trace(ServerPlayer player, ArcabuzState state, String message) {

@@ -40,9 +40,12 @@ public final class CombatEnchantRules {
     /** E7 -- Contragolpe, el genérico de guardia. */
     public static final String RIPOSTE_ID = "riposte";
 
+    /** E1 -- Pólvora Seca, la identidad del arcabuz. */
+    public static final String DRY_POWDER_ID = "dry_powder";
+
     /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
     public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID,
-            FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID);
+            FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID, DRY_POWDER_ID);
 
     /**
      * Los genéricos, que se ponen por <b>clase</b> y no por molde.
@@ -182,6 +185,43 @@ public final class CombatEnchantRules {
             case 2 -> 0.50F;
             default -> 0.0F;
         };
+    }
+
+    // ---------------------------------------------------------------- E1 · Pólvora Seca (arcabuz)
+
+    /** El nivel máximo, el del archivo de encantamiento. */
+    public static final int DRY_POWDER_MAX_LEVEL = 2;
+
+    /** Cuánto acorta la recarga por nivel: medio segundo. */
+    public static final int DRY_POWDER_TICKS_PER_LEVEL = 10;
+
+    /**
+     * La recarga del arcabuz con Pólvora Seca: 50 → 40 → 30 ticks.
+     *
+     * <h2>Por qué esto es nuestro y no Quick Charge de vanilla</h2>
+     *
+     * <p><b>Porque el efecto de vanilla es un número absoluto y el nuestro tiene que ser una
+     * fracción, y la diferencia se midió en juego.</b> Quick Charge resta <b>0,25 s por nivel</b>,
+     * que sobre la ballesta (1,25 s de base) es un −20 % que se nota muchísimo y sobre nuestro
+     * arcabuz (2,5 s, el doble) es un −10 % que apenas se siente. El diseño pedía <b>−10 ticks por
+     * nivel</b>; vanilla daba la mitad, y no hay forma de arreglarlo desde el lado del arcabuz sin
+     * tocar la ballesta también.</p>
+     *
+     * <p>Se intentó primero reutilizar el de vanilla -- la regla del proyecto es extender lo que ya
+     * existe antes de inventar -- y el playtest lo desmintió con los números: el log mostró
+     * {@code de 50} y {@code de 40} y la conclusión fue "apenas se nota". <b>Una reutilización que
+     * da la mitad de lo que el diseño pide no es una reutilización, es un número mal puesto con
+     * otro nombre.</b></p>
+     *
+     * <p>El piso es el mismo de siempre ({@code MIN_RELOAD_TICKS}, un segundo) y vive acá, en la
+     * parte pura, por la misma razón que el de la carga: <b>nunca resta de más, y el piso se fuerza
+     * en código</b>. Un encantamiento que pudiera llevar la recarga a cero sería un disparo
+     * instantáneo.</p>
+     */
+    public static int reloadTicks(int baseTicks, int level) {
+        int clamped = clamp(level, DRY_POWDER_MAX_LEVEL);
+        return Math.max(com.cortes.combat.state.ArcabuzState.MIN_RELOAD_TICKS,
+                baseTicks - DRY_POWDER_TICKS_PER_LEVEL * clamped);
     }
 
     /**

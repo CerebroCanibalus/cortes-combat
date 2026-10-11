@@ -51,6 +51,10 @@ public final class CombatEnchantments {
     /** E7 -- Contragolpe: la ventana ofensiva que abre un bloqueo de verdad. */
     public static final ResourceKey<Enchantment> RIPOSTE = key(CombatEnchantRules.RIPOSTE_ID);
 
+    /** E1 -- Pólvora Seca: la recarga del arcabuz. */
+    public static final ResourceKey<Enchantment> DRY_POWDER =
+            key(CombatEnchantRules.DRY_POWDER_ID);
+
     /**
      * El nivel de un encantamiento propio sobre un ítem, por clave.
      *

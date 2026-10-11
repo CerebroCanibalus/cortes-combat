@@ -618,6 +618,38 @@ deducen de un número:
    Y 4 ticks, ⊘ 6: el impacto es velocidad sobre distancia y la distancia nunca fue el problema.
 8. **El golpe es de un brazo; la guardia y la carga usan los dos**, porque son postura y reunión.
 
+## Encantamientos propios (ronda 2026-10-10)
+
+**6 custom, todos datos + reglas puras.** El patrón: el JSON dice en qué ítems puede estar
+(`supported_items`, **un solo tag**, ver Trampas del build), `CombatEnchantRules` (pura, JVM pelada)
+tiene los números, y el hook vive donde el número se cobra.
+
+| id | arma | efecto | dónde |
+|---|---|---|---|
+| `steel_reflex` | shotel (molde `sabre`) | parry 100 → 80 → 60 ticks | `ParryState.activate(nivel)` |
+| `audacity` | ropera | lunge −20 %/nivel (fracción) | `SpecialHandler.lunge` |
+| `fleeting_edge` | daga | Velocidad 40/60 ticks al conectar, **sin renovar** | `CombatEngine.applyFleetingEdge` |
+| `rhythm_of_iron` | martillo | ventana de la cadena 80 → 100 → 120 | `StreakState` (la ventana es un **campo**) |
+| `riposte` | espada (clase `sword`) | tras bloquear de verdad, el siguiente golpe ignora 25/50 % de armadura | `GuardHandler` arma, `CombatEngine` cobra |
+| `dry_powder` | arcabuz (molde `arcabuz`) | recarga 50 → 40 → 30 ticks | `Arcabuz.reloadTicks` |
+
+- **`CombatEnchantRules.IDS`** es la lista canónica y `CombatEnchantmentFilesTest` la camina: agregar
+  un id hace que el test cubra solo el archivo, el tag, la forma del campo y **los 8 idiomas**.
+- **Los ids viven en la clase pura** (`*_ID` como `String`) y no en `CombatEnchantments`, que nombra
+  `ResourceKey`/`Enchantment` y no se puede cargar en un test.
+- **Identidad = molde** (`#cortescombat:profile/<familia>`), **genérico = clase**
+  (`#cortescombat:enchantable/<x>`). `GENERIC_IDS` marca la excepción.
+- **Quick Charge se probó y se revirtió.** Se reutilizó el de vanilla (regla: extender antes de
+  inventar) y el playtest lo midió: el efecto es **−0,25 s absolutos por nivel**, que sobre la
+  ballesta (1,25 s) es −20 % y sobre nuestro arcabuz (2,5 s) es **−10 %** -- la mitad de lo que el
+  diseño pedía. El log lo mostró (`de 50` sin encantamiento, `de 40` con Quick Charge II, cuando el
+  diseño decía 30). **Lección: un efecto absoluto reutilizado sobre una base distinta da otro
+  porcentaje**, y una reutilización que da la mitad del número no es una reutilización.
+- **Idiomas: 8 archivos** (`ModLocales`): `en_us` + los **siete** españoles. **Ninguna variante es
+  alias de otra** -- la pila es *[seleccionado, en_us]*, así que `es_mx` cae a inglés, no a `es_es`.
+- **El entorno de dev no tiene idiomas de vanilla**: el cliente trae **solo** `en_us.json`, así que
+  elegir español deja las cadenas de *vanilla* en inglés aunque las nuestras salgan bien.
+
 ## Estado técnico actual
 
 **960 tests unitarios verdes.** Todo lo testeable corre en JVM pelada; lo que necesita el juego queda

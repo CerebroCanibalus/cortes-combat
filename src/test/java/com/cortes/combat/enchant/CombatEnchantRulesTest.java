@@ -144,6 +144,34 @@ class CombatEnchantRulesTest {
     }
 
     @Test
+    @DisplayName("Polvora Seca: 50 -> 40 -> 30 ticks, medio segundo por nivel")
+    void dryPowderLevels() {
+        assertEquals(50, CombatEnchantRules.reloadTicks(50, 0),
+                "sin el encantamiento son los dos segundos y medio del diseno");
+        assertEquals(40, CombatEnchantRules.reloadTicks(50, 1),
+                "**y esto es lo que Quick Charge de vanilla NO daba**: su efecto es -0,25 s por "
+                        + "nivel (absoluto), que sobre nuestra base de 2,5 s es la mitad de fraccion "
+                        + "que sobre la ballesta. El diseno pedia -10 ticks por nivel");
+        assertEquals(30, CombatEnchantRules.reloadTicks(50, 2));
+        assertEquals(30, CombatEnchantRules.reloadTicks(50, 9), "un nivel de mas vale el maximo");
+        assertEquals(50, CombatEnchantRules.reloadTicks(50, -1), "y uno negativo, lo de siempre");
+    }
+
+    @Test
+    @DisplayName("y una recarga nunca cuesta cero: el piso se fuerza en codigo")
+    void theReloadHasAFloor() {
+        // El piso se prueba con una base chica, que es donde una resta sin guarda lo cruza: con la
+        // base real de 50 harian falta cinco niveles y el tope son dos.
+        for (int level = 0; level <= 10; level++) {
+            assertTrue(CombatEnchantRules.reloadTicks(25, level)
+                            >= com.cortes.combat.state.ArcabuzState.MIN_RELOAD_TICKS,
+                    "recarga con base 25 y nivel " + level + ": nunca por debajo de un segundo. Un "
+                            + "encantamiento que reste mas de lo que hay regalaria un disparo "
+                            + "instantaneo");
+        }
+    }
+
+    @Test
     @DisplayName("los niveles fuera de rango se clampean")    void levelsAreClamped() {
         assertEquals(CombatEnchantRules.parryCooldown(100, 2),
                 CombatEnchantRules.parryCooldown(100, 9),
