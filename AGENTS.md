@@ -673,6 +673,13 @@ y los `viewmodel/*` puros.
   perfil.
 - **1 tipo de partícula** para las 30 armas: el sprite viaja en el payload → un arma nueva es un PNG y
   una línea. Tiras de 32×160 (5 frames) cortadas en los UV.
+- **1 entidad propia**: la onda de filo (`SlashWave`), la primera `EntityType` del mod. **Modelo
+  propio, no partícula** (`SlashWaveRenderer` + `models/projectile/sweeping_edge.json`), y **se
+  agranda con el nivel** (`SlashWaveModel.scale` = `SweepingEdge.width`: 0,7/1,0/1,4). Dos trampas
+  pagadas: el modelo hay que **pedirlo** en `ModelEvent.RegisterAdditional` (si no, cubo violeta) y
+  el `texture_size` del export de Blockbench venía en 64 c/ UV en escala 16 → dibujaba un trocito de
+  la esquina de la textura. `SlashWaveModelTest` ata el Java al JSON y afirma que **el dibujo cae
+  dentro de lo que el modelo muestra** (no que el archivo exista).
 - **Sonidos:** `sounds.json` c/ los pools como datos, `ModSounds` puro, `CombatSounds` para
   reproducir. Todos server-side.
 - **3 capas GUI** (orden verificado c/ `VanillaGuiLayers`): `DamageOverlayLayer` (`registerBelowAll`),

@@ -59,6 +59,10 @@ public class CortesCombatClient {
         // `icono=false` -- a correct handler asking a map that nothing had filled.
         modEventBus.addListener(FlatInventoryIcon::onRegisterAdditional);
         modEventBus.addListener(FlatInventoryIcon::onBakingResult);
+        // **El modelo de la onda de filo, y por la misma razón que el icono del arcabuz.** Un
+        // modelo que nada referencia es un archivo en disco: el juego no lo hornea y el renderer
+        // recibe el modelo "missing" -- el cubo violeta, sin una línea de error en el log.
+        modEventBus.addListener(SlashWaveRenderer::onRegisterAdditional);
         modEventBus.addListener(CortesCombatClient::registerParticles);
         modEventBus.addListener(CortesCombatClient::registerLayers);
         modEventBus.addListener(CortesCombatClient::onClientSetup);
@@ -164,17 +168,20 @@ public class CortesCombatClient {
     // lo llamaba. Un solo sitio para el registro del icono: FlatInventoryIcon.)
     @net.neoforged.bus.api.SubscribeEvent
     /**
-     * El renderer de la onda de filo: <b>el de vanilla</b>, porque hoy dibuja una flecha.
+     * El renderer de la onda de filo: el suyo, con el modelo del dueño.
      *
-     * <p>{@code ThrownItemRenderer} dibuja el {@code ItemStack} que devuelve
-     * {@code ItemSupplier#getItem()} de la entidad, así que el placeholder no cuesta ni una línea
-     * de render ni un asset: el día del modelo propio se cambia esta línea y la lógica de la onda
-     * no se entera. Está anotado como placeholder en {@code SlashWave}.</p>
+     * <p>Antes era el {@code ThrownItemRenderer} de vanilla sobre una flecha, y era un placeholder
+     * declarado. El modelo existe, así que el placeholder se fue con él -- y el {@code ItemSupplier}
+     * de la entidad también, porque un componente que ya nadie lee es la forma exacta de un bug que
+     * este proyecto ya pagó.</p>
+     *
+     * <p>Ver {@link SlashWaveRenderer} para el orden de la pose y para el registro del modelo, que
+     * es la mitad que se olvida: un modelo que nada pide no se hornea.</p>
      */
     private static void registerEntityRenderers(
             net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(com.cortes.combat.registry.ModEntities.SLASH_WAVE.get(),
-                net.minecraft.client.renderer.entity.ThrownItemRenderer::new);
+                SlashWaveRenderer::new);
     }
 
     public static void onClientSetup(FMLClientSetupEvent event) {

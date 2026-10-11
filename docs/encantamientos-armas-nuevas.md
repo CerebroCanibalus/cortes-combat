@@ -10,6 +10,48 @@
 > de datos de vanilla leídos directamente del jar** (`data/minecraft/enchantment/knockback.json` y
 > `data/minecraft/tags/item/enchantable/*.json`). No hay ningún número de memoria.
 
+# ESTADO REAL — qué está implementado y qué no (2026-10-10)
+
+> Esta sección la escribió el cierre de la ronda. **Lo de abajo es la historia de la propuesta; lo de
+> acá es lo que hay en el código**, y cuando las dos cosas difieren, manda esto.
+
+## Hecho
+
+| Parte | Estado | Dónde vive |
+|---|---|---|
+| **§J — la herencia de las espadas** | **HECHO** | 6 overrides de vanilla apuntando a **tags propios**: `sharpness`→`enchantable/blade`, `smite`/`bane_of_arthropods`→`enchantable/all`, `knockback`→`enchantable/shove`, `looting`→`enchantable/loot`, `fire_aspect`→`enchantable/blunt`. Las 30 salieron de `#minecraft/swords` (hoy ese tag sólo tiene `copper_sword`) |
+| **§D — Knockback extendido** | **HECHO por la Vía 1** | el tag `enchantable/shove` = hacha + pala + maza + martillo, y el override de `knockback.json` apunta ahí. El tridente, la azada y la picota quedaron **fuera** (decisión) |
+| **E1 · Pólvora Seca** (arcabuz) | **HECHO** | `CombatEnchantRules.reloadTicks` + `Arcabuz.reloadTicks`. Ver la nota de abajo: **no** es Quick Charge |
+| **E2 · Reflejo de Acero** (shotel) | **HECHO** | `ParryState.activate(nivel)`, gate `#cortescombat:profile/sabre` |
+| **E3 · Audacia** (ropera) | **HECHO** | `SpecialHandler.lunge`, gate `#cortescombat:profile/ropera` |
+| **E4 · Ritmo de Hierro** (martillo) | **HECHO** | `StreakState`, la ventana es un **campo**; gate `#cortescombat:profile/warhammer` |
+| **E5 · Filo Fugaz** (daga) | **HECHO** | `CombatEngine.applyFleetingEdge`; gate `#cortescombat:profile/dagger` |
+| **E7 · Contragolpe** (guardia) | **HECHO** | `ContragolpeWindow` (vencimiento absoluto) + `RipostePierce`; gate `#cortescombat:enchantable/sword` |
+| **§E.5 — Sweeping Edge = la onda de filo** | **HECHO** | entidad propia `SlashWave` (`entity/`), reglas puras `weapon/SweepingEdge`, renderer y modelo propios (`SlashWaveRenderer` + `SlashWaveModel`) |
+
+## Pendiente
+
+| Parte | Qué falta |
+|---|---|
+| **E6 · Segadora** (alabarda) | el `MobEffect` **Sangrado**. En 1.21.1 el daño **no** interrumpe comer, así que la regla de la comida sale por construcción -- falta excluir las tres fuentes de DoT del `DamageOverlayLayer` |
+| **§F · Ensarte** (genérico de largas) | nada escrito. Barato: hook en `landTheHit` + regla pura |
+| **§F · Quebranto** (genérico de pesadas) | nada escrito. Necesita `MobEffect` nuevo + `AttributeModifier` sobre `Attributes.ARMOR` del rival |
+| **§G · las ~18 de identidad** | **reemplazadas** por `encantamientos-unicos.md` (11 armas, ~30 encantamientos). Nada escrito |
+
+## La nota de Quick Charge, porque este documento la pedía
+
+La v2 decía que para el arcabuz se **reutilizara Quick Charge de vanilla** en vez de escribir E1. **Se
+hizo, y el playtest lo revirtió.** El efecto de vanilla es un número **absoluto** (−0,25 s por nivel):
+sobre la ballesta (1,25 s de base) es un −20 % que se nota, y sobre nuestro arcabuz (2,5 s, el doble)
+es un −10 % que apenas. El log lo mostró en dos líneas que nadie leyó juntas -- `de 50` sin
+encantamiento y `de 40` con Quick Charge II, cuando el diseño pedía 30.
+
+**Lección, y es general:** *un efecto absoluto reutilizado sobre una base distinta da otro
+porcentaje*, y una reutilización que da la mitad del número del diseño no es una reutilización. E1
+volvió, con nuestros números (50 → 40 → 30).
+
+---
+
 ## Estado de la v2 (qué cambió respecto de la v1)
 
 | Parte de la v1 | Veredicto del dueño | Qué hace esta v2 |
@@ -52,23 +94,22 @@
 
 > **Estado: `APROBADO` por el dueño el 2026-10-10.** El texto se conserva tal cual de la v1.
 
-## E1 · Pólvora Seca — identidad del ARCABUZ · `REEMPLAZADO`
+## E1 · Pólvora Seca — identidad del ARCABUZ · `HECHO`
 
-> **El dueño lo reemplazó (2026-10-10)**: para el arcabuz se **reutiliza Quick Charge de vanilla**
-> en vez de un encantamiento propio — misma jugada que el Knockback de §D: extender lo que ya
-> existe antes de inventar. **Cómo**: agregar el arcabuz a los `supported_items` de Quick Charge
-> (tag propio + override, §D Vía 1) y **leer el efecto de carga vanilla** en nuestro camino de
-> recarga (`ArcabuzState.RELOAD_TICKS`), en vez de escribir un número nuestro. Quick Charge es
-> sustractivo (−0,25 s por nivel sobre la carga base de la ballesta); falta **verificar la fórmula
-> exacta de 1.21.1** y cómo se mapea sobre nuestros 50 ticks. La recarga deja de ser un
-> encantamiento del mod.
+> **Se intentó reutilizar Quick Charge de vanilla y el playtest lo revirtió** (ver "La nota de Quick
+> Charge" arriba). El efecto de vanilla es −0,25 s **absolutos** por nivel: sobre la ballesta (1,25 s)
+> es −20 %, sobre nuestro arcabuz (2,5 s) es −10 % -- la mitad del número que el diseño pedía. **El
+> encantamiento volvió, con nuestros números.** El override de `quick_charge.json` y la clase
+> `enchantable/gun` se borraron: hoy Quick Charge es el de vanilla (ballestas) y la recarga se pone
+> por **molde** (`#cortescombat:profile/arcabuz`), como toda identidad.
 
 - **Niveles**: 2.
 - **Efecto**: la recarga baja de **50 → 40 → 30 ticks** (−10 por nivel). La mecha (**20 ticks**)
   **no** cambia: el riesgo de encender sigue costando lo mismo.
-- **Items**: los arcabuzes del mod (set directo, patrón de los del oro).
+- **Items**: `#cortescombat:profile/arcabuz` (por **molde**, no por lista de ítems).
 - **Hook**: al iniciar la recarga en `Arcabuz`: leer nivel del stack y usar
-  `RELOAD_TICKS - 10×nivel`. Reglas puras en `GunpowderRules` (test JVM pelada).
+  `RELOAD_TICKS - 10×nivel`. Reglas puras en `CombatEnchantRules.reloadTicks` (test JVM pelada), con
+  el piso de un segundo forzado **en código**.
 - **Sinergia**: ninguna de las doradas aplica (el arcabuz no es dorado salvo pack).
 - **Conflicto**: ninguno. El más barato de la lista: una constante en un solo call site.
 
@@ -409,7 +450,19 @@ muerto — hoy el efecto vanilla (`player.sweeping_damage_ratio`) no corre porqu
 es nuestro; cualquier rework conserva el nombre del encantamiento y le da la mecánica nueva desde
 `CombatEngine`.
 
-### E.5 — El rework ELEGIDO por el dueño (2026-10-10): **la onda de filo**
+### E.5 — El rework ELEGIDO por el dueño (2026-10-10): **la onda de filo** · `HECHO`
+
+> **Implementado.** Entidad propia `SlashWave` (`entity/`), reglas puras `weapon/SweepingEdge`
+> (porción, ancho, alcance, perforación, vida -- todo derivado de la distancia), y el disparo vive en
+> `CombatEngine.resolveSwing` **con el tajo**, no con el acierto (el coyote del golpe corre el cobro
+> dos veces, así que colgarlo del acierto hubiera disparado dos ondas).
+>
+> **Y el modelo: el dueño eligió modelo, no partícula** (§E.6 recomendaba partícula). Existe
+> `models/projectile/sweeping_edge.json` con su textura, `SlashWaveRenderer` lo dibuja y **lo agranda
+> con el nivel** (`SlashWaveModel.scale(nivel)` = `SweepingEdge.width`, o sea 0,7 / 1,0 / 1,4), y
+> `SlashWaveModelTest` ata los números del Java a los del JSON -- incluido el `texture_size`, que es
+> donde el export de Blockbench venía mal (UV en escala 16 declaradas como 64, o sea un trocito de la
+> esquina de la textura en vez del dibujo).
 
 > Veredicto: *"al dar un ataque cargado con la espada, este dispara un espadazo mágico que
 > atraviesa enemigos y hace una porción del daño de la espada; conforme sube el nivel el proyectil
@@ -795,6 +848,12 @@ especiales copiadas.
 
 # H) Orden de implementación sugerido (el más barato primero)
 
+> **Estado al cerrar la ronda: se cumplió hasta el #8.** HECHOS: 1 (vanilla + Knockback), 2 (Pólvora
+> Seca, por el desvío de Quick Charge), 3 (E2), 4 (E3), 5 (E5), 6 (E7), 7 (E4) y 8 (Sweeping Edge =
+> la onda de filo, con modelo y renderer propios). **PENDIENTES: 9 (Ensarte + Quebranto), 10
+> (Segadora) y 11** -- que además cambió de forma: las 18 de §G las reemplaza
+> `encantamientos-unicos.md` (11 armas, ~30 encantamientos).
+
 | # | Qué | Por qué en esta posición |
 |---|---|---|
 | 1 | **La ronda de los VANILLA** (§J + §D) — **orden explícito del dueño: antes que cualquier custom** | sacar las 30 de `#swords`, tags propios por clase, override de los 7 JSON (Sharpness, Smite, Bane, Knockback, Looting, Fire Aspect, Sweeping Edge), Knockback extendido a hacha/pala/maza/martillo, Fire Aspect **a pala/maza/martillo**, durabilidad explícita. Casi sin código Java nuevo |
@@ -812,6 +871,13 @@ especiales copiadas.
 ---
 
 # I) Decisiones que quedan para el dueño
+
+> **Cuáles siguen abiertas, al cerrar la ronda.** RESUELTAS: **1** (el Knockback se hizo por la Vía 1,
+> con el tag `enchantable/shove`) y **2** (el Sweeping Edge es la onda de filo). **ABIERTAS: 3**
+> (¿Ensarte + Quebranto?), **5** (el clúster de DoTs) y **7** (peso y `treasure`) -- y **4** cambió de
+> forma: las 18 de §G las reemplaza `encantamientos-unicos.md`. La **6** (sets excluyentes) sigue
+> abierta pero **todavía no tiene dónde vivir**: nuestros encantamientos son registro Java y no dato,
+> así que no llevan `exclusive_set` declarativo.
 
 1. **Knockback (§D)**: ¿Vía 1 (tag propio + override del JSON) o Vía 2 (agregar al tag vanilla)?
    ¿Qué perfiles: sólo hacha/pala/maza, o también el arcabuz? Y si entra la **pala**, ¿cuál es su

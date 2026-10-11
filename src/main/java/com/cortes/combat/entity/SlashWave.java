@@ -15,9 +15,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.ItemSupplier;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
@@ -41,12 +38,13 @@ import java.util.UUID;
  * Además la colisión importa: <b>una pared frena la onda</b>, y eso sólo lo puede decidir algo con
  * una posición de verdad.</p>
  *
- * <h2>Lo que dibuja, hoy</h2>
+ * <h2>Lo que dibuja</h2>
  *
- * <p>Una <b>flecha</b>, y es un placeholder declarado: implementa {@link ItemSupplier} para poder
- * reusar el renderer de vanilla ({@code ThrownItemRenderer}) sin escribir una línea de render. El
- * día que exista el modelo propio se cambia el renderer y nada más -- la lógica de acá no sabe qué
- * se dibuja.</p>
+ * <p>Su modelo propio: un plano con el arte del dueño, agrandado con el nivel por
+ * {@code SlashWaveRenderer}. Antes de que ese modelo existiera se dibujaba con el renderer de vanilla
+ * sobre una flecha, que era un placeholder declarado. El placeholder se fue entero, {@code
+ * ItemSupplier} y su {@code getItem()} incluidos, porque un componente que ya nadie lee es la
+ * forma exacta de un bug que este proyecto ya pagó.</p>
  *
  * <h2>Las reglas del vuelo</h2>
  *
@@ -61,7 +59,7 @@ import java.util.UUID;
  *   <li><b>Empuja muy poco</b> ({@link SweepingEdge#PUSH}): la onda corta.</li>
  * </ul>
  */
-public class SlashWave extends Entity implements ItemSupplier {
+public class SlashWave extends Entity {
 
     private static final EntityDataAccessor<Integer> DATA_LEVEL =
             SynchedEntityData.defineId(SlashWave.class, EntityDataSerializers.INT);
@@ -150,12 +148,6 @@ public class SlashWave extends Entity implements ItemSupplier {
     }
 
     @Override
-    public ItemStack getItem() {
-        // El placeholder. Ver el javadoc de la clase.
-        return new ItemStack(Items.ARROW);
-    }
-
-    @Override
     public void tick() {
         super.tick();
         if (this.level().isClientSide) {
@@ -239,6 +231,11 @@ public class SlashWave extends Entity implements ItemSupplier {
     private void reflect() {
         this.setDeltaMovement(this.getDeltaMovement().scale(-1.0));
         this.entityData.set(DATA_REFLECTED, true);
+        // **Y el cliente se entera de que dio vuelta.** El modelo se orienta con el movimiento, y
+        // `setDeltaMovement` no sincroniza nada: sin esto la onda que vuelve se dibuja mirando para
+        // adelante -- el mismo objeto al revés, justo en el único momento en que su dirección es la
+        // información que importa.
+        this.hurtMarked = true;
         // Los que ya cobraron no cobran de nuevo al volver: es la misma onda.
         this.hits = 0;
         this.alreadyHit.clear();

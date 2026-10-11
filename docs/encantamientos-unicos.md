@@ -2,7 +2,16 @@
 
 > **Estado: BORRADOR, nada implementado.** Nace del pedido del dueño (2026-10-10): en vez de 3 por
 > **familia** (el §G de `encantamientos-armas-nuevas.md`), **2-3 por arma** (máx 4), **únicos de esa
-> arma**, más **2 para pala y azada** enfocados en el combate. 11 armas → ~28 encantamientos.
+> arma**, más **2 para pala y azada** enfocados en el combate. 11 armas → ~32 encantamientos.
+>
+> **Qué está hecho de esta lista, al 2026-10-10: nada.** Lo que sí está hecho son los que ya existían
+> como aprobados y quedaron **fuera** de este documento (por eso no se repiten acá): `steel_reflex`
+> (shotel), `audacity` (ropera), `fleeting_edge` (daga), `rhythm_of_iron` (martillo), `riposte`
+> (espada) y `dry_powder` (arcabuz) -- uno por arma, los seis en `data/cortescombat/enchantment/`.
+> Este documento es **la capa de encima**: los que dan a cada arma su eje propio.
+>
+> **Antes de escribir los ~32 hay que cerrar las 4 decisiones del final**, y una de ellas cambia la
+> forma del trabajo: si se recorta a las ⭐, son ~22 en vez de 32.
 
 ## La regla que decide si un encantamiento entra
 
