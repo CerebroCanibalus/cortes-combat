@@ -642,8 +642,19 @@ tiene los números, y el hook vive donde el número se cobra.
 | `aventurero` | espada (clase `sword`) | **+20 % de XP por nivel**, máx 5 (al 5 = +100 %) | `enchant/AdventurerExperience` -- **al MORIR, no al golpear** |
 | `culata` | arcabuz (molde `arcabuz`) | la bayoneta empuja **+25 %/+50 %/+75 %** | `CombatEngine.enchantPush` |
 | `estocada` | ropera (molde `ropera`) | el golpe **del lunge** ignora **15 %/30 %** de armadura | `CombatEngine.lungePierce`, cobrado en `special/Lunge` |
+| `segundo_aliento` | espada (clase `sword`) | al **romperse tu guardia**, tu siguiente golpe en 3 s pega **+15 %/+25 %** y empuja **+50 %** | `GuardHandler.breakGuard` arma `SecondWindWindow`; `CombatEngine` la cobra |
+| `guardia_firme` | espada (clase `sword`) | **1 nivel** · el primer bloqueo de cada 3 s **no gasta aguante** | `GuardHandler.onShieldBlock` + `GuardFree` |
 
-> **Los tres últimos comparten un solo canal** (`CombatEngine.perTargetBonus`), y es a propósito:
+> **Los dos últimos necesitaron estado nuevo**, y son los primeros del proyecto que lo hacen: dos
+> attachments (`SECOND_WINDOW` y `GUARD_FREE`) con **vencimiento absoluto y sin codec**, el patrón de
+> `ContragolpeWindow` -- un contador habría que bajarlo cada tick para todos los jugadores, y una
+> ventana que reaparece tras reconectar es un premio que el jugador no ganó.
+> **`GuardFree.READY` es `-INTERVAL_TICKS` y no cero**, y el test lo afirma: con cero, "listo" sería
+> `now - 0 >= 60` y el primer bloqueo gratis de una partida no llegaría hasta el tick sesenta del
+> mundo. Saboteado a cero: muere.
+
+> **Punta Fina, Filo Astillado y Apuñalar comparten un solo canal** (`CombatEngine.perTargetBonus`), y
+> es a propósito:
 > los tres son "un porcentaje del daño que depende de algo del objetivo o de la posición", y el modo
 > de falla de un canal que nadie llama es que **el build queda verde**. El guard de wiring afirma
 > `enchanted + perTargetBonus(` -- **la suma, no la existencia de la función** -- porque la primera

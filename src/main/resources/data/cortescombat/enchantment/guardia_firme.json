@@ -1,0 +1,21 @@
+{
+  "anvil_cost": 2,
+  "description": {
+    "translate": "enchantment.cortescombat.guardia_firme""
+  },
+  "max_cost": {
+    "base": 40,
+    "per_level_above_first": 0
+  },
+  "max_level": 1,
+  "min_cost": {
+    "base": 15,
+    "per_level_above_first": 0
+  },
+  "primary_items": "#cortescombat:enchantable/sword",
+  "slots": [
+    "mainhand"
+  ],
+  "supported_items": "#cortescombat:enchantable/sword",
+  "weight": 2
+}

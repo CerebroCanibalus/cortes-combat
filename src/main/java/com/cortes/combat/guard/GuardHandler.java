@@ -4,6 +4,10 @@ import com.cortes.combat.attack.AttackCooldown;
 import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.registry.ModAttachments;
+import com.cortes.combat.enchant.CombatEnchantRules;
+import com.cortes.combat.enchant.CombatEnchantments;
+import com.cortes.combat.state.GuardFree;
+import com.cortes.combat.state.SecondWindWindow;
 import com.cortes.combat.state.GuardState;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -225,11 +229,28 @@ public final class GuardHandler {
             return;
         }
 
-        GuardState after = state.block(guard.profile().regenTicks());
-        player.setData(ModAttachments.GUARD_STAMINA.get(), after);
+        // **Guardia Firme: el primer bloqueo de cada tres segundos no gasta aguante.**
+        //
+        // Va acá y no en la rama de arriba a propósito: el segundo corte del mismo swing tampoco
+        // gasta -- `shouldCharge` ya lo cortó -- y ése no es "el primer bloqueo", es el mismo. El
+        // gratis se cobra donde se cobra el punto, que es el único lugar donde "cuánto cuesta este
+        // golpe" tiene una respuesta.
+        GuardFree free = player.getData(ModAttachments.GUARD_FREE.get());
+        boolean gratis = free.isReady(now) && CombatEnchantRules.guardiaFirme(
+                CombatEnchantments.level(player.level().registryAccess(), guard.item(),
+                        CombatEnchantments.GUARDIA_FIRME));
+        GuardState after;
+        if (gratis) {
+            // Gratis: la aguante no se toca, y `after` es la de siempre para que el chequeo de
+            // agotamiento de mas abajo siga preguntando lo mismo.
+            player.setData(ModAttachments.GUARD_FREE.get(), free.usedAt(now));
+            after = state;
+        } else {
+            after = state.block(guard.profile().regenTicks());
+            player.setData(ModAttachments.GUARD_STAMINA.get(), after);
+        }
         player.setData(ModAttachments.GUARD_LAST_BLOCK.get(),
                 last.charged(now, attackerId, targetId));
-
         // **Contragolpe: el bloqueo que costó aguante abre una ventana ofensiva.** Se arma acá y no
         // en la rama de arriba, y esa es la distinción entera del encantamiento: el segundo corte
         // del mismo swing bloquea igual -- la guardia se sostiene -- pero no rearma nada. El premio
@@ -347,6 +368,18 @@ public final class GuardHandler {
         player.setData(ModAttachments.GUARD_STAMINA.get(),
                 state.breakGuard(guard.profile().regenTicks()));
         stagger(player, guard, guard.profile().stunTicks());
+
+        // **Segundo Aliento: la guardia rota abre una ventana.**
+        //
+        // El item es el de la GUARDIA y no la mano principal: la guardia se lee de las dos manos
+        // desde que se unifico, y la espada que se rompio puede estar en la off. Leer la main seria
+        // premiar al jugador con una espada distinta de la que pago el stun.
+        if (CombatEnchantRules.segundoAliento(CombatEnchantments.level(
+                player.level().registryAccess(), guard.item(),
+                CombatEnchantments.SEGUNDO_ALIENTO)) > 0.0F) {
+            player.setData(ModAttachments.SECOND_WINDOW.get(),
+                    SecondWindWindow.armedAt(player.level().getGameTime()));
+        }
     }
 
     /** An explosion takes half its damage through the guard, and still costs a point of stamina. */

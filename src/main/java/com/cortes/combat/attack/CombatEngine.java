@@ -14,6 +14,7 @@ import com.cortes.combat.sound.ModSounds;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.registry.ModDamageTypes;
 import com.cortes.combat.state.ChargeState;
+import com.cortes.combat.state.SecondWindWindow;
 import com.cortes.combat.state.StreakState;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
@@ -812,6 +813,17 @@ public final class CombatEngine {
                 CombatEnchantRules.fromBehind(body.getYRot(),
                         player.getX() - body.getX(), player.getZ() - body.getZ()));
 
+        // **Segundo Aliento: el golpe que cobra la ventana pega mas.**
+        //
+        // La ventana NO se gasta aca, y la razon es de orden: el empuje se cobra en otro canal que
+        // corre DESPUES de este, y una ventana gastada en el primero deja al segundo sin premio. Se
+        // lee en los dos y se gasta una sola vez, en el ultimo.
+        SecondWindWindow wind = player.getData(ModAttachments.SECOND_WINDOW.get());
+        if (wind.isOpen(player.level().getGameTime())) {
+            share += CombatEnchantRules.segundoAliento(CombatEnchantments.level(access, weapon,
+                    CombatEnchantments.SEGUNDO_ALIENTO));
+        }
+
         return base * share;
     }
 
@@ -1078,6 +1090,18 @@ public final class CombatEngine {
             float culata = CombatEnchantRules.culata(CombatEnchantments.level(
                     player.level().registryAccess(), weapon, CombatEnchantments.CULATA));
             push += culata * WeaponTables.knockback(WeaponProfile.ARCABUZ).horizontal();
+        }
+
+        // **Segundo Aliento: y empuja mas. Aca SI se gasta.**
+        //
+        // "Tu siguiente golpe" es uno, y este es el ultimo canal que mira la ventana: el dano la lee
+        // antes y no la toca. Gastarla aca es lo que hace que un bloqueo roto de un premio y no un
+        // estado de tres segundos.
+        SecondWindWindow wind = player.getData(ModAttachments.SECOND_WINDOW.get());
+        if (wind.isOpen(player.level().getGameTime())) {
+            push += CombatEnchantRules.SEGUNDO_ALIENTO_PUSH
+                    * WeaponTables.knockback(WeaponStats.of(weapon).profile()).horizontal();
+            player.setData(ModAttachments.SECOND_WINDOW.get(), wind.spent());
         }
         return push;
     }

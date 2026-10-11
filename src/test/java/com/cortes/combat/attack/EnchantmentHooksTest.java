@@ -393,6 +393,34 @@ class EnchantmentHooksTest {
         }
     }
 
+    /**
+     * **Los dos de la guardia tienen llamador, y en el archivo de la guardia.**
+     *
+     * <p>Es la tanda que necesitó estado nuevo (dos attachments), así que el modo de falla tiene una
+     * forma más: el attachment registrado, el estado escrito y <b>nadie preguntando</b>. Cada guard
+     * afirma las dos mitades -- quien lo arma y quien lo cobra.</p>
+     */
+    @Test
+    @DisplayName("Guardia Firme y Segundo Aliento llegan a la guardia")
+    void theGuardEnchantmentsReachTheGuard() {
+        String guard = readGuard();
+
+        assertTrue(guard.contains("CombatEnchantRules.guardiaFirme(") && guard.contains("GUARD_FREE"),
+                "**Guardia Firme no ahorra nada.** La regla puede estar llamada y el reloj sin "
+                        + "tocar, que es un bloqueo que cuesta siempre con el build verde");
+        assertTrue(guard.contains("SecondWindWindow.armedAt("),
+                "**Segundo Aliento no arma la ventana**: la guardia se rompe, el jugador paga el "
+                        + "stun y no hay premio");
+
+        String engine = read();
+        assertTrue(engine.contains("SECOND_WINDOW"),
+                "**y la ventana se cobra en el motor.** Armarla y no leerla es un premio que existe "
+                        + "en el estado y no en el juego");
+        assertTrue(engine.contains("wind.spent()"),
+                "**y se gasta.** \"Tu siguiente golpe\" es uno: sin el `spent()` serian tres segundos "
+                        + "de premio en vez de un golpe");
+    }
+
     /** Y el arcabuz, donde vive la recarga que Pólvora Seca acorta. */
     private static String readArcabuz() {
         Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "special",

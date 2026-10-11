@@ -281,6 +281,28 @@ class CombatEnchantRulesTest {
     }
 
     @Test
+    @DisplayName("Segundo Aliento: el premio por que te rompan la guardia")
+    void segundoAliento() {
+        assertEquals(0.0F, CombatEnchantRules.segundoAliento(0), 1.0E-6);
+        assertEquals(0.15F, CombatEnchantRules.segundoAliento(1), 1.0E-6);
+        assertEquals(0.25F, CombatEnchantRules.segundoAliento(2), 1.0E-6);
+        assertEquals(0.25F, CombatEnchantRules.segundoAliento(9), 1.0E-6);
+        assertTrue(CombatEnchantRules.SEGUNDO_ALIENTO_PUSH > 0.0F,
+                "y empuja de mas: es la mitad del premio, y un cero la dejaria sin cobrar en "
+                        + "silencio");
+    }
+
+    @Test
+    @DisplayName("Guardia Firme: **un nivel, y el cero no lo tiene**")
+    void guardiaFirme() {
+        assertFalse(CombatEnchantRules.guardiaFirme(0), "sin el encantamiento todos los bloqueos cuestan");
+        assertTrue(CombatEnchantRules.guardiaFirme(1));
+        assertTrue(CombatEnchantRules.guardiaFirme(2),
+                "**y mas de uno sigue siendo cierto**: es un nivel en el archivo, y clampear de mas "
+                        + "no puede convertirlo en falso");
+    }
+
+    @Test
     @DisplayName("los niveles fuera de rango se clampean")    void levelsAreClamped() {
         assertEquals(CombatEnchantRules.parryCooldown(100, 2),
                 CombatEnchantRules.parryCooldown(100, 9),

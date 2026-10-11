@@ -5,6 +5,8 @@ import com.cortes.combat.state.ArcabuzState;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
 import com.cortes.combat.state.ContragolpeWindow;
+import com.cortes.combat.state.GuardFree;
+import com.cortes.combat.state.SecondWindWindow;
 import com.cortes.combat.state.GuardState;
 import com.cortes.combat.guard.GuardStamp;
 import com.cortes.combat.state.FallDeferral;
@@ -198,6 +200,30 @@ public final class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<PendingHit>> PENDING_HIT =
             ATTACHMENT_TYPES.register("pending_hit", () -> AttachmentType
                     .<PendingHit>builder(() -> PendingHit.NONE)
+                    .build());
+
+    /**
+     * Segundo Aliento: la ventana que abre que te rompan la guardia. See {@link SecondWindWindow}.
+     *
+     * <p><b>No codec and no {@code copyOnDeath}.</b> Tres segundos que mueren solos: una ventana que
+     * reaparece tras reconectar es un premio que el jugador no gano, y una que sobrevive a la muerte
+     * seria un golpe premiado que nadie tiro.</p>
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<SecondWindWindow>>
+            SECOND_WINDOW = ATTACHMENT_TYPES.register("second_window", () -> AttachmentType
+                    .<SecondWindWindow>builder(() -> SecondWindWindow.NONE)
+                    .build());
+
+    /**
+     * Guardia Firme: el reloj del bloqueo que no cuesta aguante. See {@link GuardFree}.
+     *
+     * <p>Sin codec por la misma razon que la ventana de arriba, y el default es {@code READY} y no
+     * cero: ver el javadoc de la clase -- con cero, el primer bloqueo gratis de una partida no
+     * llegaria hasta el tick sesenta del mundo.</p>
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<GuardFree>> GUARD_FREE =
+            ATTACHMENT_TYPES.register("guard_free", () -> AttachmentType
+                    .<GuardFree>builder(() -> GuardFree.READY)
                     .build());
 
     private ModAttachments() {

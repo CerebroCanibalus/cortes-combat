@@ -64,10 +64,17 @@ public final class CombatEnchantRules {
     /** Ropera -- Estocada Perforante: el golpe del lunge entra por donde la armadura no cubre. */
     public static final String ESTOCADA_ID = "estocada";
 
+    /** Espada -- Segundo Aliento: el premio por que te rompan la guardia. */
+    public static final String SEGUNDO_ALIENTO_ID = "segundo_aliento";
+
+    /** Espada -- Guardia Firme: el primer bloqueo de cada tres segundos es gratis. */
+    public static final String GUARDIA_FIRME_ID = "guardia_firme";
+
     /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
     public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID,
             FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID, DRY_POWDER_ID, PUNTA_FINA_ID,
-            FILO_ASTILLADO_ID, APUNALAR_ID, SANGUJUELA_ID, AVENTURERO_ID, CULATA_ID, ESTOCADA_ID);
+            FILO_ASTILLADO_ID, APUNALAR_ID, SANGUJUELA_ID, AVENTURERO_ID, CULATA_ID, ESTOCADA_ID,
+            SEGUNDO_ALIENTO_ID, GUARDIA_FIRME_ID);
 
     /**
      * Los genéricos, que se ponen por <b>clase</b> y no por molde.
@@ -417,6 +424,39 @@ public final class CombatEnchantRules {
             case 2 -> 0.30F;
             default -> 0.0F;
         };
+    }
+
+    /**
+     * Segundo Aliento (espada): la fracción de daño extra del golpe que cobra la ventana.
+     *
+     * <p>La espada es la única cuyo bloqueo se puede <b>romper</b> y dejar al jugador con una deuda
+     * que cobrar: el hacha te stunea de un golpe, y las cinco familias nuevas no cubren. El
+     * encantamiento convierte el castigo en el premio, y por eso es identidad de la espada y no de
+     * la guardia en general -- una guardia que no se puede romper no tiene esta deuda.</p>
+     */
+    public static final int SEGUNDO_ALIENTO_MAX_LEVEL = 2;
+
+    /** Y cuánto empuja de más, sobre el empuje propio del arma. Igual en los dos niveles. */
+    public static final float SEGUNDO_ALIENTO_PUSH = 0.50F;
+
+    public static float segundoAliento(int level) {
+        return switch (clamp(level, SEGUNDO_ALIENTO_MAX_LEVEL)) {
+            case 1 -> 0.15F;
+            case 2 -> 0.25F;
+            default -> 0.0F;
+        };
+    }
+
+    /**
+     * Guardia Firme (espada): si el encantamiento está puesto.
+     *
+     * <p><b>Un nivel y sin número, y es lo único de esta lista que no escala.</b> La pregunta es
+     * binaria -- ¿este bloqueo es gratis? -- y un segundo nivel sólo podría cambiar el intervalo, que
+     * es el número que el diseño ya eligió ("cada tres segundos"). Un nivel que no cambia ninguna
+     * respuesta no es un nivel.</p>
+     */
+    public static boolean guardiaFirme(int level) {
+        return clamp(level, 1) >= 1;
     }
 
     /**

@@ -83,6 +83,14 @@ public final class CombatEnchantments {
     public static final ResourceKey<Enchantment> ESTOCADA =
             key(CombatEnchantRules.ESTOCADA_ID);
 
+    /** Espada -- Segundo Aliento. */
+    public static final ResourceKey<Enchantment> SEGUNDO_ALIENTO =
+            key(CombatEnchantRules.SEGUNDO_ALIENTO_ID);
+
+    /** Espada -- Guardia Firme. */
+    public static final ResourceKey<Enchantment> GUARDIA_FIRME =
+            key(CombatEnchantRules.GUARDIA_FIRME_ID);
+
     /**
      * El nivel de un encantamiento propio sobre un ítem, por clave.
      *
