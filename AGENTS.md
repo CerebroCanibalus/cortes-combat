@@ -624,6 +624,9 @@ deducen de un número:
 (`supported_items`, **un solo tag**, ver Trampas del build), `CombatEnchantRules` (pura, JVM pelada)
 tiene los números, y el hook vive donde el número se cobra.
 
+> **El diseño completo (los ~30 por arma, con números y hooks) vive en `docs/encantamientos.md`**, que
+> absorbió y reemplazó a los dos docs anteriores. Acá queda sólo lo implementado.
+
 | id | arma | efecto | dónde |
 |---|---|---|---|
 | `steel_reflex` | shotel (molde `sabre`) | parry 100 → 80 → 60 ticks | `ParryState.activate(nivel)` |
