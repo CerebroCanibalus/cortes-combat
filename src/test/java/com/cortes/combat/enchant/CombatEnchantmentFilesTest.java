@@ -47,6 +47,17 @@ class CombatEnchantmentFilesTest {
             Path.of("src", "generated", "resources", "data", "cortescombat", "tags", "item");
     private static final Path PROFILE_TAGS = OUR_ITEM_TAGS.resolve("profile");
 
+    /**
+     * Los tags de vanilla que deciden **dónde se consigue** un encantamiento.
+     *
+     * <p>En 1.21.1 el campo {@code "treasure"} del JSON no existe -- verificado: ninguno de los 42
+     * encantamientos de vanilla lo declara. Son tags de registro, y cada uno lo lee un sistema
+     * distinto. {@code in_enchanting_table} lo lee <b>la mesa</b> ({@code EnchantmentMenu:207}); sin
+     * estar ahí, el encantamiento no se ofrece nunca.</p>
+     */
+    private static final Path ENCHANT_TAGS =
+            Path.of("src", "main", "resources", "data", "minecraft", "tags", "enchantment");
+
     /** El único tag que los encantamientos de identidad pueden nombrar, y de dónde sale su archivo. */
     private static final Pattern PROFILE_TAG =
             Pattern.compile("\"#cortescombat:profile/([a-z_]+)\"");
@@ -172,6 +183,55 @@ class CombatEnchantmentFilesTest {
                     id + " deberia nombrar el tag en supported_items Y en primary_items, y solo lo "
                             + "nombra " + checked + " vez");
         }
+    }
+
+    /**
+     * **Y el tag que decide si la mesa los puede ofrecer, que es un bug que ya existía.**
+     *
+     * <p>La mesa pasa <b>sólo</b> los encantamientos de {@code minecraft:in_enchanting_table} a la
+     * selección (verificado en las fuentes de 1.21.1, {@code EnchantmentMenu#getEnchantmentList}).
+     * Los seis encantamientos de este mod se registraban, se podían dar por comando, tenían su
+     * archivo y su idioma... y <b>no salían nunca en una mesa de encantar</b>, porque nadie los
+     * había puesto en el tag. Ni en la mesa, ni en cofres, ni en el comercio.</p>
+     *
+     * <p><b>El síntoma no existe</b>: no hay error, no hay log, no hay nada raro. El encantamiento
+     * simplemente no está entre los que la mesa baraja, y el jugador nunca se entera de que falta
+     * algo. Por eso el test no pregunta si el archivo del tag existe -- pregunta si <b>cada</b>
+     * encantamiento está adentro.</p>
+     */
+    @Test
+    @DisplayName("**cada encantamiento esta en `in_enchanting_table`**: sin el tag la mesa no los ofrece nunca")
+    void everyEnchantmentIsOfferedByTheTable() throws IOException {
+        Path file = ENCHANT_TAGS.resolve("in_enchanting_table.json");
+        assertTrue(Files.exists(file),
+                "falta " + file + ": la mesa lee ESE tag y nada mas, asi que sin el archivo los "
+                        + "encantamientos del mod no se pueden conseguir jugando");
+        String json = Files.readString(file, StandardCharsets.UTF_8);
+        for (String id : CombatEnchantRules.IDS) {
+            assertTrue(json.contains("\"cortescombat:" + id + "\""),
+                    "**" + id + " no esta en " + file.getFileName() + ".** La mesa baraja solo lo "
+                            + "que ese tag lista (EnchantmentMenu:207), asi que este encantamiento "
+                            + "existe, tiene archivo, tiene idioma, se puede dar con /enchant -- y "
+                            + "nunca va a aparecer en una mesa de encantar. No hay error: hay un "
+                            + "encantamiento que no esta");
+        }
+    }
+
+    /**
+     * Y Reflejo de Acero además lo venden los aldeanos (decisión del dueño).
+     *
+     * <p>Separado del test de arriba porque son dos tags con dos lectores distintos, y un sabotaje
+     * tiene que poder matar a uno sin matar al otro.</p>
+     */
+    @Test
+    @DisplayName("Reflejo de Acero esta en `tradeable`: lo vende un bibliotecario")
+    void steelReflexIsTradeable() throws IOException {
+        Path file = ENCHANT_TAGS.resolve("tradeable.json");
+        assertTrue(Files.exists(file), "falta " + file);
+        String json = Files.readString(file, StandardCharsets.UTF_8);
+        assertTrue(json.contains("\"cortescombat:" + CombatEnchantRules.STEEL_REFLEX_ID + "\""),
+                "Reflejo de Acero no esta en tradeable.json: el dueno decidio que lo vendan los "
+                        + "aldeanos, y sin el tag ningun bibliotecario lo va a ofrecer");
     }
 
     @Test

@@ -635,6 +635,19 @@ tiene los números, y el hook vive donde el número se cobra.
 
 - **`CombatEnchantRules.IDS`** es la lista canónica y `CombatEnchantmentFilesTest` la camina: agregar
   un id hace que el test cubra solo el archivo, el tag, la forma del campo y **los 8 idiomas**.
+- **Y hay que estar en un TAG DE ENCANTAMIENTO o no se consiguen.** En 1.21.1 el campo `"treasure"`
+  del JSON **no existe** (verificado: ninguno de los 42 de vanilla lo declara) -- son **tags de
+  registro**: `in_enchanting_table` (lo lee la mesa, `EnchantmentMenu:207`), `treasure`, `tradeable`
+  (aldeanos) y `on_random_loot` (cofres). Los 6 nuestros se registraban, tenían archivo e idioma,
+  se podían dar con `/enchant`... y **no salían nunca en una mesa**, sin un solo error en el log. ∴
+  `data/minecraft/tags/enchantment/{in_enchanting_table,tradeable}.json`, y el guard pregunta si
+  **cada id está adentro**, no si el archivo existe.
+- **El parry devuelve el daño de un proyectil al tirador, y era casualidad.** `getEntity()` de una
+  flecha es **el arquero** (la flecha es `getDirectEntity()`), así que el `instanceof LivingEntity`
+  del handler lo aceptaba sin preguntar nada. Formalizado en `ParrySource.cameThroughTheAir(...)`
+  (pregunta por **identidad**, no por tipo: así la onda de filo, que no extiende `Projectile`,
+  también entra), el proyectil se **descarta** (antes quedaba clavado en el que parrió) y el guard
+  afirma que el handler **usa** la respuesta -- una pregunta sin consumidor es el bug.
 - **Los ids viven en la clase pura** (`*_ID` como `String`) y no en `CombatEnchantments`, que nombra
   `ResourceKey`/`Enchantment` y no se puede cargar en un test.
 - **Identidad = molde** (`#cortescombat:profile/<familia>`), **genérico = clase**

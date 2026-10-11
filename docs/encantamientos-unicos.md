@@ -9,7 +9,7 @@
 
 ---
 
-## 🔴 El bug que bloquea todo: el tag `in_enchanting_table`
+## ✅ El bug del tag `in_enchanting_table` — **ARREGLADO** (2026-10-11)
 
 **Verificado en la fuente** (`EnchantmentMenu.java:207`):
 
@@ -39,14 +39,26 @@ de vanilla lo declara. Son **cuatro tags**:
 **Decisión del dueño ya tomada:** `steel_reflex` va a **`tradeable`** (los aldeanos lo venden).
 El resto de los 6 va a `in_enchanting_table` salvo que se diga lo contrario.
 
+**Estado: HECHO.** `data/minecraft/tags/enchantment/in_enchanting_table.json` con los seis, y
+`tradeable.json` con `steel_reflex`. Los dos **mergean aditivamente** con los de vanilla (no llevan
+`replace`), así que el bibliotecario sigue vendiendo lo suyo. Guard:
+`CombatEnchantmentFilesTest.everyEnchantmentIsOfferedByTheTable` y `steelReflexIsTradeable`, los dos
+saboteados y verificados mordiendo.
+
 ---
 
 ## 🟡 Tres datos verificados que cambian el plan
 
-1. **El parry NO desvía proyectiles hoy.** No hay una línea que toque `AbstractArrow`/`Projectile`. Lo
-   que devuelve cosas es la **guardia**, y devuelve la **onda de filo** (`SlashWave.sweep` →
-   `reflect()`). ∴ **"Giro" no era inútil**: desviar proyectiles con el parry es capacidad nueva, y
-   **Capacitor necesita implementarla antes** de convertir nada en rayo.
+1. ~~El parry NO desvía proyectiles hoy.~~ **CORREGIDO: SÍ los desvía, y ahora está formalizado.**
+   El parry devuelve el daño **al atacante de la fuente**, y para un flechazo `getEntity()` es **el
+   arquero** (la flecha es `getDirectEntity()`). ∴ el parry ya devolvía flechas, y era una
+   **consecuencia imprevista**: no había una línea en todo el mod que nombrara un proyectil. El dueño
+   lo probó en gameplay y tenía razón; el que se equivocó fue el que buscó `AbstractArrow` y no lo
+   encontró. **Formalizado** en `ParrySource.cameThroughTheAir(hasDirectEntity, directIsTheAttacker)`
+   -- la pregunta por **identidad** y no por tipo, para que la onda de filo (que no extiende
+   `Projectile`) también entre. Y se **usa**: el proyectil se descarta (antes quedaba clavado en el
+   que parrió, que es la parte visible de un desvío que no desvió nada). **Capacitor se engancha en
+   esa rama**: ya existe y tiene test.
 2. **El shotel NO puede cubrir.** `ViewModelMotion:306`, textual: *"the sabre's guard profile is NONE,
    so it never goes up and never breaks"*. ∴ **Contragolpe no puede armarse con un bloqueo en el
    shotel** -- si va a tenerlo, se arma desde el **parry** (que es su mecánica de lectura).
@@ -221,20 +233,45 @@ menos).
   efecto nuevo.
 - ⚠️ Números: radio, duración y nivel de Wither.
 
-### `frenesi` · Frenesí (reemplaza a Surco)
-- **Niv ?**
-- Conforme atacás, tus ataques se vuelven **más y más rápidos**, en una ventana que se mantiene
-  **mientras sigas atacando**.
-- ⚠️⚠️ **DOS choques, y son los más serios de toda esta ronda:**
-  1. **La velocidad de ataque dura es una decisión cerrada del proyecto**, y el doc v2 §C5 **veta por
-     nombre** *"cualquier encantamiento de tempo (`+attack speed`, `-cooldown` de swing)"*, con la
-     razón escrita: *"choca con el margen de i-frames (`IFRAME_TICKS = 3`)"*. Acortar el cooldown de
-     la azada es exactamente eso. **Si se levanta el veto, tiene que ser una decisión explícita del
-     dueño**, no un descuido.
-  2. **`frenzy` ya existe**: `FrenzyState` + `miner_frenzy` ("Fiebre del Minero", de las doradas) hace
-     *mientras más picás, más rápido*, y **la azada es una herramienta**. Es la misma mecánica con
-     otro target.
-- ⚠️ Números: cuánto acelera, cuántos stacks, cuánto dura la ventana.
+### `agobio` · Agobio (reemplaza a Frenesí, que se descartó por los i-frames)
+
+> **Decisión del dueño (2026-10-11):** *"tienes razón en los i-frames, vamos entonces a darle un
+> cambio de mecánica, proponme uno que mantenga la idea de convertir a la hoz en un arma muy
+> opresiva"*. Y sobre el nombre: *"sólo démosle un nombre distinto"*.
+
+**La idea que se conserva**: la azada es un arma **opresiva** -- no te deja contestar. **Lo que se
+va**: acortar tu propio cooldown, porque es el tempo propio y el margen de i-frames es de 3 ticks.
+
+**Propuesta (a confirmar):** cada golpe de la azada aplica **un stack de debilidad** al objetivo
+(*el rival pega menos*), y **el cleave (click derecho) lo aplica a TODOS los alcanzados**.
+
+- **Niv 2.** Stacks: **3 (L1) / 5 (L2)** `?`, cada uno **−10 % de daño del rival** `?`, ventana 5 s
+  que se refresca con cada golpe.
+- **Por qué es de la azada y no de otra**: el cleave **es suyo** (tajo ancho sin wind-up), y es el
+  único gesto del juego que toca a **varios** con un ataque que no cuesta carga. Degradar un grupo
+  entero es exactamente "opresivo", y ninguna otra arma puede hacerlo sin comprometerse.
+- **Hook**: un `MobEffect` (o Debilidad vanilla, si alcanza) aplicado en el golpe y en el cleave.
+- **Cero arte y cero efecto nuevo** si se usa **Debilidad** de vanilla.
+
+**Alternativas que quedan sobre la mesa** (por si Agobio no convence):
+
+| Nombre | Mecánica | Contra |
+|---|---|---|
+| **Yugo** | cada golpe **alarga el cooldown del arma del rival** | muy opresivo, pero **sólo funciona contra jugadores**: los mobs no usan nuestro cooldown |
+| **Sello** | los golpes le **quitan el click derecho** al rival (especial y guardia) | opresivo y simple, pero contra mobs no hace nada |
+| **Cobrador** | los golpes **bloquean la curación** del rival | opresivo, pero ataca el sistema de comida, que es central en el proyecto |
+
+### ~~`frenesi` · Frenesí~~ — DESCARTADO
+
+Conforme atacás, tus ataques se vuelven **más y más rápidos**, en una ventana que se mantiene
+mientras sigas atacando.
+
+⚠️⚠️ **Dos choques, y son los más serios de la ronda -- por eso se fue:**
+1. **La velocidad de ataque dura es una decisión cerrada del proyecto**, y el doc v2 §C5 **veta por
+   nombre** *"cualquier encantamiento de tempo (`+attack speed`, `-cooldown` de swing)"*, con la
+   razón escrita: *"choca con el margen de i-frames (`IFRAME_TICKS = 3`)"*.
+2. **`frenzy` ya existe**: `FrenzyState` + `miner_frenzy` ("Fiebre del Minero", de las doradas) hace
+   *mientras más picás, más rápido*, y **la azada es una herramienta**.
 
 ### 🐛 `azada`: la animación está al revés
 El dueño reporta que el tajo va **hacia la derecha** y debería ir **hacia la izquierda**. Está en el
@@ -408,18 +445,28 @@ Niv 2 · la mecha baja de **20 → 15/10** ticks.
 
 # Lo que falta decidir (para el dueño)
 
-1. **El tag**: ¿los 6 van a `in_enchanting_table`, y `steel_reflex` además a `tradeable`? ¿Alguno a
-   `treasure` (fuera de la mesa)?
-2. **Desvío Vampírico**: ¿el robo **puede matar** al enemigo, o la vida actual no baja?
-3. **Inercia**: ¿el techo vertical sube, o se queda clampeado en 0.45? ¿Y qué "daño de altura" habilita?
-4. **Sentencia**: ¿el reventón **no daña al jugador**, o le daña menos?
-5. **Barredor**: si el área crece, ¿el HUD del cono lee el encantamiento? (si no, el indicador miente)
-6. **Frenesí**: levantar el veto de "tempo" del §C5 **es una decisión tuya**, y además la mecánica ya
-   existe como `miner_frenzy`. ¿Se duplica, se renombra o se descarta?
-7. **Adrenalina y Aventurero**: funcionan igual en cualquier arma → son genéricos disfrazados. ¿Se
-   aceptan como genéricos, o se les busca la vuelta para que sean de su arma?
-8. **Mungus**: ¿la explosión **rompe bloques**?
-9. **Rey de las Moscas**: ¿cómo se contagia la infección entre jugadores?
-10. **Todos los `?`**: son números que propuse y que necesitan tu OK (o el tuyo cambiado).
-11. **Las nueve colisiones de nombres** con `encantamientos-armas-nuevas.md` §G: este documento es el
-    canónico, ¿confirmás?
+## Resueltas (2026-10-11)
+
+| # | Era | Decisión |
+|---|---|---|
+| 1 | el tag | **HECHO**: los 6 a `in_enchanting_table`, `steel_reflex` además a `tradeable` |
+| 2 | Frenesí | **cambio de mecánica** (los i-frames tenían razón): propuesta **Agobio**, ver arriba |
+| 3 | Adrenalina y Aventurero | **se mantienen tal cual**: Adrenalina puede ser ofensiva y defensiva a la vez, y Aventurero es genérico **a propósito** (le da un propósito late-game a las espadas) |
+| 4 | Desvío Vampírico | **tope por nivel** (no se acumula más allá del techo del nivel). Sigue en pie que **la vida actual del enemigo no baja** |
+| 5 | el techo de knockback | **se sube** (Paliza e Inercia) |
+| 6 | Mungus | **rompe bloques** -- queda como la **excepción** a "el mod no rompe bloques" |
+| 7 | Contragolpe en el shotel | **armado desde el parry** (el sabre no puede cubrir) |
+| 8 | el parry y los proyectiles | **formalizado** (`ParrySource`), no dependemos más de la casualidad |
+
+## Abiertas
+
+1. **Agobio**: ¿va esa mecánica, o alguna de las tres alternativas (Yugo / Sello / Cobrador)?
+2. **Adrenalina, la mitad ofensiva**: falta decir **qué** es. Dos opciones:
+   (a) el daño que te ahorró **vuelve al atacante** -- simple y temático;
+   (b) el daño ahorrado **se suma a tu siguiente golpe** -- más control.
+3. **Sentencia**: ¿el reventón **no te daña**, o **te daña menos**? (el pedido es ambiguo)
+4. **Barredor**: si el área crece, ¿el HUD del cono lee el encantamiento? (si no, el indicador miente)
+5. **Rey de las Moscas**: ¿cómo se **contagia** la infección entre jugadores?
+6. **Todos los `?`**: números que propuse y que necesitan tu OK o tu cambio.
+7. **Las nueve colisiones de nombres** con `encantamientos-armas-nuevas.md` §G: este documento es el
+   canónico, ¿confirmás?

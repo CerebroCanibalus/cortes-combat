@@ -10,6 +10,7 @@ import com.cortes.combat.state.ParryState;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
@@ -62,6 +63,14 @@ public final class ParryHandler {
 
         float amount = event.getAmount();
 
+        // **Y el golpe que vino por el aire, nombrado.** Hasta acá el parry devolvía flechas por
+        // casualidad: `getEntity()` de un proyectil es el ARQUERO -- la flecha es
+        // `getDirectEntity()` -- y el `instanceof LivingEntity` de arriba lo aceptaba sin preguntar
+        // nada. El dueño lo probó en gameplay y tenía razón; lo que faltaba era la línea que lo
+        // dice. Ver `ParrySource`, y más abajo está lo que se hace con la respuesta.
+        Entity direct = event.getSource().getDirectEntity();
+        boolean throughTheAir = ParrySource.cameThroughTheAir(direct != null, direct == attacker);
+
         // **The three numbers that decide why a parry does not answer.**
         //
         // The playtest says "nothing parries a player, everything parries a mob and an explosion",
@@ -77,16 +86,29 @@ public final class ParryHandler {
         // arrived. One line at debug, only on the tick a parry is open, which is at most six
         // lines per press.
         org.slf4j.LoggerFactory.getLogger("cortescombat").debug(
-                "[parry] golpe={} atacante={} posicion={} cantidad={} bloqueando={}",
+                "[parry] golpe={} atacante={} posicion={} cantidad={} bloqueando={} porElAire={}",
                 event.getSource().getMsgId(),
                 attacker.getName().getString(),
                 event.getSource().getSourcePosition(),
                 amount,
-                player.isBlocking());
+                player.isBlocking(),
+                throughTheAir);
 
         event.setAmount(0.0F);
         player.setData(ModAttachments.PARRY.get(), state.consume());
         ModNetworking.sendParryState(player, false, state.cooldownTicks());
+
+        // **Lo que se hace con la respuesta: el proyectil se descarta.**
+        //
+        // Un golpe que llegó por el aire se anuló y volvió -- eso ya pasaba --, pero la flecha
+        // seguía clavada en el jugador que la parrió, que es la parte visible de un desvío que no
+        // desvió nada. Descartarla es lo que hace que "lo devolví" se vea además de leerse.
+        //
+        // **Es también el punto de enganche de Capacitor**: convertir el proyectil en un rayo es
+        // esta misma rama más el daño y el fuego. La condición ya está, y tiene test.
+        if (throughTheAir) {
+            direct.discard();
+        }
 
         reflect(player, attacker, amount);
     }
