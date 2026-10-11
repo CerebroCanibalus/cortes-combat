@@ -869,3 +869,80 @@ firma exacta de "rompi el codigo en vez de probar el guard".
 1054 tests verdes. 35 encantamientos implementados. Faltan tres: Pala Antimaterial, Rey de las
 Moscas y Mungus -- los tres con su tabla de numeros escrita y **fuera de `IDS`** hasta que tengan
 entidad propia.
+
+### La sangre pesa y las moscas revolotean - y un guard me agarro inventandome una constante del motor
+
+Dos particulas nuevas con su propia fisica, y la mitad del trabajo no estuvo en escribirlas sino en
+averiguar que ya estaba escrito en el motor.
+
+**La sangre no tiene codigo que la haga pesada: tiene `gravity` en tres y el motor hace el resto.**
+Leido en las fuentes de `Particle#tick`: `yd -= 0.04 * gravity` por tick, y despues `move()`. Con
+`hasPhysics` -- que es `true` por defecto y que casi todo el mundo apaga -- `move()` pasa por
+`Entity.collideBoundingBox`. Y ahi esta el regalo: `Particle` tiene un campo `stoppedByCollision`
+que se pone en el momento exacto en que la gota queria bajar y no pudo, y **a partir de ahi `move()`
+no hace nada mas nunca**. O sea que la gota cae rapido, toca el suelo y **se queda clavada donde
+cayo**, que es una salpicadura, sin una sola linea de la nuestra. Todo el "peso" son dos numeros y
+no apagar algo.
+
+**Y las moscas no flotan: se tiran.** Movimiento aleatorio por tick es estatica -- el ojo ve un
+parpadeo, no un insecto. Una mosca elige una direccion, se tira, aguanta tres ticks y cambia de
+idea, y eso tiene dos tiempos separados: el **dardo** y el **STEERING** (0,65) que la acelera hacia
+el rumbo nuevo en vez de teletransportarla. Sin ese acercamiento el cambio es un salto y se lee
+como lag; con movimiento por tick sin dardo es ruido. Y `gravity` en cero a proposito, porque una
+mosca con gravedad apila la nube en el piso en dos segundos y deja de ser una nube.
+
+**El hallazgo que hay que anotar: `sendParticles` no puede elegir la direccion.** Verificado en
+`ClientPacketListener#handleParticleEvent`: con conteo mayor que cero el cliente calcula la velocidad
+como `gaussian() * maxSpeed` **por cada eje**, con el mismo sigma en los tres. Solo existe la nube
+**isotropica** -- no hay forma de escribir un chorro hacia atras. Para la sangre no hizo falta (un
+salpicon lo es, y despues la gravedad pone la direccion), pero es el numero que hay que recordar
+antes de querer un chorro dirigido en el futuro.
+
+### Y una constante que me invente, y el guard la agarro
+
+La primera version de `SangreParticle` tenia un javadoc entero -- y un guard en el test -- que
+decian: *`move()` solo resuelve la colision si `x²+y²+z² < 3.0` bloques por tick, pasado ese numero
+la gota atraviesa el suelo*. **Eso era falso.** `MAXIMUM_COLLISION_VELOCITY_SQUARED` es
+`Mth.square(100.0)`: **cien bloques por tick**, y no hay gravedad razonable que lo toque.
+
+El guard mordio, pero **por el motivo equivocadisimo**: suscribia el limite que yo mismo habia
+inventado, asi que fallo contra mi mentira y no contra el motor. Lo que salvo el dia fue que
+tuviera que **abrir la constante** para contestarle, y al abrirla estaba escrita otra cosa.
+
+Es la segunda vez en dos rondas que un guard sobre una constante inventada da un resultado
+aprovechable por casualidad, y las dos se arreglaron igual: **el guard tiene que medir la pregunta
+que importa y no mi version de ella.** El correcto no es "no atraviesa el suelo" -- esa amenaza no
+existia -- sino *"cuantos ticks de su vida se pasa clavada en el piso"*, que es lo unico que se lee
+como sangre. Con la formula de la distancia (`0.02 * gravity * n²`), 1,5 bloques de cuerpo y
+gravedad tres salen **cinco ticks de caida y once de salpicadura**.
+
+### Los iconos de efecto: seis archivos correctos en la carpeta equivocada
+
+El usuario dibujo seis iconos y los dejo en `textures/effects/`. **Esa es la carpeta de staging de
+este proyecto y el juego no la lee nunca**: `MobEffect` resuelve en
+`assets/<ns>/textures/mob_effect/<id>.png`. Y encima los nombres eran los del **encantamiento** y
+no los del **efecto** -- `cicatriz` vive en el efecto `anti_healing`, `gripa` en `moco`. Seis
+archivos que existen, pesan bytes, y el HUD los ignora por completo, con el build verde.
+
+Copiados bajo su id (`drained` se llevo una copia de `desvio_vampirico`, porque son dos efectos de
+un solo encantamiento y el arte es uno). Y **les faltaba el idioma tambien**: sin
+`effect.cortescombat.<id>` el HUD muestra el identificador crudo, que es la misma falla con otro
+dibujo. Siete entradas nuevas en los ocho idiomas, **y `lunge`, que tambien se dibujaba en el HUD
+durante un segundo como `cortescombat.lunge`** y nadie lo habia notado porque dura un segundo.
+
+`EffectAssetsTest` camina `ModEffects` y afirma las dos mitades por cada id: icono **y** nombre.
+Dos guards, y los dos muerden -- uno por cada eslabon.
+
+### Diez sabotajes, y ninguno murio por la razon equivocada
+
+Ocho de las particulas (fisica apagada, gravedad de pluma, drip borrado, gate del `landed` caido,
+proveedor del cliente cambiado, JSON borrado, moscas con gravedad, sin STEERING) y dos de los
+iconos (icono de `moco` fuera de sitio, nombre de `drained` borrado). Los diez con su muerte, y el
+`FINAL` limpio.
+
+Y una mas que no cuenta: el guard de las moscas afirmaba `STEERING` -- **el nombre de la
+constante**, que sobrevive a borrar el uso. Es la cuarta vez que este proyecto paga esa diferencia
+en la sesion; ahora pide la linea de uso.
+
+1060 tests verdes (eran 1054). Las moscas quedan **listas pero sin cablear**: Rey de las Moscas las
+dispara con una llamada, y esta anotado como falta en el guard correspondiente.

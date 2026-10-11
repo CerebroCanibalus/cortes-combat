@@ -117,6 +117,22 @@ public class CortesLanguageProvider extends LanguageProvider {
         add("effect.cortescombat.antiseptic", spanish ? "Antiséptico" : "Antiseptic");
         add("effect.cortescombat.purification", spanish ? "Purificación" : "Purification");
         add("effect.cortescombat.revelacion", spanish ? "Revelación" : "Revelation");
+    // El de la embestida tambien se dibuja en el HUD durante un segundo, y sin esta linea se
+    // lee `cortescombat.lunge` -- el id crudo, que es como se pierde una textura que ya existe.
+    add("effect.cortescombat.lunge", spanish ? "Embate" : "Lunge");
+    // El de la embestida tambien se dibuja en el HUD durante un segundo, y sin esta linea se
+    // lee `cortescombat.lunge` -- el id crudo, que es como se pierde una textura que ya existe.
+    // **Los siete de combate, y todos hacen falta.** Sin su `effect.cortescombat.<id>` el HUD
+    // muestra el id crudo -- `cortescombat.anti_healing` -- que es la forma mas fea de perder una
+    // textura que ya esta dibujada. Y van juntos en vez de repartidos: cada encantamiento nuevo
+    // que deje un efecto sin idioma va a fallar en el mismo sitio.
+    add("effect.cortescombat.anti_healing", spanish ? "Anti-curación" : "Anti-Healing");
+    add("effect.cortescombat.bleeding", spanish ? "Sangrado" : "Bleeding");
+    add("effect.cortescombat.quebranto", spanish ? "Quebranto" : "Sunder");
+    add("effect.cortescombat.vampiric", spanish ? "Vampírico" : "Vampiric");
+    add("effect.cortescombat.drained", spanish ? "Drenado" : "Drained");
+    add("effect.cortescombat.moco", spanish ? "Moco" : "Sniffles");
+    add("effect.cortescombat.trabazon", spanish ? "Trabazón" : "Lockdown");
 
         if (spanish) {
             addSpanish();

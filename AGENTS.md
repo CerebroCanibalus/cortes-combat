@@ -768,6 +768,23 @@ y los `viewmodel/*` puros.
   perfil.
 - **1 tipo de partícula** para las 30 armas: el sprite viaja en el payload → un arma nueva es un PNG y
   una línea. Tiras de 32×160 (5 frames) cortadas en los UV.
+- **2 particulas mas, y las dos con su fisica propia** (`SangreParticle`, `MoscaParticle`):
+  **sangre** = `gravity 3` + `hasPhysics` encendido, asi que la gota cae rapido y el motor la
+  congela en el momento en que choca (`stoppedByCollision`) -- la salpicadura sale gratis y no hay
+  una linea de codigo que la dibuje. **Moscas** = `gravity 0`, `hasPhysics` apagado, y un **dardo
+  cada 3 ticks** con aceleracion hacia el rumbo nuevo (`STEERING 0,65`); sin ese acercamiento es
+  estatica y con movimiento aleatorio por tick es un ruido, no un animal.
+- **El paquete `sendParticles` no puede elegir direccion.** Verificado en
+  `ClientPacketListener#handleParticleEvent`: con conteo > 0 el cliente calcula la velocidad como
+  `gaussian() * maxSpeed` **por eje** y con el mismo sigma en los tres. Solo hay nube
+  **isotropica**. Para la sangre no hace falta -- un salpicon lo es, y la gravedad pone el peso --
+  pero es el numero a recordar antes de querer un chorro dirigido.
+- **Los iconos de efecto van en `textures/mob_effect/<id>.png`, y el id es el DEL EFECTO y no el
+  del encantamiento.** `textures/effects/` es **carpeta de staging**: el usuario deja ahi el arte
+  y despues se **copia** bajo el id (`cicatriz.png` -> `anti_healing.png`, `gripa.png` ->
+  `moco.png`). Se pago con seis iconos dibujados, correctos, en la carpeta equivocada, y el build
+  verde. `EffectAssetsTest` camina `ModEffects` y afirma las dos mitades: icono **y**
+  `effect.cortescombat.<id>`, que sin su linea el HUD muestra el id crudo.
 - **1 entidad propia**: la onda de filo (`SlashWave`), la primera `EntityType` del mod. **Modelo
   propio, no partícula** (`SlashWaveRenderer` + `models/projectile/sweeping_edge.json`), y **se
   agranda con el nivel** (`SlashWaveModel.scale` = `SweepingEdge.width`: 0,7/1,0/1,4). Dos trampas

@@ -119,9 +119,25 @@ public class CortesCombatClient {
         // art is an .mcmeta animation (four frames read off the strip's height), so the particle
         // only binds the sprite set and the atlas walks the frames. No UV cutting, no frame count
         // in Java. SimpleParticleType as the option type, because it carries no data.
-        event.registerSpriteSet(com.cortes.combat.registry.ModParticleTypes.PURIFIED.get(),
+        event.registerSpriteSet(com.cortes.combat.registry.ModParticleTypes.SANGRE.get(),
                 sprites -> (options, level, x, y, z, dx, dy, dz) ->
                         new com.cortes.combat.particle.PurifiedParticle(
+                                level, x, y, z, dx, dy, dz, sprites));
+
+        // La sangre. A diferencia de la pluma, el dx/dy/dz que llega del paquete SIRVE: es el
+        // salpic&oacute;n que la gota trae al nacer, y el que despues la gravedad tira al piso.
+        // Por eso el proveedor no los ignora -- ver SangreParticles sobre lo que el paquete puede
+        // y no puede decirle a una gota.
+        event.registerSpriteSet(com.cortes.combat.registry.ModParticleTypes.SANGRE.get(),
+                sprites -> (options, level, x, y, z, dx, dy, dz) ->
+                        new com.cortes.combat.particle.SangreParticle(
+                                level, x, y, z, dx, dy, dz, sprites));
+
+        // Una mosca. Su velocidad de salida se descarta dentro de la propia part&iacute;cula:
+        // una mosca se propulsa sola.
+        event.registerSpriteSet(com.cortes.combat.registry.ModParticleTypes.MOSCA.get(),
+                sprites -> (options, level, x, y, z, dx, dy, dz) ->
+                        new com.cortes.combat.particle.MoscaParticle(
                                 level, x, y, z, dx, dy, dz, sprites));
     }
 

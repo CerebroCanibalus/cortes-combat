@@ -23,6 +23,17 @@ import net.minecraft.world.entity.LivingEntity;
  * <p><b>Y no se apila: reaplicar refresca.</b> El diseño lo dice, y es la decisión correcta: un DoT
  * que se apilara con cada golpe cargado convertiría la alabarda en un arma que mata sola después de
  * tres segundos de no hacer nada.</p>
+ *
+ * <h2>Y sangra de verdad</h2>
+ *
+ * <p>Cada tick de daño suelta gotas de {@link com.cortes.combat.particle.SangreParticle}, que
+ * <b>caen rapido y se quedan clavadas donde tocaron el suelo</b> -- el peso no esta en el dibujo,
+ * esta en que {@code gravity} va en tres y el motor deja de moverlas en el momento en que chocan.
+ * Es lo que hace que Destripamiento se vea como una herida abierta y no como un contador de vida.</p>
+ *
+ * <p>Y <b>sale del resultado de {@code hurt}</b>, no del reloj del efecto: un cuerpo invulnerable
+ * no recibe el dano y por lo tanto no sangra. Sangrar sin haber recibido nada seria sangre que no
+ * viene de ninguna parte.</p>
  */
 public class BleedingEffect extends MobEffect {
 
@@ -38,7 +49,14 @@ public class BleedingEffect extends MobEffect {
 
     @Override
     public boolean applyEffectTick(LivingEntity entity, int amplifier) {
-        entity.hurt(entity.damageSources().magic(), DAMAGE);
+        // **La sangre va pegada al daño y no al reloj del efecto**, y la diferencia importa: si
+        // saliera del intervalo con la duración cayendo, un cuerpo invulnerable -- que no recibe el
+        // daño -- seguiria goteando, y entonces la sangre no vendria de ninguna parte. Sale del
+        // resultado de `hurt`, que contesta "esto entro".
+        boolean landed = entity.hurt(entity.damageSources().magic(), DAMAGE);
+        if (landed && entity.level() instanceof net.minecraft.server.level.ServerLevel server) {
+            com.cortes.combat.particle.SangreParticles.drip(server, entity);
+        }
         return true;
     }
 

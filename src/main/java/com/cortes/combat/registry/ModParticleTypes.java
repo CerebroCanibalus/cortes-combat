@@ -58,6 +58,20 @@ public final class ModParticleTypes {
     public static final DeferredHolder<ParticleType<?>, SimpleParticleType> PURIFIED =
             PARTICLE_TYPES.register("purified_effect", () -> new SimpleParticleType(false));
 
+    /**
+     * Una gota de sangre.
+     *
+     * <p>Sin parametros, como la pluma de purificacion: el sprite es uno solo y todo el
+     * comportamiento -- el peso, el choque, el fade -- vive en {@link SangreParticle}. El tipo no
+     * lleva datos porque no hay nada que decirle que no sea "sangre".</p>
+     */
+    public static final DeferredHolder<ParticleType<?>, SimpleParticleType> SANGRE =
+            PARTICLE_TYPES.register("sangre", () -> new SimpleParticleType(false));
+
+    /** Una mosca revoloteando. Sin parametros por la misma razon. */
+    public static final DeferredHolder<ParticleType<?>, SimpleParticleType> MOSCA =
+            PARTICLE_TYPES.register("mosca", () -> new SimpleParticleType(false));
+
     private ModParticleTypes() {
     }
 }
