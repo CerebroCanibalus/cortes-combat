@@ -254,9 +254,10 @@ public final class SpecialHandler {
         // costs, which made it that click with a wider hitbox, more targets and more shove -- and a
         // button that is strictly better than the attack is not a button, it is a mistake. At four
         // swings the choice is real and it is the count that decides it.
-        AttackCooldown.consume(player,
-                HalberdSweep.cooldownFor(WeaponStats.attackInterval(player)));
+        int cost = HalberdSweep.cooldownFor(WeaponStats.attackInterval(player));
+        AttackCooldown.consume(player, cost);
 
+        int kills = 0;
         for (LivingEntity target : targets) {
             AttackResult result = DamageResolver.resolve(
                     player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE),
@@ -271,7 +272,29 @@ public final class SpecialHandler {
                 SlashParticles.hit(level, stats.profile(), target, false);
                 ModNetworking.sendFeedback(player,
                         com.cortes.combat.core.CombatFeedback.HIT);
+                // **Se pregunta despues del `hurt`, y no por el valor de retorno.** `hurt` contesta
+                // "el dano paso", que es otra pregunta: un golpe que entra y no mata contesta que si.
+                // La muerte es `isAlive` despues del golpe, que es el unico momento en que existe.
+                if (!target.isAlive()) {
+                    kills++;
+                }
             }
+        }
+
+        // **Segunda Pasada, y la condicion es "no mato a NADIE".**
+        //
+        // Va despues del loop porque la respuesta no existe hasta que los cuerpos contestaron. Un
+        // barrido que acerto a tres y no mato a ninguno devuelve cooldown igual: el problema que el
+        // encantamiento resuelve es el barrido contra un grupo que aguanta -- cuatro swings de precio
+        // por un intercambio que no termino nada. Uno que SI mata ya cobro lo suyo, y eso es lo que
+        // impide que el encantamiento sea "el barrido cuesta la mitad siempre".
+        float pasada = CombatEnchantRules.segundaPasada(CombatEnchantments.level(
+                player.level().registryAccess(), player.getMainHandItem(),
+                CombatEnchantments.SEGUNDA_PASADA));
+        if (kills == 0 && pasada > 0.0F) {
+            var cooldown = player.getData(com.cortes.combat.registry.ModAttachments.COOLDOWN.get());
+            player.setData(com.cortes.combat.registry.ModAttachments.COOLDOWN.get(),
+                    cooldown.refund(Math.round(cost * pasada)));
         }
     }
 

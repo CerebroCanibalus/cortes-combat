@@ -681,3 +681,32 @@ Destripamiento, Quebranto, Desvio Vampirico, Mecha Corta y Barredor). Lo que cos
   (`targetsInCone` devuelve todos), asi que no hay un numero del que sumar. Lo que hace el
   encantamiento es agrandar el area, y **un area mas grande alcanza mas objetivos por si sola** -- el
   efecto que el jugador ve es el que el documento prometia, por otro mecanismo.
+
+### La tanda de los baratos de la ronda 5 — Astilladora, Mella, Segunda Pasada, Santa Muerte
+
+**El inventario real era 17 y no 11**, que es lo primero que hay que anotar: el documento contaba los
+que faltaban de memoria. Los cuatro de esta ronda son los que ya tenian su hook escrito.
+
+- **Astilladora** obligo a que `GuardState.block` tome el **coste** por argumento, y no es un capricho
+  de estilo: gastar dos de a uno **bajaria la guardia en el primero** y el segundo punto caeria sobre
+  una guardia que ya esta abajo. "Este golpe cuesta dos" es la barra, no la postura. El test lo afirma
+  con una barra de tres, que es donde los dos caminos se separan.
+- **Mella** es **el unico encantamiento del proyecto que no toca el dano**: toca el desgaste, que es un
+  recurso del rival en una escala de minutos. Por eso los numeros son grandes (hasta x6).
+- **Segunda Pasada** obligo a que `CooldownState` tenga un `refund`, y el borde es lo unico que importa:
+  **una devolucion mayor que lo que queda tiene que caer en cero** y no en un contador negativo -- un
+  cooldown negativo no es "muy listo", es un estado donde `isReady` contesta si por una razon que nadie
+  escribio. Y la condicion del encantamiento es **"no mato a NADIE"**, que se pregunta por `isAlive`
+  despues del `hurt`: `hurt` contesta "el dano paso", que es otra pregunta.
+- **Santa Muerte** va en `LivingDeathEvent` por el mismo criterio que Aventurero -- el evento no es del
+  golpe, y un mob puede morir de tres formas que no pasan por `CombatEngine`. El Wither va al **radio**
+  y **el asesino queda afuera**: un encantamiento que castiga al que lo usa es el veto C2.
+
+**Y la leccion de los sabotajes, otra vez con otra cara.** Dos de los siete **no midieron lo que
+creia**: uno rompio la compilacion (`astilladoraCostX` no existe) y reporto "EXIT=1, 0 muertos", y el
+otro no revirtio porque el `Replace` buscaba un texto que ya no estaba -- y dejo el archivo saboteado
+para el resto de la corrida. **Un sabotaje que rompe la compilacion no es un sabotaje: es un error de
+tipografia con el mismo color que un exito.** El script ahora imprime el exit y los muertos juntos, y
+la diferencia entre "no compila" y "murio un test" se ve en la primera linea.
+
+1044 tests verdes (eran 1035). 26 encantamientos implementados, 7 sabotajes verificados.

@@ -6,9 +6,9 @@
 > esto**: entre los dos había **nueve nombres para mecánicas distintas**, y esa era la primera cosa a
 > limpiar.
 >
-> **Estado (2026-10-11):** **22 encantamientos implementados** y en la mesa. Además, dos arreglos de
+> **Estado (2026-10-11):** **26 encantamientos implementados** y en la mesa. Además, dos arreglos de
 > cliente: **la animación de la azada** (iba hacia la derecha) y **Mecha Corta**, que resultó no
-> necesitar arte — ver §6. Los ~11 restantes tienen sus números **aprobados hasta el playtest final**.
+> necesitar arte — ver §6. Los ~13 restantes tienen sus números **aprobados hasta el playtest final**.
 
 ---
 
@@ -105,8 +105,8 @@ descartó igual (§6 Azada).
 
 | Encantamiento | Niv | Efecto | Hook |
 |---|---|---|---|
-| **Astilladora** | **1** | un golpe bloqueado gasta **2** de aguante en vez de 1 | `GuardHandler`, en `state.block(...)` |
-| **Mella** | **4** | el desgaste a la armadura sube **+50 %/+100 %/+150 %/+200 %** (sobre el ×2 de base → hasta ×6) | `ArmorHurtEvent.ArmorEntry.newDamage` -- **ya existe** (`ArmorWearHandler`) |
+| **Astilladora** | **1** | un golpe bloqueado gasta **2** de aguante en vez de 1 | ✅ **HECHO** -- `GuardState.block(regen, cost)` + `CombatEnchantRules.astilladoraCost` en `GuardHandler` |
+| **Mella** | **4** | el desgaste a la armadura sube **+50 %/+100 %/+150 %/+200 %** (sobre el ×2 de base → hasta ×6) | ✅ **HECHO** -- `ArmorHurtEvent.ArmorEntry.newDamage` en `ArmorWearHandler` (`WEAR_MULTIPLIER * mella`) |
 | **Filo Astillado** | 2 | **+6 %/+10 % de daño por cada pieza de armadura** del enemigo (máx 4 → +24 %/+40 %) | bonus por objetivo |
 
 ## PALA · el control del espacio
@@ -135,7 +135,7 @@ Ya tiene Density, Breach y Wind Burst de vanilla. Caída Astuta, Peso Muerto y O
 | Encantamiento | Niv | Efecto | Hook |
 |---|---|---|---|
 | **Cicatrizador** | **4** | el efecto **Anti-curación**: reduce la efectividad de **todos** los sources de curación **−15 % por nivel** (L4 = **−60 %**), 5 s, refresca | `LivingHealEvent` (existe en NeoForge) → `setAmount(amount * (1 − reducción))` |
-| **Santa Muerte** | **1** | **matar** un enemigo lo hace explotar en una **nube negra de humo putrefacto** que aplica **Wither I 5 s** en radio **3** | la muerte ya se detecta (`notifyHit` con `killed`) |
+| **Santa Muerte** | **1** | **matar** un enemigo lo hace explotar en una **nube negra de humo putrefacto** que aplica **Wither I 5 s** en radio **3** | ✅ **HECHO** -- `enchant/SantaMuerte`, `LivingDeathEvent`. **El asesino queda afuera** (veto C2) y el humo es `SQUID_INK` + `LARGE_SMOKE`, sin arte nuevo |
 
 > **Cicatrizador es el reemplazo de "Cobrador"** (decisión del dueño): no *bloquea* la curación,
 > **reduce su efectividad**, y trae un `MobEffect` nuevo (**Anti-curación**) con **un nivel por nivel
@@ -169,7 +169,7 @@ Ya tiene Density, Breach y Wind Burst de vanilla. Caída Astuta, Peso Muerto y O
 | Encantamiento | Niv | Efecto | Hook |
 |---|---|---|---|
 | **Barredor** | 2 | el cono del barrido crece **×1,15/×1,30** (sobre el ×1,35 de base), en distancia **y** en ancho | ✅ **HECHO** -- `HalberdSweep.reachFor(reach, nivel)` + **los 4 sitios de display leen el nivel** (`MaceAir.displayedFor(stats, holder, sweepLevel)`, que a su vez llama a `CombatEnchantments.barredorLevel`) |
-| **Segunda Pasada** | 2 | si el barrido **no mató a nadie**, devuelve el **30 %/50 %** del cooldown | tras el barrido |
+| **Segunda Pasada** | 2 | si el barrido **no mató a nadie**, devuelve el **30 %/50 %** del cooldown | ✅ **HECHO** -- `CooldownState.refund(ticks)` + `SpecialHandler.sweep`, que cuenta **muertes** (`!target.isAlive()` después del `hurt`) y no aciertos |
 | **Destripamiento** | 2 | los ataques **cargados** causan **Sangrado**: **1 ♥ cada 2 s durante 6 s** (L1) / **durante 10 s** (L2) | `MobEffect` propio **Sangrado** (`applyEffectTick`) |
 
 > **"+1/+2 objetivos" se cayó al escribir el código, y hay que decirlo.** El barrido **no tiene tope de

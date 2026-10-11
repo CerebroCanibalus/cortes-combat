@@ -31,6 +31,25 @@ public record CooldownState(int ticksRemaining) {
         return new CooldownState(attackInterval);
     }
 
+    /**
+     * Give back some of the cooldown that is still counting.
+     *
+     * <p><b>Segunda Pasada is why this exists</b>, and it is a method here rather than arithmetic at
+     * the call site because the subtraction has one edge and the edge is the whole point: a refund
+     * larger than what is left has to land on {@code READY} and not on a negative count. A negative
+     * cooldown is not "very ready" -- it is a state where {@code isReady} answers yes for a reason
+     * nobody wrote down, and the next swing would be allowed by accident rather than by the rule.</p>
+     *
+     * <p>And it never <em>raises</em> the count: a refund on a ready weapon does nothing, which is
+     * what keeps the enchantment from banking a free swing for later.</p>
+     */
+    public CooldownState refund(int ticks) {
+        if (ticks <= 0) {
+            return this;
+        }
+        return new CooldownState(Math.max(0, ticksRemaining - ticks));
+    }
+
     public CooldownState tick() {
         return ticksRemaining > 0 ? new CooldownState(ticksRemaining - 1) : READY;
     }

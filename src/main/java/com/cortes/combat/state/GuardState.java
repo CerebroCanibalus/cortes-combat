@@ -85,7 +85,21 @@ public record GuardState(boolean held, int max, int stamina, int regenTicks) {
      * later one arrive a tick early.</p>
      */
     public GuardState block(int regenInterval) {
-        int left = stamina - 1;
+        return block(regenInterval, 1);
+    }
+
+    /**
+     * The same, spending more than one point.
+     *
+     * <p><b>Astilladora is why the cost is a parameter</b>, and it is a parameter rather than a second
+     * method that subtracts twice because "spend two" and "spend one, twice" differ in exactly one
+     * place: {@code held && left > 0}. Calling {@link #block(int)} twice would lower the guard on the
+     * first point and then let the second one land on a guard that is already down, which is not what
+     * "this hit costs two" means -- it means the bar drops by two and the guard stays up while there
+     * is anything left.</p>
+     */
+    public GuardState block(int regenInterval, int cost) {
+        int left = stamina - Math.max(1, cost);
         return new GuardState(held && left > 0, max, Math.max(0, left),
                 Math.max(1, regenInterval));
     }

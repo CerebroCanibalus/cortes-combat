@@ -1,0 +1,21 @@
+{
+  "anvil_cost": 2,
+  "description": {
+    "translate": "enchantment.cortescombat.mella"
+  },
+  "max_cost": {
+    "base": 45,
+    "per_level_above_first": 20
+  },
+  "max_level": 4,
+  "min_cost": {
+    "base": 18,
+    "per_level_above_first": 20
+  },
+  "primary_items": "#cortescombat:enchantable/axe",
+  "slots": [
+    "mainhand"
+  ],
+  "supported_items": "#cortescombat:enchantable/axe",
+  "weight": 2
+}

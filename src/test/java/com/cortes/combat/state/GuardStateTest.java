@@ -87,6 +87,36 @@ class GuardStateTest {
         assertTrue(after.isActive());
     }
 
+    /**
+     * **Astilladora: el mismo golpe, dos puntos.**
+     *
+     * <p>Y el borde que hace que el coste sea un parametro y no dos llamadas a {@code block}: con una
+     * barra de tres, gastar dos deja uno y <b>la guardia sigue arriba</b>. Gastarlos de a uno bajaria
+     * la guardia en el primer punto y el segundo caeria sobre una guardia que ya esta abajo -- que no
+     * es lo que "este golpe cuesta dos" significa.</p>
+     */
+    @Test
+    @DisplayName("a two-point block drops the bar by two and keeps the guard up while anything is left")
+    void blockSpendsTwo() {
+        GuardState after = raised(3).block(REGEN, 2);
+        assertEquals(1, after.stamina(), "la barra baja por dos");
+        assertTrue(after.held(),
+                "**y la guardia sigue arriba**: gastar dos de a uno la habria bajado en el primero");
+        assertTrue(after.isActive());
+
+        GuardState emptied = raised(2).block(REGEN, 2);
+        assertEquals(0, emptied.stamina());
+        assertFalse(emptied.held(), "sin nada que quede, la guardia baja");
+    }
+
+    @Test
+    @DisplayName("a cost below one is treated as one, so nothing blocks for free")
+    void aCostBelowOneIsStillOne() {
+        assertEquals(2, raised(3).block(REGEN, 0).stamina(),
+                "un coste de cero no puede regalar un bloqueo gratis");
+        assertEquals(2, raised(3).block(REGEN, -5).stamina());
+    }
+
     @Test
     @DisplayName("the sword's single point drops the guard outright")
     void swordExhaustsImmediately() {

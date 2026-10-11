@@ -115,6 +115,22 @@ public final class CombatEnchantments {
     public static final ResourceKey<Enchantment> BARREDOR =
             key(CombatEnchantRules.BARREDOR_ID);
 
+    /** Hacha -- Astilladora. */
+    public static final ResourceKey<Enchantment> ASTILLADORA =
+            key(CombatEnchantRules.ASTILLADORA_ID);
+
+    /** Hacha -- Mella. */
+    public static final ResourceKey<Enchantment> MELLA =
+            key(CombatEnchantRules.MELLA_ID);
+
+    /** Alabarda -- Segunda Pasada. */
+    public static final ResourceKey<Enchantment> SEGUNDA_PASADA =
+            key(CombatEnchantRules.SEGUNDA_PASADA_ID);
+
+    /** Azada -- Santa Muerte. */
+    public static final ResourceKey<Enchantment> SANTA_MUERTE =
+            key(CombatEnchantRules.SANTA_MUERTE_ID);
+
     /**
      * El nivel de un encantamiento propio sobre un ítem, por clave.
      *

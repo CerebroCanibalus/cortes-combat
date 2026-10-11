@@ -373,6 +373,47 @@ class CombatEnchantRulesTest {
     }
 
     @Test
+    @DisplayName("**Astilladora: un golpe bloqueado cuesta dos, y sin encantamiento cuesta uno**")
+    void astilladora() {
+        assertEquals(1, CombatEnchantRules.astilladoraCost(0), "sin encantamiento, lo de siempre");
+        assertEquals(2, CombatEnchantRules.astilladoraCost(1));
+        assertEquals(2, CombatEnchantRules.astilladoraCost(9), "un nivel de mas vale el maximo");
+        assertTrue(CombatEnchantRules.ASTILLADORA_COST > 1,
+                "**y el gasto tiene que ser mayor que uno o el encantamiento no hace nada**: es un "
+                        + "gasto y no un dano, y un gasto de uno es el golpe de cualquier arma");
+    }
+
+    @Test
+    @DisplayName("**Mella: el desgaste sube 1,5 / 2,0 / 2,5 / 3,0, y el cuarto nivel se nota**")
+    void mella() {
+        assertEquals(1.0F, CombatEnchantRules.mellaWear(0), 1.0E-6);
+        assertEquals(1.5F, CombatEnchantRules.mellaWear(1), 1.0E-6);
+        assertEquals(2.0F, CombatEnchantRules.mellaWear(2), 1.0E-6);
+        assertEquals(2.5F, CombatEnchantRules.mellaWear(3), 1.0E-6);
+        assertEquals(3.0F, CombatEnchantRules.mellaWear(4), 1.0E-6);
+        assertEquals(3.0F, CombatEnchantRules.mellaWear(9), 1.0E-6, "un nivel de mas vale el maximo");
+        assertTrue(CombatEnchantRules.mellaWear(4) - CombatEnchantRules.mellaWear(3)
+                        >= CombatEnchantRules.mellaWear(1) - 1.0F,
+                "**y el ultimo nivel no puede ser el mas chico.** Un salto que se encoge hace que el "
+                        + "cuarto nivel sea invisible, y un nivel que el jugador paga y no ve es peor "
+                        + "que no tenerlo");
+    }
+
+    @Test
+    @DisplayName("**Segunda Pasada: sin matar devuelve el 30 % / 50 %, y matando no devuelve nada**")
+    void segundaPasada() {
+        assertEquals(0.0F, CombatEnchantRules.segundaPasada(0), 1.0E-6,
+                "sin encantamiento no devuelve nada");
+        assertEquals(0.30F, CombatEnchantRules.segundaPasada(1), 1.0E-6);
+        assertEquals(0.50F, CombatEnchantRules.segundaPasada(2), 1.0E-6);
+        assertEquals(0.50F, CombatEnchantRules.segundaPasada(9), 1.0E-6);
+        assertTrue(CombatEnchantRules.segundaPasada(2) < 1.0F,
+                "**y no devuelve todo.** Un barrido gratis seria el barrido de siempre sin coste, y "
+                        + "el coste de cuatro swings es lo unico que hace que el boton sea una "
+                        + "decision en vez de la mejora del click que reemplaza");
+    }
+
+    @Test
     @DisplayName("los niveles fuera de rango se clampean")    void levelsAreClamped() {
         assertEquals(CombatEnchantRules.parryCooldown(100, 2),
                 CombatEnchantRules.parryCooldown(100, 9),

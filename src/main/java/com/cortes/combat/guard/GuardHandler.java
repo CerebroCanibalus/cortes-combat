@@ -246,7 +246,16 @@ public final class GuardHandler {
             player.setData(ModAttachments.GUARD_FREE.get(), free.usedAt(now));
             after = state;
         } else {
-            after = state.block(guard.profile().regenTicks());
+            // **Astilladora: el hacha cansa la guardia, no la rompe.**
+            //
+            // El mismo golpe que una espada paga con un punto, el hacha lo cobra con dos: la guardia
+            // que aguanta tres golpes de espada aguanta uno y medio de hacha. Y va con `block(regen,
+            // cost)` y no con dos llamadas, porque el segundo punto tiene que bajar la barra SIN bajar
+            // la guardia -- "este golpe cuesta dos" es la barra, no la postura.
+            int cost = CombatEnchantRules.astilladoraCost(CombatEnchantments.level(
+                    player.level().registryAccess(), guard.item(),
+                    CombatEnchantments.ASTILLADORA));
+            after = state.block(guard.profile().regenTicks(), cost);
             player.setData(ModAttachments.GUARD_STAMINA.get(), after);
         }
         player.setData(ModAttachments.GUARD_LAST_BLOCK.get(),

@@ -88,12 +88,25 @@ public final class CombatEnchantRules {
     /** Alabarda -- Barredor: el barrido cubre mas. */
     public static final String BARREDOR_ID = "barredor";
 
+    /** Hacha -- Astilladora: un golpe bloqueado gasta dos de aguante. */
+    public static final String ASTILLADORA_ID = "astilladora";
+
+    /** Hacha -- Mella: el desgaste a la armadura sube. */
+    public static final String MELLA_ID = "mella";
+
+    /** Alabarda -- Segunda Pasada: el barrido que no mato devuelve cooldown. */
+    public static final String SEGUNDA_PASADA_ID = "segunda_pasada";
+
+    /** Azada -- Santa Muerte: matar revienta en una nube de putrefaccion. */
+    public static final String SANTA_MUERTE_ID = "santa_muerte";
+
     /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
     public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID,
             FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID, DRY_POWDER_ID, PUNTA_FINA_ID,
             FILO_ASTILLADO_ID, APUNALAR_ID, SANGUJUELA_ID, AVENTURERO_ID, CULATA_ID, ESTOCADA_ID,
             SEGUNDO_ALIENTO_ID, GUARDIA_FIRME_ID, CICATRIZADOR_ID, DESTRIPAMIENTO_ID, QUEBRANTO_ID,
-            VAMPIRICO_ID, MECHA_CORTA_ID, BARREDOR_ID);
+            VAMPIRICO_ID, MECHA_CORTA_ID, BARREDOR_ID, ASTILLADORA_ID, MELLA_ID, SEGUNDA_PASADA_ID,
+            SANTA_MUERTE_ID);
 
     /** Los genericos, que se ponen por clase y no por molde. */
 
@@ -661,7 +674,81 @@ public final class CombatEnchantRules {
     }
 
     /**
-     * Un nivel dentro de los que el encantamiento tiene.
+     * Astilladora (hacha): cuanta aguante gasta un golpe bloqueado.
+     *
+     * <p><b>Es un gasto y no un dano, y la diferencia es la identidad del hacha.</b> El hacha no
+     * rompe guardias -- eso es el martillo, que vacia la barra entera de un golpe -- sino que las
+     * <em>cansa</em>: la misma guardia que aguanta tres golpes de espada aguanta uno y medio de
+     * hacha. El jugador que se cubre del hacha tiene que bajar la guardia antes, y ese es el momento
+     * que el hacha estaba comprando.</p>
+     */
+    public static final int ASTILLADORA_COST = 2;
+
+    public static int astilladoraCost(int level) {
+        return clamp(level, 1) >= 1 ? ASTILLADORA_COST : 1;
+    }
+
+    /**
+     * Mella (hacha): cuanto se multiplica el desgaste que el golpe cargado le hace a la armadura.
+     *
+     * <p>Es el <b>unico encantamiento del proyecto que no toca el dano</b>: toca el desgaste, que es
+     * un recurso del rival que se gasta en una escala de minutos. Por eso los numeros son grandes
+     * (hasta x6 con el x2 base) y por eso el encantamiento vive en el hacha: es el arma que ya
+     * desgasta al doble, y Mella es "lo mismo, pero de verdad".</p>
+     *
+     * <p>El nivel maximo es 4 y los saltos son de 0,5: 1,5 / 2,0 / 2,5 / 3,0 sobre el x2 base, o sea
+     * x3 / x4 / x5 / x6 de desgaste final. Un salto mas chico haria que el cuarto nivel fuera
+     * invisible, y un encantamiento cuyo ultimo nivel no se nota es un nivel que el jugador paga.</p>
+     */
+    public static final int MELLA_MAX_LEVEL = 4;
+
+    public static float mellaWear(int level) {
+        return switch (clamp(level, MELLA_MAX_LEVEL)) {
+            case 1 -> 1.5F;
+            case 2 -> 2.0F;
+            case 3 -> 2.5F;
+            case 4 -> 3.0F;
+            default -> 1.0F;
+        };
+    }
+
+    /**
+     * Segunda Pasada (alabarda): que fraccion del cooldown devuelve un barrido que no mato a nadie.
+     *
+     * <p><b>La condicion es "no mato a NADIE", y no "no acerto".</b> Un barrido que acerto a tres y no
+     * mato a ninguno devuelve el cooldown igual, porque el problema que este encantamiento resuelve es
+     * el barrido contra un grupo que aguanta: cuatro swings de precio por un intercambio que no
+     * termino nada. Un barrido que <em>si</em> mata ya cobro lo suyo y no devuelve nada -- y eso es lo
+     * que impide que el encantamiento sea "el barrido cuesta la mitad siempre".</p>
+     *
+     * <p>Devuelve una <b>fraccion del cooldown ya cobrado</b>, no un numero de ticks: el cooldown del
+     * barrido sale del intervalo del arma, asi que un numero fijo seria distinto en cada alabarda.</p>
+     */
+    public static final int SEGUNDA_PASADA_MAX_LEVEL = 2;
+
+    public static float segundaPasada(int level) {
+        return switch (clamp(level, SEGUNDA_PASADA_MAX_LEVEL)) {
+            case 1 -> 0.30F;
+            case 2 -> 0.50F;
+            default -> 0.0F;
+        };
+    }
+
+    /**
+     * Santa Muerte (azada): el radio y el dano de la nube que deja un enemigo muerto.
+     *
+     * <p>Un solo nivel y numeros fijos, porque el efecto es un <b>evento</b> y no una escala: el
+     * encantamiento se llama asi por lo que <em>hace</em>, no por cuanto hace. Wither I durante cinco
+     * segundos es un dano que no se ve venir y que no se puede curar, que es exactamente lo que una
+     * nube de putrefaccion tiene que ser.</p>
+     *
+     * <p>Y el Wither va al <b>radio</b>, no a quien murio: el cuerpo que cae ya no importa, y lo que
+     * el jugador compra es que el siguiente cuerpo que entre al hueco lo reciba.</p>
+     */
+    public static final int SANTA_MUERTE_RADIUS = 3;
+    public static final int SANTA_MUERTE_WITHER_TICKS = 100;
+
+    /** Un nivel dentro de los que el encantamiento tiene.
      *
      * <p>Clampear y no confiar en el dato es la regla del proyecto para todo número que entra desde
      * afuera: un archivo de datapack o un comando pueden poner un nivel que la tabla no espera, y

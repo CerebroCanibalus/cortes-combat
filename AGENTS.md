@@ -650,6 +650,10 @@ tiene los números, y el hook vive donde el número se cobra.
 | `desvio_vampirico` | shotel (molde `sabre`) | al **parriar** robás **1 ♥ de vida máxima** y cada parry **suma otro**; el nivel es el **tope** (L1 1 ♥ · L4 4 ♥), 10 s, refresca | `ParryHandler` -- **dos efectos**, `VAMPIRIC` (el acumulado) y `DRAINED` (1 ♥ por parry) |
 | `mecha_corta` | arcabuz (molde `arcabuz`) | la mecha **20 → 15 → 10** ticks | `Arcabuz.light(fuse)` (el total por argumento) + `ArcabuzFuseState.progress(totalTicks)` -- **el cliente divide por el total, no por la constante** |
 | `barredor` | alabarda (molde `halberd`) | el cono del **barrido** crece **×1,15/×1,30** (sobre el ×1,35 base), en distancia **y** en ancho | `HalberdSweep.reachFor(reach, nivel)` + **`MaceAir.displayedFor(stats, holder, sweepLevel)`**: el HUD muestra el cono del **barrido**, y los **4 sitios de display** leen el nivel (`CombatEnchantments.barredorLevel`) |
+| `astilladora` | hacha (clase `axe`) | un golpe bloqueado gasta **2** de aguante en vez de 1 | `GuardState.block(regen, cost)` -- **el coste es un parámetro y no dos llamadas**, porque gastar de a uno baja la guardia en el primero |
+| `mella` | hacha (clase `axe`) | el desgaste a la armadura sube **×1,5/×2/×2,5/×3** (sobre el ×2 del hacha cargada → hasta **×6**) | `ArmorWearHandler` (el `newDamage` mutable) -- **el único encantamiento que no toca el daño** |
+| `segunda_pasada` | alabarda (molde `halberd`) | el barrido que **no mató a nadie** devuelve el **30 %/50 %** del cooldown | `CooldownState.refund(ticks)` + `SpecialHandler.sweep` (cuenta **muertes**, no aciertos) |
+| `santa_muerte` | azada (clase `hoe`) | **matar** deja una nube putrefacta: **Wither I 5 s** en radio **3**, con `SQUID_INK` + `LARGE_SMOKE` (sin arte) | `enchant/SantaMuerte` -- `LivingDeathEvent`, **y el asesino queda afuera** (veto C2) |
 
 > **La linea "nada en `src/test` puede nombrar un tipo de Minecraft" es mas larga de lo que parece: la
 > clase QUE EL TEST CARGA tampoco.** `MaceAir` llamaba a `CombatEnchantments.level(...)`, cuya firma

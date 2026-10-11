@@ -1,7 +1,10 @@
 package com.cortes.combat.attack;
 
+import com.cortes.combat.enchant.CombatEnchantRules;
+import com.cortes.combat.enchant.CombatEnchantments;
 import com.cortes.combat.registry.ModDamageTypes;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.living.ArmorHurtEvent;
 
@@ -41,6 +44,17 @@ public final class ArmorWearHandler {
         if (!ModDamageTypes.isAxeCharged(event.getDamageSource())) {
             return;
         }
+        // **Mella: el desgaste sube, el dano no.** Y el nivel sale del arma del ATACANTE, que el
+        // evento no trae -- se llega por la fuente del dano. El hacha cargada solo la puede tirar un
+        // jugador con un hacha en la mano, asi que leerla de ahi es leer la misma arma que pego; y si
+        // por lo que sea no hay jugador, el multiplicador queda en uno y el comportamiento es el de
+        // siempre, que es la respuesta correcta para una fuente sin dueno.
+        float mella = 1.0F;
+        if (event.getDamageSource().getEntity() instanceof Player attacker) {
+            mella = CombatEnchantRules.mellaWear(CombatEnchantments.level(
+                    attacker.level().registryAccess(), attacker.getMainHandItem(),
+                    CombatEnchantments.MELLA));
+        }
         // The map is keyed by slot and only holds armour the hit could actually hurt, so iterating
         // it is the same set vanilla was about to iterate and not a guess about where armour is.
         for (ArmorHurtEvent.ArmorEntry entry : event.getArmorMap().values()) {
@@ -48,7 +62,7 @@ public final class ArmorWearHandler {
                 continue;
             }
             entry.newDamage = Math.max(entry.originalDamage,
-                    entry.newDamage * WEAR_MULTIPLIER);
+                    entry.newDamage * WEAR_MULTIPLIER * mella);
         }
     }
 

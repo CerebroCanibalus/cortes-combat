@@ -542,6 +542,50 @@ class EnchantmentHooksTest {
                         + "jugador se cree fuera de rango de un barrido que lo alcanza");
     }
 
+    /**
+     * **Los cuatro de la tanda de los baratos, y cada guard afirma el USO.**
+     *
+     * <p>Es la leccion que este archivo ya pago dos veces: una regla que existe y que nadie llama
+     * deja el build verde, y el sabotaje que borra la llamada no muere. Por eso cada asercion mira
+     * <b>donde el numero se cobra</b> -- el descuento, el multiplicador, la devolucion, el efecto --
+     * y no la existencia de la funcion.</p>
+     */
+    @Test
+    @DisplayName("Astilladora, Mella, Segunda Pasada y Santa Muerte llegan a sus hooks")
+    void theFourthBatchReachesTheirHooks() {
+        String guard = readFile("src/main/java/com/cortes/combat/guard/GuardHandler.java");
+        assertTrue(guard.contains("CombatEnchantRules.astilladoraCost("),
+                "**Astilladora no cobra**: el encantamiento existe, se puede poner en el hacha, y un "
+                        + "golpe bloqueado sigue costando uno");
+        assertTrue(guard.contains("state.block(guard.profile().regenTicks(), cost)"),
+                "y el coste tiene que llegar al descuento: una variable que nadie usa es el canal "
+                        + "muerto de siempre, con el build verde");
+
+        String armor = readFile("src/main/java/com/cortes/combat/attack/ArmorWearHandler.java");
+        assertTrue(armor.contains("CombatEnchantRules.mellaWear("),
+                "**Mella no desgasta**: el desgaste de la armadura no cambia con el nivel");
+        assertTrue(armor.contains("* WEAR_MULTIPLIER * mella"),
+                "y el multiplicador tiene que multiplicar, no quedar al lado");
+
+        String special = readFile("src/main/java/com/cortes/combat/special/SpecialHandler.java");
+        assertTrue(special.contains("CombatEnchantRules.segundaPasada("),
+                "**Segunda Pasada no devuelve nada**: el barrido contra un grupo que aguanta sigue "
+                        + "costando cuatro swings");
+        assertTrue(special.contains("cooldown.refund("),
+                "y la devolucion tiene que llegar al cooldown, no quedarse en un float");
+        assertTrue(special.contains("!target.isAlive()"),
+                "**y la condicion es 'no mato a NADIE', que se pregunta por la vida y no por el valor "
+                        + "de retorno de hurt**: `hurt` contesta 'el dano paso', y un golpe que entra "
+                        + "y no mata contesta que si");
+
+        String santa = readFile("src/main/java/com/cortes/combat/enchant/SantaMuerte.java");
+        assertTrue(santa.contains("MobEffects.WITHER"),
+                "**Santa Muerte no envenena**: la nube sale y no aplica nada");
+        assertTrue(santa.contains("other == killer"),
+                "y el asesino queda afuera: un encantamiento que castiga al que lo usa es el veto C2 "
+                        + "del documento, 'el bloqueo devuelve dano'");
+    }
+
     /** Y el arcabuz, donde vive la recarga que Pólvora Seca acorta. */
     private static String readArcabuz() {
         Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "special",
