@@ -6,6 +6,7 @@ import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.enchant.CombatEnchantRules;
 import com.cortes.combat.enchant.CombatEnchantments;
 import com.cortes.combat.core.CombatFeedback;
+import com.cortes.combat.core.weapon.AmmoProfile;
 import com.cortes.combat.core.weapon.ReachProfile;
 import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.core.weapon.WeaponProfile;
@@ -145,7 +146,7 @@ public final class Arcabuz {
             return;
         }
 
-        if (state.canReload() && firestoneSlot(player) < 0) {
+        if (state.canReload() && ammoSlot(player, player.getMainHandItem()) < 0) {
             // **The fifth refusal, and the one that had no line of its own.** The reload used to
             // open on any press of an empty gun, so holding the button for two and a half seconds
             // drew the entire reload motion -- the lean that reads as the loaded pose -- and then
@@ -257,12 +258,19 @@ public final class Arcabuz {
      * the paragraph above is about.</p>
      */
     private static boolean load(ServerPlayer player) {
-        int found = firestoneSlot(player);
+        ItemStack weapon = player.getMainHandItem();
+        AmmoProfile ammo = declaredAmmo(weapon);
+        int found = ammoSlot(player, weapon);
         if (found < 0) {
-            trace(player, player.getData(ModAttachments.ARCABUZ.get()), "sin Firestone");
+            trace(player, player.getData(ModAttachments.ARCABUZ.get()),
+                    "sin munición (" + ammo.itemId() + ")");
             return false;
         }
-        player.getInventory().removeItem(found, 1);
+        // **La cantidad la dice el componente y no el codigo.** Antes era `removeItem(found, 1)`,
+        // y con `count` en el perfil un arma puede gastar mas de una por disparo -- que es como
+        // se balancea un arma que dispara de a tres sin que el escaneo del inventario tenga que
+        // saber nada de eso. El piso lo pone `AmmoProfile.of`, que nunca deja bajar de uno.
+        player.getInventory().removeItem(found, ammo.count());
         // **The charge lands on the stack, in the same statement that pays for it.**
         //
         // The firestone comes out of the inventory here and goes into *this gun*, so the write is
@@ -303,23 +311,63 @@ public final class Arcabuz {
      * <p>One search, two callers, and the two cannot disagree about where the ammunition is --
      * which is the bug shape the paragraph above on {@link #load} is entirely about.</p>
      */
-    private static int firestoneSlot(ServerPlayer player) {
+    private static int ammoSlot(ServerPlayer player, ItemStack weapon) {
+        AmmoProfile ammo = declaredAmmo(weapon);
+        net.minecraft.world.item.Item wanted = resolveAmmo(ammo.itemId());
+        if (wanted == net.minecraft.world.item.Items.AIR) {
+            LOG.warn("[arcabuz] municion declarada como '{}' no resuelve a ningun item: el arma "
+                    + "no va a poder disparar. Revisa el campo `ammo` del pack o del datapack.",
+                    ammo.itemId());
+            return -1;
+        }
         Inventory inventory = player.getInventory();
         int size = inventory.getContainerSize();
         int found = -1;
         int total = 0;
         for (int slot = 0; slot < size; slot++) {
             ItemStack stack = inventory.getItem(slot);
-            if (stack.is(ModItems.FIRESTONE.get())) {
+            if (stack.is(wanted)) {
                 if (found < 0) {
                     found = slot;
                 }
                 total += stack.getCount();
             }
         }
-        LOG.info("[arcabuz] buscar Firestone: {} en {} slots, {} disponibles",
-                found < 0 ? "NO" : "slot " + found, size, total);
+        LOG.info("[arcabuz] buscar municion {}: {} en {} slots, {} disponibles",
+                ammo.itemId(), found < 0 ? "NO" : "slot " + found, size, total);
         return found;
+    }
+
+    /**
+     * Qué gasta esta arma, y no está clavado en el codigo.
+     *
+     * <p><b>El componente manda y la Firestone es el default</b>, que es exactamente lo que el
+     * mod ya hacia antes de que esto existiera. Un arma sin componente se comporta identica a
+     * ayer, y eso es la mitad de la razon del default: las 31 armas que ya estaban no pueden
+     * cambiar de precio por un refactor.</p>
+     */
+    private static AmmoProfile declaredAmmo(ItemStack weapon) {
+        AmmoProfile declared = weapon.get(com.cortes.combat.registry.ModComponents.AMMO_PROFILE);
+        return declared == null ? AmmoProfile.firestone() : declared;
+    }
+
+    /**
+     * Traduce el id declarado a un item, una sola vez y en el unico sitio que tiene el registro a
+     * mano.
+     *
+     * <p>Devuelve {@code AIR} -- y no {@code null} -- para lo que no resuelve, porque eso es lo
+     * que el registro devuelve y compararlo contra un nulo seria una segunda convencion. El
+     * llamador es quien avisa.</p>
+     */
+    private static net.minecraft.world.item.Item resolveAmmo(String itemId) {
+        try {
+            return net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                    net.minecraft.resources.ResourceLocation.parse(itemId));
+        } catch (RuntimeException idRoto) {
+            LOG.warn("[arcabuz] el id de municion '{}' no es un ResourceLocation valido",
+                    itemId, idRoto);
+            return net.minecraft.world.item.Items.AIR;
+        }
     }
 
     /**

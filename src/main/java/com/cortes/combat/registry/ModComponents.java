@@ -2,6 +2,7 @@ package com.cortes.combat.registry;
 
 import com.cortes.combat.CortesCombat;
 import com.mojang.serialization.Codec;
+import com.cortes.combat.core.weapon.AmmoProfile;
 import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.core.weapon.KnockbackProfile;
@@ -88,6 +89,20 @@ public final class ModComponents {
      */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ReachProfile>> SHOT_REACH =
             component("shot_reach", ReachProfile.CODEC);
+
+    /**
+     * Qué gasta el arma al disparar.
+     *
+     * <p><b>La última decisión de gameplay que quedaba escrita a mano en Java.</b> El ítem que
+     * consumía el arcabuz estaba clavado en {@code firestoneSlot} contra {@code ModItems.FIRESTONE},
+     * así que un pack no podía hacer un arma que gaste otra cosa sin editar Java. Ahora es un
+     * dato, y la munición por default sigue siendo la Firestone -- un default que cambiara el
+     * comportamiento de las armas existentes sería un regalo o una trampa.</p>
+     *
+     * <p>Ver {@link AmmoProfile} sobre por qué el costo no es negociable desde el YAML.</p>
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<AmmoProfile>> AMMO_PROFILE =
+            component("ammo_profile", AmmoProfile.CODEC);
 
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ChargeProfile>> CHARGE_PROFILE =
             component("charge_profile", ChargeProfile.CODEC);
