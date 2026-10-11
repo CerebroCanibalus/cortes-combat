@@ -93,6 +93,24 @@ suscribirse a eventos.
   aplica `combatify.classtweaker`. ⊘ copiar el `accesswidener` del primero.
 - Escribir `agents.md` **pisa `AGENTS.md`**. ∴ todo vive en uno.
 
+### Editar y recompilar con el cliente de dev ABIERTO = clases viejas en runtime
+
+**Un JVM que ya cargo una clase no la recarga aunque Gradle recompile.** El cliente de `runClient`
+lee de `build/classes` **una sola vez, al arrancar**. Si mientras corre se le agrega un campo a una
+clase que ya esta cargada, el codigo viejo sigue ahi y el codigo nuevo lo referencia: el resultado
+es `NoSuchFieldError: ... does not have member field` en el **runtime**, con un build que compila
+perfecto y los tests verdes.
+
+Le paso a `ModComponents`: se le agrego `AMMO_PROFILE` mientras el cliente ya estaba abierto, y
+**coger el arcabuz** reventaba cada tick -- el `Arcabuz` nuevo contra el `ModComponents` viejo. El
+sintoma engana: parece un bug del codigo porque el error nombra una clase y un campo que **existen
+en el disco**.
+
+**La regla: tocar registro, componente, tipo o clase ya cargada exige reiniciar el cliente.**
+Apagarlo es `Stop-Process` sobre el java cuyo command line traiga `-Dfml.modFolders=` -- **nunca**
+`killall java`, que se lleva el daemon de Gradle y el del servidor si los hay. Y si no se esta
+seguro de si la clase ya se cargo, la respuesta segura es reiniciar.
+
 ### Verificar una API: dos herramientas, y las dos son baratas
 
 - **Preguntarle a `javac` es verificación, ⊘ adivinar.** Escribir el uso y compilar responde en un
