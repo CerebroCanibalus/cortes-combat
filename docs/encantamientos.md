@@ -6,9 +6,9 @@
 > esto**: entre los dos había **nueve nombres para mecánicas distintas**, y esa era la primera cosa a
 > limpiar.
 >
-> **Estado (2026-10-11):** 6 encantamientos implementados y en la mesa; los ~30 de identidad, con
-> números, **listos para escribir**; falta el OK del dueño sobre los números, que se prueban en
-> juego.
+> **Estado (2026-10-11):** **9 encantamientos implementados** y en la mesa (los 6 de §3 más Punta
+> Fina, Filo Astillado y Apuñalar, de la primera tanda). Los números de los ~24 restantes están
+> **aprobados hasta el playtest final**; falta escribirlos.
 
 ---
 

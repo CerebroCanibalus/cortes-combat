@@ -6,6 +6,8 @@ import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.CombatTrace;
 import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.core.weapon.WeaponProfile;
+import com.cortes.combat.enchant.CombatEnchantRules;
+import com.cortes.combat.enchant.CombatEnchantments;
 import com.cortes.combat.reach.Reach;
 import com.cortes.combat.sound.ModSounds;
 import com.cortes.combat.registry.ModAttachments;
@@ -743,7 +745,60 @@ public final class CombatEngine {
         }
         ItemStack weapon = player.getWeaponItem();
         float enchanted = EnchantmentHelper.modifyDamage(level, weapon, target, source, base) - base;
-        return Math.max(0.0F, enchanted);
+        return Math.max(0.0F, enchanted + perTargetBonus(player, weapon, target, base));
+    }
+
+    /**
+     * Los bonus <b>por objetivo</b> que son nuestros: Punta Fina, Filo Astillado y Apuñalar.
+     *
+     * <h2>Por qué los tres viven en una función y no en tres call sites</h2>
+     *
+     * <p>Los tres son <b>un porcentaje del daño que depende de algo del objetivo o de la
+     * posición</b> -- cuán cerca está, cuánta armadura lleva, desde dónde le pegás -- y los tres se
+     * cobran en el mismo lugar: el número que el resolver va a usar contra <em>ese</em> cuerpo. Un
+     * canal por encantamiento serían tres lugares donde olvidarse de llamarlo, y el modo de falla de
+     * un canal que nadie llama es que <b>el build queda verde</b>: el encantamiento existe, se puede
+     * poner, y no hace nada.</p>
+     *
+     * <p><b>Devuelve el delta y no el total</b>, como la mitad de vanilla de arriba: el llamador
+     * suma, y el camino sin encantamiento es la misma aritmética de antes.</p>
+     *
+     * <h2>Las tres condiciones, y de dónde salen</h2>
+     *
+     * <ul>
+     *   <li><b>Punta Fina</b>: la distancia entre el jugador y el cuerpo. La ropera pelea pegada, y
+     *       ninguna otra arma premia estar tan cerca.</li>
+     *   <li><b>Filo Astillado</b>: las piezas de armadura que el cuerpo lleva <b>puestas</b> (no las
+     *       que tiene en el inventario). Es la inversa exacta del martillo, que premia al blindado.</li>
+     *   <li><b>Apuñalar</b>: el yaw del objetivo contra el vector que va de él al atacante. La daga
+     *       es la única que puede reposicionarse lo bastante rápido para buscar la espalda.</li>
+     * </ul>
+     */
+    private static float perTargetBonus(Player player, ItemStack weapon, Entity target, float base) {
+        if (!(target instanceof LivingEntity body)) {
+            return 0.0F;
+        }
+        var access = player.level().registryAccess();
+
+        float share = CombatEnchantRules.puntaFina(
+                CombatEnchantments.level(access, weapon, CombatEnchantments.PUNTA_FINA),
+                player.distanceTo(target));
+
+        int pieces = 0;
+        for (ItemStack slot : body.getArmorSlots()) {
+            if (!slot.isEmpty()) {
+                pieces++;
+            }
+        }
+        share += CombatEnchantRules.filoAstillado(
+                CombatEnchantments.level(access, weapon, CombatEnchantments.FILO_ASTILLADO), pieces);
+
+        share += CombatEnchantRules.apunalar(
+                CombatEnchantments.level(access, weapon, CombatEnchantments.APUNALAR),
+                CombatEnchantRules.fromBehind(body.getYRot(),
+                        player.getX() - body.getX(), player.getZ() - body.getZ()));
+
+        return base * share;
     }
 
     /**

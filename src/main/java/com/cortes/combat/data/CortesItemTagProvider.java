@@ -244,6 +244,10 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         TagKey<Item> loot = own("enchantable/loot");
         TagKey<Item> shove = own("enchantable/shove");
         TagKey<Item> sword = own("enchantable/sword");
+        // La clase del hacha, por la misma razón que la de la espada: el hacha del juego es la de
+        // vanilla reworkeada, y `profile/axe` es la lista canonica de las NUESTRAS que usan ese
+        // molde -- meterle las de vanilla la ensuciaria para su otro lector (WeaponStats).
+        TagKey<Item> axe = own("enchantable/axe");
         TagKey<Item> durability = TagKey.create(Registries.ITEM,
                 ResourceLocation.withDefaultNamespace("enchantable/durability"));
 
@@ -303,6 +307,10 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         // molde, y meterle las de vanilla la ensuciaria para su otro lector (WeaponStats).
         tag(sword).addTag(vanilla("enchantable/sword"));
         tag(sword).addTag(own("profile/sword"));
+        // Y el hacha: la del juego es la de vanilla, asi que su clase es `#minecraft:axes` mas las
+        // nuestras del molde hacha.
+        tag(axe).addTag(ItemTags.AXES);
+        tag(axe).addTag(own("profile/axe"));
     }
 
     /** Un tag de vanilla por id, para completar una clase de encantamiento con su alcance original. */

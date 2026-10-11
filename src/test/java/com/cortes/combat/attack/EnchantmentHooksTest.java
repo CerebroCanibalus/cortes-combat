@@ -301,6 +301,36 @@ class EnchantmentHooksTest {
         }
     }
 
+    /**
+     * **Los tres bonus por objetivo llegan al motor, y salen de las reglas puras.**
+     *
+     * <p>El mismo agujero que los otros: la tabla puede estar perfecta y el hacha pegar igual. Y una
+     * aserción sobre la forma: los tres se cobran por <b>un solo canal</b>, porque tres call sites
+     * son tres lugares donde olvidarse de llamarlo.</p>
+     */
+    @Test
+    @DisplayName("Punta Fina, Filo Astillado y Apuñalar llegan al motor, por un solo canal")
+    void thePerTargetBonusesReachTheEngine() {
+        String engine = read();
+
+        for (String fn : new String[] {"puntaFina", "filoAstillado", "apunalar"}) {
+            assertTrue(engine.contains("CombatEnchantRules." + fn + "("),
+                    "**" + fn + " no tiene llamador.** El encantamiento existe, tiene archivo, tiene "
+                            + "idioma, se puede poner en el arma -- y no hace nada. Es el modo de "
+                            + "falla que este proyecto ya pago con el track BREAK del sable: el build "
+                            + "queda verde");
+        }
+        assertTrue(engine.contains("enchanted + perTargetBonus("),
+                "**el canal tiene que estar CONECTADO, no solo existir.** La funcion puede estar "
+                        + "escrita, tener sus tres llamadas adentro y estar perfecta, y el bonus no "
+                        + "llegar nunca al numero porque nadie la suma -- que es exactamente el bug "
+                        + "del track BREAK del sable, un nivel mas arriba. Saboteado quitando la "
+                        + "suma: el guard tiene que morir");
+        assertTrue(engine.contains("fromBehind("),
+                "y Apunalar necesita la geometria de las reglas puras, no una cuenta escrita al lado "
+                        + "en el motor");
+    }
+
     /** Y el arcabuz, donde vive la recarga que Pólvora Seca acorta. */
     private static String readArcabuz() {
         Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "special",

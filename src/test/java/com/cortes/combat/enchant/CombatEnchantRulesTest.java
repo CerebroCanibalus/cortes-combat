@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -169,6 +170,72 @@ class CombatEnchantRulesTest {
                             + "encantamiento que reste mas de lo que hay regalaria un disparo "
                             + "instantaneo");
         }
+    }
+
+    @Test
+    @DisplayName("Punta Fina: pegado paga, lejos no, y el borde cuenta")
+    void puntaFina() {
+        assertEquals(0.0F, CombatEnchantRules.puntaFina(0, 1.0), 1.0E-6,
+                "sin el encantamiento no paga nada");
+        assertEquals(0.15F, CombatEnchantRules.puntaFina(1, 1.0), 1.0E-6);
+        assertEquals(0.25F, CombatEnchantRules.puntaFina(2, 1.0), 1.0E-6);
+        assertEquals(0.25F, CombatEnchantRules.puntaFina(2, CombatEnchantRules.PUNTA_FINA_RANGE),
+                1.0E-6, "**el borde paga**: la condicion es `hasta 1.5`, no `menos de 1.5`");
+        assertEquals(0.0F, CombatEnchantRules.puntaFina(2, CombatEnchantRules.PUNTA_FINA_RANGE + 0.01),
+                1.0E-6, "un pelo mas alla ya no: la ropera tiene 3,6 de alcance, y a media distancia "
+                        + "el encantamiento no premia nada");
+    }
+
+    @Test
+    @DisplayName("Filo Astillado: por pieza, y **sin armadura no paga**")
+    void filoAstillado() {
+        assertEquals(0.0F, CombatEnchantRules.filoAstillado(2, 0), 1.0E-6,
+                "**sin armadura no paga**: es la inversa exacta del martillo, que premia al blindado");
+        assertEquals(0.06F, CombatEnchantRules.filoAstillado(1, 1), 1.0E-6);
+        assertEquals(0.24F, CombatEnchantRules.filoAstillado(1, 4), 1.0E-6);
+        assertEquals(0.40F, CombatEnchantRules.filoAstillado(2, 4), 1.0E-6,
+                "cuatro piezas al nivel 2");
+        assertEquals(0.40F, CombatEnchantRules.filoAstillado(2, 9), 1.0E-6,
+                "**y mas de cuatro no suma**: no se pueden llevar mas piezas que cuatro");
+    }
+
+    @Test
+    @DisplayName("Apunalar: la espalda paga y el frente no")
+    void apunalar() {
+        assertEquals(0.0F, CombatEnchantRules.apunalar(2, false), 1.0E-6, "de frente no paga");
+        assertEquals(0.0F, CombatEnchantRules.apunalar(0, true), 1.0E-6,
+                "ni desde atras sin el encantamiento");
+        assertEquals(0.60F, CombatEnchantRules.apunalar(1, true), 1.0E-6);
+        assertEquals(0.90F, CombatEnchantRules.apunalar(2, true), 1.0E-6);
+    }
+
+    @Test
+    @DisplayName("**la convencion del yaw: 0 mira a +Z, 90 mira a -X**")
+    void theYawConvention() {
+        // El objetivo mira a +Z (yaw 0). Un atacante en +Z respecto de el esta DE FRENTE.
+        assertFalse(CombatEnchantRules.fromBehind(0.0, 0.0, 1.0),
+                "yaw 0 y atacante en +Z: de frente");
+        assertTrue(CombatEnchantRules.fromBehind(0.0, 0.0, -1.0),
+                "yaw 0 y atacante en -Z: **detras**");
+        // El objetivo mira a -X (yaw 90). Un atacante en -X esta DE FRENTE.
+        assertFalse(CombatEnchantRules.fromBehind(90.0, -1.0, 0.0),
+                "**y este es el caso que caza el signo**: con `atan2(dx, dz)` en vez de "
+                        + "`atan2(-dx, dz)` el 'detras' sale espejado y el golpe por la espalda "
+                        + "paga cuando pegas de frente");
+        assertTrue(CombatEnchantRules.fromBehind(90.0, 1.0, 0.0), "yaw 90 y atacante en +X: detras");
+    }
+
+    @Test
+    @DisplayName("el angulo entre dos direcciones es el MAS CORTO, no la resta")
+    void angleBetween() {
+        assertEquals(0.0, CombatEnchantRules.angleBetween(0, 0), 1.0E-6);
+        assertEquals(90.0, CombatEnchantRules.angleBetween(0, 90), 1.0E-6);
+        assertEquals(180.0, CombatEnchantRules.angleBetween(0, 180), 1.0E-6);
+        assertEquals(10.0, CombatEnchantRules.angleBetween(350, 0), 1.0E-6,
+                "**el caso que rompe la resta simple**: 350 y 0 estan a diez grados, no a 350. "
+                        + "Sin el wrap, un enemigo al que le pegas por la espalda pasando por el "
+                        + "norte dejaria de pagar");
+        assertEquals(170.0, CombatEnchantRules.angleBetween(0, 190), 1.0E-6);
     }
 
     @Test

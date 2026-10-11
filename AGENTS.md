@@ -635,6 +635,18 @@ tiene los números, y el hook vive donde el número se cobra.
 | `rhythm_of_iron` | martillo | ventana de la cadena 80 → 100 → 120 | `StreakState` (la ventana es un **campo**) |
 | `riposte` | espada (clase `sword`) | tras bloquear de verdad, el siguiente golpe ignora 25/50 % de armadura | `GuardHandler` arma, `CombatEngine` cobra |
 | `dry_powder` | arcabuz (molde `arcabuz`) | recarga 50 → 40 → 30 ticks | `Arcabuz.reloadTicks` |
+| `punta_fina` | ropera (molde `ropera`) | +15 %/+25 % de daño a **1,5 bloques o menos** | `CombatEngine.perTargetBonus` |
+| `filo_astillado` | hacha (clase `axe`) | +6 %/+10 % de daño **por pieza de armadura** del rival (máx 4) | `CombatEngine.perTargetBonus` |
+| `apunalar` | daga (molde `dagger`) | +60 %/+90 % si pegás **desde más de 90° de la espalda** | `CombatEngine.perTargetBonus` |
+
+> **Los tres últimos comparten un solo canal** (`CombatEngine.perTargetBonus`), y es a propósito:
+> los tres son "un porcentaje del daño que depende de algo del objetivo o de la posición", y el modo
+> de falla de un canal que nadie llama es que **el build queda verde**. El guard de wiring afirma
+> `enchanted + perTargetBonus(` -- **la suma, no la existencia de la función** -- porque la primera
+> versión afirmaba `perTargetBonus(` y el sabotaje que quitaba la suma **no la hacía morir**.
+> Y el hacha necesitó un tag de clase nuevo, `#cortescombat:enchantable/axe` (`#minecraft:axes` + el
+> molde), por la misma razón que la espada: el hacha del juego es la de vanilla reworkeada, y su
+> alcance no puede ser un tag de molde que sólo tiene las nuestras.
 
 - **`CombatEnchantRules.IDS`** es la lista canónica y `CombatEnchantmentFilesTest` la camina: agregar
   un id hace que el test cubra solo el archivo, el tag, la forma del campo y **los 8 idiomas**.

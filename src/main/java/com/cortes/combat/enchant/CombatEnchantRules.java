@@ -43,9 +43,19 @@ public final class CombatEnchantRules {
     /** E1 -- Pólvora Seca, la identidad del arcabuz. */
     public static final String DRY_POWDER_ID = "dry_powder";
 
+    /** Ropera -- Punta Fina: pelea pegada. */
+    public static final String PUNTA_FINA_ID = "punta_fina";
+
+    /** Hacha -- Filo Astillado: castiga la armadura que el enemigo lleva puesta. */
+    public static final String FILO_ASTILLADO_ID = "filo_astillado";
+
+    /** Daga -- Apuñalar: el golpe por la espalda. */
+    public static final String APUNALAR_ID = "apunalar";
+
     /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
     public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID,
-            FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID, DRY_POWDER_ID);
+            FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID, DRY_POWDER_ID, PUNTA_FINA_ID,
+            FILO_ASTILLADO_ID, APUNALAR_ID);
 
     /**
      * Los genéricos, que se ponen por <b>clase</b> y no por molde.
@@ -222,6 +232,103 @@ public final class CombatEnchantRules {
         int clamped = clamp(level, DRY_POWDER_MAX_LEVEL);
         return Math.max(com.cortes.combat.state.ArcabuzState.MIN_RELOAD_TICKS,
                 baseTicks - DRY_POWDER_TICKS_PER_LEVEL * clamped);
+    }
+
+    // ------------------------------------------- los bonus por objetivo (un solo canal, tres reglas)
+
+    /**
+     * Punta Fina (ropera): la fracción de daño extra, o cero si el objetivo está lejos.
+     *
+     * <p><b>La distancia entra como argumento y la condición es el encantamiento entero.</b> La
+     * ropera es el arma de pelear pegada -- su alcance es medio y su lunge la mete adentro -- y
+     * ninguna otra arma premia estar tan cerca. Un encantamiento que diera el bonus siempre sería un
+     * número plano más; el que lo ata a 1,5 bloques es una decisión de distancia, que es lo único
+     * que la ropera puede elegir.</p>
+     */
+    public static final int PUNTA_FINA_MAX_LEVEL = 2;
+
+    /** "Pegado", en bloques. La ropera tiene 3,6 de alcance: esto es menos de la mitad. */
+    public static final double PUNTA_FINA_RANGE = 1.5;
+
+    public static float puntaFina(int level, double distance) {
+        if (distance > PUNTA_FINA_RANGE) {
+            return 0.0F;
+        }
+        return switch (clamp(level, PUNTA_FINA_MAX_LEVEL)) {
+            case 1 -> 0.15F;
+            case 2 -> 0.25F;
+            default -> 0.0F;
+        };
+    }
+
+    /**
+     * Filo Astillado (hacha): la fracción de daño extra, creciendo con la armadura que el rival
+     * lleva puesta.
+     *
+     * <p><b>Es la inversa exacta del martillo</b>, y las dos armas pesadas quedan opuestas: el
+     * martillo premia pegarle al blindado (ignora armadura a carga completa) y el hacha castiga al
+     * que se puso todo. El número es <b>por pieza</b> y no un total, porque "cuánta armadura lleva"
+     * es la variable que el jugador ve en el inventario del otro.</p>
+     */
+    public static final int FILO_ASTILLADO_MAX_LEVEL = 2;
+
+    /** Cuatro piezas, que es el máximo que un cuerpo puede llevar. */
+    public static final int FILO_ASTILLADO_MAX_PIECES = 4;
+
+    public static float filoAstillado(int level, int pieces) {
+        int worn = Math.max(0, Math.min(FILO_ASTILLADO_MAX_PIECES, pieces));
+        return switch (clamp(level, FILO_ASTILLADO_MAX_LEVEL)) {
+            case 1 -> 0.06F * worn;
+            case 2 -> 0.10F * worn;
+            default -> 0.0F;
+        };
+    }
+
+    /**
+     * Apuñalar (daga): la fracción de daño extra por pegar desde la espalda.
+     *
+     * <p>La daga es la única arma que <b>puede</b> reposicionarse lo bastante rápido para buscar la
+     * espalda: seis ticks por golpe y la más rápida del juego. El encantamiento le paga esa vuelta,
+     * que es la decisión que su tempo compra.</p>
+     */
+    public static final int APUNALAR_MAX_LEVEL = 2;
+
+    /** El arco trasero: más de 90° de la mirada del objetivo. */
+    public static final double APUNALAR_ARC = 90.0;
+
+    public static float apunalar(int level, boolean fromBehind) {
+        if (!fromBehind) {
+            return 0.0F;
+        }
+        return switch (clamp(level, APUNALAR_MAX_LEVEL)) {
+            case 1 -> 0.60F;
+            case 2 -> 0.90F;
+            default -> 0.0F;
+        };
+    }
+
+    /**
+     * Si el atacante está detrás del objetivo.
+     *
+     * <h2>La convención del yaw, que es donde esto se rompe en silencio</h2>
+     *
+     * <p>En Minecraft el yaw de una entidad mira hacia <b>+Z</b> en 0°, hacia <b>-X</b> en 90°, y
+     * crece hacia la izquierda. El yaw que apunta de un punto a otro es
+     * {@code toDegrees(atan2(-dx, dz))} -- <b>con el menos en X</b>, y sin él el "detrás" sale
+     * espejado: el golpe por la espalda pagaría cuando pegás <em>de frente</em>, que es la peor
+     * forma de fallar porque el número se ve bien y el jugador cobra al revés.</p>
+     *
+     * <p>{@code dx, dz} son <b>del objetivo al atacante</b>, no al revés: la pregunta es hacia dónde
+     * está el que pega, vista desde el que recibe.</p>
+     */
+    public static boolean fromBehind(double targetYaw, double dx, double dz) {
+        return angleBetween(targetYaw, Math.toDegrees(Math.atan2(-dx, dz))) > APUNALAR_ARC;
+    }
+
+    /** La diferencia más corta entre dos ángulos, en grados, entre 0 y 180. */
+    public static double angleBetween(double a, double b) {
+        double d = Math.abs(a - b) % 360.0;
+        return d > 180.0 ? 360.0 - d : d;
     }
 
     /**

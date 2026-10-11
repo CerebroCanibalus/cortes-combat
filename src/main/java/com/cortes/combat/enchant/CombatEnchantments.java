@@ -55,6 +55,18 @@ public final class CombatEnchantments {
     public static final ResourceKey<Enchantment> DRY_POWDER =
             key(CombatEnchantRules.DRY_POWDER_ID);
 
+    /** Ropera -- Punta Fina. */
+    public static final ResourceKey<Enchantment> PUNTA_FINA =
+            key(CombatEnchantRules.PUNTA_FINA_ID);
+
+    /** Hacha -- Filo Astillado. */
+    public static final ResourceKey<Enchantment> FILO_ASTILLADO =
+            key(CombatEnchantRules.FILO_ASTILLADO_ID);
+
+    /** Daga -- Apuñalar. */
+    public static final ResourceKey<Enchantment> APUNALAR =
+            key(CombatEnchantRules.APUNALAR_ID);
+
     /**
      * El nivel de un encantamiento propio sobre un ítem, por clave.
      *

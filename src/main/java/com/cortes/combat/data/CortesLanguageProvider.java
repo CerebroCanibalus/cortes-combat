@@ -148,6 +148,9 @@ public class CortesLanguageProvider extends LanguageProvider {
     add("enchantment.cortescombat.rhythm_of_iron", spanish ? "Ritmo de Hierro" : "Iron Rhythm");
     add("enchantment.cortescombat.riposte", spanish ? "Contragolpe" : "Riposte");
     add("enchantment.cortescombat.dry_powder", spanish ? "Pólvora Seca" : "Dry Powder");
+    add("enchantment.cortescombat.punta_fina", spanish ? "Punta Fina" : "Fine Point");
+    add("enchantment.cortescombat.filo_astillado", spanish ? "Filo Astillado" : "Chipped Edge");
+    add("enchantment.cortescombat.apunalar", spanish ? "Apuñalar" : "Backstab");
     }
 
     /**

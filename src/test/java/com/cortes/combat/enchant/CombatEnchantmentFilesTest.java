@@ -45,7 +45,6 @@ class CombatEnchantmentFilesTest {
             Path.of("src", "main", "resources", "data", "minecraft", "enchantment");
     private static final Path OUR_ITEM_TAGS =
             Path.of("src", "generated", "resources", "data", "cortescombat", "tags", "item");
-    private static final Path PROFILE_TAGS = OUR_ITEM_TAGS.resolve("profile");
 
     /**
      * Los tags de vanilla que deciden **dónde se consigue** un encantamiento.
@@ -57,10 +56,6 @@ class CombatEnchantmentFilesTest {
      */
     private static final Path ENCHANT_TAGS =
             Path.of("src", "main", "resources", "data", "minecraft", "tags", "enchantment");
-
-    /** El único tag que los encantamientos de identidad pueden nombrar, y de dónde sale su archivo. */
-    private static final Pattern PROFILE_TAG =
-            Pattern.compile("\"#cortescombat:profile/([a-z_]+)\"");
 
     /** Un campo de items, con su valor crudo: la lista entre corchetes o el string entre comillas. */
     private static final Pattern ITEM_FIELD = Pattern.compile(
@@ -153,8 +148,24 @@ class CombatEnchantmentFilesTest {
         }
     }
 
+    /**
+     * **El tag que un encantamiento de identidad nombra existe, sea molde o clase.**
+     *
+     * <h2>Por qué no exige {@code profile/} a todos</h2>
+     *
+     * <p>Porque <b>afirmaba la convención de las armas nuestras como si fuera la regla</b>. Un
+     * encantamiento de identidad llega por el <b>molde</b> cuando su familia es nuestra (la ropera,
+     * la daga, el sable: {@code profile/ropera}) y por una <b>clase</b> cuando el arma del juego es
+     * la de vanilla reworkeada -- el hacha, la espada, la pala -- porque ahí el alcance es
+     * {@code #minecraft:axes} más las nuestras del molde, que es exactamente lo que hace
+     * {@code #cortescombat:enchantable/axe}.</p>
+     *
+     * <p>La invariante que importa no es el nombre del tag sino que <b>exista</b> y que el
+     * encantamiento lo nombre en los dos campos: un tag que nada publica resuelve a un conjunto
+     * vacío, el encantamiento se puede poner en <em>ninguna</em> arma, y la mesa no dice por qué.</p>
+     */
     @Test
-    @DisplayName("**el tag de molde de cada encantamiento de identidad existe**: un tag que nada llena es el bug")
+    @DisplayName("**el tag de cada encantamiento de identidad existe, sea molde o clase**")
     void theSupportedTagExists() throws IOException {
         for (String id : CombatEnchantRules.IDS) {
             if (CombatEnchantRules.GENERIC_IDS.contains(id)) {
@@ -164,20 +175,21 @@ class CombatEnchantmentFilesTest {
             }
             String json = Files.readString(ENCHANTMENT_DIR.resolve(id + ".json"),
                     StandardCharsets.UTF_8);
-            Matcher matcher = PROFILE_TAG.matcher(json);
-            assertTrue(matcher.find(),
-                    id + " no nombra un tag de perfil en supported_items: los encantamientos de "
-                            + "identidad se ponen por molde, y una lista de items escrita a mano "
-                            + "seria una segunda verdad sobre que armas son de la familia");
 
-            // Puede nombrar el mismo tag mas de una vez (supported y primary): hay que revisar
-            // todos, no el primero.
+            Matcher tags = OUR_TAG.matcher(json);
             int checked = 0;
-            for (Matcher m = PROFILE_TAG.matcher(json); m.find(); checked++) {
-                Path tag = PROFILE_TAGS.resolve(m.group(1) + ".json");
+            while (tags.find()) {
+                String path = tags.group(1);
+                assertTrue(path.startsWith("profile/") || path.startsWith("enchantable/"),
+                        id + " nombra #cortescombat:" + path + ", que no es ni un molde (profile/) ni "
+                                + "una clase (enchantable/): un encantamiento de identidad llega por "
+                                + "una de las dos, y un tercer canal seria una convencion nueva");
+                Path tag = OUR_ITEM_TAGS.resolve(path + ".json");
                 assertTrue(Files.exists(tag),
-                        id + " declara #cortescombat:profile/" + m.group(1) + " y ese tag no existe "
-                                + "(se esperaba " + tag + ")");
+                        id + " declara #cortescombat:" + path + " y ese tag no existe (se esperaba "
+                                + tag + "). Un tag que nada publica resuelve a un conjunto vacio: el "
+                                + "encantamiento se puede poner en ninguna arma y la mesa no lo dice");
+                checked++;
             }
             assertTrue(checked >= 2,
                     id + " deberia nombrar el tag en supported_items Y en primary_items, y solo lo "
