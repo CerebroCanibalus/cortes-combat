@@ -144,7 +144,7 @@ public class CortesLanguageProvider extends LanguageProvider {
     // marcas), un encantamiento que dice lo que hace tiene que decirlo en el idioma del que lo lee.
     add("enchantment.cortescombat.steel_reflex", spanish ? "Reflejo de Acero" : "Steel Reflex");
     add("enchantment.cortescombat.audacity", spanish ? "Audacia" : "Audacity");
-    add("enchantment.cortescombat.fleeting_edge", spanish ? "Filo Fugaz" : "Fleeting Edge");
+    add("enchantment.cortescombat.adrenalina", spanish ? "Adrenalina" : "Adrenaline");
     add("enchantment.cortescombat.rhythm_of_iron", spanish ? "Ritmo de Hierro" : "Iron Rhythm");
     add("enchantment.cortescombat.riposte", spanish ? "Contragolpe" : "Riposte");
     add("enchantment.cortescombat.dry_powder", spanish ? "Pólvora Seca" : "Dry Powder");

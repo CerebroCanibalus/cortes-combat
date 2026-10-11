@@ -52,7 +52,7 @@ vanilla lo declara. Y la mesa pasa **sólo** el tag `in_enchanting_table` a la s
 |---|---|---|---|---|---|
 | **`steel_reflex`** Reflejo de Acero | shotel (`profile/sabre`) | 2 | parry **100 → 80 → 60** ticks; la ventana (12) no cambia | 2 | mesa + **tradeable** |
 | **`audacity`** Audacia | ropera (`profile/ropera`) | 2 | −10 ticks de cooldown del lunge **por objetivo alcanzado**, piso 20 | 2 | mesa |
-| **`fleeting_edge`** → **Adrenalina** | daga (`profile/dagger`) | 2 | ver §6 Daga | 2 | mesa |
+| **`adrenalina`** Adrenalina | daga (`profile/dagger`) | 2 | al **recibir daño**: ver §6 Daga | 2 | mesa |
 | **`rhythm_of_iron`** Ritmo de Hierro | martillo (`profile/warhammer`) | 2 | ventana de la cadena **80 → 100 → 120** | 2 | mesa |
 | **`riposte`** Contragolpe | espada **+ shotel** | 2 | tras **bloquear** (espada) o **parriar** (shotel), el siguiente golpe ignora **25 %/50 %** de armadura | 2 | mesa |
 | **`dry_powder`** Pólvora Seca | arcabuz (`profile/arcabuz`) | 2 | recarga **50 → 40 → 30**; la mecha no cambia | 2 | mesa |
@@ -141,7 +141,8 @@ Ya tiene Density, Breach y Wind Burst de vanilla. Caída Astuta, Peso Muerto y O
 
 > **Cicatrizador es el reemplazo de "Cobrador"** (decisión del dueño): no *bloquea* la curación,
 > **reduce su efectividad**, y trae un `MobEffect` nuevo (**Anti-curación**) con **un nivel por nivel
-> del encantamiento**.
+> del encantamiento**. **Y el efecto lleva icono** (decisión del dueño): el jugador tiene que poder
+> ver que está bajo Anti-curación sin leer un número -- falta la textura.
 > **Frenesí queda descartado** (era tempo propio, vetado C5) y **Agobio no se usa**: el dueño eligió
 > Cicatrizador.
 > 🐛 **Y la animación de la azada está al revés**: el tajo va hacia la derecha y debe ir hacia la
@@ -179,8 +180,10 @@ Ya tiene Density, Breach y Wind Burst de vanilla. Caída Astuta, Peso Muerto y O
 > los golpea a todos. Un "+1/+2 objetivos" no tiene dónde aplicarse porque no hay un número del que
 > sumar. **Lo que sí hace el encantamiento es agrandar el área, y un área más grande alcanza más
 > objetivos por sí sola** -- así que el efecto que el jugador ve es el que el documento prometía, por
-> un mecanismo distinto del que el documento describía. Si el dueño quiere un tope, es una decisión
-> nueva y se toma sobre el número, no sobre el texto.
+> un mecanismo distinto del que el documento describía.
+> **Y el dueño decidió que se queda así: sin tope.** Un tope de "+2" sería un *nerf* con nombre de
+> encantamiento, porque el barrido **ya** golpea a todos los que atraviesa; el área es el mecanismo, y
+> el precio de cuatro swings es lo que lo mantiene en pie.
 
 > **"Sweeping" no se usa como nombre**: es Sweeping Edge, la onda de filo. ∴ **Barredor**.
 > **Muralla queda descartada** (reemplazada por Destripamiento).
@@ -209,7 +212,7 @@ Ya tiene Density, Breach y Wind Burst de vanilla. Caída Astuta, Peso Muerto y O
 | **Apuñalar** | 2 | **+60 % (L1)** y **+90 % (L2)** si golpeás desde **más de 90° de la espalda** | bonus por objetivo (ángulo) |
 | **Sanguijuela** | 2 | **+8 %/+14 %** del daño hecho **como curación** | tras el golpe |
 | **Gripa** | 2 | al golpear, stacks de **Moco**: **1 de daño por stack cada 20 ticks** (L1) / **15 ticks** (L2), máx **4/6 stacks**, y **estornuda cada 40 ticks** (1 de daño + salto de 0,4). **L2: al estornudar suelta una nube de moco** (radio 2, 2 de daño) | `MobEffect` propio. **Partícula y sonido del panda** (`ParticleTypes.SNEEZE` + su evento) -- cero arte nuevo |
-| **Adrenalina** | 2 | al **recibir daño**: **−25 %/−35 % de ese daño** y **Velocidad I/II**. Cooldown **30 s/15 s**. **L2: el daño ahorrado se suma a tu siguiente golpe** | `LivingIncomingDamageEvent` + cooldown por jugador |
+| **Adrenalina** | 2 | al **recibir daño**: **−25 %/−35 % de ese daño** y **Velocidad I/II**. Cooldown **30 s/15 s**. **L2: el daño ahorrado se suma a tu siguiente golpe** | ✅ **HECHO** -- `AdrenalinaHandler` (`LivingIncomingDamageEvent`) + `CombatEngine.cashAdrenalina`. **Reemplaza a `fleeting_edge`**, que hacía otra cosa |
 
 > **Adrenalina reemplaza a Filo Fugaz** y es **ofensiva y defensiva a la vez** (decisión del dueño).
 > La mitad ofensiva **sólo en L2**.
@@ -260,8 +263,13 @@ Ya tiene Density, Breach y Wind Burst de vanilla. Caída Astuta, Peso Muerto y O
 > (`ShovelAndHoeTest`) lo afirma desde el otro lado, con razón. El test afirmaba la **magnitud** del
 > yaw (`Math.abs`) y el **signo** del roll: por eso invertir la dirección no lo rompió y girar el roll
 > sí. Es un buen ejemplo de test que afirma la invariante y no el número.
-> **La potencia es 20 y no 40** (×10 TNT): a 40 el cráter se come el terreno de alrededor, y como el
-> mod no rompía bloques en ninguna parte, ese número se elige **después** del primer playtest.
+> **La potencia es 12 y no 40** (×3 TNT), y el numero se eligio **balanceando**, no esperando el
+> playtest. TNT es 4 en este juego, asi que 12 es tres TNT juntas: un crater de unos cinco o seis
+> bloques que **rompe piedra y tierra pero no obsidiana** -- y que no la rompa es la mitad del
+> balance, porque la obsidiana es el material anti-explosion del juego y un encantamiento que la
+> atraviesa no tiene respuesta. Con diez Firestones, la carga ×2 y un proyectil lento y con gravedad,
+> **es un tiro de asedio y no un arma de combate**: el que lo usa renuncia a pelear durante dos
+> segundos largos para abrir una pared.
 > **Pólvora Negra queda descartada** (reemplazada por Rey de las Moscas).
 
 ---
@@ -300,9 +308,11 @@ martillo **pierde** Sharpness.
 
 # 9 · Lo que falta
 
-1. **Los números**: todos los de arriba son propuesta, **ninguno está ratificado**. Se prueban en juego.
-2. **Sentencia**: ¿el reventón **no te daña** (propuesto), o **te daña menos**?
-3. **Cicatrizador**: ¿el efecto **Anti-curación** es un `MobEffect` visible en el HUD (con icono), o
-   invisible?
-4. **Mungus**: la potencia queda en **20** hasta el playtest.
-5. **La onda de filo y el parry contra jugadores** necesitan **2 jugadores** para verificarse.
+1. **Los números**: todos los de arriba son propuesta; **se prueban en juego**.
+2. **Sentencia**: **no te daña** — decidido por el dueño.
+3. **Cicatrizador**: el efecto **Anti-curación** lleva **icono** — decidido por el dueño. **Falta la
+   textura** (`textures/mob_effect/anti_healing.png`).
+4. **Mungus**: la potencia **bajó de 20 a 12** (~×3 TNT) — balanceada acá, con el razonamiento en §6.
+5. **Barredor**: **sin tope de objetivos** — decidido acá. Un tope de "+2" sería un nerf con nombre de
+   encantamiento, porque el barrido ya golpea a todos los que atraviesa.
+6. **La onda de filo y el parry contra jugadores** necesitan **2 jugadores** para verificarse.

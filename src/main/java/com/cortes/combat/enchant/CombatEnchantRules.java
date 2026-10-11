@@ -32,7 +32,7 @@ public final class CombatEnchantRules {
     public static final String AUDACITY_ID = "audacity";
 
     /** E5 -- Filo Fugaz. */
-    public static final String FLEETING_EDGE_ID = "fleeting_edge";
+    public static final String ADRENALINA_ID = "adrenalina";
 
     /** E4 -- Ritmo de Hierro. */
     public static final String RHYTHM_OF_IRON_ID = "rhythm_of_iron";
@@ -110,7 +110,7 @@ public final class CombatEnchantRules {
 
     /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
     public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID,
-            FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID, DRY_POWDER_ID, PUNTA_FINA_ID,
+            ADRENALINA_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID, DRY_POWDER_ID, PUNTA_FINA_ID,
             FILO_ASTILLADO_ID, APUNALAR_ID, SANGUJUELA_ID, AVENTURERO_ID, CULATA_ID, ESTOCADA_ID,
             SEGUNDO_ALIENTO_ID, GUARDIA_FIRME_ID, CICATRIZADOR_ID, DESTRIPAMIENTO_ID, QUEBRANTO_ID,
             VAMPIRICO_ID, MECHA_CORTA_ID, BARREDOR_ID, ASTILLADORA_ID, MELLA_ID, SEGUNDA_PASADA_ID,
@@ -175,30 +175,69 @@ public final class CombatEnchantRules {
         return Math.max(1, Math.round(baseTicks * factor));
     }
 
-    // ---------------------------------------------------------------- E5 · Filo Fugaz (daga)
+    // ---------------------------------------------------------------- Adrenalina (daga)
 
     /** El nivel máximo, el del archivo de encantamiento. */
-    public static final int FLEETING_EDGE_MAX_LEVEL = 2;
+    public static final int ADRENALINA_MAX_LEVEL = 2;
 
     /**
-     * Cuántos ticks dura la Velocidad que la daga se gana al conectar: 40 → 60.
+     * Cuánto del daño que entra se ahorra la daga: −25 % → −35 %.
      *
-     * <p><b>No es lineal, y no es un descuido.</b> El nivel uno son dos segundos -- lo justo para
-     * salir del rango de lo que acabás de apuñalar -- y el dos son tres, que es una ventana de
-     * reposicionamiento de verdad. Una progresión lineal (40 → 80) convertiría el segundo nivel en
-     * un buff de cuatro segundos que se pisa con el gate de abajo y se siente igual que el primero
-     * casi siempre.</p>
+     * <p><b>Es una reducción y no una curación, y la diferencia es toda la identidad del
+     * encantamiento.</b> Una curación despues del golpe llega tarde -- el daño ya se cobro, la muerte
+     * ya pudo pasar. Lo que la daga compra es <em>entrar</em> a un intercambio que no podia ganar: la
+     * reduccion se cobra antes de que el golpe se resuelva, asi que el golpe que te iba a matar no te
+     * mata.</p>
      *
-     * <p><b>El cero no es un caso especial: es la ausencia del encantamiento</b>, y devuelve cero
-     * ticks, que es lo que el llamador usa para no aplicar nada. Ver el gate en el handler: un
-     * efecto de duración cero es un efecto que existe y no hace nada, que es peor que no ponerlo.</p>
+     * <p><b>Y el 35 % no es un numero chico.</b> Es mas de un tercio de todo el daño que te entra,
+     * durante el cooldown entero. La daga ya tiene el daño mas bajo del juego; lo que no puede tener
+     * es ademas el cuerpo mas fragil, y esta es la mitad defensiva de su identidad.</p>
      */
-    public static int fleetingEdgeTicks(int level) {
-        return switch (clamp(level, FLEETING_EDGE_MAX_LEVEL)) {
-            case 1 -> 40;
-            case 2 -> 60;
+    public static float adrenalinaReduction(int level) {
+        return switch (clamp(level, ADRENALINA_MAX_LEVEL)) {
+            case 1 -> 0.25F;
+            case 2 -> 0.35F;
+            default -> 0.0F;
+        };
+    }
+
+    /**
+     * El cooldown de la Adrenalina: 30 s → 15 s.
+     *
+     * <p><b>Largo a proposito, y el nivel dos lo parte al medio.</b> Un daño reducido que se puede
+     * encender cada tres segundos no es una decision, es un estado; a treinta segundos el jugador
+     * tiene que elegir <em>que</em> golpe come con la adrenalina puesta, y esa eleccion es el
+     * encantamiento. El L2 no sube el numero: <b>duplica la frecuencia</b>, que en una pelea larga
+     * vale mas que un 10 % mas de reduccion.</p>
+     */
+    public static int adrenalinaCooldown(int level) {
+        return switch (clamp(level, ADRENALINA_MAX_LEVEL)) {
+            case 1 -> 600;
+            case 2 -> 300;
             default -> 0;
         };
+    }
+
+    /**
+     * Cuánto dura la Velocidad que viene con la Adrenalina.
+     *
+     * <p>Cinco segundos, y <b>no dura el cooldown</b>: la reduccion es un estado del cuerpo y la
+     * Velocidad es la salida. Un jugador que corriera durante los treinta segundos enteros estaria
+     * corriendo <em>todo el tiempo</em>, que es lo que el proyecto veta en C5 -- la velocidad de
+     * movimiento como estado permanente y no como decision.</p>
+     */
+    public static final int ADRENALINA_SPEED_TICKS = 100;
+
+    /**
+     * El nivel de Velocidad, que es el del encantamiento menos uno.
+     *
+     * <p>Uno menos porque los niveles de efecto arrancan en cero: "Velocidad I" es {@code amplifier}
+     * cero. La conversion vive aca y no en el handler porque es la clase de resta que se escribe al
+     * reves y no se nota hasta que el jugador tiene Velocidad III con un encantamiento de nivel dos.
+     * </p>
+     */
+    public static int adrenalinaSpeedAmplifier(int level) {
+        return Math.max(0, clamp(level, ADRENALINA_MAX_LEVEL) - 1);
     }
 
     // ---------------------------------------------------------------- E4 · Ritmo de Hierro (martillo)

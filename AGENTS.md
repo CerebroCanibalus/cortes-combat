@@ -631,7 +631,7 @@ tiene los números, y el hook vive donde el número se cobra.
 |---|---|---|---|
 | `steel_reflex` | shotel (molde `sabre`) | parry 100 → 80 → 60 ticks | `ParryState.activate(nivel)` |
 | `audacity` | ropera | lunge −20 %/nivel (fracción) | `SpecialHandler.lunge` |
-| `fleeting_edge` | daga | Velocidad 40/60 ticks al conectar, **sin renovar** | `CombatEngine.applyFleetingEdge` |
+| `adrenalina` | daga (molde `dagger`) | al **recibir daño**: **−25 %/−35 %** de ese daño y **Velocidad I/II** (5 s). Cooldown **30 s/15 s**. **L2: lo ahorrado se suma al siguiente golpe** | `AdrenalinaHandler` (`LivingIncomingDamageEvent`) + `CombatEngine.cashAdrenalina`. **Reemplaza a `fleeting_edge`**, que hacía otra cosa |
 | `rhythm_of_iron` | martillo | ventana de la cadena 80 → 100 → 120 | `StreakState` (la ventana es un **campo**) |
 | `riposte` | espada (clase `sword`) | tras bloquear de verdad, el siguiente golpe ignora 25/50 % de armadura | `GuardHandler` arma, `CombatEngine` cobra |
 | `dry_powder` | arcabuz (molde `arcabuz`) | recarga 50 → 40 → 30 ticks | `Arcabuz.reloadTicks` |
@@ -664,6 +664,15 @@ tiene los números, y el hook vive donde el número se cobra.
 > La regla real es *"la clase que un test carga no puede **nombrar** un tipo de Minecraft, ni en su
 > firma ni en un metodo al que llame"*, y el nivel de Barredor entra como **argumento** por eso: el
 > sitio de display, que no se testea, es quien lee el encantamiento y lo pasa.
+
+> **Y un guard de wiring que busca un string tiene que pedir LA LLAMADA AL RAS, no el nombre de la
+> funcion.** Es la **cuarta vez** que este proyecto paga lo mismo: `assertTrue(x.contains("regla("))`
+> queda **verde con la llamada envuelta en un `if (false)`**, porque el string sigue ahi. Lo que
+> distingue "esta escrita" de "se ejecuta" es el contexto -- `"\n        cashAdrenalina(player,
+> target);"`, con su indentacion -- y sin el, el sabotaje que apaga la llamada **no muere**. Los cuatro
+> casos fueron: `ensarteShare(`, `event.setAmount(`, `cashAdrenalina(` y, antes, el `perTargetBonus(`
+> de la ronda de las tandas. **La forma barata de escribirlo bien es copiar la linea del codigo con su
+> indentacion en vez de escribir el nombre del metodo.**
 
 > **5 efectos nuevos, y las cuentas viven en `CombatEnchantRules` (pura) y no en los efectos.** Un
 > `MobEffect` extiende una clase de Minecraft, así que un método suyo **no se puede cargar en un

@@ -41,8 +41,8 @@ public final class CombatEnchantments {
     public static final ResourceKey<Enchantment> AUDACITY = key(CombatEnchantRules.AUDACITY_ID);
 
     /** E5 -- Filo Fugaz: la Velocidad que la daga se gana al conectar. */
-    public static final ResourceKey<Enchantment> FLEETING_EDGE =
-            key(CombatEnchantRules.FLEETING_EDGE_ID);
+    public static final ResourceKey<Enchantment> ADRENALINA =
+            key(CombatEnchantRules.ADRENALINA_ID);
 
     /** E4 -- Ritmo de Hierro: la ventana de la cadena del martillo. */
     public static final ResourceKey<Enchantment> RHYTHM_OF_IRON =

@@ -158,23 +158,50 @@ class EnchantmentHooksTest {
     }
 
     /**
-     * **Filo Fugaz se aplica, y no se renueva si ya está.**
+     * **Adrenalina: la reduccion vive en el evento del daño, y el cobro en el motor.**
      *
-     * <p>El gate es la mitad del encantamiento: la daga pega cada seis ticks y la Velocidad dura
-     * cuarenta, así que sin él cada golpe la renovaría y el buff pasaría a ser permanente mientras
-     * haya algo enfrente. Es la diferencia entre un premio y un estado, y es una línea.</p>
+     * <p>Es un encantamiento partido en dos archivos a proposito: el <b>daño que entra</b> se reduce en
+     * {@code LivingIncomingDamageEvent}, que es el unico lugar donde eso es posible, y el <b>daño que
+     * vuelve</b> se cobra en el golpe. Los dos guards afirman el uso, no la existencia: un
+     * {@code setAmount} que nadie llama es una reduccion que el jugador no recibe.</p>
      */
     @Test
-    @DisplayName("Filo Fugaz tiene llamador, y el gate de 'ya lo tengo'")
-    void fleetingEdgeHasItsGate() {
-        String engine = read();
+    @DisplayName("Adrenalina reduce en el evento y cobra en el motor")
+    void adrenalinaReachesBothHalves() {
+        String handler = readFile("src/main/java/com/cortes/combat/enchant/AdrenalinaHandler.java");
+        assertTrue(handler.contains("\n        event.setAmount(event.getAmount() - saved);"),
+                "**Adrenalina no reduce**: el encantamiento existe, se puede poner en la daga, y el "
+                        + "daño entrante sigue entrando entero. **Y la asercion pide la llamada al ras "
+                        + "y no el nombre del metodo**: un guard que busca `event.setAmount(` queda "
+                        + "verde con la llamada envuelta en un `if (false)`, que es la cuarta vez que "
+                        + "este archivo se equivoca asi");
+        assertTrue(handler.contains("WeaponProfile.DAGGER"),
+                "**y la puerta es la daga.** El hook vive en el camino generico del daño, asi que sin "
+                        + "esto un datapack que mueva el encantamiento le da un tercio del daño "
+                        + "entrante de menos a una espada");
+        assertTrue(handler.contains("CombatEnchantRules.adrenalinaCooldown("),
+                "y el cooldown tiene que salir de la tabla, no de una constante suelta");
+        assertTrue(handler.contains("MOVEMENT_SPEED"),
+                "y la Velocidad es la mitad que hace que la Adrenalina se sienta, no solo se calcule");
 
-        assertTrue(engine.contains("CombatEnchantments.FLEETING_EDGE"),
-                "**la tabla de duraciones necesita quien la lea.** Sin esto el encantamiento esta "
-                        + "escrito, probado y no hace nada");
-        assertTrue(engine.contains("hasEffect(net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED)"),
-                "**y el gate de 'ya lo tengo'.** Sin el, la daga a seis ticks renovaria la "
-                        + "Velocidad en cada golpe y el premio se volveria un estado");
+        String engine = read();
+        assertTrue(engine.contains("\n            cashAdrenalina(player, target);"),
+                "**y el daño ahorrado no se cobra**: la mitad ofensiva del nivel dos existe en el "
+                        + "estado y nadie la lee. La llamada al ras, por lo mismo que la de arriba");
+        assertTrue(engine.contains("state.banked()"),
+                "y el cobro tiene que leer la cuenta del estado, no recalcularla");
+    }
+
+    @Test
+    @DisplayName("Filo Fugaz se fue con Adrenalina")
+    void fleetingEdgeIsGone() {
+        // **El test viejo vivio aca y su asercion era la mitad del encantamiento que ya no existe.**
+        // Afirmaba `CombatEnchantments.FLEETING_EDGE` y el gate de "ya lo tengo": con el encantamiento
+        // renombrado y el efecto mudado al daño recibido, las dos lineas quedaron verdes por
+        // casualidad o rojas por el motivo equivocado. Un test que sobrevive a su sujeto es peor que
+        // ninguno, porque ocupa el lugar del que deberia estar.
+        assertFalse(read().contains("CombatEnchantments.FLEETING_EDGE"),
+                "el encantamiento se llama Adrenalina y vive en su propio handler");
     }
 
     /**

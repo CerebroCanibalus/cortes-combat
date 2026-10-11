@@ -480,12 +480,14 @@ public final class CombatEngine {
                         damageSource(player, result.ignoredArmour(), result.axeCharged()));
             }
 
-            // **Filo Fugaz: la daga compra tempo con el golpe.** Una vez por TAJO y no por corte: el
-            // buff es del jugador, y aplicarlo dos veces en el mismo tick es el mismo buff. El gate
-            // de "ya lo tengo" vive en el helper, y sin él la daga a seis ticks renovaría la
-            // velocidad en cada golpe -- el premio dejaría de ser un premio y pasaría a ser
-            // permanente mientras haya algo que apuñalar.
-            applyFleetingEdge(player, stats);
+            // **Adrenalina: el golpe cobra lo que el cuerpo se ahorro.**
+            //
+            // El buff de Velocidad ya no se aplica aca: se mudo a `LivingIncomingDamageEvent`, que es
+            // el unico lugar donde un daño se puede reducir -- y reducirlo <em>antes</em> de que se
+            // aplique es toda la diferencia entre entrar a un intercambio perdido y sobrevivirlo. Lo
+            // que queda de este lado es la mitad ofensiva del nivel dos: el daño que no recibiste
+            // vuelve como daño que pegas.
+            cashAdrenalina(player, target);
 
             // **The immunity is set AGAIN after the effects, and this is the whole of the fix.**
             // Wind Burst is a POST_ATTACK effect on the attacker: its `ExplodeEffect` explodes at
@@ -1073,41 +1075,43 @@ public final class CombatEngine {
         return player.getWeaponItem().getEnchantmentLevel(density);
     }
 
+    // **El javadoc de Filo Fugaz vivio aca y se fue con el encantamiento.** Describia el gate de "ya
+    // lo tengo" (la Velocidad no se renovaba) y la puerta del perfil, y las dos siguen siendo ciertas
+    // en su lugar nuevo -- el gate desaparecio porque el efecto ahora sale del daño recibido y no del
+    // golpe, y la puerta del perfil se mudo a `AdrenalinaHandler`. Dejar el texto aca habria sido un
+    // comentario sobre un metodo que ya no existe, que es la forma mas barata de mentir en un archivo.
+
     /**
-     * E5 · Filo Fugaz: un golpe de daga que aterriza te da Velocidad, una vez.
+     * Adrenalina: el daño que el cuerpo se ahorro, devuelto en el proximo golpe.
      *
-     * <h2>Las dos decisiones que están acá y no en la tabla</h2>
+     * <h2>Por que se cobra en un golpe aparte y no sumado al que acaba de entrar</h2>
      *
-     * <p><b>El gate de "ya lo tengo".</b> Si el jugador ya tiene Velocidad -- de este encantamiento,
-     * de una poción, o de lo que sea -- no se aplica nada. Sin ese gate la daga, que pega cada seis
-     * ticks, renovaría el efecto en cada golpe y el buff sería permanente mientras hubiera algo
-     * enfrente: un premio que se puede sostener indefinidamente no es un premio, es un estado. La
-     * regla del diseño es "no se refresca si ya está activo", y vive acá porque es una pregunta
-     * sobre el jugador y no sobre el arma.</p>
+     * <p>Porque <b>el daño del golpe ya esta resuelto cuando este metodo corre</b>: el
+     * {@code AttackResult} es un record y salio del {@code DamageResolver} con su armadura, su carga
+     * y sus bonuses por objetivo ya aplicados. Sumarle un numero despues seria una segunda aritmetica
+     * del mismo golpe, y la segunda copia de una aritmetica es la que se desincroniza. Un {@code hurt}
+     * en el mismo tick, con la cuenta vaciada, da el mismo total y no toca el resolver.</p>
      *
-     * <p><b>La puerta del perfil.</b> El archivo de datos ya limita el encantamiento a
-     * {@code #cortescombat:profile/dagger}, pero este hook vive en el camino <em>genérico</em> del
-     * golpe: cualquier arma pasa por acá. Un datapack que cambie los ítems del encantamiento, o un
-     * pack que se equivoque de perfil, le daría Velocidad a una espada -- y una espada con velocidad
-     * gratis pelea distinto. La puerta cuesta una línea y es la que el diseño pide.</p>
+     * <h2>Y la cuenta se vacia siempre que se lea</h2>
      *
-     * <p>El efecto va sin partículas ni icono: el brillo de Velocidad que el jugador ya conoce es el
-     * mismo de la poción, y agregar partículas propias taparía justo lo que el jugador tiene que
-     * leer -- de dónde le vino la velocidad.</p>
+     * <p>Se cobra o se pierde, pero no se guarda: {@code cashed()} corre <em>antes</em> de preguntar
+     * por el objetivo, asi que un golpe al aire tambien gasta lo ahorrado. La alternativa -- guardarlo
+     * hasta encontrar un cuerpo -- seria un daño que crece entre peleas y que el jugador no puede leer
+     * en ninguna parte de la pantalla.</p>
      */
-    private static void applyFleetingEdge(Player player, WeaponStats stats) {
-        if (stats.profile() != WeaponProfile.DAGGER) {
+    private static void cashAdrenalina(Player player, Entity target) {
+        com.cortes.combat.state.Adrenalina state =
+                player.getData(com.cortes.combat.registry.ModAttachments.ADRENALINA.get());
+        if (state.banked() <= 0.0F) {
             return;
         }
-        int ticks = com.cortes.combat.enchant.CombatEnchantRules.fleetingEdgeTicks(
-                com.cortes.combat.enchant.CombatEnchantments.level(player.level().registryAccess(),
-                        player.getMainHandItem(),
-                        com.cortes.combat.enchant.CombatEnchantments.FLEETING_EDGE));
-        if (ticks <= 0 || player.hasEffect(net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED)) {
+        player.setData(com.cortes.combat.registry.ModAttachments.ADRENALINA.get(), state.cashed());
+        if (!(target instanceof net.minecraft.world.entity.LivingEntity living)) {
             return;
         }
-        player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
-                net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED, ticks, 0, false, false, false));
+        living.invulnerableTime = 0;
+        living.hurt(player.damageSources().playerAttack(player), state.banked());
+        living.invulnerableTime = AttackTiming.IFRAME_TICKS;
     }
 
     /**

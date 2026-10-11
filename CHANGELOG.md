@@ -746,3 +746,32 @@ unica forma de distinguir "esta escrita" de "se ejecuta". Es la tercera vez en e
 afirma la existencia de una funcion en vez de su uso.
 
 1049 tests verdes. 28 encantamientos implementados. `corte_gemelo` con 0 hits en `src/`.
+
+### Adrenalina reemplaza a Filo Fugaz, y los guards de wiring vuelven a fallar
+
+**Filo Fugaz hacía otra cosa y el nombre del id mentía.** Se llamaba `fleeting_edge`, daba Velocidad al
+**conectar**, y el documento lo había rediseñado hacía rondas como **Adrenalina**: una reducción del daño
+que **entra**. Las dos son "la daga es rápida", y no son lo mismo -- una llega después del golpe y la
+otra **antes**, que es la diferencia entre ganar el intercambio y sobrevivirlo. Se renombró el id (un id
+que dice `fleeting_edge` sobre un efecto que reduce daño es la misma clase de mentira que `lastRadius`
+sobre un campo que sube), se borró el método viejo y el efecto se mudó a `LivingIncomingDamageEvent`.
+
+- **La reducción va ANTES de que el daño se aplique**, y eso no es un detalle de implementación: una
+  curación posterior llega tarde. `event.setAmount(amount - saved)` corre en el único lugar donde el
+  golpe que te iba a matar no te mata.
+- **El L2 no sube el número: parte el cooldown al medio** (30 s → 15 s). En una pelea larga la frecuencia
+  vale más que los diez puntos de reducción que también agrega.
+- **La Velocidad dura 5 s y NO el cooldown**, y el test lo afirma: si durara lo mismo el jugador correría
+  todo el tiempo, y eso es el veto C5 -- la velocidad de movimiento como estado y no como decisión.
+- **El daño ahorrado se cobra en un `hurt` aparte y no sumado al golpe.** El `AttackResult` es un record
+  y ya salió del `DamageResolver`: sumarle un número después sería una segunda aritmética del mismo
+  golpe, y la segunda copia es la que se desincroniza.
+
+**Y los guards de wiring fallaron por cuarta vez, con la misma forma exacta.** Los dos que escribí
+-- `event.setAmount(` y `cashAdrenalina(` -- quedaron **verdes** con la llamada envuelta en un
+`if (false)`, porque el string sigue estando. La corrección es pedir **la llamada al ras**, con su
+indentación: es lo único que distingue "está escrita" de "se ejecuta". Cuatro casos ya (`perTargetBonus(`,
+`ensarteShare(`, `event.setAmount(`, `cashAdrenalina(`), y la regla quedó escrita en `AGENTS.md` con la
+forma barata de no repetirla: **copiar la línea del código en vez de escribir el nombre del método**.
+
+1051 tests verdes. 28 encantamientos implementados. `fleeting_edge` con 0 hits en `src/main`.

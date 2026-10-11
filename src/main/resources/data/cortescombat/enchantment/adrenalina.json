@@ -1,7 +1,7 @@
 {
   "anvil_cost": 2,
   "description": {
-    "translate": "enchantment.cortescombat.fleeting_edge"
+    "translate": "enchantment.cortescombat.adrenalina"
   },
   "max_cost": {
     "base": 45,

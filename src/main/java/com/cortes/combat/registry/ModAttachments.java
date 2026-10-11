@@ -18,6 +18,8 @@ import com.cortes.combat.state.SyncState;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.attachment.AttachmentType;
 
+import com.cortes.combat.state.Adrenalina;
+
 import java.util.LinkedHashSet;
 import java.util.Set;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -224,6 +226,11 @@ public final class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<GuardFree>> GUARD_FREE =
             ATTACHMENT_TYPES.register("guard_free", () -> AttachmentType
                     .<GuardFree>builder(() -> GuardFree.READY)
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Adrenalina>> ADRENALINA =
+            ATTACHMENT_TYPES.register("adrenalina", () -> AttachmentType
+                    .<Adrenalina>builder(() -> Adrenalina.READY)
                     .build());
 
     private ModAttachments() {

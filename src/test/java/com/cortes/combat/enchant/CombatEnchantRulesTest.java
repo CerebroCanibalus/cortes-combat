@@ -83,29 +83,52 @@ class CombatEnchantRulesTest {
     }
 
     @Test
-    @DisplayName("Filo Fugaz: cero sin el encantamiento, 40 -> 60 ticks con el")
-    void fleetingEdgeLevels() {
-        assertEquals(0, CombatEnchantRules.fleetingEdgeTicks(0),
-                "sin el encantamiento la duracion es cero, y el handler usa ese cero para no "
-                        + "aplicar nada: un efecto de duracion cero existe y no hace nada, que es "
-                        + "peor que no ponerlo");
-        assertEquals(40, CombatEnchantRules.fleetingEdgeTicks(1));
-        assertEquals(60, CombatEnchantRules.fleetingEdgeTicks(2));
+    @DisplayName("**Adrenalina: sin el encantamiento no reduce, y el 25 %/35 % es una reduccion de verdad**")
+    void adrenalinaReduction() {
+        assertEquals(0.0F, CombatEnchantRules.adrenalinaReduction(0), 1.0E-6,
+                "sin el encantamiento no se ahorra nada");
+        assertEquals(0.25F, CombatEnchantRules.adrenalinaReduction(1), 1.0E-6);
+        assertEquals(0.35F, CombatEnchantRules.adrenalinaReduction(2), 1.0E-6);
+        assertEquals(0.35F, CombatEnchantRules.adrenalinaReduction(9), 1.0E-6,
+                "un nivel de mas vale el maximo");
+        assertEquals(0.0F, CombatEnchantRules.adrenalinaReduction(-1), 1.0E-6,
+                "y uno negativo no reduce nada");
+        assertTrue(CombatEnchantRules.adrenalinaReduction(2) < 1.0F,
+                "**y no reduce todo**: una reduccion del 100 % no es una Adrenalina, es invulnerabilidad "
+                        + "durante medio minuto");
     }
 
     @Test
-    @DisplayName("y no es lineal: el segundo nivel suma veinte ticks, no duplica")
-    void fleetingEdgeIsNotLinear() {
-        assertTrue(CombatEnchantRules.fleetingEdgeTicks(2)
-                        < CombatEnchantRules.fleetingEdgeTicks(1) * 2,
-                "60 no es el doble de 40: el nivel uno es salir del rango de lo que apunalaste y el "
-                        + "dos es reposicionarse de verdad, y un buff de cuatro segundos se pisaria "
-                        + "con el gate de 'ya lo tengo' casi siempre");
-        assertEquals(CombatEnchantRules.fleetingEdgeTicks(2),
-                CombatEnchantRules.fleetingEdgeTicks(9),
-                "y un nivel de mas vale lo que el maximo");
-        assertEquals(0, CombatEnchantRules.fleetingEdgeTicks(-1),
-                "mientras que uno negativo no da nada");
+    @DisplayName("**Adrenalina: el L2 no sube el numero, duplica la frecuencia (30 s -> 15 s)**")
+    void adrenalinaCooldown() {
+        assertEquals(0, CombatEnchantRules.adrenalinaCooldown(0),
+                "sin encantamiento no hay cooldown que correr");
+        assertEquals(600, CombatEnchantRules.adrenalinaCooldown(1), "treinta segundos");
+        assertEquals(300, CombatEnchantRules.adrenalinaCooldown(2), "y quince en el dos");
+        assertEquals(300, CombatEnchantRules.adrenalinaCooldown(9));
+        assertTrue(CombatEnchantRules.adrenalinaCooldown(2) * 2
+                        == CombatEnchantRules.adrenalinaCooldown(1),
+                "**el segundo nivel parte el cooldown al medio**, que en una pelea larga vale mas "
+                        + "que los diez puntos de reduccion que tambien agrega");
+    }
+
+    @Test
+    @DisplayName("**Adrenalina: la Velocidad es el nivel del encantamiento menos uno**")
+    void adrenalinaSpeedIsOneBelow() {
+        assertEquals(0, CombatEnchantRules.adrenalinaSpeedAmplifier(1),
+                "**Velocidad I es amplifier CERO**, y el nivel uno del encantamiento tiene que dar "
+                        + "Velocidad I: la resta vive aca porque es la clase de conversion que se "
+                        + "escribe al reves y no se nota hasta que un nivel dos da Velocidad III");
+        assertEquals(1, CombatEnchantRules.adrenalinaSpeedAmplifier(2));
+        assertEquals(1, CombatEnchantRules.adrenalinaSpeedAmplifier(9));
+        assertEquals(0, CombatEnchantRules.adrenalinaSpeedAmplifier(0),
+                "y sin encantamiento el amplificador no puede ser negativo");
+        assertTrue(CombatEnchantRules.ADRENALINA_SPEED_TICKS > 0
+                        && CombatEnchantRules.ADRENALINA_SPEED_TICKS
+                                < CombatEnchantRules.adrenalinaCooldown(2),
+                "**y la Velocidad dura menos que el cooldown**: si durara lo mismo, el jugador "
+                        + "correria todo el tiempo y la velocidad pasaria de decision a estado, que "
+                        + "es lo que el proyecto veta en C5");
     }
 
     @Test
