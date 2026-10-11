@@ -385,6 +385,32 @@ public final class Lunge {
         return wasHit;
     }
 
+    /**
+     * Retirada: apunta un cuerpo al que el lunge ya golpeo, para que el barrido no lo golpee otra vez.
+     *
+     * <h2>Por qué existe, y es la parte importante</h2>
+     *
+     * <p>El cubo que barre el lunge esta <b>centrado en el jugador y mide medio alcance en TODAS las
+     * direcciones</b> -- {@code LungeDamage.cube} no tiene nocio de hacia donde mira nadie. Eso
+     * significa que <b>una marcha atras barre lo que quedo adelante</b>, que es exactamente donde el
+     * jugador acaba de golpear. Sin este conjunto, Retirada cobraria dos veces el mismo cuerpo: una
+     * en el press y otra en el primer tick de la marcha.</p>
+     *
+     * <p>Y la consecuencia es el argumento entero del encantamiento: <b>el golpe del frente no es un
+     * bonus, es el golpe del lunge adelantado al press.</b> Por eso su fraccion es 1,0 y no una
+     * parte -- no se esta agregando nada, se esta moviendo el cobro de "cuando cubris el suelo" a
+     * "cuando te vas". El beneficio que queda no es mas daño: es que <b>el golpe se cobra aunque la
+     * retirada la corte una pared</b>, que es justo lo que el lunge normal no puede prometer,
+     * porque su golpe depende de que el cuerpo llegue.</p>
+     *
+     * <p><b>Hay que llamarlo despues de {@link #begin}</b>, y no antes: {@code wasHit} limpia el
+     * conjunto mientras el lunge no este activo, asi que un golpe registrado antes de abrir la
+     * ventana se borraria en el primer tick sin que nadie lo dijera.</p>
+     */
+    public static void prehit(ServerPlayer player, LivingEntity target) {
+        wasHit(player).add(target);
+    }
+
     /** Whether a lunge is in progress. */
     public static boolean active(ServerPlayer player) {
         return player.getData(ModAttachments.LUNGE.get()).running();

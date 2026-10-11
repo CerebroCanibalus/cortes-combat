@@ -1,7 +1,7 @@
 # Changelog
 
-Historia del mod. `AGENTS.md` tiene lo que hay que saber **ahora**; esto es lo que sePensó y se
-midió en el camino. Los números de las decisionesrationales están en `AGENTS.md`; los de los bugs
+Historia del mod. `AGENTS.md` tiene lo que hay que saber **ahora**; esto es lo que se pensó y se
+midió en el camino. Los números de las decisiones racionales están en `AGENTS.md`; los de los bugs
 que las costaron están acá.
 
 Las tres cuentas largas que se movieron acá son **el riptide del tridente** (el dash de vanilla
@@ -819,3 +819,53 @@ conseguir es un canal muerto con el build verde.
   la forma barata de no repetirla es **una linea por `Replace`, o la herramienta de edicion**.
 
 1053 tests verdes. 34 encantamientos implementados, 6 sabotajes verificados en esta ronda.
+
+### Retirada - el primero de los cuatro caros, y el diseno le tenia que corregir una palabra
+
+**La tabla decia "da un ataque EXTRA al frente", y eso no es lo que se implemento, porque no es
+cierto.** Antes de escribir una linea hay que leer `LungeDamage.cube`: el cubo que barre la marcha
+atras esta **centrado en el jugador y mide medio alcance en TODAS las direcciones**. No tiene
+nocio de hacia donde mira nadie. O sea que **una marcha atras ya barria lo que quedaba adelante**,
+que es exactamente donde el jugador acababa de golpear.
+
+Un golpe encima habria cobrado dos veces al mismo cuerpo en la misma pulsacion.
+
+**Lo que hace es adelantar el cobro, no agregar uno.** El golpe del frente va al conjunto
+`Lunge.prehit`, que es el mismo que el barrido ya no vuelve a tocar, y por eso su fraccion es 1,0 y
+no una parte -- no se esta sumando nada, se esta moviendo el pago de "cuando cubris el suelo" a
+"cuando te vas". Lo que gana no es dano, es **garantia**: el golpe se cobra aunque la retirada la
+corte una pared, que es exactamente lo que el lunge normal no puede prometer, porque su golpe
+depende de que el cuerpo llegue. Y el precio es simetrico en las dos direcciones -- dos bloques que
+no gastas en acercarte son dos bloques que no te acercan.
+
+**Y el impulso es UN SIGNO.** El lunge es direccion-agnostico de punta a punta: `travelled` mide
+desplazamiento, `ceilingFor` es una distancia. Asi que invertirlo fue una linea en `LungeMotion`,
+sin una segunda tabla de numeros y sin un segundo camino de legalidad. Que no haya mas que eso es
+el diseño, no una economia.
+
+**La trampa que tiene, y esta testeada:** `Lunge.prehit` limpia su conjunto **mientras el lunge no
+este activo** (`wasHit` pregunta `Lunge.active`). El golpe del frente tiene que venir **DESPUES** de
+`Lunge.begin`; registrado antes se borraria en el primer tick **sin error y sin golpe**. El guard
+busca las dos llamadas por su texto -- y no por su indentacion, porque un sabotaje que mueve la
+linea la mueve de columna tambien, y un guard que depende del espaciado muerde por la razon
+equivocada.
+
+**Y una constante muerta que el build no acusaba.** `RETIRADA_FORWARD_HIT_SHARE` estaba declarada y
+**no se aplicaba**: el dano salia de `LungeDamage.damageFor` sin multiplicar. Un 1,0 que no se
+aplica es una constante que nadie lee -- el dia que el dueño lo baje en el playtest no habria donde
+tocarlo, y lo que el jugador ve seria distinto de lo que el archivo dice. Se conecto y el guard
+afirma que **multiplica**, no que existe. Es el mismo shape que un canal con su consumidor muerto.
+
+**Siete sabotajes, y el primero no es un test.** Los cinco de los guards mueren por asercion; el
+septimo (quitar la bandera de inversion del call site del cliente) **no compila**, porque el metodo
+viejo de dos argumentos ya no existe -- el sistema de tipos es guard mas fuerte que cualquier test,
+y anotarlo evita que alguien "arregle" un test que no puede fallar.
+
+Y dos accidentes de Herramienta en la misma ronda, ambos del mismo tipo: **un `Replace` multi-linea
+se volvio a comer un revert**, dejando un `;` suelto que no compilo para el FINAL; y **un sabotaje
+que no compilo no es sabotaje** -- el primero de la lista reporto `EXIT=1 muertos=0`, que es la
+firma exacta de "rompi el codigo en vez de probar el guard".
+
+1054 tests verdes. 35 encantamientos implementados. Faltan tres: Pala Antimaterial, Rey de las
+Moscas y Mungus -- los tres con su tabla de numeros escrita y **fuera de `IDS`** hasta que tengan
+entidad propia.

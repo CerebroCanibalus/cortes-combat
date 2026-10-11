@@ -163,6 +163,73 @@ public final class SpecialHandler {
         CombatSounds.play(level, player, WeaponProfile.ROPERA, ModSounds.Kind.LUNGE);
 
         Lunge.begin(player, tierOf(player));
+
+        // **Retirada: el golpe al frente, resuelto mientras el cuerpo sale para atras.**
+        //
+        // Va despues de `Lunge.begin` y no antes, y eso no es un orden de lectura: `Lunge.prehit`
+        // apunta al conjunto que el barrido ya no vuelve a tocar, y ese conjunto se limpia mientras
+        // el lunge no este activo. Un golpe registrado antes de abrir la ventana se borraria en el
+        // primer tick sin que nadie lo dijera.
+        if (player.isShiftKeyDown() && CombatEnchantments.level(level.registryAccess(),
+                player.getMainHandItem(), CombatEnchantments.RETIRADA) > 0) {
+            retreat(player, level, stats);
+        }
+    }
+
+    /**
+     * Retirada: el golpe que la ropera da <em>al salir</em>, no al llegar.
+     *
+     * <h2>Por qué esto no es el bug que el lunge ya tuvo</h2>
+     *
+     * <p>El lunge original construia una caja del largo prometido <b>antes</b> de que el jugador se
+     * moviera un centimetro, y por eso no costaba nada: el volumen no le preguntaba al cuerpo donde
+     * estaba. La diferencia aca es que <b>la caja es el cono normal del arma</b> -- la distancia que
+     * la ropera alcanza de cualquier forma, en la posicion en la que el jugador esta parado. No se
+     * esta prometiendo distancia, se esta cobrando la que ya se tiene.</p>
+     *
+     * <h2>Y por qué su fraccion es 1,0</h2>
+     *
+     * <p>Porque <b>no es un golpe encima del lunge: es el golpe del lunge, adelantado al press.</b>
+     * El cubo que barre la marcha atras esta centrado en el jugador y sin direccion, asi que lo que
+     * quedo adelante tambien lo alcanzaria -- y por eso cada objetivo va a {@link Lunge#prehit},
+     * que es lo que impide que el mismo cuerpo cobre dos veces.</p>
+     *
+     * <p>Lo que Retirada compra no es daño. Es que <b>el golpe se cobra aunque la retirada la corte
+     * una pared</b> -- que es exactamente lo que el lunge normal no puede prometer, porque su golpe
+     * depende de que el cuerpo llegue -- y el intercambio es el mismo en las dos direcciones: dos
+     * bloques que no gastas en acercarte son dos bloques que no te acercan.</p>
+     */
+    private static void retreat(ServerPlayer player, ServerLevel level, WeaponStats stats) {
+        List<LivingEntity> targets = targetsInCone(player, stats.reach());
+        if (targets.isEmpty()) {
+            return;
+        }
+        int index = 0;
+        for (LivingEntity target : targets) {
+            // La misma curva que el golpe normal del lunge: si el numero fuera distinto habria dos
+            // definiciones de "cuanto pega el lunge" y la pregunta "que cuesta este boton" tendria
+            // dos respuestas.
+            //
+            // Y la fraccion va MULTIPLICANDO aunque hoy sea 1,0, porque un 1,0 que no se aplica es
+            // una constante que nadie lee: el dia que el dueño baje el numero en el playtest no
+            // tendria donde tocarlo, y lo que el jugador ve y lo que el archivo dice serian dos
+            // verdades distintas -- que es la forma de fallar que mas le cuesta detectar aca.
+            float damage = LungeDamage.damageFor(
+                    (float) player.getAttributeValue(
+                            net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE), index)
+                    * CombatEnchantRules.RETIRADA_FORWARD_HIT_SHARE;
+
+            target.invulnerableTime = 0;
+            boolean landed = target.hurt(player.damageSources().playerAttack(player), damage);
+            if (landed) {
+                target.invulnerableTime = com.cortes.combat.attack.AttackTiming.IFRAME_TICKS;
+                SlashParticles.hit(level, stats.profile(), target, false);
+                CombatSounds.play(level, target, WeaponProfile.ROPERA, ModSounds.Kind.HIT,
+                        1.0F - index * 0.06F);
+            }
+            Lunge.prehit(player, target);
+            index++;
+        }
     }
 
     /** The material rank of whatever the player is holding, or zero if it is not ours. */

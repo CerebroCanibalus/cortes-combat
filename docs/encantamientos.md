@@ -6,20 +6,23 @@
 > esto**: entre los dos había **nueve nombres para mecánicas distintas**, y esa era la primera cosa a
 > limpiar.
 >
-> **Estado (2026-10-11):** **34 encantamientos implementados** y en la mesa. Además, dos arreglos de
+> **Estado (2026-10-11):** **35 encantamientos implementados** y en la mesa. Además, dos arreglos de
 > cliente: **la animación de la azada** (iba hacia la derecha) y **Mecha Corta**, que resultó no
 > necesitar arte — ver §6.
 >
-> **Faltan 4, y son los caros:** **Retirada** (ropera — invierte el lunge agachado, y eso toca el
-> sistema de autoridad del movimiento), **Pala Antimaterial**, **Rey de las Moscas** y **Mungus** (los
-> tres necesitan una entidad propia y un camino de munición que el mod todavía no tiene). Sus ids, sus
-> claves y sus **tablas de números ya están escritas** en `CombatEnchantRules`, pero **no están en
-> `IDS`** — y `IDS` es lo que hace que un test pida el archivo, el tag, el idioma y la forma del campo.
-> Un encantamiento declarado que no se puede conseguir es un canal muerto con el build verde, y eso ya
-> se pagó una vez en esta ronda con `corte_gemelo`.
+> **Retirada ya está**, y fue el primero de los cuatro caros: el lunge invertido no tocó el sistema de
+> autoridad del movimiento, porque **la marcha atrás es el mismo impulso con el signo cambiado** y el
+> cubo que barre la marcha ya era sin dirección — ver su fila y §9.
 >
-> **Los seis de la última ronda, hechos y con sabotaje verificado:** Paliza, Sentencia, Trabazón, Gripa,
-> Corte Gemelo (volvió, ahora con su reloj) y Capacitor.
+> **Faltan 3, y los tres necesitan una entidad propia y un camino de munición que el mod todavía no
+> tiene:** **Pala Antimaterial**, **Rey de las Moscas** y **Mungus**. Sus ids, sus claves y sus
+> **tablas de números ya están escritas** en `CombatEnchantRules` (incluida la potencia **12** del
+> Mungus), pero **no están en `IDS`** — y `IDS` es lo que hace que un test pida el archivo, el tag, el
+> idioma y la forma del campo. Un encantamiento declarado que no se puede conseguir es un canal muerto
+> con el build verde, y eso ya se pagó una vez en esta ronda con `corte_gemelo`.
+>
+> **Los siete últimos, hechos y con sabotaje verificado:** Paliza, Sentencia, Trabazón, Gripa,
+> Corte Gemelo (volvió, ahora con su reloj), Capacitor y Retirada.
 
 ---
 
@@ -167,8 +170,27 @@ Ya tiene Density, Breach y Wind Burst de vanilla. Caída Astuta, Peso Muerto y O
 |---|---|---|---|
 | **Punta Fina** | 2 | **+15 %/+25 %** a **1,5 bloques o menos** | bonus por objetivo (distancia) |
 | **Audacia** | 2 | el lunge devuelve **−10/−15 ticks de cooldown por cada objetivo alcanzado**, con piso **20** | `SpecialHandler.lunge`, contando lo que cobró el cubo |
-| **Retirada** | **1** | **agachado**, el lunge se invierte (impulso hacia atrás) y **da un ataque extra al frente** justo antes de salir. Mismo cooldown que el lunge | estado de agachado + `SpecialHandler` |
+| **Retirada** | **1** | **agachado**, el lunge se invierte (impulso hacia atrás) y el golpe al frente (100 %) se cobra **en el press**. Mismo cooldown que el lunge | ó. **HECHO** — `SpecialHandler.retreat` + `LungeMotion` (el signo) |
 | **Estocada Perforante** | 2 | el golpe **del lunge** ignora **15 %/30 %** de armadura | el golpe del lunge |
+
+> **Retirada, y la corrección que había que hacerle al diseño:** la tabla decía *"da un ataque **extra**
+> al frente"*, y eso no es lo que se implementó porque **no es cierto**. El cubo que barre la marcha
+> atrás — `LungeDamage.cube` — está **centrado en el jugador y mide medio alcance en todas las
+> direcciones**, o sea que **ya alcanzaba lo que quedaba adelante**: un golpe encima habría cobrado dos
+> veces al mismo cuerpo en la misma pulsación.
+>
+> **Lo que hace es adelantar el cobro, no agregar uno:** el golpe del frente va al conjunto
+> `Lunge.prehit`, que es el mismo que el barrido ya no vuelve a tocar. Por eso su fracción es **1,0 y no
+> una parte** — no se está sumando nada, se está moviendo el pago de *"cuando cubris el suelo"* a
+> *"cuando te vas"*. **Lo que gana no es daño, es garantía:** el golpe se cobra aunque la retirada la
+> corte una pared, que es exactamente lo que el lunge normal no puede prometer, porque su golpe depende
+> de que el cuerpo llegue. Y el precio es simétrico en las dos direcciones: dos bloques que no gastás en
+> acercarte son dos bloques que no te acercan.
+>
+> **La trampa que tiene, y está testeada:** `Lunge.prehit` limpia su conjunto **mientras el lunge no
+> esté activo**, así que el golpe del frente tiene que venir **después** de `Lunge.begin`. Registrado
+> antes, se borra en el primer tick sin error y sin golpe — la forma de fallar que este proyecto ya pagó
+> varias veces. El guard busca las dos llamadas por su texto y afirma el **orden**.
 
 > **El piso de Audacia no es opcional**: el lunge tiene inmunidad doble (6 ticks + efecto `LUNGE`).
 > Sin piso, un bucle de lunges son i-frames casi permanentes en medio de un grupo.

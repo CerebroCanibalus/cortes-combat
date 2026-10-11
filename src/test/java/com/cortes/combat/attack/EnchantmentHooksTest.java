@@ -7,9 +7,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.cortes.combat.enchant.CombatEnchantRules;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -233,9 +236,77 @@ class EnchantmentHooksTest {
                         + "encantamiento no hace nada");
     }
 
+    /**
+     * **Retirada, y la trampa de orden que tiene.**
+     *
+     * <p>Cuatro hechos, y el cuarto es el que no se ve leyendo el codigo una sola vez: el golpe
+     * previo se registra en {@code Lunge.prehit}, que limpia el conjunto <b>mientras el lunge no
+     * este activo</b>. Un golpe registrado antes de {@code Lunge.begin} se borraria en el primer
+     * tick sin que nada falle, sin error y sin golpe -- que es la forma de fallar que este proyecto
+     * ya pago varias veces.</p>
+     */
     @Test
-    @DisplayName("Filo Fugaz se fue con Adrenalina")
-    void fleetingEdgeIsGone() {
+    @DisplayName("Retirada: el impulso se invierte y el golpe va ANTES de abrir la ventana")
+    void theRetreatLeavesBackwardsAndHitsFirst() {
+        String special = readSpecial();
+
+        assertTrue(special.contains("Lunge.begin(player, tierOf(player));"),
+                "**el lunge ya no abre su ventana**, asi que no hay marcha atras que medir");
+        assertTrue(special.contains("retreat(player, level, stats);"),
+                "**Retirada no golpea al frente**: el encantamiento se puede poner en la ropera y el "
+                        + "jugador que se agacha sale corriendo sin haber pegado nada");
+        assertTrue(special.contains("player.isShiftKeyDown() && CombatEnchantments.level("),
+                "**y el agachado es la puerta.** Sin leer el agachado, Retirada seria el lunge "
+                        + "normal apagado para todo el mundo");
+
+        // El orden, que es la trampa: `prehit` limpia su conjunto si el lunge no esta activo. Se
+        // busca por la llamada y no por su indentacion, porque un sabotaje que mueve la linea la
+        // mueve de columna tambien -- y un guard que depende del espaciado muerde por la razon
+        // equivocada, que es la mitad del problema.
+        int opensWindow = special.indexOf("Lunge.begin(player, tierOf(player));");
+        int hitsFront = special.indexOf("retreat(player, level, stats);");
+        assertTrue(opensWindow >= 0 && hitsFront > opensWindow,
+                "**el golpe del frente tiene que venir DESPUES de abrir la ventana.** Llama a "
+                        + "`Lunge.prehit` antes y `wasHit` limpia el conjunto en el primer tick: el "
+                        + "barrido vuelve a cobrar el mismo cuerpo y Retirada se vuelve el lunge "
+                        + "normal con dos golpes");
+
+        String lunge = readFile("src/main/java/com/cortes/combat/special/Lunge.java");
+        assertTrue(lunge.contains("\n        wasHit(player).add(target);"),
+                "**el golpe previo no se registra en el conjunto.** La firma de `prehit` seguiria "
+                        + "ahi, compilaria y no haria nada -- y el cubo, centrado en el jugador y "
+                        + "sin direccion, le cobraria otra vez al mismo cuerpo en el primer tick");
+
+        // **Y la fraccion tiene que MULTIPLICAR, no solo existir.** Un 1,0 declarado y no aplicado
+        // es una constante que nadie lee: el dia que se baje el numero en el playtest no hay donde
+        // tocarlo, y lo que el jugador ve seria distinto de lo que el archivo dice. Es el mismo
+        // shape que un canal con su consumidor muerto, que es lo que mas veces pago este proyecto.
+        assertTrue(special.contains("* CombatEnchantRules.RETIRADA_FORWARD_HIT_SHARE;"),
+                "**la fraccion de Retirada esta declarada y no se aplica**, asi que el golpe pegaria "
+                        + "lo que diga `LungeDamage` y el numero del diseño no tendria efecto en el "
+                        + "juego");
+
+        // Y el cliente tiene que recibir la orden de invertir, no la vieja de dos argumentos.
+        String motion = readFile("src/main/java/com/cortes/combat/client/LungeMotion.java");
+        assertFalse(motion.contains("public static void begin(LocalPlayer player, int materialRank) {"),
+                "**el impulso quedo sin la bandera de inversion**: el metodo viejo de dos argumentos "
+                        + "compila, se ve correcto, y la marcha atras nunca sale para atras");
+        assertTrue(motion.contains("double sign = retreating ? -1.0 : 1.0;"),
+                "**y la inversion es el signo del impulso**, no de la mirada: voltearse para huir "
+                        + "regalaria la espalda, que es exactamente lo que el encantamiento existe "
+                        + "para no hacer");
+        String input = readFile("src/main/java/com/cortes/combat/client/SpecialInputHandler.java");
+        assertTrue(input.contains("LungeMotion.begin(player, tier, retreating);"),
+                "**el cliente no le pasa la bandera al impulso**");
+
+        assertEquals(1.0F, CombatEnchantRules.RETIRADA_FORWARD_HIT_SHARE, 1.0E-6,
+                "**y la fraccion es 1,0 porque el golpe del frente NO es un bonus: es el golpe del "
+                        + "lunge adelantado al press.** Una fraccion menor seria un nerf sobre un "
+                        + "golpe que ya estaba pagado");
+    }
+
+    @Test
+    @DisplayName("Filo Fugaz se fue con Adrenalina")    void fleetingEdgeIsGone() {
         // **El test viejo vivio aca y su asercion era la mitad del encantamiento que ya no existe.**
         // Afirmaba `CombatEnchantments.FLEETING_EDGE` y el gate de "ya lo tengo": con el encantamiento
         // renombrado y el efecto mudado al daño recibido, las dos lineas quedaron verdes por

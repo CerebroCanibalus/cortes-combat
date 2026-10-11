@@ -62,8 +62,18 @@ public final class LungeMotion {
      * z))}, two lines, verified in the sources. So a lunge taken at a run goes further than one
      * taken from standing still, which is the same relationship every knockback in the game has and
      * is inside the ceiling the server checks against.</p>
+     *
+     * <h2>Retirada: quién decide la direccion y por qué aca</h2>
+     *
+     * <p>Que el lunge salga para atras cuando el jugador esta agachado con Retirada es
+     * <b>una diferencia de un signo</b>, y se toma en este archivo porque <b>quien empuja es el
+     * cliente</b>: el servidor no puede mover a un jugador, que es la razon entera de que este
+     * metodo exista. Los dos lados leen el mismo hecho -- el agachado, sincronizado, y el
+     * encantamiento, en el stack que ambos tienen -- y cada uno actua sobre su mitad. El cliente da
+     * el impulso; el servidor resuelve el golpe del frente y despues deja que la distancia
+     * recorrida haga el resto del trabajo.</p>
      */
-    public static void begin(LocalPlayer player, int materialRank) {
+    public static void begin(LocalPlayer player, int materialRank, boolean retreating) {
         if (player == null || player.isSpectator() || !player.isAlive()) {
             return;
         }
@@ -75,7 +85,13 @@ public final class LungeMotion {
         flat = flat.normalize();
 
         double impulse = LungeDamage.impulseFor(materialRank);
-        player.push(flat.x * impulse, 0.0, flat.z * impulse);
+        // Retirada: la mirada sigue al enemigo y el cuerpo sale al reves. Por eso el signo se aplica
+        // al impulso y no a la mirada -- voltearse para huir seria regalar la espalda, que es
+        // exactamente lo que este encantamiento existe para no hacer. Y es una unica diferencia:
+        // el salito, el impulso y el techo que el servidor mide son los mismos, y direccion-
+        // agnosticos, asi que una marcha atras no necesita una segunda tabla de numeros.
+        double sign = retreating ? -1.0 : 1.0;
+        player.push(flat.x * impulse * sign, 0.0, flat.z * impulse * sign);
 
         // The hop, and only from the ground: mid-air it would be a second jump nobody asked for.
         if (player.onGround()) {

@@ -154,8 +154,8 @@ public final class CombatEnchantRules {
             FILO_ASTILLADO_ID, APUNALAR_ID, SANGUJUELA_ID, AVENTURERO_ID, CULATA_ID, ESTOCADA_ID,
             SEGUNDO_ALIENTO_ID, GUARDIA_FIRME_ID, CICATRIZADOR_ID, DESTRIPAMIENTO_ID, QUEBRANTO_ID,
             VAMPIRICO_ID, MECHA_CORTA_ID, BARREDOR_ID, ASTILLADORA_ID, MELLA_ID, SEGUNDA_PASADA_ID,
-            SANTA_MUERTE_ID, INERCIA_ID, ENSARTE_ID, PALIZA_ID, SENTENCIA_ID, TRABAZON_ID,
-            GRIPA_ID, CORTE_GEMELO_ID, CAPACITOR_ID);
+            SANTA_MUERTE_ID, INERCIA_ID, ENSARTE_ID, PALIZA_ID, RETIRADA_ID, SENTENCIA_ID,
+            TRABAZON_ID, GRIPA_ID, CORTE_GEMELO_ID, CAPACITOR_ID);
 
     /** Los genericos, que se ponen por clase y no por molde. */
 
@@ -939,9 +939,22 @@ public final class CombatEnchantRules {
      * Retirada: el lunge que sale para atras cuando el jugador esta agachado.
      *
      * <p>Un solo nivel y ningun numero propio, <b>y eso es el diseño</b>: el impulso es el del lunge
-     * con el signo cambiado, y lo que se agrega es un golpe al frente justo antes de salir. Darle una
-     * tabla de distancias propia habria sido un segundo lunge que mantener en paralelo con el primero,
-     * y el dia que uno se retoca el otro queda mintiendo.</p>
+     * con el signo cambiado, y el cubo que barre la marcha atras esta centrado en el jugador y sin
+     * direccion, asi que ya alcanza lo que quedo adelante. Darle una tabla de distancias propia
+     * habria sido un segundo lunge que mantener en paralelo con el primero, y el dia que uno se
+     * retoca el otro queda mintiendo.</p>
+     *
+     * <h2>Por qué la fraccion es 1,0 y no una parte</h2>
+     *
+     * <p>Porque <b>el golpe del frente no es un bonus: es el golpe del lunge adelantado al press.</b>
+     * Cada objetivo del golpe va a {@code Lunge.prehit}, que es lo que impide que el barrido lo cobre
+     * otra vez en el primer tick de la marcha -- asi que nadie recibe dos golpes por una pulsacion.
+     * Una fraccion menor habria sido un nerf arbitrario sobre un golpe que ya estaba pagado.</p>
+     *
+     * <p>Lo que Retirada compra no es daño, es <b>garantia</b>: el golpe se cobra aunque la retirada
+     * la corte una pared, que es exactamente lo que el lunge normal no puede prometer porque su
+     * golpe depende de que el cuerpo llegue. Y el precio es el mismo en las dos direcciones -- dos
+     * bloques que no gastas en acercarte son dos bloques que no te acercan.</p>
      */
     public static final float RETIRADA_FORWARD_HIT_SHARE = 1.0F;
 

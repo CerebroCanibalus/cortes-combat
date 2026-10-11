@@ -201,7 +201,17 @@ public final class SpecialInputHandler {
             int tier = player.getMainHandItem().getItem()
                     instanceof com.cortes.combat.item.CortesWeaponItem weapon
                     ? weapon.material().rank() : 0;
-            LungeMotion.begin(player, tier);
+            // **Retirada: agachado, y el lunge sale para atras.**
+            //
+            // Se decide aca porque es donde se decide el impulso, y el cliente es quien lo da. Los
+            // dos lados leen lo mismo -- el agachado esta sincronizado y el encantamiento esta en el
+            // stack -- asi que no hay paquete nuevo ni un segundo reloj: es la misma pregunta
+            // hecha dos veces a los mismos datos.
+            boolean retreating = player.isShiftKeyDown()
+                    && com.cortes.combat.enchant.CombatEnchantments.level(
+                            player.level().registryAccess(), player.getMainHandItem(),
+                            com.cortes.combat.enchant.CombatEnchantments.RETIRADA) > 0;
+            LungeMotion.begin(player, tier, retreating);
         }
     }
 
