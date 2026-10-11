@@ -97,8 +97,21 @@ public final class CortesDataEvents {
         // Two language files, as two providers. The English one is not optional: en_us is what
         // Minecraft runs in until a player opens the options menu, so a mod with only es_es
         // shows every item's translation key to anyone who has not done that.
-        event.addProvider(new CortesLanguageProvider(event.getGenerator().getPackOutput(), "es_es"));
+        //
+        // **Y son OCHO archivos, porque el juego trae siete espanoles y ninguno es un alias de
+        // otro.** La pila de idiomas de Minecraft es [seleccionado, en_us] -- no hay un paso
+        // intermedio por es_es -- asi que un jugador en es_mx, es_ar, es_cl, es_ec, es_uy o es_ve
+        // veia las cadenas de vanilla en su variante y LAS NUESTRAS EN INGLES. Un mod en espanol
+        // que se ve en ingles para la mayoria de los que hablan espanol.
+        //
+        // Un archivo por codigo porque cada idioma ES un archivo en el cliente. Lo que no se hace
+        // es tipear la traduccion siete veces: sale del mismo provider, con el mismo contenido, y
+        // el provider decide el idioma por el prefijo del codigo.
         event.addProvider(new CortesLanguageProvider(event.getGenerator().getPackOutput(), "en_us"));
+        for (String spanish : ModLocales.SPANISH) {
+            event.addProvider(
+                    new CortesLanguageProvider(event.getGenerator().getPackOutput(), spanish));
+        }
 
         // Built by hand for the existing-file helper, the same as the tags provider: no
         // createProvider overload takes it, and without it the model provider overwrites the six

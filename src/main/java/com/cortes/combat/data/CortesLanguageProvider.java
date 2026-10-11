@@ -53,7 +53,13 @@ public class CortesLanguageProvider extends LanguageProvider {
         // The one place the two files are told apart. Every string below branches on this, so a
         // third language is a new constructor argument and two more methods, not a refactor of
         // thirty conditionals.
-        this.spanish = "es_es".equals(locale);
+        //
+        // **Y mira el PREFIJO y no el codigo exacto.** El juego trae siete variantes de espanol y
+        // ninguna es un alias de otra: la pila de idiomas es [seleccionado, en_us], asi que un
+        // jugador en es_mx no cae a es_es -- cae a INGLES. Con `"es_es".equals(locale)` las otras
+        // seis variantes escribian el archivo en ingles con el nombre en espanol, que es la peor
+        // forma de fallar: el archivo existe y dice lo contrario.
+        this.spanish = locale.startsWith("es_");
     }
 
     @Override

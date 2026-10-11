@@ -1,5 +1,7 @@
 package com.cortes.combat.enchant;
 
+import com.cortes.combat.data.ModLocales;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -173,14 +175,18 @@ class CombatEnchantmentFilesTest {
     }
 
     @Test
-    @DisplayName("y se lee en los dos idiomas: sin la linea, la pantalla imprime la clave")
+    @DisplayName("**y se lee en TODOS los idiomas que el mod escribe**, no solo en dos")
     void theNameIsInBothLanguages() throws IOException {
-        List<String> langs = List.of("en_us", "es_es");
-        for (String id : CombatEnchantRules.IDS) {
-            for (String lang : langs) {
-                Path file = Path.of("src", "generated", "resources", "assets", "cortescombat",
-                        "lang", lang + ".json");
-                String json = Files.readString(file, StandardCharsets.UTF_8);
+        // La lista sale de ModLocales, que es pura: el test camina la MISMA lista que el datagen,
+        // asi que agregar un idioma y olvidarse del provider (o al reves) falla aca. Con la lista
+        // escrita a mano en este archivo, el idioma nuevo pasaba sin que nadie lo mirara.
+        for (String lang : ModLocales.ALL) {
+            Path file = Path.of("src", "generated", "resources", "assets", "cortescombat",
+                    "lang", lang + ".json");
+            assertTrue(Files.exists(file),
+                    "falta " + file + ": ModLocales lo pide y el datagen no lo escribio");
+            String json = Files.readString(file, StandardCharsets.UTF_8);
+            for (String id : CombatEnchantRules.IDS) {
                 assertTrue(json.contains("\"enchantment.cortescombat." + id + "\""),
                         lang + " no tiene enchantment.cortescombat." + id + ": el tooltip mostraria "
                                 + "la clave cruda. Se arregla en CortesLanguageProvider y despues "
