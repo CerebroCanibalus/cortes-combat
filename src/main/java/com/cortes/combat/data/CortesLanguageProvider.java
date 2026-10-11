@@ -167,6 +167,9 @@ public class CortesLanguageProvider extends LanguageProvider {
     add("enchantment.cortescombat.mella", spanish ? "Mella" : "Notch");
     add("enchantment.cortescombat.segunda_pasada", spanish ? "Segunda Pasada" : "Second Pass");
     add("enchantment.cortescombat.santa_muerte", spanish ? "Santa Muerte" : "Holy Death");
+    add("enchantment.cortescombat.inercia", spanish ? "Inercia" : "Inertia");
+
+    add("enchantment.cortescombat.ensarte", spanish ? "Ensarte" : "Skewer");
     }
 
     /**

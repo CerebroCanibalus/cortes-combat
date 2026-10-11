@@ -586,6 +586,41 @@ class EnchantmentHooksTest {
                         + "del documento, 'el bloqueo devuelve dano'");
     }
 
+    /**
+     * **Inercia y Ensarte: los dos que tocan el empuje y la linea del golpe.**
+     *
+     * <p>Inercia es el unico encantamiento del proyecto que manda un empuje al aire, contra un javadoc
+     * que {@code Knockback.apply} tiene escrito a proposito; Ensarte es el unico que cobra dos veces
+     * con un golpe. Los dos son la clase de cosa que se escribe mal de una forma que compila.</p>
+     */
+    @Test
+    @DisplayName("Inercia sube el empuje y Ensarte atraviesa, y ninguno de los dos es el otro")
+    void theFifthBatchReachesTheirHooks() {
+        String engine = readFile("src/main/java/com/cortes/combat/attack/CombatEngine.java");
+        assertTrue(engine.contains("CombatEnchantRules.inerciaLift("),
+                "**Inercia no empuja**: el encantamiento existe, se puede poner en el martillo, y el "
+                        + "golpe sigue empujando hacia adelante");
+        assertTrue(engine.contains("Knockback.applyLift("),
+                "y el empuje tiene que ir al metodo que sube, no al que empuja hacia adelante");
+        assertTrue(engine.contains("\n        ensarte(player, target, stats, result);"),
+                "**Ensarte no atraviesa**: la estocada sigue cobrando a un solo cuerpo. Y la "
+                        + "asercion pide la llamada AL RAS y no el nombre de la funcion, porque un "
+                        + "guard que busca `ensarteShare(` queda verde con la llamada envuelta en un "
+                        + "`if (false)` -- que es la forma exacta en que este archivo ya se equivoco");
+        assertTrue(engine.contains("result.damage() * share"),
+                "**y el segundo cuerpo tiene que pagar la FRACCION y no el dano entero**, que es lo "
+                        + "que lo separa de golpear dos veces al mismo");
+        assertTrue(engine.contains("toOther.dot(unit) <= 0.0"),
+                "**y tiene que estar DEL OTRO LADO.** Sin esa mitad, Ensarte golpearia a un cuerpo al "
+                        + "costado del primero, que es un golpe en area con otro nombre");
+
+        String knock = readFile("src/main/java/com/cortes/combat/attack/Knockback.java");
+        assertTrue(knock.contains("motion.x, motion.y + vertical, motion.z"),
+                "**y el empuje de Inercia no puede tocar la horizontal**: subir y ademas desplazar es "
+                        + "un empuje mas fuerte, y lo que el encantamiento vende es el mismo empuje "
+                        + "apuntado a otro lado");
+    }
+
     /** Y el arcabuz, donde vive la recarga que Pólvora Seca acorta. */
     private static String readArcabuz() {
         Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "special",

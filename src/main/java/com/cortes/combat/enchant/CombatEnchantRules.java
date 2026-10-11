@@ -100,13 +100,21 @@ public final class CombatEnchantRules {
     /** Azada -- Santa Muerte: matar revienta en una nube de putrefaccion. */
     public static final String SANTA_MUERTE_ID = "santa_muerte";
 
+    /** Martillo -- Inercia: el empuje de la cadena va al aire. */
+    public static final String INERCIA_ID = "inercia";
+
+
+
+    /** Largas -- Ensarte: la estocada atraviesa al de adelante. */
+    public static final String ENSARTE_ID = "ensarte";
+
     /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
     public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID,
             FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID, DRY_POWDER_ID, PUNTA_FINA_ID,
             FILO_ASTILLADO_ID, APUNALAR_ID, SANGUJUELA_ID, AVENTURERO_ID, CULATA_ID, ESTOCADA_ID,
             SEGUNDO_ALIENTO_ID, GUARDIA_FIRME_ID, CICATRIZADOR_ID, DESTRIPAMIENTO_ID, QUEBRANTO_ID,
             VAMPIRICO_ID, MECHA_CORTA_ID, BARREDOR_ID, ASTILLADORA_ID, MELLA_ID, SEGUNDA_PASADA_ID,
-            SANTA_MUERTE_ID);
+            SANTA_MUERTE_ID, INERCIA_ID, ENSARTE_ID);
 
     /** Los genericos, que se ponen por clase y no por molde. */
 
@@ -747,6 +755,63 @@ public final class CombatEnchantRules {
      */
     public static final int SANTA_MUERTE_RADIUS = 3;
     public static final int SANTA_MUERTE_WITHER_TICKS = 100;
+
+    /**
+     * Inercia (martillo): cuanto sube el empuje vertical por golpe de cadena.
+     *
+     * <p><b>Es el unico encantamiento del proyecto que manda un empuje al aire, y el codigo decia
+     * que eso no se hacia.</b> {@code Knockback.apply} tiene un javadoc escrito a proposito -- "rerouting
+     * the enchantment through the vertical would smuggle the launch back in through the one number
+     * that is supposed to be a property of the weapon" -- y esa regla nacio de sacar el empuje
+     * vertical de vanilla, que ponia a un mob en el aire con cualquier golpe.</p>
+     *
+     * <p><b>La regla sigue siendo cierta y esto es la excepcion, con nombre.</b> Lo que estaba mal en
+     * vanilla no era el aire: era que el aire venia <em>gratis y sin decirlo</em>, en cada golpe de
+     * cada arma. Aca lo pide un encantamiento que hay que conseguir, con un arma que tiene que
+     * construir una cadena primero, y la horizontal queda en <b>cero</b> -- no es "un empuje mas
+     * fuerte", es el mismo empuje apuntado a otro lado. Un mob que sale volando hacia arriba y se
+     * queda donde esta es lo contrario de un mob que sale despedido.</p>
+     *
+     * <p>Por eso el numero es un <b>porcentaje del vertical propio del arma</b> y no un valor
+     * absoluto: una cadena larga tiene que poder tocar el techo del martillo, no el de la pala.</p>
+     */
+    public static final int INERCIA_MAX_LEVEL = 2;
+
+    public static float inerciaLift(int level, int streakHits) {
+        float perHit = switch (clamp(level, INERCIA_MAX_LEVEL)) {
+            case 1 -> 0.10F;
+            case 2 -> 0.20F;
+            default -> 0.0F;
+        };
+        return perHit * Math.max(0, streakHits);
+    }
+
+    // **Corte Gemelo vivio aca una hora y se fue, y vale anotar por que.** Las reglas estaban escritas
+    // -- el intervalo del L1, la fraccion del corte -- y el archivo de datos tambien, y el
+    // encantamiento se podia poner en el sable. Lo que no existia era **el cableado**: nadie leia el
+    // intervalo, asi que el L1 y el L2 pegaban lo mismo. Un encantamiento con reglas, archivo, idioma
+    // y tag, que no hace nada, es la peor clase de canal muerto porque **el build esta verde** y el
+    // unico sintoma es que un jugador pague un nivel que no recibe. Se retira entero -- no se deja a
+    // medias -- y vuelve con su attachment en la ronda que le toca.
+
+    /**
+     * Ensarte (largas): cuanto del dano le llega al cuerpo de atras.
+     *
+     * <p><b>El segundo cuerpo no cobra bonus de encantamientos</b>, y no es un detalle: los bonuses
+     * por objetivo leen <em>a quien</em> se golpea (armadura, angulo, distancia), asi que pagarlos dos
+     * veces por un solo golpe seria cobrar dos veces por una decision que el jugador tomo una vez.
+     * La estocada atraviesa y reparte el dano base; lo que encuentre del otro lado no es una segunda
+     * eleccion.</p>
+     */
+    public static final int ENSARTE_MAX_LEVEL = 2;
+
+    public static float ensarteShare(int level) {
+        return switch (clamp(level, ENSARTE_MAX_LEVEL)) {
+            case 1 -> 0.50F;
+            case 2 -> 1.00F;
+            default -> 0.0F;
+        };
+    }
 
     /** Un nivel dentro de los que el encantamiento tiene.
      *

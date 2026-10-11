@@ -710,3 +710,39 @@ tipografia con el mismo color que un exito.** El script ahora imprime el exit y 
 la diferencia entre "no compila" y "murio un test" se ve en la primera linea.
 
 1044 tests verdes (eran 1035). 26 encantamientos implementados, 7 sabotajes verificados.
+
+### La tanda de los "del empuje y la linea" — Inercia y Ensarte, y un canal muerto que se fue
+
+- **Inercia va contra un javadoc escrito a proposito.** `Knockback.apply` dice, con esas palabras, que
+  mandar un encantamiento al empuje vertical "smuggle the launch back in through the one number that is
+  supposed to be a property of the weapon", y esa regla nacio de sacar el empuje vertical de vanilla.
+  **La regla sigue siendo cierta y esto es la excepcion con nombre**: lo que estaba mal en vanilla no
+  era el aire, era que viniera gratis y sin decirlo en cada golpe de cada arma. Aca lo pide un
+  encantamiento que hay que conseguir, con un arma que tiene que construir una cadena primero, y la
+  **horizontal queda en cero** -- no es un empuje mas fuerte, es el mismo apuntado a otro lado.
+  Por eso es un metodo aparte (`Knockback.applyLift`) y no un parametro: un parametro habria dejado la
+  puerta abierta para cualquiera.
+- **Y el techo subio a 2,5/0,70 por dos encantamientos y no por un arma.** Con el techo viejo (1,6/0,45)
+  Inercia y Paliza habrian quedado clampeadas al mismo numero que la pala alcanza sin encantamiento,
+  que es la forma exacta en que un encantamiento deja de existir sin que nada falle. `KnockbackCeilingTest`
+  afirma las dos mitades: el techo nuevo **y** que ninguna arma del catalogo lo toca de fabrica.
+- **Ensarte necesito un tag de clase nuevo** (`enchantable/reach`), porque es el primer encantamiento
+  que llega a **dos items sin un perfil que los una** -- la alabarda tiene `profile/halberd` y el
+  tridente `profile/trident`, que esta vacio a proposito. Y es la razon por la que `supported_items` no
+  puede llevar una lista de tags.
+
+**Corte Gemelo vivio una hora y se fue, y es la parte que hay que anotar.** Las reglas estaban escritas
+(el intervalo del L1, la fraccion del corte), el archivo de datos tambien, y el encantamiento se podia
+poner en el sable. Lo que no existia era **el cableado**: nadie leia el intervalo, asi que el L1 y el L2
+pegaban lo mismo. **Un encantamiento con reglas, archivo, idioma y tag que no hace nada es la peor clase
+de canal muerto, porque el build esta verde** y el unico sintoma es que un jugador pague un nivel que no
+recibe. Se retira entero -- no se deja a medias -- y vuelve con su attachment.
+
+**Y el guard de wiring volvio a fallar por la razon de siempre, en la primera pasada de sabotajes.** El
+de Ensarte afirmaba `ensarteShare(`, y el sabotaje que envolvia la llamada en un `if (false)` lo dejo
+**verde**: la regla existia, se llamaba desde ningun lado y el guard no lo veia. La correccion es que la
+asercion pida **la llamada al ras** (`"\n        ensarte(player, target, stats, result);"`), que es la
+unica forma de distinguir "esta escrita" de "se ejecuta". Es la tercera vez en el proyecto que un guard
+afirma la existencia de una funcion en vez de su uso.
+
+1049 tests verdes. 28 encantamientos implementados. `corte_gemelo` con 0 hits en `src/`.

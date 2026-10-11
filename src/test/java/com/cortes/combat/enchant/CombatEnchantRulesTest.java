@@ -414,6 +414,33 @@ class CombatEnchantRulesTest {
     }
 
     @Test
+    @DisplayName("**Inercia: el empuje sube 10 %/20 % por golpe de cadena, y el primero no sube nada**")
+    void inercia() {
+        assertEquals(0.0F, CombatEnchantRules.inerciaLift(0, 5), 1.0E-6,
+                "sin encantamiento el empuje es el del arma");
+        assertEquals(0.0F, CombatEnchantRules.inerciaLift(1, 0), 1.0E-6,
+                "**y sin cadena tampoco sube nada**: el primer golpe de un martillo no es una cadena "
+                        + "de uno, y un encantamiento que empuja mas en el primer golpe no es Inercia, "
+                        + "es un empuje mas fuerte");
+        assertEquals(0.10F, CombatEnchantRules.inerciaLift(1, 1), 1.0E-6);
+        assertEquals(0.30F, CombatEnchantRules.inerciaLift(1, 3), 1.0E-6);
+        assertEquals(0.60F, CombatEnchantRules.inerciaLift(2, 3), 1.0E-6);
+        assertTrue(CombatEnchantRules.inerciaLift(2, 3) > CombatEnchantRules.inerciaLift(1, 3),
+                "y el L2 sube mas que el L1 con la misma cadena");
+        assertEquals(0.0F, CombatEnchantRules.inerciaLift(1, -2), 1.0E-6,
+                "una cadena negativa no puede restar");
+    }
+
+    @Test
+    @DisplayName("**Ensarte: 50 % / 100 % del dano base al cuerpo de atras**")
+    void ensarte() {
+        assertEquals(0.0F, CombatEnchantRules.ensarteShare(0), 1.0E-6);
+        assertEquals(0.50F, CombatEnchantRules.ensarteShare(1), 1.0E-6);
+        assertEquals(1.00F, CombatEnchantRules.ensarteShare(2), 1.0E-6);
+        assertEquals(1.00F, CombatEnchantRules.ensarteShare(9), 1.0E-6, "un nivel de mas vale el maximo");
+    }
+
+    @Test
     @DisplayName("los niveles fuera de rango se clampean")    void levelsAreClamped() {
         assertEquals(CombatEnchantRules.parryCooldown(100, 2),
                 CombatEnchantRules.parryCooldown(100, 9),

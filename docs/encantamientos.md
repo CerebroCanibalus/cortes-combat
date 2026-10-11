@@ -6,9 +6,11 @@
 > esto**: entre los dos había **nueve nombres para mecánicas distintas**, y esa era la primera cosa a
 > limpiar.
 >
-> **Estado (2026-10-11):** **26 encantamientos implementados** y en la mesa. Además, dos arreglos de
+> **Estado (2026-10-11):** **28 encantamientos implementados** y en la mesa. Además, dos arreglos de
 > cliente: **la animación de la azada** (iba hacia la derecha) y **Mecha Corta**, que resultó no
-> necesitar arte — ver §6. Los ~13 restantes tienen sus números **aprobados hasta el playtest final**.
+> necesitar arte — ver §6. Los ~11 restantes tienen sus números **aprobados hasta el playtest final**.
+> **Corte Gemelo se retiró**: sus reglas y su archivo existían y **el cableado no**, así que el L1 y
+> el L2 pegaban lo mismo. Vuelve con su attachment en la ronda que le toca.
 
 ---
 
@@ -62,7 +64,7 @@ Los seis: `anvil_cost` 2, `slots: [mainhand]`.
 | Encantamiento | Clase | Niv | Efecto | Nota |
 |---|---|---|---|---|
 | **Contragolpe** | guardia | 2 | 25 %/50 % de armadura ignorada tras cubrirse de verdad | ✅ hecho. **En el shotel se arma desde el parry** (el sabre no puede cubrir) |
-| **Ensarte** | largas (alabarda, tridente) | 2 | la estocada atraviesa: **50 %/100 %** a un enemigo alineado detrás. El segundo cuerpo **no** cobra bonus de encantamientos | pendiente |
+| **Ensarte** | largas (alabarda, tridente) | 2 | la estocada atraviesa: **50 %/100 %** a un enemigo alineado detrás. El segundo cuerpo **no** cobra bonus de encantamientos | ✅ **HECHO** -- `CombatEngine.ensarte`, con el tag de clase nuevo `enchantable/reach` |
 | **Quebranto** | pesadas (martillo, hacha, maza) | 2 | cada golpe baja la armadura del rival: **−8 % por stack**, L1 máx **2** (−16 %), L2 máx **3** (−24 %), 4 s, reaplicar refresca | pendiente. Necesita `MobEffect` |
 
 > **Quebranto toca `Attributes.ARMOR` del rival**, y eso afecta a **todo** el daño que le entre, no
@@ -189,7 +191,7 @@ Ya tiene Density, Breach y Wind Burst de vanilla. Caída Astuta, Peso Muerto y O
 
 | Encantamiento | Niv | Efecto | Hook |
 |---|---|---|---|
-| **Inercia** | 2 | el empuje de la cadena es **sólo vertical**: **+10 %/+20 % de vertical por golpe de cadena**, horizontal cero | knockback + la cadena |
+| **Inercia** | 2 | el empuje de la cadena es **sólo vertical**: **+10 %/+20 % de vertical por golpe de cadena**, horizontal cero | ✅ **HECHO** -- `Knockback.applyLift` + el call site. **Y el techo subió a 2,5/0,70 por esto** (`KnockbackProfile`) |
 | **Sentencia** | 2 | **tras 5 golpes de cadena el enemigo revienta**: **8 (L1) / 12 (L2)** de daño a él y **4/6** en radio **2,5**. **No daña al jugador que ataca.** Partículas de `enchant` + `effect`. **L2: los de alrededor también revientan** (al 50 %) | la cadena ya existe (`StreakState`) + `LivingDeathEvent`-style |
 | **Trabazón** | 2 | los golpes **cargados** aplican **no poder saltar** (L1) **ni correr** (L2) durante **1,5 s** | `MobEffect` propio + evento de salto cancelable |
 

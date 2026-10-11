@@ -134,6 +134,49 @@ public final class Knockback {
     }
 
     /**
+     * The same push, all of it up.
+     *
+     * <h2>Por que es un metodo aparte y no un parametro de {@link #apply}</h2>
+     *
+     * <p>Porque {@code apply} tiene un javadoc escrito a proposito contra esto: "rerouting the
+     * enchantment through the vertical would smuggle the launch back in through the one number that
+     * is supposed to be a property of the weapon". Esa regla nacio de sacar el empuje vertical de
+     * vanilla, que ponia a un mob en el aire con cualquier golpe. <b>La regla sigue siendo cierta, y
+     * Inercia es la excepcion con nombre</b> -- un encantamiento que hay que conseguir, con un arma
+     * que tiene que construir una cadena primero. Un parametro en {@code apply} habria dejado la
+     * puerta abierta para cualquiera; un metodo propio la deja abierta para uno.</p>
+     *
+     * <h2>Y la horizontal es cero, que es la mitad del encantamiento</h2>
+     *
+     * <p>No es "un empuje mas fuerte": es <b>el mismo empuje apuntado a otro lado</b>. Un mob que
+     * sube y se queda donde esta es lo contrario de un mob que sale despedido, y esa diferencia es
+     * lo que hace que Inercia sea un encantamiento del martillo -- el arma del compromiso -- y no
+     * una mejora generica de la pala.</p>
+     *
+     * @param liftShare cuanto sube el vertical del arma, como fraccion. Ver
+     *                  {@code CombatEnchantRules#inerciaLift}
+     */
+    public static void applyLift(Entity target, KnockbackProfile profile,
+                                 float charge, float liftShare) {
+        if (profile == null || !(target instanceof LivingEntity living)) {
+            return;
+        }
+        float vertical = profile.clampedVertical() * pushFor(charge)
+                * (1.0F + Math.max(0.0F, liftShare));
+        if (vertical <= 0.0F) {
+            return;
+        }
+        // **Solo el eje Y, y por eso no hay direccion que calcular.** `apply` normaliza el movimiento
+        // del objetivo para saber hacia donde empujarlo; aca la direccion es el techo, y copiarla del
+        // movimiento haria que un mob que corre recibiera el empuje hacia arriba <em>y</em> hacia
+        // donde ya iba.
+        Vec3 motion = living.getDeltaMovement();
+        living.hurtMarked = true;
+        living.setDeltaMovement(motion.x, motion.y + vertical, motion.z);
+        living.hasImpulse = true;
+    }
+
+    /**
      * The other direction: a strike that brings the target in.
      *
      * <h2>Why this is not a negative number in the same field</h2>

@@ -253,6 +253,12 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         // pala no castiga armadura: su identidad es empujar.
         TagKey<Item> hoe = own("enchantable/hoe");
         TagKey<Item> heavy = own("enchantable/heavy");
+        // **La clase de las largas, que es la primera que NO es un arma entera.** Ensarte es de la
+        // alabarda y del tridente -- dos items, uno nuestro y uno de vanilla -- y no hay un perfil
+        // que los una: la alabarda tiene `profile/halberd` y el tridente `profile/trident`, que esta
+        // vacio a proposito. Un tag de clase es exactamente para esto, y es la razon por la que
+        // `supported_items` no puede llevar una lista de tags.
+        TagKey<Item> reach = own("enchantable/reach");
         TagKey<Item> durability = TagKey.create(Registries.ITEM,
                 ResourceLocation.withDefaultNamespace("enchantable/durability"));
 
@@ -326,6 +332,10 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         tag(heavy).addTag(own("profile/warhammer"));
         tag(heavy).add(Items.MACE);
         tag(heavy).addTag(ItemTags.AXES);
+        // Y las largas: la alabarda por su tag de molde (la lista canonica de las nuestras que lo
+        // usan) y el tridente por `Items`, porque es de vanilla y no tiene molde nuestro.
+        tag(reach).addTag(own("profile/halberd"));
+        tag(reach).add(Items.TRIDENT);
     }
 
     /** Un tag de vanilla por id, para completar una clase de encantamiento con su alcance original. */

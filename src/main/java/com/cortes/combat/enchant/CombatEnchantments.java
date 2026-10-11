@@ -131,6 +131,16 @@ public final class CombatEnchantments {
     public static final ResourceKey<Enchantment> SANTA_MUERTE =
             key(CombatEnchantRules.SANTA_MUERTE_ID);
 
+    /** Martillo -- Inercia. */
+    public static final ResourceKey<Enchantment> INERCIA =
+            key(CombatEnchantRules.INERCIA_ID);
+
+
+
+    /** Largas -- Ensarte. */
+    public static final ResourceKey<Enchantment> ENSARTE =
+            key(CombatEnchantRules.ENSARTE_ID);
+
     /**
      * El nivel de un encantamiento propio sobre un ítem, por clave.
      *

@@ -38,19 +38,32 @@ public record KnockbackProfile(float horizontal, float vertical) {
      * have been at four fifths of its own &mdash; so "the biggest number in the game" would have
      * been a weapon that had no headroom left to be tuned in.</p>
      *
-     * <p>What 1.6 is <em>not</em>: a number anything can reach. Nothing in the catalogue is above
-     * the shovel, and this is a ceiling for a config override, not a target. Anything that reads
-     * this file should assume the highest real value in the game is 0.95.</p>
+     * <p><b>Y subio otra vez, a 2,5, por dos encantamientos y no por un arma.</b> Paliza e Inercia
+     * son los dos casos que piden un empuje que ninguna arma del catalogo tiene: el primero es un
+     * tercer golpe cargado que tiene que mandar a alguien a otra provincia, y el segundo es un
+     * empuje <em>entero</em> al aire. Con el techo en 1,6 los dos habrian quedado clampeados al
+     * mismo numero que la pala alcanza sin encantamiento, que es la forma exacta en que un
+     * encantamiento deja de existir sin que nada falle.</p>
+     *
+     * <p>What 2.5 is <em>not</em>: a number anything can reach. Nothing in the catalogue is above
+     * the shovel, and this is a ceiling for a config override and for two enchantments, not a
+     * target. Anything that reads this file should assume the highest real value in the game is
+     * 0.95, and that the only things above it are two named enchantments.</p>
      */
-    public static final float MAX_HORIZONTAL = 1.6F;
+    public static final float MAX_HORIZONTAL = 2.5F;
 
     /**
      * The upward push is deliberately much lower than the horizontal one. See the type comment.
      *
      * <p>Also raised, from 0.35 to 0.45, for the same reason as the horizontal and in the same
      * proportion: the shovel at 0.28 would have had no room either.</p>
+     *
+     * <p><b>Y a 0,70 por Inercia, que es el unico encantamiento que sube el vertical a proposito.</b>
+     * El martillo ya esta en 0,30, asi que con el techo viejo dos golpes de cadena lo tocaban -- y un
+     * encantamiento cuyo segundo golpe ya no puede subir mas es un encantamiento que solo tiene un
+     * nivel de verdad.</p>
      */
-    public static final float MAX_VERTICAL = 0.45F;
+    public static final float MAX_VERTICAL = 0.70F;
 
     public float clampedHorizontal() {
         return clamp(horizontal, 0.0F, MAX_HORIZONTAL);

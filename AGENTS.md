@@ -654,6 +654,8 @@ tiene los números, y el hook vive donde el número se cobra.
 | `mella` | hacha (clase `axe`) | el desgaste a la armadura sube **×1,5/×2/×2,5/×3** (sobre el ×2 del hacha cargada → hasta **×6**) | `ArmorWearHandler` (el `newDamage` mutable) -- **el único encantamiento que no toca el daño** |
 | `segunda_pasada` | alabarda (molde `halberd`) | el barrido que **no mató a nadie** devuelve el **30 %/50 %** del cooldown | `CooldownState.refund(ticks)` + `SpecialHandler.sweep` (cuenta **muertes**, no aciertos) |
 | `santa_muerte` | azada (clase `hoe`) | **matar** deja una nube putrefacta: **Wither I 5 s** en radio **3**, con `SQUID_INK` + `LARGE_SMOKE` (sin arte) | `enchant/SantaMuerte` -- `LivingDeathEvent`, **y el asesino queda afuera** (veto C2) |
+| `inercia` | martillo (molde `warhammer`) | el empuje de la cadena va **entero al aire**: **+10 %/20 % de vertical por golpe**, **horizontal cero** | `Knockback.applyLift` + el call site del martillo. **Es la excepción con nombre** al javadoc de `Knockback.apply`, que prohíbe mandar un encantamiento al vertical |
+| `ensarte` | largas (clase `enchantable/reach` = alabarda + tridente) | la estocada **atraviesa**: **50 %/100 %** del daño base a **un** cuerpo alineado del otro lado | `CombatEngine.ensarte` -- **el segundo cuerpo no cobra bonus por objetivo**, y el gate es el perfil (`HALBERD`/`TRIDENT`) |
 
 > **La linea "nada en `src/test` puede nombrar un tipo de Minecraft" es mas larga de lo que parece: la
 > clase QUE EL TEST CARGA tampoco.** `MaceAir` llamaba a `CombatEnchantments.level(...)`, cuya firma

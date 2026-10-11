@@ -32,6 +32,7 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * The whole attack flow, in one method, resolved on the release of one button.
@@ -717,15 +718,117 @@ public final class CombatEngine {
         if (pull > 0.0F && chargeRatio >= DamageResolver.FULL_CHARGE) {
             Knockback.pull(player, target, pull);
         } else {
-            // The enchantment's own push, on top of the weapon's. Vanilla's Knockback always
-            // shoves and has no charge to gate it with, so it is not run through the tap floor --
-            // see `Knockback.apply`'s five-argument note. The trident's charged pull is left
-            // alone: an inward drag and an outward enchantment push are opposite instructions and
-            // the weapon's special wins.
-            Knockback.apply(player, target, stats.knockback(),
-                    DamageResolver.knockbackFor(chargeRatio),
-                    enchantPush(player, target, result));
+            // **Inercia: el empuje del martillo va al aire, y REEMPLAZA al horizontal.**
+            //
+            // Va en el `else` de `apply` y no encima, porque no es un empuje mas: es el mismo
+            // apuntado a otro lado, y sumar los dos daria las dos cosas a la vez. La cadena la lee
+            // el estado -- que ya la incremento arriba, en la rama del martillo -- asi que el numero
+            // es "cuantos golpes seguidos van", no "cuantos van este tick".
+            float lift = 0.0F;
+            if (stats.profile() == WeaponProfile.WARHAMMER) {
+                lift = com.cortes.combat.enchant.CombatEnchantRules.inerciaLift(
+                        com.cortes.combat.enchant.CombatEnchantments.level(
+                                player.level().registryAccess(), player.getMainHandItem(),
+                                com.cortes.combat.enchant.CombatEnchantments.INERCIA),
+                        player.getData(ModAttachments.HAMMER_STREAK.get()).hits());
+            }
+            if (lift > 0.0F) {
+                Knockback.applyLift(target, stats.knockback(),
+                        DamageResolver.knockbackFor(chargeRatio), lift);
+            } else {
+                // The enchantment's own push, on top of the weapon's. Vanilla's Knockback always
+                // shoves and has no charge to gate it with, so it is not run through the tap floor --
+                // see `Knockback.apply`'s five-argument note. The trident's charged pull is left
+                // alone: an inward drag and an outward enchantment push are opposite instructions and
+                // the weapon's special wins.
+                Knockback.apply(player, target, stats.knockback(),
+                        DamageResolver.knockbackFor(chargeRatio),
+                        enchantPush(player, target, result));
+            }
         }
+
+        // **Ensarte: la estocada atraviesa al de adelante y cobra al de atras.**
+        //
+        // Va al final y no antes porque necesita el golpe ya resuelto: el dano que atraviesa es una
+        // fraccion del que cobro el primer cuerpo, y el primer cuerpo no cobra hasta que `apply`
+        // termina. Y va en `onHit` -- el camino de una-vez-por-objetivo -- porque un golpe que
+        // atraviesa a dos tiene que decidir una vez, no una por cada cuerpo que encuentre.
+        ensarte(player, target, stats, result);
+    }
+
+    /**
+     * El segundo cuerpo de una estocada, si hay uno alineado.
+     *
+     * <h2>Por que es un metodo y no cuatro lineas aca adentro</h2>
+     *
+     * <p>Porque el "atras" tiene tres condiciones y las tres son el encantamiento: <b>mas alla del
+     * primer cuerpo</b> (si no, seria golpear dos veces al mismo), <b>cerca de la linea</b> del golpe
+     * (si no, seria un golpe en area con otro nombre), y <b>un cuerpo vivo</b>. Cada una de las tres
+     * puede escribirse mal de una forma que compila y que no se ve en pantalla, que es la clase de
+     * bug que este proyecto ya pago varias veces.</p>
+     *
+     * <h2>Y el segundo cuerpo no cobra bonus de encantamientos</h2>
+     *
+     * <p>Los bonuses por objetivo -- Punta Fina, Filo Astillado, Apu\u00f1alar -- leen <em>a quien</em> se
+     * golpea: su armadura, su angulo, su distancia. Pagarlos otra vez seria cobrar dos veces por una
+     * decision que el jugador tomo una sola vez, y ademas le daria al encantamiento un numero que
+     * depende del segundo cuerpo en vez de del primero. Lo que atraviesa es el <b>dano base</b>, que
+     * es lo que la estocada puso.</p>
+     */
+    private static void ensarte(Player player, Entity target, WeaponStats stats, AttackResult result) {
+        // El gate es el perfil, que es lo que da la clase: Ensarte es de las largas (alabarda y
+        // tridente), y una alabarda de otro mod con nuestro tag de molde hereda el perfil y con el
+        // el encantamiento.
+        if ((stats.profile() != WeaponProfile.HALBERD && stats.profile() != WeaponProfile.TRIDENT)
+                || !(target instanceof LivingEntity first)) {
+            return;
+        }
+        float share = com.cortes.combat.enchant.CombatEnchantRules.ensarteShare(
+                com.cortes.combat.enchant.CombatEnchantments.level(
+                        player.level().registryAccess(), player.getMainHandItem(),
+                        com.cortes.combat.enchant.CombatEnchantments.ENSARTE));
+        if (share <= 0.0F) {
+            return;
+        }
+
+        // La linea del golpe: del jugador al primer cuerpo, y un paso mas alla.
+        Vec3 line = first.position().subtract(player.position());
+        if (line.lengthSqr() < 1.0E-6) {
+            return;
+        }
+        Vec3 unit = line.normalize();
+        Vec3 beyond = first.position().add(unit.scale(1.2));
+        AABB box = new AABB(beyond, beyond).inflate(1.0, 1.0, 1.0);
+
+        for (LivingEntity other : player.level().getEntitiesOfClass(LivingEntity.class, box)) {
+            if (other == player || other == first || !other.isAlive()
+                    || other.isSpectator() || other.isRemoved()) {
+                continue;
+            }
+            // Alineado: el cuerpo tiene que estar del otro lado y pegado a la linea. El 0,9 es medio
+            // cuerpo de holgura, que es lo que hace que un mob pegado al primero cuente y uno al
+            // costado no.
+            Vec3 toOther = other.position().subtract(first.position());
+            if (toOther.dot(unit) <= 0.0 || perpendicular(toOther, unit) > 0.9) {
+                continue;
+            }
+            // El dano base, sin los bonuses por objetivo -- ver el javadoc.
+            other.invulnerableTime = 0;
+            if (other.hurt(player.damageSources().playerAttack(player), result.damage() * share)) {
+                other.invulnerableTime = AttackTiming.IFRAME_TICKS;
+                if (player.level() instanceof net.minecraft.server.level.ServerLevel level) {
+                    com.cortes.combat.particle.SlashParticles.hit(level, stats.profile(), other, false);
+                }
+            }
+            // Uno y no todos: la estocada atraviesa a UNO, que es lo que la palabra dice.
+            break;
+        }
+    }
+
+    /** La distancia de un punto a una recta que pasa por el origen con direccion unitaria. */
+    private static double perpendicular(Vec3 point, Vec3 unit) {
+        double along = point.dot(unit);
+        return point.subtract(unit.scale(along)).length();
     }
 
     /**
