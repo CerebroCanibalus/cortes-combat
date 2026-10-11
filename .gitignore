@@ -68,3 +68,8 @@ tools/ffmpeg/
 
 # El backup que se saca antes de compactar AGENTS.md.
 AGENTS.md.bak-*
+
+# El mensaje de commit temporal que se escribe con la herramienta (el `write` escribe UTF-8 bien
+# y PowerShell no). Se cuela en el `git add -A` si no esta aca: paso una vez y el archivo quedo
+# commiteado.
+commit-msg.txt
