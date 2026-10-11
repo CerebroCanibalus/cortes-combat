@@ -192,6 +192,47 @@ class EnchantmentHooksTest {
                 "y el cobro tiene que leer la cuenta del estado, no recalcularla");
     }
 
+    /**
+     * **Los seis de la ultima ronda, cada uno con su asercion de uso.**
+     *
+     * <p>Cinco se cobran en el golpe y viven en {@code lastRoundOnHit}; Capacitor vive en el parry y
+     * Trabazon tiene su handler propio. Las aserciones piden <b>la llamada al ras</b> donde importa,
+     * porque el string del nombre del metodo sobrevive a un {@code if (false)} -- la leccion que este
+     * archivo ya pago cuatro veces.</p>
+     */
+    @Test
+    @DisplayName("los seis de la ultima ronda llegan a sus hooks")
+    void theLastRoundReachesTheirHooks() {
+        String engine = read();
+        assertTrue(engine.contains("\n        lastRoundOnHit(player, target, stats, result, chargeRatio);"),
+                "**los cinco del golpe no se cobran**: los encantamientos existen, se pueden poner en "
+                        + "su arma, y el golpe hace lo de siempre");
+        assertTrue(engine.contains("CombatEnchantRules.SENTENCIA_STREAK"),
+                "**Sentencia no revienta**: la cadena llega a cinco y no pasa nada");
+        assertTrue(engine.contains("other == player || other == body"),
+                "**y el reventon tiene que dejar afuera al que ataca**: un premio que te cobra a vos es "
+                        + "el veto C2 con otro nombre");
+        assertTrue(engine.contains("CombatEnchantRules.palizaStreak("),
+                "**Paliza no cuenta la serie**, asi que el golpe cargado empuja siempre lo mismo");
+        assertTrue(engine.contains("CombatEnchantRules.gripaMaxStacks("),
+                "**Gripa no apila moco**");
+        assertTrue(engine.contains("ModEffects.TRABAZON"),
+                "**Trabazon no clava al rival**");
+        assertTrue(engine.contains("CombatEnchantRules.corteGemeloInterval("),
+                "**Corte Gemelo no corta**, y el nivel uno y el dos serian el mismo encantamiento");
+
+        String parry = readFile("src/main/java/com/cortes/combat/special/ParryHandler.java");
+        assertTrue(parry.contains("CombatEnchantRules.capacitorDamage("),
+                "**Capacitor no devuelve el rayo**: el parry sigue contestando igual que antes del "
+                        + "encantamiento");
+
+        String trabazon = readFile("src/main/java/com/cortes/combat/enchant/TrabazonHandler.java");
+        assertTrue(trabazon.contains("setDeltaMovement(motion.x, 0.0, motion.z)"),
+                "**y el salto no se deshace.** El evento no es cancelable, asi que el impulso ya esta "
+                        + "puesto cuando corre: sin devolverlo el jugador salta igual y el "
+                        + "encantamiento no hace nada");
+    }
+
     @Test
     @DisplayName("Filo Fugaz se fue con Adrenalina")
     void fleetingEdgeIsGone() {

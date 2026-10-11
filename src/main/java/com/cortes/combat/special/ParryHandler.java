@@ -104,6 +104,30 @@ public final class ParryHandler {
         player.setData(ModAttachments.PARRY.get(), state.consume());
         ModNetworking.sendParryState(player, false, state.cooldownTicks());
 
+        // **Capacitor: lo que vuelve, ahora con un rayo encima.**
+        //
+        // Va aca -- donde el parry ya decidio que si contesta -- y no en la rama del descarte, porque
+        // son dos hechos distintos: el descarte dice que el proyectil no sigue, y esto dice que lo que
+        // se devuelve lleva un rayo. Y el daño es una SUMA: el parry ya devolvia el proyectil antes de
+        // este encantamiento, asi que lo que agrega es el rayo y el golpe que ya existia no se toca.
+        if (throughTheAir) {
+            int level = CombatEnchantments.level(player.level().registryAccess(),
+                    player.getMainHandItem(), CombatEnchantments.CAPACITOR);
+            if (level > 0 && attacker instanceof net.minecraft.world.entity.LivingEntity living) {
+                living.hurt(player.damageSources().playerAttack(player),
+                        CombatEnchantRules.capacitorDamage(level) + amount);
+                // Quemar cuatro segundos: es lo que convierte una devolucion en una advertencia, porque
+                // el que disparo tiene que apagarse en vez de disparar otra vez.
+                living.setRemainingFireTicks(Math.max(living.getRemainingFireTicks(),
+                        CombatEnchantRules.CAPACITOR_FIRE_TICKS));
+                if (player.level() instanceof net.minecraft.server.level.ServerLevel server) {
+                    server.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                            living.getX(), living.getY() + 1.0, living.getZ(),
+                            20, 0.4, 0.6, 0.4, 0.05);
+                }
+            }
+        }
+
         // **Lo que se hace con la respuesta: el proyectil se descarta.**
         //
         // Un golpe que llegó por el aire se anuló y volvió -- eso ya pasaba --, pero la flecha

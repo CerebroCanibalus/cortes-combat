@@ -464,6 +464,67 @@ class CombatEnchantRulesTest {
     }
 
     @Test
+    @DisplayName("**los seis de la ultima ronda: Paliza, Sentencia, Trabazon, Gripa, Corte Gemelo, Capacitor**")
+    void lastRoundRules() {
+        // Paliza: el nivel acorta la serie y el empuje es el mismo.
+        assertEquals(-1, CombatEnchantRules.palizaStreak(0), "sin encantamiento no hay serie");
+        assertEquals(2, CombatEnchantRules.palizaStreak(1));
+        assertEquals(1, CombatEnchantRules.palizaStreak(2),
+                "**el nivel no sube el empuje: acorta la serie.** Con uno ya no es un combo, es un "
+                        + "golpe cargado que empuja mas");
+        assertTrue(CombatEnchantRules.PALIZA_HORIZONTAL > 1.6F,
+                "**y el empuje tiene que superar el techo viejo**, o Paliza habria quedado clampeada "
+                        + "al mismo numero que la pala alcanza sin encantamiento");
+        assertTrue(CombatEnchantRules.PALIZA_VERTICAL > 0.45F, "lo mismo el vertical");
+
+        // Sentencia: cinco golpes, y el reventon sube con el nivel.
+        assertEquals(8.0F, CombatEnchantRules.sentenciaDamage(1), 1.0E-6);
+        assertEquals(12.0F, CombatEnchantRules.sentenciaDamage(2), 1.0E-6);
+        assertEquals(0.0F, CombatEnchantRules.sentenciaDamage(0), 1.0E-6);
+        assertTrue(CombatEnchantRules.sentenciaSplash(2) < CombatEnchantRules.sentenciaDamage(2),
+                "**y el splash pega menos que el reventon**: el cuerpo que llego a cinco cobra entero, "
+                        + "los de al lado la mitad");
+        assertTrue(CombatEnchantRules.SENTENCIA_STREAK > 1, "el umbral no puede ser un golpe");
+
+        // Trabazon: el nivel agrega una prohibicion, no tiempo.
+        assertFalse(CombatEnchantRules.trabazonBlocksSprint(1), "el L1 saca el salto y nada mas");
+        assertTrue(CombatEnchantRules.trabazonBlocksSprint(2), "el L2 saca tambien la carrera");
+        assertTrue(CombatEnchantRules.TRABAZON_TICKS > 0
+                        && CombatEnchantRules.TRABAZON_TICKS <= 40,
+                "**y el efecto es corto**: un segundo y medio es una ventana de guardia, y mas seria "
+                        + "un control de mas");
+
+        // Gripa: los stacks suben con el nivel, el intervalo baja.
+        assertEquals(0, CombatEnchantRules.gripaMaxStacks(0));
+        assertEquals(4, CombatEnchantRules.gripaMaxStacks(1));
+        assertEquals(6, CombatEnchantRules.gripaMaxStacks(2));
+        assertEquals(20, CombatEnchantRules.gripaInterval(1));
+        assertEquals(15, CombatEnchantRules.gripaInterval(2));
+        assertTrue(CombatEnchantRules.gripaMaxStacks(2) > CombatEnchantRules.gripaMaxStacks(1),
+                "y el nivel dos sube los dos numeros: mas stacks y mas seguido");
+
+        // Corte Gemelo: el intervalo del L1 y el cero del L2.
+        assertEquals(-1, CombatEnchantRules.corteGemeloInterval(0),
+                "**el cero significa 'siempre', asi que 'sin encantamiento' no puede ser cero**");
+        assertEquals(80, CombatEnchantRules.corteGemeloInterval(1));
+        assertEquals(0, CombatEnchantRules.corteGemeloInterval(2));
+        assertTrue(CombatEnchantRules.CORTE_GEMELO_SHARE < 1.0F,
+                "**y el corte extra no puede pegar el dano entero** o el encantamiento seria el arma");
+
+        // Capacitor: el rayo sube con el nivel y quema.
+        assertEquals(0.0F, CombatEnchantRules.capacitorDamage(0), 1.0E-6);
+        assertEquals(3.0F, CombatEnchantRules.capacitorDamage(1), 1.0E-6);
+        assertEquals(4.0F, CombatEnchantRules.capacitorDamage(2), 1.0E-6);
+        assertTrue(CombatEnchantRules.CAPACITOR_FIRE_TICKS >= 60,
+                "y quema segundos, no ticks: la devolucion tiene que ser una advertencia");
+
+        // Mungus, que esta declarado pero todavia no se puede conseguir.
+        assertEquals(12, CombatEnchantRules.MUNGUS_POWER,
+                "**la potencia es doce y no veinte**: tres TNT, un crater que rompe piedra y tierra "
+                        + "pero no obsidiana, que es el material anti-explosion del juego");
+    }
+
+    @Test
     @DisplayName("los niveles fuera de rango se clampean")    void levelsAreClamped() {
         assertEquals(CombatEnchantRules.parryCooldown(100, 2),
                 CombatEnchantRules.parryCooldown(100, 9),

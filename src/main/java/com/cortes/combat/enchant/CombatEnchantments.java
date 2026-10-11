@@ -141,6 +141,39 @@ public final class CombatEnchantments {
     public static final ResourceKey<Enchantment> ENSARTE =
             key(CombatEnchantRules.ENSARTE_ID);
 
+    /** Pala -- Paliza. */
+    public static final ResourceKey<Enchantment> PALIZA = key(CombatEnchantRules.PALIZA_ID);
+
+    /** Ropera -- Retirada. */
+    public static final ResourceKey<Enchantment> RETIRADA = key(CombatEnchantRules.RETIRADA_ID);
+
+    /** Martillo -- Sentencia. */
+    public static final ResourceKey<Enchantment> SENTENCIA = key(CombatEnchantRules.SENTENCIA_ID);
+
+    /** Martillo -- Trabazon. */
+    public static final ResourceKey<Enchantment> TRABAZON = key(CombatEnchantRules.TRABAZON_ID);
+
+    /** Daga -- Gripa. */
+    public static final ResourceKey<Enchantment> GRIPA = key(CombatEnchantRules.GRIPA_ID);
+
+    /** Shotel -- Corte Gemelo. */
+    public static final ResourceKey<Enchantment> CORTE_GEMELO =
+            key(CombatEnchantRules.CORTE_GEMELO_ID);
+
+    /** Shotel -- Capacitor. */
+    public static final ResourceKey<Enchantment> CAPACITOR = key(CombatEnchantRules.CAPACITOR_ID);
+
+    /** Pala -- Pala Antimaterial. */
+    public static final ResourceKey<Enchantment> PALA_ANTIMATERIAL =
+            key(CombatEnchantRules.PALA_ANTIMATERIAL_ID);
+
+    /** Arcabuz -- Rey de las Moscas. */
+    public static final ResourceKey<Enchantment> REY_DE_LAS_MOSCAS =
+            key(CombatEnchantRules.REY_DE_LAS_MOSCAS_ID);
+
+    /** Arcabuz -- Mungus. */
+    public static final ResourceKey<Enchantment> MUNGUS = key(CombatEnchantRules.MUNGUS_ID);
+
     /**
      * El nivel de un encantamiento propio sobre un ítem, por clave.
      *

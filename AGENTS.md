@@ -656,6 +656,12 @@ tiene los números, y el hook vive donde el número se cobra.
 | `santa_muerte` | azada (clase `hoe`) | **matar** deja una nube putrefacta: **Wither I 5 s** en radio **3**, con `SQUID_INK` + `LARGE_SMOKE` (sin arte) | `enchant/SantaMuerte` -- `LivingDeathEvent`, **y el asesino queda afuera** (veto C2) |
 | `inercia` | martillo (molde `warhammer`) | el empuje de la cadena va **entero al aire**: **+10 %/20 % de vertical por golpe**, **horizontal cero** | `Knockback.applyLift` + el call site del martillo. **Es la excepción con nombre** al javadoc de `Knockback.apply`, que prohíbe mandar un encantamiento al vertical |
 | `ensarte` | largas (clase `enchantable/reach` = alabarda + tridente) | la estocada **atraviesa**: **50 %/100 %** del daño base a **un** cuerpo alineado del otro lado | `CombatEngine.ensarte` -- **el segundo cuerpo no cobra bonus por objetivo**, y el gate es el perfil (`HALBERD`/`TRIDENT`) |
+| `paliza` | pala (molde `shovel`) | el golpe **cargado** que cierra una serie empuja **2,4 horiz. / 0,6 vert.** (L1 serie de 2, L2 de 1) | `ModAttachments.PALIZA_STREAK` (`StreakState`) + `Knockback.applyLift` con el perfil de Paliza |
+| `sentencia` | martillo (molde `warhammer`) | a los **5 golpes de cadena** el cuerpo **revienta**: **8/12** a él y **4/6** en radio **2,5**. **L2 encadena** a los de al lado | `CombatEngine.sentencia`, desde `onHit`. **El que ataca queda afuera** |
+| `trabazon` | martillo (molde `warhammer`) | el golpe **cargado** deja **sin saltar** (L1) **y sin correr** (L2), 1,5 s | `enchant/TrabazonHandler` -- **el salto no se cancela, se devuelve** (`LivingJumpEvent` no es cancelable) |
+| `gripa` | daga (molde `dagger`) | stacks de **Moco**: 1 de daño por stack cada 20/15 ticks, máx 4/6, y **estornuda** cada 40 (partícula del panda) | `ModEffects.MOCO` + `MocoEffect` -- **sin arte nuevo** |
+| `corte_gemelo` | shotel (molde `sabre`) | el golpe normal da un **segundo corte al 50 %**; **L1 cada 4 s**, **L2 siempre** | `state/CorteGemelo` (el reloj) + `CombatEngine.lastRoundOnHit` |
+| `capacitor` | shotel (molde `sabre`) | el proyectil parriado vuelve como **rayo**: **3/4 + el daño base**, y **quema 4 s** | `ParryHandler` -- la rama de `ParrySource.cameThroughTheAir`, **que ya existía** |
 
 > **La linea "nada en `src/test` puede nombrar un tipo de Minecraft" es mas larga de lo que parece: la
 > clase QUE EL TEST CARGA tampoco.** `MaceAir` llamaba a `CombatEnchantments.level(...)`, cuya firma

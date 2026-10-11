@@ -756,6 +756,9 @@ public final class CombatEngine {
         // termina. Y va en `onHit` -- el camino de una-vez-por-objetivo -- porque un golpe que
         // atraviesa a dos tiene que decidir una vez, no una por cada cuerpo que encuentre.
         ensarte(player, target, stats, result);
+
+        // Y los cinco de la ultima ronda, que tambien se cobran en el golpe.
+        lastRoundOnHit(player, target, stats, result, chargeRatio);
     }
 
     /**
@@ -831,6 +834,150 @@ public final class CombatEngine {
     private static double perpendicular(Vec3 point, Vec3 unit) {
         double along = point.dot(unit);
         return point.subtract(unit.scale(along)).length();
+    }
+
+    /**
+     * Los cinco de la ultima ronda que se cobran en el golpe: Sentencia, Paliza, Gripa, Trabazon y
+     * Corte Gemelo.
+     *
+     * <h2>Por que viven juntos y no repartidos</h2>
+     *
+     * <p>Porque <b>los cinco se cobran en el mismo momento</b> -- una vez por cuerpo golpeado -- y
+     * repartirlos habria puesto cinco ramas en {@code onHit} que hay que leer enteras para saber que le
+     * pasa a un golpe. El metodo es el "y ademas" del golpe: todo lo que estos encantamientos agregan
+     * <em>despues</em> de que el daño entro y el empuje salio.</p>
+     *
+     * <p><b>Y cada uno pregunta por su perfil.</b> El hook esta en el camino generico del golpe, asi
+     * que sin la puerta un datapack que mueva un encantamiento de arma le daria a cualquier cosa la
+     * mecanica de otra. Es la misma puerta que el resto del proyecto, cinco veces.</p>
+     */
+    private static void lastRoundOnHit(Player player, Entity target, WeaponStats stats,
+                                       AttackResult result, float chargeRatio) {
+        if (!(target instanceof LivingEntity living)) {
+            return;
+        }
+        long now = player.level().getGameTime();
+        var access = player.level().registryAccess();
+        ItemStack held = player.getMainHandItem();
+        boolean charged = chargeRatio >= DamageResolver.FULL_CHARGE;
+
+        // --- Sentencia: cinco golpes de cadena y el cuerpo revienta.
+        //
+        // El golpe que llega al umbral es el que lo hace, y la cadena ya se incremento arriba -- asi
+        // que la pregunta es si el contador esta en cinco. Y el reventon NO daña al que ataca: un
+        // premio que te cobra a vos es el veto C2 con otro nombre.
+        if (stats.profile() == WeaponProfile.WARHAMMER) {
+            int level = CombatEnchantments.level(access, held, CombatEnchantments.SENTENCIA);
+            int hits = player.getData(ModAttachments.HAMMER_STREAK.get()).hits();
+            if (level > 0 && hits >= CombatEnchantRules.SENTENCIA_STREAK) {
+                sentencia(player, living, level);
+            }
+        }
+
+        // --- Paliza: el golpe cargado que cierra una serie empuja como un cañon.
+        if (stats.profile() == WeaponProfile.SHOVEL) {
+            int streak = CombatEnchantRules.palizaStreak(CombatEnchantments.level(
+                    access, held, CombatEnchantments.PALIZA));
+            if (streak > 0) {
+                StreakState series = player.getData(ModAttachments.PALIZA_STREAK.get())
+                        .onHit(CombatEnchantRules.PALIZA_WINDOW_TICKS);
+                if (charged && series.hits() > streak) {
+                    // **El empuje reemplaza al del golpe y no se suma**, y los dos numeros -- 2,4 y
+                    // 0,6 -- son los que obligaron a subir el techo de knockback. El reloj se limpia:
+                    // una serie que se cobro no se puede cobrar dos veces.
+                    Knockback.applyLift(living,
+                            new com.cortes.combat.core.weapon.KnockbackProfile(
+                                    CombatEnchantRules.PALIZA_HORIZONTAL,
+                                    CombatEnchantRules.PALIZA_VERTICAL),
+                            DamageResolver.knockbackFor(chargeRatio),
+                            CombatEnchantRules.PALIZA_LIFT_SHARE);
+                    series = StreakState.EMPTY;
+                }
+                player.setData(ModAttachments.PALIZA_STREAK.get(), series);
+            }
+        }
+
+        // --- Gripa: el moco, que sube de stack con cada golpe.
+        if (stats.profile() == WeaponProfile.DAGGER) {
+            int max = CombatEnchantRules.gripaMaxStacks(CombatEnchantments.level(
+                    access, held, CombatEnchantments.GRIPA));
+            if (max > 0) {
+                // **El stack sube y se clampea al tope del nivel.** El efecto que ya esta se lee para
+                // saber cuantos hay: sin eso, cada golpe empezaria de uno y el encantamiento seria un
+                // daño plano por tick disfrazado de acumulacion.
+                var current = living.getEffect(com.cortes.combat.registry.ModEffects.MOCO);
+                int stacks = current == null ? 1 : Math.min(max, current.getAmplifier() + 2);
+                living.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                        com.cortes.combat.registry.ModEffects.MOCO,
+                        CombatEnchantRules.GRIPA_TICKS, stacks - 1, false, false, false));
+            }
+        }
+
+        // --- Trabazon: el golpe cargado clava al rival en el piso.
+        if (stats.profile() == WeaponProfile.WARHAMMER && charged) {
+            int level = CombatEnchantments.level(access, held, CombatEnchantments.TRABAZON);
+            if (level > 0) {
+                living.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                        com.cortes.combat.registry.ModEffects.TRABAZON,
+                        CombatEnchantRules.TRABAZON_TICKS, level - 1, false, false, false));
+            }
+        }
+
+        // --- Corte Gemelo: el segundo corte del sable.
+        if (stats.profile() == WeaponProfile.SABRE) {
+            int interval = CombatEnchantRules.corteGemeloInterval(CombatEnchantments.level(
+                    access, held, CombatEnchantments.CORTE_GEMELO));
+            var gemelo = player.getData(ModAttachments.CORTE_GEMELO.get());
+            if (interval >= 0 && gemelo.isReady(now)) {
+                living.invulnerableTime = 0;
+                living.hurt(player.damageSources().playerAttack(player),
+                        result.damage() * CombatEnchantRules.CORTE_GEMELO_SHARE);
+                living.invulnerableTime = AttackTiming.IFRAME_TICKS;
+                // El nivel dos tiene intervalo cero, asi que el reloj no se mueve y el corte sale
+                // siempre; el uno lo gasta por cuatro segundos.
+                player.setData(ModAttachments.CORTE_GEMELO.get(), gemelo.spent(now, interval));
+            }
+        }
+    }
+
+    /**
+     * El reventon de Sentencia: el cuerpo que llego a cinco golpes de cadena.
+     *
+     * <p><b>El jugador que ataca queda afuera, y no es un detalle.</b> El reventon ocurre en el cuerpo
+     * del rival, que esta a menos de dos bloques de quien lo golpeo; cobrarle a el tambien seria un
+     * encantamiento que castiga al que lo usa, que es el veto C2 con otro nombre. El radio se cobra
+     * <em>sin el atacante</em>, por el mismo motivo que el de Santa Muerte.</p>
+     *
+     * <p>Y el nivel dos encadena: los que estan alrededor revientan a su vez, a la mitad. Es lo que
+     * convierte el reventon en una herramienta de multitud en vez de un remate.</p>
+     */
+    private static void sentencia(Player player, LivingEntity body, int level) {
+        float damage = CombatEnchantRules.sentenciaDamage(level);
+        float splash = CombatEnchantRules.sentenciaSplash(level);
+
+        body.hurt(player.damageSources().playerAttack(player), damage);
+        if (player.level() instanceof net.minecraft.server.level.ServerLevel server) {
+            com.cortes.combat.particle.SlashParticles.hit(server, WeaponProfile.WARHAMMER, body, true);
+        }
+
+        AABB box = body.getBoundingBox().inflate(CombatEnchantRules.SENTENCIA_RADIUS);
+        for (LivingEntity other : player.level().getEntitiesOfClass(LivingEntity.class, box)) {
+            if (other == player || other == body || !other.isAlive()) {
+                continue;
+            }
+            other.hurt(player.damageSources().playerAttack(player), splash);
+            // El nivel dos encadena: el cuerpo de al lado revienta a su vez, a la mitad.
+            if (level >= CombatEnchantRules.SENTENCIA_MAX_LEVEL) {
+                float chained = damage * CombatEnchantRules.SENTENCIA_CHAIN_SHARE;
+                AABB inner = other.getBoundingBox().inflate(CombatEnchantRules.SENTENCIA_RADIUS);
+                for (LivingEntity third : player.level().getEntitiesOfClass(LivingEntity.class, inner)) {
+                    if (third == player || third == other || !third.isAlive()) {
+                        continue;
+                    }
+                    third.hurt(player.damageSources().playerAttack(player), chained);
+                }
+            }
+        }
     }
 
     /**

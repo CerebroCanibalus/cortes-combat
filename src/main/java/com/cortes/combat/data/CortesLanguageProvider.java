@@ -170,6 +170,13 @@ public class CortesLanguageProvider extends LanguageProvider {
     add("enchantment.cortescombat.inercia", spanish ? "Inercia" : "Inertia");
 
     add("enchantment.cortescombat.ensarte", spanish ? "Ensarte" : "Skewer");
+    add("enchantment.cortescombat.paliza", spanish ? "Paliza" : "Pummeling");
+    add("enchantment.cortescombat.retirada", spanish ? "Retirada" : "Withdrawal");
+    add("enchantment.cortescombat.sentencia", spanish ? "Sentencia" : "Sentence");
+    add("enchantment.cortescombat.trabazon", spanish ? "Trabazón" : "Lockdown");
+    add("enchantment.cortescombat.gripa", spanish ? "Gripa" : "Sniffles");
+    add("enchantment.cortescombat.corte_gemelo", spanish ? "Corte Gemelo" : "Twin Cut");
+    add("enchantment.cortescombat.capacitor", spanish ? "Capacitor" : "Capacitor");
     }
 
     /**

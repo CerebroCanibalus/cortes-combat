@@ -19,6 +19,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.attachment.AttachmentType;
 
 import com.cortes.combat.state.Adrenalina;
+import com.cortes.combat.state.CorteGemelo;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -231,6 +232,18 @@ public final class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<Adrenalina>> ADRENALINA =
             ATTACHMENT_TYPES.register("adrenalina", () -> AttachmentType
                     .<Adrenalina>builder(() -> Adrenalina.READY)
+                    .build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<CorteGemelo>> CORTE_GEMELO =
+            ATTACHMENT_TYPES.register("corte_gemelo", () -> AttachmentType
+                    .<CorteGemelo>builder(() -> CorteGemelo.READY)
+                    .build());
+
+    /** La serie de la pala. El mismo record que la del martillo, con su propio reloj. */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<StreakState>> PALIZA_STREAK =
+            ATTACHMENT_TYPES.register("paliza_streak", () -> AttachmentType
+                    .<StreakState>builder(() -> StreakState.EMPTY)
+                    .serialize(StreakState.CODEC)
                     .build());
 
     private ModAttachments() {

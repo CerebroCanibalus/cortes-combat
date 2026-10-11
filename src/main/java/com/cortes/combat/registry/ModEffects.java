@@ -111,6 +111,14 @@ public final class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> DRAINED =
             EFFECTS.register("drained", com.cortes.combat.effect.DrainedEffect::new);
 
+    /** Moco: lo que deja un golpe de daga con Gripa. */
+    public static final DeferredHolder<MobEffect, MobEffect> MOCO =
+            EFFECTS.register("moco", com.cortes.combat.effect.MocoEffect::new);
+
+    /** Trabazon: el golpe cargado de martillo que clava al rival. */
+    public static final DeferredHolder<MobEffect, MobEffect> TRABAZON =
+            EFFECTS.register("trabazon", com.cortes.combat.effect.TrabazonEffect::new);
+
     private ModEffects() {
     }
 

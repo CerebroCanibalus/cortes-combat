@@ -108,13 +108,54 @@ public final class CombatEnchantRules {
     /** Largas -- Ensarte: la estocada atraviesa al de adelante. */
     public static final String ENSARTE_ID = "ensarte";
 
-    /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
+    /** Pala -- Paliza: el tercer golpe cargado de una serie empuja muchisimo. */
+    public static final String PALIZA_ID = "paliza";
+
+    /** Ropera -- Retirada: agachado, el lunge sale para atras. */
+    public static final String RETIRADA_ID = "retirada";
+
+    /** Martillo -- Sentencia: cinco golpes de cadena y el cuerpo revienta. */
+    public static final String SENTENCIA_ID = "sentencia";
+
+    /** Martillo -- Trabazon: el golpe cargado clava al rival en el piso. */
+    public static final String TRABAZON_ID = "trabazon";
+
+    /** Daga -- Gripa: los golpes dejan moco, que dana y hace estornudar. */
+    public static final String GRIPA_ID = "gripa";
+
+    /** Shotel -- Corte Gemelo: el golpe normal da un segundo corte. */
+    public static final String CORTE_GEMELO_ID = "corte_gemelo";
+
+    /** Shotel -- Capacitor: el proyectil parriado vuelve como rayo. */
+    public static final String CAPACITOR_ID = "capacitor";
+
+    /** Pala -- Pala Antimaterial: el click derecho suelta un orbe que implosiona. */
+    public static final String PALA_ANTIMATERIAL_ID = "pala_antimaterial";
+
+    /** Arcabuz -- Rey de las Moscas: carne podrida de municion y una nube de moscas. */
+    public static final String REY_DE_LAS_MOSCAS_ID = "rey_de_las_moscas";
+
+    /** Arcabuz -- Mungus: un Firestone enorme que revienta el terreno. */
+    public static final String MUNGUS_ID = "mungus";
+
+    /**
+     * Todos, para que un test pueda recorrerlos en vez de nombrarlos.
+     *
+     * <p><b>Y los tres que faltan no estan aca a proposito.</b> Pala Antimaterial, Rey de las Moscas y
+     * Mungus necesitan una entidad propia y un camino de municion que este mod todavia no tiene; sus
+     * ids, sus claves y sus tablas de numeros estan escritas mas abajo, pero <b>no entran a esta
+     * lista</b> -- y la lista es la que hace que un test pida el archivo de datos, el tag, el idioma y
+     * la forma del campo. Un encantamiento declarado que no se puede conseguir no es un encantamiento a
+     * medias: es un canal muerto con el build verde, que es exactamente lo que `corte_gemelo` ya pago
+     * una vez en esta misma ronda.</p>
+     */
     public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID,
             ADRENALINA_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID, DRY_POWDER_ID, PUNTA_FINA_ID,
             FILO_ASTILLADO_ID, APUNALAR_ID, SANGUJUELA_ID, AVENTURERO_ID, CULATA_ID, ESTOCADA_ID,
             SEGUNDO_ALIENTO_ID, GUARDIA_FIRME_ID, CICATRIZADOR_ID, DESTRIPAMIENTO_ID, QUEBRANTO_ID,
             VAMPIRICO_ID, MECHA_CORTA_ID, BARREDOR_ID, ASTILLADORA_ID, MELLA_ID, SEGUNDA_PASADA_ID,
-            SANTA_MUERTE_ID, INERCIA_ID, ENSARTE_ID);
+            SANTA_MUERTE_ID, INERCIA_ID, ENSARTE_ID, PALIZA_ID, RETIRADA_ID, SENTENCIA_ID, TRABAZON_ID,
+            GRIPA_ID, CORTE_GEMELO_ID, CAPACITOR_ID);
 
     /** Los genericos, que se ponen por clase y no por molde. */
 
@@ -851,6 +892,261 @@ public final class CombatEnchantRules {
             default -> 0.0F;
         };
     }
+
+    // -------------------------------------------------- Paliza (pala)
+
+    /**
+     * Paliza: cuantos golpes normales hay que encadenar antes de que el cargado empuje como un cañon.
+     *
+     * <p><b>El nivel no sube el empuje: acorta la serie.</b> El numero que el jugador siente es "cuanto
+     * me cuesta llegar", y con dos golpes ya es una secuencia que hay que querer; con uno es un golpe
+     * cargado que empuja mas, y el encantamiento pasa de combo a pasiva. Los dos numeros -- 2,4 y 0,6 --
+     * son los mismos en los dos niveles, y por eso el techo de knockback tuvo que subir: 2,4 horizontal
+     * es un 50 % mas que la pala sin encantamiento y el techo viejo era 1,6.</p>
+     */
+    public static final int PALIZA_MAX_LEVEL = 2;
+
+    /** La ventana de la serie: cuatro segundos, la misma que la cadena del martillo. */
+    public static final int PALIZA_WINDOW_TICKS = 80;
+
+    /** Golpes encadenados que hacen falta antes del cargado. L1 dos, L2 uno. */
+    public static int palizaStreak(int level) {
+        return switch (clamp(level, PALIZA_MAX_LEVEL)) {
+            case 1 -> 2;
+            case 2 -> 1;
+            default -> -1;
+        };
+    }
+
+    /** El empuje del golpe de Paliza. Los dos niveles empujan igual. */
+    public static final float PALIZA_HORIZONTAL = 2.4F;
+    public static final float PALIZA_VERTICAL = 0.6F;
+
+    /**
+     * Cuanto sube el empuje <em>vertical propio</em> del arma encima del de Paliza.
+     *
+     * <p><b>Cero, y por eso es una constante con nombre y no un literal.</b> Paliza reemplaza el empuje
+     * del golpe: los 2,4 y 0,6 de arriba son el empuje entero, no una suma sobre el de la pala. Y el
+     * literal tiene un problema que este proyecto ya pago -- {@code MaceFallWiringTest} prohibe un
+     * {@code 0.0F} al ras en {@code CombatEngine} porque es como se llama por accidente al overload del
+     * resolver que no cobra la caida. Un cero con nombre no se puede confundir con eso.</p>
+     */
+    public static final float PALIZA_LIFT_SHARE = 0.0F;
+
+    // -------------------------------------------------- Retirada (ropera)
+
+    /**
+     * Retirada: el lunge que sale para atras cuando el jugador esta agachado.
+     *
+     * <p>Un solo nivel y ningun numero propio, <b>y eso es el diseño</b>: el impulso es el del lunge
+     * con el signo cambiado, y lo que se agrega es un golpe al frente justo antes de salir. Darle una
+     * tabla de distancias propia habria sido un segundo lunge que mantener en paralelo con el primero,
+     * y el dia que uno se retoca el otro queda mintiendo.</p>
+     */
+    public static final float RETIRADA_FORWARD_HIT_SHARE = 1.0F;
+
+    // -------------------------------------------------- Sentencia (martillo)
+
+    /**
+     * Sentencia: cinco golpes de cadena y el cuerpo revienta.
+     *
+     * <p><b>Cinco y no tres, y la razon es la cadena entera.</b> La ventana del martillo son cuatro
+     * segundos y cada golpe la renueva, asi que llegar a cinco ya es estar ganando el intercambio a
+     * proposito. A tres el reventon caeria dentro de cualquier pelea normal y el encantamiento seria
+     * dano gratis en vez de un premio por mantener la presion.</p>
+     */
+    public static final int SENTENCIA_MAX_LEVEL = 2;
+    public static final int SENTENCIA_STREAK = 5;
+
+    /** Lo que revienta el cuerpo: al que lo recibe y a lo que tenga alrededor. */
+    public static float sentenciaDamage(int level) {
+        return switch (clamp(level, SENTENCIA_MAX_LEVEL)) {
+            case 1 -> 8.0F;
+            case 2 -> 12.0F;
+            default -> 0.0F;
+        };
+    }
+
+    public static float sentenciaSplash(int level) {
+        return switch (clamp(level, SENTENCIA_MAX_LEVEL)) {
+            case 1 -> 4.0F;
+            case 2 -> 6.0F;
+            default -> 0.0F;
+        };
+    }
+
+    public static final float SENTENCIA_RADIUS = 2.5F;
+
+    /** La fraccion del reventon que cobran los de al lado en el nivel dos. */
+    public static final float SENTENCIA_CHAIN_SHARE = 0.5F;
+
+    // -------------------------------------------------- Trabazon (martillo)
+
+    /**
+     * Trabazon: el golpe cargado clava al rival en el piso.
+     *
+     * <p><b>Se llama Trabazon y no Aturdimiento</b> porque el proyecto ya llama stun a la guardia rota,
+     * y dos cosas distintas con el mismo nombre es la clase de confusion que no se arregla despues.</p>
+     *
+     * <p>Y el nivel agrega una prohibicion, no tiempo: el L1 saca el salto -- que es lo que impide
+     * cruzar un hueco -- y el L2 saca tambien la carrera. Un segundo y medio es lo que dura una
+     * ventana de guardia; mas tiempo convertiria el encantamiento en un control de mas.</p>
+     */
+    public static final int TRABAZON_MAX_LEVEL = 2;
+    public static final int TRABAZON_TICKS = 30;
+
+    /** Si el nivel tambien saca la carrera. */
+    public static boolean trabazonBlocksSprint(int level) {
+        return clamp(level, TRABAZON_MAX_LEVEL) >= 2;
+    }
+
+    // -------------------------------------------------- Gripa (daga)
+
+    /**
+     * Gripa: el moco que la daga deja, y el estornudo.
+     *
+     * <p><b>Los stacks suben el daño y no la duracion</b>, que es lo que hace que el encantamiento se
+     * sienta como una cuenta que sube: cada golpe agrega un stack hasta el tope, y el daño por tick se
+     * multiplica por cuantos haya. Un moco que solo durara mas seria un temporizador que el jugador no
+     * mira.</p>
+     *
+     * <p><b>Y el estornudo es lo que se ve.</b> Un daño por tick no tiene feedback -- el rival pierde
+     * vida y nada lo dice --, asi que cada cuarenta ticks el cuerpo estornuda: un punto de daño, un
+     * salto de 0,4 y, en el nivel dos, una nube que empuja a los de al lado. La particula y el sonido
+     * son los del panda, asi que <b>no hay arte nuevo</b>.</p>
+     */
+    public static final int GRIPA_MAX_LEVEL = 2;
+
+    public static int gripaMaxStacks(int level) {
+        return switch (clamp(level, GRIPA_MAX_LEVEL)) {
+            case 1 -> 4;
+            case 2 -> 6;
+            default -> 0;
+        };
+    }
+
+    public static int gripaInterval(int level) {
+        return switch (clamp(level, GRIPA_MAX_LEVEL)) {
+            case 1 -> 20;
+            case 2 -> 15;
+            default -> 0;
+        };
+    }
+
+    /** El daño por stack, cada intervalo. Un punto: el encantamiento es de acumulacion. */
+    public static final float GRIPA_DAMAGE_PER_STACK = 1.0F;
+    public static final int GRIPA_SNEEZE_TICKS = 40;
+
+    /** Cuanto dura el moco en el cuerpo. Cuatro segundos, y se renueva con cada golpe. */
+    public static final int GRIPA_TICKS = 80;
+    public static final float GRIPA_SNEEZE_DAMAGE = 1.0F;
+    public static final float GRIPA_SNEEZE_JUMP = 0.4F;
+    public static final float GRIPA_CLOUD_RADIUS = 2.0F;
+    public static final float GRIPA_CLOUD_DAMAGE = 2.0F;
+
+    // -------------------------------------------------- Corte Gemelo (shotel)
+
+    /**
+     * Corte Gemelo: el golpe normal da un segundo corte.
+     *
+     * <p>El nivel contesta dos preguntas a la vez: <b>L1 pega el corte extra cada cuatro segundos, L2 lo
+     * pega siempre</b>. La fraccion del daño base es la mitad en los dos niveles, y no puede ser mas:
+     * al 100 % el golpe normal del sable pegaria el doble y el encantamiento seria el arma.</p>
+     */
+    public static final int CORTE_GEMELO_MAX_LEVEL = 2;
+    public static final float CORTE_GEMELO_SHARE = 0.5F;
+    public static final int CORTE_GEMELO_INTERVAL = 80;
+
+    /** {@code -1} sin encantamiento, {@code 0} para "siempre". */
+    public static int corteGemeloInterval(int level) {
+        return switch (clamp(level, CORTE_GEMELO_MAX_LEVEL)) {
+            case 1 -> CORTE_GEMELO_INTERVAL;
+            case 2 -> 0;
+            default -> -1;
+        };
+    }
+
+    // -------------------------------------------------- Capacitor (shotel)
+
+    /**
+     * Capacitor: el proyectil que el parry devuelve como rayo.
+     *
+     * <p><b>El daño es una suma y no un reemplazo</b>: lo que devuelve es el rayo <em>mas</em> el daño
+     * base del arma, porque el parry ya devolvia el proyectil antes de este encantamiento -- el numero
+     * que agrega es el rayo, y el golpe que ya existia no se toca. Y quema cuatro segundos, que es lo
+     * que convierte una devolucion en una advertencia: el que disparo tiene que apagarse.</p>
+     */
+    public static final int CAPACITOR_MAX_LEVEL = 2;
+
+    public static float capacitorDamage(int level) {
+        return switch (clamp(level, CAPACITOR_MAX_LEVEL)) {
+            case 1 -> 3.0F;
+            case 2 -> 4.0F;
+            default -> 0.0F;
+        };
+    }
+
+    public static final int CAPACITOR_FIRE_TICKS = 80;
+
+    // -------------------------------------------------- Pala Antimaterial
+
+    /**
+     * Pala Antimaterial: el orbe que atrae y despues implosiona.
+     *
+     * <p><b>Es {@code treasure} y weight 1 por decision del dueño</b> -- raro y poderoso --, asi que los
+     * numeros pueden ser grandes y lo son: catorce de daño en un radio de cuatro es mas que cualquier
+     * golpe del juego. Lo que lo hace justo es todo lo de alrededor: <b>cuarenta ticks de carga</b> (el
+     * doble que la carga mas larga del catalogo), <b>ciento veinte de cooldown</b> -- seis segundos, mas
+     * que el barrido de la alabarda -- y una entidad que hay que apuntar.</p>
+     *
+     * <p><b>Y atrae antes de reventar.</b> El tiron de cinco bloques no es decoracion: es lo que
+     * convierte el orbe en un encantamiento de control del espacio y no en una bomba que hay que
+     * tirarle a alguien. El que esta cerca viene, y despues el radio de cuatro lo cobra.</p>
+     */
+    public static final int PALA_ANTIMATERIAL_CHARGE_TICKS = 40;
+    public static final int PALA_ANTIMATERIAL_COOLDOWN_TICKS = 120;
+    public static final float PALA_ANTIMATERIAL_PULL_RADIUS = 5.0F;
+    public static final float PALA_ANTIMATERIAL_BLAST_RADIUS = 4.0F;
+    public static final float PALA_ANTIMATERIAL_DAMAGE = 14.0F;
+
+    // -------------------------------------------------- Rey de las Moscas (arcabuz)
+
+    /**
+     * Rey de las Moscas: carne podrida de municion y una nube de moscas.
+     *
+     * <p><b>El daño total es MENOR que el del disparo normal, a proposito.</b> Cuatro por tick cada
+     * diez, durante cuatro segundos, son dieciseis repartidos entre todo lo que este en el radio --
+     * contra los diez objetivos a plena potencia que hace un Firestone. Lo que el encantamiento
+     * compra no es daño: es <b>rango</b> (ocho contra seis y medio) y <b>no gastar polvora</b>. La
+     * carne podrida es un recurso que sobra, y esa es la identidad entera.</p>
+     *
+     * <p><b>Y no reinfecta.</b> El que ya tiene el efecto no lo recibe otra vez, asi que el
+     * encantamiento no se puede apilar sobre un mismo cuerpo por tirarle dos veces -- y eso es lo que
+     * lo mantiene siendo area y no una ametralladora de moscas.</p>
+     */
+    public static final float MOSCAS_DAMAGE = 4.0F;
+    public static final int MOSCAS_INTERVAL = 10;
+    public static final int MOSCAS_TICKS = 80;
+    public static final float MOSCAS_RADIUS = 3.0F;
+    public static final float MOSCAS_RANGE = 8.0F;
+
+    // -------------------------------------------------- Mungus (arcabuz)
+
+    /**
+     * Mungus: un Firestone enorme que revienta el terreno.
+     *
+     * <p><b>La potencia es 12 y no 20</b>, y el numero se eligio balanceando: TNT es 4 en este juego,
+     * asi que doce son tres TNT juntas -- un crater de cinco o seis bloques que rompe piedra y tierra
+     * <b>pero no obsidiana</b>. Que no la rompa es la mitad del balance, porque la obsidiana es el
+     * material anti-explosion del juego y un encantamiento que la atraviesa no tiene respuesta.</p>
+     *
+     * <p>Y el costo es lo que lo mantiene siendo un tiro de asedio: diez Firestones, la carga al doble
+     * y un proyectil lento y con gravedad. El que lo usa renuncia a pelear durante dos segundos largos
+     * para abrir una pared, y esa renuncia es el precio.</p>
+     */
+    public static final int MUNGUS_POWER = 12;
+    public static final int MUNGUS_FIRESTONES = 10;
+    public static final float MUNGUS_CHARGE_FACTOR = 2.0F;
 
     /** Un nivel dentro de los que el encantamiento tiene.
      *

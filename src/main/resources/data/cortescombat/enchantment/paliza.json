@@ -1,0 +1,21 @@
+{
+  "anvil_cost": 2,
+  "description": {
+    "translate": "enchantment.cortescombat.paliza"
+  },
+  "max_cost": {
+    "base": 45,
+    "per_level_above_first": 20
+  },
+  "max_level": 2,
+  "min_cost": {
+    "base": 18,
+    "per_level_above_first": 20
+  },
+  "primary_items": "#cortescombat:profile/shovel",
+  "slots": [
+    "mainhand"
+  ],
+  "supported_items": "#cortescombat:profile/shovel",
+  "weight": 2
+}

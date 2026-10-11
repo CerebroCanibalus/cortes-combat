@@ -27,6 +27,13 @@
     "cortescombat:santa_muerte",
     "cortescombat:inercia",
 
-    "cortescombat:ensarte"
+    "cortescombat:ensarte",
+    "cortescombat:paliza",
+    "cortescombat:retirada",
+    "cortescombat:sentencia",
+    "cortescombat:trabazon",
+    "cortescombat:gripa",
+    "cortescombat:corte_gemelo",
+    "cortescombat:capacitor"
   ]
 }

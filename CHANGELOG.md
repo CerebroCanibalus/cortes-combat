@@ -775,3 +775,47 @@ indentación: es lo único que distingue "está escrita" de "se ejecuta". Cuatro
 forma barata de no repetirla: **copiar la línea del código en vez de escribir el nombre del método**.
 
 1051 tests verdes. 28 encantamientos implementados. `fleeting_edge` con 0 hits en `src/main`.
+
+### La ultima ronda: los seis de estado y evento — y lo que quedo afuera
+
+**Paliza, Sentencia, Trabazon, Gripa, Corte Gemelo (que volvio) y Capacitor.** 34 implementados.
+
+- **Paliza obligo a que el techo de knockback subiera de verdad.** Los 2,4 y 0,6 del diseño no entraban
+  en 1,6/0,45, y con el techo viejo el encantamiento habria quedado **clampeado al mismo numero que la
+  pala alcanza sin encantamiento** -- la forma exacta en que un encantamiento deja de existir sin que
+  nada falle. `KnockbackCeilingTest` afirma las dos mitades: el techo nuevo **y** que ninguna arma del
+  catalogo lo toca de fabrica.
+- **Sentencia y Santa Muerte comparten una regla que no se puede aflojar**: el radio **no cobra a quien
+  lo genera**. El reventon ocurre en un cuerpo a dos bloques del jugador, asi que cobrarle tambien
+  seria el veto C2 con otro nombre. El guard afirma `other == player || other == body`.
+- **Trabazon no puede cancelar un salto, y eso es un hecho del motor.** `LivingJumpEvent` **no es
+  cancelable**: el impulso ya esta puesto cuando el evento corre. Lo que se hace es **deshacerlo** --
+  bajar el eje Y a cero -- y esa es la diferencia entre un salto que no sale y uno que sale y se cae.
+- **Gripa tuvo un problema que el diseño no preveia**: el documento pide 20 ticks por tick de daño en
+  el L1 y 15 en el L2, y **el nivel del encantamiento no viaja en el efecto** -- lo que viaja es el
+  `amplifier`, que son los stacks. Se ató el intervalo al unico numero que si esta (un moco que llego al
+  tope pega mas seguido) y quedo anotado en la clase.
+- **Corte Gemelo volvio con lo que le faltaba**: el reloj. Sin el, el L1 y el L2 habrian sido el mismo
+  encantamiento con dos precios.
+- **Capacitor se colgo de algo que ya existia**: `ParrySource.cameThroughTheAir`, la rama que la ronda
+  del parry dejo formalizada. El daño es una **suma** y no un reemplazo -- el parry ya devolvia el
+  proyectil antes del encantamiento.
+
+**Y quedo afuera, a proposito y anotado:** Retirada (invierte el lunge agachado, y eso toca el sistema
+de autoridad del movimiento, que es lo mas delicado del proyecto) y los tres que necesitan una entidad
+propia y un camino de municion: Pala Antimaterial, Rey de las Moscas y Mungus. **Sus numeros estan
+escritos** en `CombatEnchantRules` y **no estan en `IDS`**, porque `IDS` es lo que hace que un test pida
+el archivo, el tag, el idioma y la forma del campo -- un encantamiento declarado que no se puede
+conseguir es un canal muerto con el build verde.
+
+**Y dos cosas mas que costaron una vuelta cada una:**
+
+- **`MaceFallWiringTest` es fragil por diseño y me rompio el build.** Prohibe un `0.0F` al ras en
+  `CombatEngine` porque es como se llama por accidente al overload del resolver que no cobra la caida --
+  y mi Paliza terminaba en `0.0F);`. La correccion fue una **constante con nombre**
+  (`PALIZA_LIFT_SHARE`), que ademas dice por que el cero esta ahi.
+- **Un `Replace` multi-linea de PowerShell volvio a no revertir un sabotaje**, y el `ParryHandler` quedo
+  saboteado para el `FINAL`. Es la tercera vez en la sesion: la leccion ya esta escrita en `AGENTS.md` y
+  la forma barata de no repetirla es **una linea por `Replace`, o la herramienta de edicion**.
+
+1053 tests verdes. 34 encantamientos implementados, 6 sabotajes verificados en esta ronda.

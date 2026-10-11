@@ -6,11 +6,20 @@
 > esto**: entre los dos había **nueve nombres para mecánicas distintas**, y esa era la primera cosa a
 > limpiar.
 >
-> **Estado (2026-10-11):** **28 encantamientos implementados** y en la mesa. Además, dos arreglos de
+> **Estado (2026-10-11):** **34 encantamientos implementados** y en la mesa. Además, dos arreglos de
 > cliente: **la animación de la azada** (iba hacia la derecha) y **Mecha Corta**, que resultó no
-> necesitar arte — ver §6. Los ~11 restantes tienen sus números **aprobados hasta el playtest final**.
-> **Corte Gemelo se retiró**: sus reglas y su archivo existían y **el cableado no**, así que el L1 y
-> el L2 pegaban lo mismo. Vuelve con su attachment en la ronda que le toca.
+> necesitar arte — ver §6.
+>
+> **Faltan 4, y son los caros:** **Retirada** (ropera — invierte el lunge agachado, y eso toca el
+> sistema de autoridad del movimiento), **Pala Antimaterial**, **Rey de las Moscas** y **Mungus** (los
+> tres necesitan una entidad propia y un camino de munición que el mod todavía no tiene). Sus ids, sus
+> claves y sus **tablas de números ya están escritas** en `CombatEnchantRules`, pero **no están en
+> `IDS`** — y `IDS` es lo que hace que un test pida el archivo, el tag, el idioma y la forma del campo.
+> Un encantamiento declarado que no se puede conseguir es un canal muerto con el build verde, y eso ya
+> se pagó una vez en esta ronda con `corte_gemelo`.
+>
+> **Los seis de la última ronda, hechos y con sabotaje verificado:** Paliza, Sentencia, Trabazón, Gripa,
+> Corte Gemelo (volvió, ahora con su reloj) y Capacitor.
 
 ---
 
