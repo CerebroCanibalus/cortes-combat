@@ -648,6 +648,7 @@ tiene los números, y el hook vive donde el número se cobra.
 | `destripamiento` | alabarda (molde `halberd`) | el **cargado** deja **Sangrado**: 1 ♥ cada 2 s durante 6 s (L1) / 10 s (L2) | `CombatEngine.applyOnHitEffects` |
 | `quebranto` | pesadas (clase `heavy`) | −8 % de armadura por stack, **máx 3**, 4 s, reaplicar refresca | `CombatEngine.applyOnHitEffects` |
 | `desvio_vampirico` | shotel (molde `sabre`) | al **parriar** robás **1 ♥ de vida máxima** y cada parry **suma otro**; el nivel es el **tope** (L1 1 ♥ · L4 4 ♥), 10 s, refresca | `ParryHandler` -- **dos efectos**, `VAMPIRIC` (el acumulado) y `DRAINED` (1 ♥ por parry) |
+| `mecha_corta` | arcabuz (molde `arcabuz`) | la mecha **20 → 15 → 10** ticks | `Arcabuz.light(fuse)` (el total por argumento) + `ArcabuzFuseState.progress(totalTicks)` -- **el cliente divide por el total, no por la constante** |
 
 > **5 efectos nuevos, y las cuentas viven en `CombatEnchantRules` (pura) y no en los efectos.** Un
 > `MobEffect` extiende una clase de Minecraft, así que un método suyo **no se puede cargar en un

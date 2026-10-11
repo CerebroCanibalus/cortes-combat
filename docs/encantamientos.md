@@ -6,10 +6,9 @@
 > esto**: entre los dos había **nueve nombres para mecánicas distintas**, y esa era la primera cosa a
 > limpiar.
 >
-> **Estado (2026-10-11):** **19 encantamientos implementados** y en la mesa (los 6 de §3 más las
-> tandas 1, 2 y 3: Punta Fina, Filo Astillado, Apuñalar, Sanguijuela, Aventurero, Culata, Estocada,
-> Segundo Aliento, Guardia Firme, Cicatrizador, Destripamiento, Quebranto y Desvío Vampírico). Los
-> números de los ~14 restantes están **aprobados hasta el playtest final**; falta escribirlos.
+> **Estado (2026-10-11):** **21 encantamientos implementados** y en la mesa. Además, dos arreglos de
+> cliente: **la animación de la azada** (iba hacia la derecha) y **Mecha Corta**, que resultó no
+> necesitar arte — ver §6. Los ~12 restantes tienen sus números **aprobados hasta el playtest final**.
 
 ---
 
@@ -238,6 +237,19 @@ Ya tiene Density, Breach y Wind Burst de vanilla. Caída Astuta, Peso Muerto y O
 > **Rey de las Moscas y Mungus son incompatibles**, y la incompatibilidad **necesita código**:
 > nuestros encantamientos son registro Java, no dato, así que **no llevan `exclusive_set` declarativo**.
 > **Mungus rompe bloques** (decisión del dueño) y es la **excepción** a "el mod no rompe bloques".
+> **Mecha Corta** resultó **no necesitar arte**, y el documento decía que sí. Los cinco frames del
+> arcabuz son **archivos separados** (`textures/item/arcabuz_fuse/`) y el que se dibuja lo elige un
+> **predicado** (`ArcabuzModelProperties.FUSE` → `ArcabuzFuseState.progress()`), así que no hay
+> animación de atlas que re-temporizar. **Lo que sí había era un número escondido**: `progress()`
+> dividía por la constante `ArcabuzState.FUSE_TICKS`, y con una mecha de diez ticks el progreso
+> llegaba a 0,5 cuando la mecha se apagaba. El total ahora viaja: el servidor lo calcula al encender y
+> el cliente lo lee del stack en el predicado. Y **`light()` pasó a tomar el largo por argumento**,
+> porque el estado tiene que contar la mecha que el arma tiene puesta y no la de fábrica.
+> 🐛 **Y la animación de la azada iba al revés**: el yaw del tajo pasó de 112 a **−112**, y el **roll
+> se queda en negativo** — es lo que la hace una guadaña en vez de un barrido recto, y el test
+> (`ShovelAndHoeTest`) lo afirma desde el otro lado, con razón. El test afirmaba la **magnitud** del
+> yaw (`Math.abs`) y el **signo** del roll: por eso invertir la dirección no lo rompió y girar el roll
+> sí. Es un buen ejemplo de test que afirma la invariante y no el número.
 > **La potencia es 20 y no 40** (×10 TNT): a 40 el cráter se come el terreno de alrededor, y como el
 > mod no rompía bloques en ninguna parte, ese número se elige **después** del primer playtest.
 > **Pólvora Negra queda descartada** (reemplazada por Rey de las Moscas).

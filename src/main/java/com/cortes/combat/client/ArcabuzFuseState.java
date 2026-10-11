@@ -259,12 +259,18 @@ public final class ArcabuzFuseState {
      * written as progress: a curve's {@code f(0)} is the rest pose and {@code f(1)} is the end.
      * Returning the countdown here would make the arcabuz the one channel in the mod that runs
      * backwards.</p>
+     *
+     * <p><b>{@code totalTicks} entra como argumento, y era el numero escondido de Mecha Corta.</b>
+     * Esto dividia por la constante {@code ArcabuzState.FUSE_TICKS}, asi que con una mecha de diez
+     * ticks el progreso llegaba a 0,5 cuando la mecha se apagaba: el frame se quedaba a mitad de
+     * camino y el disparo salia con la animacion a medio quemar. El total lo calcula el predicado
+     * desde el stack -- que es quien sabe que encantamiento tiene el arma -- y aca solo se divide.</p>
      */
-    public static float progress() {
-        if (fuseTicks <= 0 || ArcabuzState.FUSE_TICKS <= 0) {
+    public static float progress(int totalTicks) {
+        if (fuseTicks <= 0 || totalTicks <= 0) {
             return 0.0F;
         }
-        float elapsed = 1.0F - ((float) fuseTicks / (float) ArcabuzState.FUSE_TICKS);
+        float elapsed = 1.0F - ((float) fuseTicks / (float) totalTicks);
         return Math.max(0.0F, Math.min(1.0F, elapsed));
     }
 

@@ -183,8 +183,21 @@ public record ArcabuzState(int fuseTicks, int reloadTicks, boolean loaded, boole
      * also why {@link #loaded} is false in here even though the shot has not happened yet --
      * "loaded" answers "can this press start a fuse", and after this press it cannot.</p>
      */
+    /**
+     * Enciende la mecha, con el largo que le toque.
+     *
+     * <p><b>El total entra como argumento y no se toma de {@link #FUSE_TICKS}</b>, que es la base:
+     * Mecha Corta acorta la mecha, y el estado tiene que contar la mecha que el arma tiene puesta y no
+     * la de fabrica. Un `light()` sin argumentos contaba veinte ticks siempre, asi que con el
+     * encantamiento el disparo salia diez ticks despues de que la animacion hubiera terminado.</p>
+     */
+    public ArcabuzState light(int fuse) {
+        return new ArcabuzState(fuse, 0, false, false);
+    }
+
+    /** La mecha de fabrica. Ver {@link #light(int)} para el caso con encantamiento. */
     public ArcabuzState light() {
-        return new ArcabuzState(FUSE_TICKS, 0, false, false);
+        return light(FUSE_TICKS);
     }
 
     /**

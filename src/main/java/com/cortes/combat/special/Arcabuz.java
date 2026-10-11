@@ -3,6 +3,8 @@ package com.cortes.combat.special;
 import com.cortes.combat.attack.AttackCooldown;
 import com.cortes.combat.attack.Knockback;
 import com.cortes.combat.attack.WeaponStats;
+import com.cortes.combat.enchant.CombatEnchantRules;
+import com.cortes.combat.enchant.CombatEnchantments;
 import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.core.weapon.ReachProfile;
 import com.cortes.combat.core.weapon.SpecialType;
@@ -115,7 +117,16 @@ public final class Arcabuz {
             // The firestone is gone on this tick, before the fuse has moved one step. That is the
             // rule the whole state exists for and putting it here makes it true by construction
             // rather than by the order of two statements further down.
-            player.setData(ModAttachments.ARCABUZ.get(), state.light());
+            // **El largo de la mecha, calculado una vez y usado en los dos lugares.**
+            //
+            // El estado del servidor y el paquete tienen que decir el mismo numero, porque uno cuenta
+            // los ticks hasta el disparo y el otro los ticks que la animacion tiene que dibujar. Con
+            // Mecha Corta son quince o diez en vez de veinte, y una constante en cualquiera de los dos
+            // seria una mecha que dispara a los veinte con la animacion terminada a los diez.
+            int fuse = CombatEnchantRules.fuseTicks(CombatEnchantments.level(
+                    player.level().registryAccess(), player.getMainHandItem(),
+                    CombatEnchantments.MECHA_CORTA), ArcabuzState.FUSE_TICKS);
+            player.setData(ModAttachments.ARCABUZ.get(), state.light(fuse));
             // **And off the stack, in the same breath as off the record.**
             //
             // Spent in the chamber and not at the shot, so the two cannot drift: a gun that fired
@@ -128,7 +139,7 @@ public final class Arcabuz {
             // the ball is still in the barrel while the fuse burns, so the loaded pose stays for
             // the whole second. Sending false here made the gun point at the floor until the shot
             // went off, and two channels moving opposite ways over that second is what read as a bob.
-            ModNetworking.sendArcabuzFuse(player, true, ArcabuzState.FUSE_TICKS, true, 0);
+            ModNetworking.sendArcabuzFuse(player, true, fuse, true, 0);
             CombatSounds.play(level, player, WeaponProfile.ARCABUZ, ModSounds.Kind.FUSE_LIT);
             trace(player, state, "mecha encendida, Firestone gastada");
             return;

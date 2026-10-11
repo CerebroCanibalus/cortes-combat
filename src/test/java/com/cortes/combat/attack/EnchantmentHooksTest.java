@@ -465,6 +465,42 @@ class EnchantmentHooksTest {
                         + "escuchar el heal y escribir el numero, o el efecto no reduce nada");
     }
 
+    /**
+     * **Mecha Corta: el total de la mecha tiene que llegar a los dos lados.**
+     *
+     * <p>El servidor lo usa para contar hasta el disparo y el cliente para dibujar la animacion, y
+     * los dos tienen que decir el mismo numero. Un guard de un solo archivo no ve la mitad que
+     * importa: el bug es un servidor que dispara a los veinte con una animacion terminada a los diez.
+     * </p>
+     */
+    @Test
+    @DisplayName("Mecha Corta: el total de la mecha llega al servidor y al cliente")
+    void mechaCortaReachesBothSides() {
+        String arcabuz = readArcabuz();
+        assertTrue(arcabuz.contains("CombatEnchantRules.fuseTicks("),
+                "**el servidor no acorta la mecha**: el encantamiento existe, se puede poner en el "
+                        + "arcabuz y el disparo sale igual a los veinte ticks");
+        assertTrue(arcabuz.contains("state.light(fuse)"),
+                "y el estado tiene que arrancar con ESE largo: `light()` sin argumentos cuenta la "
+                        + "mecha de fabrica");
+
+        String fuse = readFile("src/main/java/com/cortes/combat/client/ArcabuzFuseState.java");
+        assertTrue(fuse.contains("progress(int totalTicks)"),
+                "**y el cliente divide por el total, no por la constante.** El progreso era "
+                        + "`fuseTicks / FUSE_TICKS`: con una mecha de diez ticks llegaba a 0,5 cuando "
+                        + "la mecha se apagaba, y el frame se quedaba a mitad de camino");
+        assertTrue(fuse.contains("(float) fuseTicks / (float) totalTicks"),
+                "**y el cociente es por el total.** Era `fuseTicks / ArcabuzState.FUSE_TICKS`: con "
+                        + "una mecha de diez ticks el progreso llegaba a 0,5 cuando la mecha se "
+                        + "apagaba, y el frame se quedaba a mitad de camino. La constante puede "
+                        + "seguir nombrada en el javadoc que cuenta el bug -- lo que no puede es "
+                        + "volver al cociente");
+
+        String model = readFile("src/main/java/com/cortes/combat/client/ArcabuzModelProperties.java");
+        assertTrue(model.contains("CombatEnchantRules.fuseTicks("),
+                "y el predicado -- que es quien tiene el stack -- es el que calcula el total");
+    }
+
     /** Y el arcabuz, donde vive la recarga que Pólvora Seca acorta. */
     private static String readArcabuz() {
         Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "special",

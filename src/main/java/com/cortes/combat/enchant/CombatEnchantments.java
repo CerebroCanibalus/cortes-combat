@@ -107,6 +107,10 @@ public final class CombatEnchantments {
     public static final ResourceKey<Enchantment> VAMPIRICO =
             key(CombatEnchantRules.VAMPIRICO_ID);
 
+    /** Arcabuz -- Mecha Corta. */
+    public static final ResourceKey<Enchantment> MECHA_CORTA =
+            key(CombatEnchantRules.MECHA_CORTA_ID);
+
     /**
      * El nivel de un encantamiento propio sobre un ítem, por clave.
      *

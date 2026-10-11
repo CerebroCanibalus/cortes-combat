@@ -1,6 +1,7 @@
 package com.cortes.combat.client;
 
 import com.cortes.combat.CortesCombat;
+import com.cortes.combat.state.ArcabuzState;
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
 
@@ -125,7 +126,13 @@ public final class ArcabuzModelProperties {
      */
     public static void register() {
         ItemProperties.register(com.cortes.combat.registry.ModItems.ARCABUZ.get(), FUSE,
-                (stack, level, entity, seed) -> ArcabuzFuseState.progress());
+                (stack, level, entity, seed) -> ArcabuzFuseState.progress(
+                        level == null ? ArcabuzState.FUSE_TICKS
+                                : com.cortes.combat.enchant.CombatEnchantRules.fuseTicks(
+                                        com.cortes.combat.enchant.CombatEnchantments.level(
+                                                level.registryAccess(), stack,
+                                                com.cortes.combat.enchant.CombatEnchantments.MECHA_CORTA),
+                                        ArcabuzState.FUSE_TICKS)));
         // **Off the stack, and the parameter this used to ignore is the whole fix.**
         //
         // This was `ArcabuzFuseState.isLoaded()`, a static that no item switch ever cleared, so it

@@ -826,8 +826,17 @@ public final class ViewModelDefaults {
                 // The reap. Nearly an entire item of lateral travel and a hundred and twelve degrees
                 // of yaw, because a weapon that reaches six bodies at arm's length has to look like
                 // it is sweeping a field rather than stabbing one of them.
+                //
+                // **El yaw esta invertido y el roll NO, y la asimetria es el arreglo.**
+                //
+                // El tajo iba hacia la derecha y tenia que ir hacia la izquierda -- reportado en
+                // playtest -- y eso es el signo del yaw. El roll se queda en negativo porque es lo
+                // que hace que la hoja se de vuelta como una guadana en vez de barrer recto: es el
+                // roll el que la convierte en una cosecha, y girarlo con el yaw le habria dado la
+                // direccion nueva perdiendo el gesto. El test de la azada lo afirma desde el otro
+                // lado, y tenia razon.
                 Track.of(Channel.CHOP, Curve.LINEAR,
-                        new Offset(0.92, -0.12, -0.24, -30.0, 112.0, -56.0)),
+                        new Offset(0.92, -0.12, -0.24, -30.0, -112.0, -56.0)),
                 // The cleave. A hundred and ninety degrees is past a half turn, so the head starts
                 // behind the player's shoulder and comes all the way around to the hand. The roll
                 // turns it over on the way, which is what makes it a harvest rather than a spin.

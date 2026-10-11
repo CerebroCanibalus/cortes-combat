@@ -344,6 +344,18 @@ class CombatEnchantRulesTest {
     }
 
     @Test
+    @DisplayName("**Mecha Corta: 20 → 15 → 10, y la base entra como argumento**")
+    void mechaCorta() {
+        assertEquals(20, CombatEnchantRules.fuseTicks(0, 20), "sin encantamiento, la de fabrica");
+        assertEquals(15, CombatEnchantRules.fuseTicks(1, 20));
+        assertEquals(10, CombatEnchantRules.fuseTicks(2, 20));
+        assertEquals(10, CombatEnchantRules.fuseTicks(9, 20), "un nivel de mas vale el maximo");
+        assertEquals(30, CombatEnchantRules.fuseTicks(0, 30),
+                "**y la base es un argumento**: la tabla es pura y el numero de fabrica vive donde vive "
+                        + "el arma, asi que un cambio ahi no puede dejar esta tabla mintiendo");
+    }
+
+    @Test
     @DisplayName("los niveles fuera de rango se clampean")    void levelsAreClamped() {
         assertEquals(CombatEnchantRules.parryCooldown(100, 2),
                 CombatEnchantRules.parryCooldown(100, 9),

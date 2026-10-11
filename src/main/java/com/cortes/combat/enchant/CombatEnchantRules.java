@@ -82,12 +82,15 @@ public final class CombatEnchantRules {
     /** Shotel -- Desvio Vampirico: el parry roba vida maxima. */
     public static final String VAMPIRICO_ID = "desvio_vampirico";
 
+    /** Arcabuz -- Mecha Corta: la mecha dura menos. */
+    public static final String MECHA_CORTA_ID = "mecha_corta";
+
     /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
     public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID,
             FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID, DRY_POWDER_ID, PUNTA_FINA_ID,
             FILO_ASTILLADO_ID, APUNALAR_ID, SANGUJUELA_ID, AVENTURERO_ID, CULATA_ID, ESTOCADA_ID,
             SEGUNDO_ALIENTO_ID, GUARDIA_FIRME_ID, CICATRIZADOR_ID, DESTRIPAMIENTO_ID, QUEBRANTO_ID,
-            VAMPIRICO_ID);
+            VAMPIRICO_ID, MECHA_CORTA_ID);
 
     /** Los genericos, que se ponen por clase y no por molde. */
 
@@ -592,6 +595,36 @@ public final class CombatEnchantRules {
      */
     public static int vampiricoStolen(int alreadyStolen, int level) {
         return Math.min(clamp(level, VAMPIRICO_MAX_LEVEL), Math.max(0, alreadyStolen) + 1);
+    }
+
+    /**
+     * Mecha Corta (arcabuz): cuantos ticks dura la mecha con este nivel.
+     *
+     * <h2>La trampa que resulto no serlo</h2>
+     *
+     * <p>El documento decia que esto estaba <b>atado al {@code .mcmeta}</b> de la tira de cinco
+     * frames y que por eso necesitaba trabajo de arte. <b>No es asi, y conviene que quede escrito:</b>
+     * los cinco frames son <b>archivos separados</b> ({@code textures/item/arcabuz_fuse/}) y el que
+     * se dibuja lo elige un <em>predicado</em> -- {@code ArcabuzModelProperties.FUSE} lee
+     * {@code ArcabuzFuseState.progress()}. No hay animacion de atlas que re-temporizar.</p>
+     *
+     * <p><b>Lo que si habia era un numero escondido:</b> {@code progress()} dividia por la constante
+     * {@code ArcabuzState.FUSE_TICKS}, asi que con una mecha mas corta el frame habria ido lento y la
+     * animacion habria terminado despues del disparo. El total ahora viaja -- el servidor lo manda al
+     * encender y el cliente lo lee del stack para el predicado -- y la division es por el total de
+     * ESTA mecha.</p>
+     *
+     * <p>{@code baseTicks} entra como argumento y no como constante para que este archivo no
+     * importe {@code ArcabuzState}: la tabla es pura y el numero base vive donde vive el arma.</p>
+     */
+    public static final int MECHA_CORTA_MAX_LEVEL = 2;
+
+    public static int fuseTicks(int level, int baseTicks) {
+        return switch (clamp(level, MECHA_CORTA_MAX_LEVEL)) {
+            case 1 -> 15;
+            case 2 -> 10;
+            default -> baseTicks;
+        };
     }
 
     /**
