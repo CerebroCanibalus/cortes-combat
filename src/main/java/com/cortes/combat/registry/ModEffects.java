@@ -91,6 +91,26 @@ public final class ModEffects {
     public static final DeferredHolder<MobEffect, MobEffect> REVELATION =
             EFFECTS.register("revelacion", com.cortes.combat.effect.RevelationEffect::new);
 
+    /** Anti-curacion: lo que deja Cicatrizador. El trabajo vive en su handler. */
+    public static final DeferredHolder<MobEffect, MobEffect> ANTI_HEALING =
+            EFFECTS.register("anti_healing", com.cortes.combat.effect.AntiHealingEffect::new);
+
+    /** Sangrado: lo que deja un cargado de alabarda. */
+    public static final DeferredHolder<MobEffect, MobEffect> BLEEDING =
+            EFFECTS.register("bleeding", com.cortes.combat.effect.BleedingEffect::new);
+
+    /** Quebranto: la armadura del rival vale menos. */
+    public static final DeferredHolder<MobEffect, MobEffect> QUEBRANTO =
+            EFFECTS.register("quebranto", com.cortes.combat.effect.QuebrantoEffect::new);
+
+    /** Desvio Vampirico: la vida maxima que el jugador se quedo. */
+    public static final DeferredHolder<MobEffect, MobEffect> VAMPIRIC =
+            EFFECTS.register("vampiric", com.cortes.combat.effect.VampiricEffect::new);
+
+    /** Y el techo que le falta al que fue desviado. Dos efectos y no uno: ver DrainedEffect. */
+    public static final DeferredHolder<MobEffect, MobEffect> DRAINED =
+            EFFECTS.register("drained", com.cortes.combat.effect.DrainedEffect::new);
+
     private ModEffects() {
     }
 

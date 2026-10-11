@@ -248,6 +248,11 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         // vanilla reworkeada, y `profile/axe` es la lista canonica de las NUESTRAS que usan ese
         // molde -- meterle las de vanilla la ensuciaria para su otro lector (WeaponStats).
         TagKey<Item> axe = own("enchantable/axe");
+        // La clase de la azada y la de las pesadas, por la misma razon que las dos de arriba: las
+        // dos armas del juego son de vanilla. `heavy` NO es `shove` -- shove incluye la pala, y la
+        // pala no castiga armadura: su identidad es empujar.
+        TagKey<Item> hoe = own("enchantable/hoe");
+        TagKey<Item> heavy = own("enchantable/heavy");
         TagKey<Item> durability = TagKey.create(Registries.ITEM,
                 ResourceLocation.withDefaultNamespace("enchantable/durability"));
 
@@ -311,6 +316,16 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         // nuestras del molde hacha.
         tag(axe).addTag(ItemTags.AXES);
         tag(axe).addTag(own("profile/axe"));
+        // La azada: la del juego es de vanilla, asi que su clase es `#minecraft:hoes` mas las
+        // nuestras del molde.
+        tag(hoe).addTag(ItemTags.HOES);
+        tag(hoe).addTag(own("profile/hoe"));
+        // Y las pesadas: los martillos nuestros, la maza de vanilla y las hachas. Sin la pala, que
+        // esta en `shove` y no castiga armadura -- por eso no se puede reusar `blunt`, que la
+        // incluye.
+        tag(heavy).addTag(own("profile/warhammer"));
+        tag(heavy).add(Items.MACE);
+        tag(heavy).addTag(ItemTags.AXES);
     }
 
     /** Un tag de vanilla por id, para completar una clase de encantamiento con su alcance original. */

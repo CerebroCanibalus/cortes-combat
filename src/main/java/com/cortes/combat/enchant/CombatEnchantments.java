@@ -91,6 +91,22 @@ public final class CombatEnchantments {
     public static final ResourceKey<Enchantment> GUARDIA_FIRME =
             key(CombatEnchantRules.GUARDIA_FIRME_ID);
 
+    /** Azada -- Cicatrizador. */
+    public static final ResourceKey<Enchantment> CICATRIZADOR =
+            key(CombatEnchantRules.CICATRIZADOR_ID);
+
+    /** Alabarda -- Destripamiento. */
+    public static final ResourceKey<Enchantment> DESTRIPAMIENTO =
+            key(CombatEnchantRules.DESTRIPAMIENTO_ID);
+
+    /** Pesadas -- Quebranto. */
+    public static final ResourceKey<Enchantment> QUEBRANTO =
+            key(CombatEnchantRules.QUEBRANTO_ID);
+
+    /** Shotel -- Desvio Vampirico. */
+    public static final ResourceKey<Enchantment> VAMPIRICO =
+            key(CombatEnchantRules.VAMPIRICO_ID);
+
     /**
      * El nivel de un encantamiento propio sobre un ítem, por clave.
      *

@@ -2,14 +2,20 @@ package com.cortes.combat.special;
 
 import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.core.weapon.WeaponProfile;
+import com.cortes.combat.effect.DrainedEffect;
+import com.cortes.combat.effect.VampiricEffect;
+import com.cortes.combat.enchant.CombatEnchantRules;
+import com.cortes.combat.enchant.CombatEnchantments;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.registry.ModAttachments;
+import com.cortes.combat.registry.ModEffects;
 import com.cortes.combat.sound.CombatSounds;
 import com.cortes.combat.sound.ModSounds;
 import com.cortes.combat.state.ParryState;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -136,5 +142,27 @@ public final class ParryHandler {
         // the sound of something happening to you, which is exactly backwards.
         CombatSounds.play(level, attacker, WeaponProfile.SABRE, ModSounds.Kind.PARRY);
         ModNetworking.sendFeedback(player, CombatFeedback.GUARDED);
+
+        // **Desvio Vampirico: el parry roba vida maxima.**
+        //
+        // Dos efectos y no uno: ver DrainedEffect -- un solo efecto no puede sumarle al que desvia y
+        // restarle al desviado, porque `createModifiers` no sabe a quien se lo estan aplicando.
+        //
+        // **Y el piso se pregunta ANTES de aplicar nada.** Bajarle el techo a un cuerpo le baja la
+        // vida actual -- vanilla la clampea cada tick y no hay forma de evitarlo -- asi que lo unico
+        // que se puede garantizar es que no mate: si al enemigo le quedaria el techo por debajo de
+        // uno, el robo no se cobra. Un desvio sin premio es mejor que una ejecucion gratuita sobre
+        // cualquiera que este tocado, que es el veto que el proyecto ya tiene escrito.
+        int vampiric = CombatEnchantments.level(player.level().registryAccess(),
+                player.getMainHandItem(), CombatEnchantments.VAMPIRICO);
+        if (vampiric > 0) {
+            int amplifier = CombatEnchantRules.amplifierFor(vampiric);
+            if (CombatEnchantRules.canDrain(attacker.getMaxHealth(), amplifier)) {
+                player.addEffect(new MobEffectInstance(ModEffects.VAMPIRIC,
+                        VampiricEffect.DURATION_TICKS, amplifier, false, true));
+                attacker.addEffect(new MobEffectInstance(ModEffects.DRAINED,
+                        DrainedEffect.DURATION_TICKS, amplifier, false, true));
+            }
+        }
     }
 }

@@ -8,8 +8,11 @@ import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.enchant.CombatEnchantRules;
 import com.cortes.combat.enchant.CombatEnchantments;
+import com.cortes.combat.effect.QuebrantoEffect;
 import com.cortes.combat.item.WeaponTables;
+import com.cortes.combat.registry.ModEffects;
 import com.cortes.combat.reach.Reach;
+import net.minecraft.world.effect.MobEffectInstance;
 import com.cortes.combat.sound.ModSounds;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.registry.ModDamageTypes;
@@ -394,6 +397,7 @@ public final class CombatEngine {
                 if (leech > 0.0F) {
                     player.heal(result.damage() * leech);
                 }
+                applyOnHitEffects(player, armoured, chargeRatio);
                 // **The wear the replaced flow dropped, and the reason nothing in this game has
                 // ever lost a point of durability.** Vanilla's own `postHurtEnemy` calls
                 // `hurtAndBreak(1, attacker, MAINHAND)` on a landed hit, and it lives on the item
@@ -721,6 +725,59 @@ public final class CombatEngine {
             Knockback.apply(player, target, stats.knockback(),
                     DamageResolver.knockbackFor(chargeRatio),
                     enchantPush(player, target, result));
+        }
+    }
+
+    /**
+     * Los tres efectos que un golpe deja en el cuerpo: Cicatrizador, Destripamiento y Quebranto.
+     *
+     * <h2>Por qué los tres en una función</h2>
+     *
+     * <p>Porque los tres se cobran en el mismo momento -- <b>el golpe que aterrizó</b> -- y los tres
+     * son "aplicar un efecto con una duración y un nivel". Tres llamadas sueltas en {@code apply}
+     * serían tres lugares donde olvidarse de una, y el modo de falla de un encantamiento sin llamador
+     * es que <b>el build queda verde</b>.</p>
+     *
+     * <h2>Las tres diferencias, que son las que importan</h2>
+     *
+     * <ul>
+     *   <li><b>Destripamiento sólo con carga completa.</b> Es la decisión del diseño: la alabarda
+     *       paga caro por cargar y el sangrado es el premio, así que un tap no lo deja. Y <b>no se
+     *       apila</b> -- reaplicar refresca -- porque un DoT que se apilara con cada cargado
+     *       convertiría el arma en una que mata sola después de tres segundos de no hacer nada.</li>
+     *   <li><b>Quebranto sí se apila, con tope.</b> El stack ES el {@code amplifier}, así que el
+     *       tope se lee del efecto anterior en vez de contarse aparte: una cuenta propia sería una
+     *       segunda verdad sobre cuántos stacks tiene el cuerpo, y la primera es el efecto.</li>
+     *   <li><b>Cicatrizador es el único que va contra la curación</b> y no contra la vida, y por eso
+     *       no tiene nada que apilar: su nivel es su nivel.</li>
+     * </ul>
+     */
+    private static void applyOnHitEffects(Player player, LivingEntity target, float chargeRatio) {
+        var access = player.level().registryAccess();
+        ItemStack weapon = player.getMainHandItem();
+
+        int bruiser = CombatEnchantments.level(access, weapon, CombatEnchantments.CICATRIZADOR);
+        if (bruiser > 0) {
+            target.addEffect(new MobEffectInstance(ModEffects.ANTI_HEALING,
+                    CombatEnchantRules.CICATRIZADOR_TICKS,
+                    CombatEnchantRules.amplifierFor(bruiser), false, true));
+        }
+
+        int gut = CombatEnchantments.level(access, weapon, CombatEnchantments.DESTRIPAMIENTO);
+        if (gut > 0 && chargeRatio >= DamageResolver.FULL_CHARGE) {
+            target.addEffect(new MobEffectInstance(ModEffects.BLEEDING,
+                    CombatEnchantRules.sangradoTicks(gut),
+                    CombatEnchantRules.amplifierFor(gut), false, true));
+        }
+
+        int sunder = CombatEnchantments.level(access, weapon, CombatEnchantments.QUEBRANTO);
+        if (sunder > 0) {
+            MobEffectInstance current = target.getEffect(ModEffects.QUEBRANTO);
+            int stacks = current == null
+                    ? 1
+                    : Math.min(QuebrantoEffect.MAX_STACKS, current.getAmplifier() + 2);
+            target.addEffect(new MobEffectInstance(ModEffects.QUEBRANTO,
+                    CombatEnchantRules.QUEBRANTO_TICKS, stacks - 1, false, true));
         }
     }
 

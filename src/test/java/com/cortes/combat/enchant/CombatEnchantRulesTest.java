@@ -303,6 +303,29 @@ class CombatEnchantRulesTest {
     }
 
     @Test
+    @DisplayName("**el nivel del efecto es el del encantamiento menos uno, y no se pasa**")
+    void amplifierFor() {
+        assertEquals(0, CombatEnchantRules.amplifierFor(1), "nivel I del encantamiento = amplifier 0");
+        assertEquals(1, CombatEnchantRules.amplifierFor(2));
+        assertEquals(3, CombatEnchantRules.amplifierFor(4));
+        assertEquals(3, CombatEnchantRules.amplifierFor(9),
+                "**y de cuatro no pasa**: el tope de los cuatro encantamientos de la tanda es cuatro, "
+                        + "y un amplifier sin techo es un efecto que nadie diseno");
+        assertEquals(0, CombatEnchantRules.amplifierFor(0), "sin encantamiento no hay efecto");
+    }
+
+    @Test
+    @DisplayName("Destripamiento: seis segundos al uno, diez al dos")
+    void sangradoTicks() {
+        assertEquals(0, CombatEnchantRules.sangradoTicks(0));
+        assertEquals(120, CombatEnchantRules.sangradoTicks(1));
+        assertEquals(200, CombatEnchantRules.sangradoTicks(2));
+        assertEquals(200, CombatEnchantRules.sangradoTicks(9));
+        assertTrue(CombatEnchantRules.sangradoTicks(2) > CombatEnchantRules.sangradoTicks(1),
+                "**el nivel dos dura mas**: es lo unico que compra, porque el sangrado no se apila");
+    }
+
+    @Test
     @DisplayName("los niveles fuera de rango se clampean")    void levelsAreClamped() {
         assertEquals(CombatEnchantRules.parryCooldown(100, 2),
                 CombatEnchantRules.parryCooldown(100, 9),

@@ -421,6 +421,46 @@ class EnchantmentHooksTest {
                         + "de premio en vez de un golpe");
     }
 
+    /**
+     * **Los cuatro de los efectos tienen llamador, y cada uno en el momento correcto.**
+     *
+     * <p>Tres se cobran en el golpe y el cuarto en el parry, así que un guard que los pidiera a todos
+     * en el mismo archivo estaría afirmando que los cuatro se cobran en el mismo momento.</p>
+     */
+    @Test
+    @DisplayName("Cicatrizador, Destripamiento, Quebranto y Desvio Vampirico llegan a sus hooks")
+    void theEffectEnchantmentsReachTheirHooks() {
+        String engine = read();
+
+        assertTrue(engine.contains("applyOnHitEffects(player, armoured"),
+                "**los tres que dejan efecto no se cobran.** La funcion puede estar escrita, con sus "
+                        + "tres efectos adentro y perfecta, y sin llamador: el build queda verde y el "
+                        + "golpe no deja nada");
+        assertTrue(engine.contains("ModEffects.ANTI_HEALING") && engine.contains("ModEffects.BLEEDING")
+                        && engine.contains("ModEffects.QUEBRANTO"),
+                "los tres efectos tienen que APLICARSE, no solo leerse");
+        assertTrue(engine.contains("CombatEnchantRules.amplifierFor("),
+                "y el nivel del efecto sale de la conversion pura: cuatro copias de `nivel - 1` son "
+                        + "cuatro lugares donde olvidarse de restar, y el sintoma es un efecto un "
+                        + "nivel mas fuerte sin ningun error");
+        assertTrue(engine.contains("DamageResolver.FULL_CHARGE"),
+                "**Destripamiento solo con carga completa**: sin el gate, un tap de alabarda deja "
+                        + "sangrado y el encantamiento deja de ser un premio por cargar");
+
+        String parry = readFile("src/main/java/com/cortes/combat/special/ParryHandler.java");
+        assertTrue(parry.contains("ModEffects.VAMPIRIC") && parry.contains("ModEffects.DRAINED"),
+                "**Desvio Vampirico son DOS efectos** y el parry tiene que aplicar los dos: sumarle "
+                        + "al que desvia sin restarle al desviado no es un robo, es un regalo");
+        assertTrue(parry.contains("CombatEnchantRules.canDrain("),
+                "**y el piso se pregunta antes de aplicar nada.** Sin eso el robo le baja el techo a "
+                        + "cero a un cuerpo tocado, que es la ejecucion gratuita que el proyecto veta");
+
+        String antiHealing = readFile("src/main/java/com/cortes/combat/effect/AntiHealingHandler.java");
+        assertTrue(antiHealing.contains("LivingHealEvent") && antiHealing.contains("setAmount("),
+                "**Anti-curacion se cobra en la curacion y no en el golpe**: el handler tiene que "
+                        + "escuchar el heal y escribir el numero, o el efecto no reduce nada");
+    }
+
     /** Y el arcabuz, donde vive la recarga que Pólvora Seca acorta. */
     private static String readArcabuz() {
         Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "special",

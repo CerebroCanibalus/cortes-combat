@@ -157,6 +157,10 @@ public class CortesLanguageProvider extends LanguageProvider {
     add("enchantment.cortescombat.estocada", spanish ? "Estocada Perforante" : "Piercing Thrust");
     add("enchantment.cortescombat.segundo_aliento", spanish ? "Segundo Aliento" : "Second Wind");
     add("enchantment.cortescombat.guardia_firme", spanish ? "Guardia Firme" : "Steady Guard");
+    add("enchantment.cortescombat.cicatrizador", spanish ? "Cicatrizador" : "Bruiser");
+    add("enchantment.cortescombat.destripamiento", spanish ? "Destripamiento" : "Gutting");
+    add("enchantment.cortescombat.quebranto", spanish ? "Quebranto" : "Sunder");
+    add("enchantment.cortescombat.desvio_vampirico", spanish ? "Desvío Vampírico" : "Vampiric Deflection");
     }
 
     /**

@@ -1,0 +1,21 @@
+{
+  "anvil_cost": 3,
+  "description": {
+    "translate": "enchantment.cortescombat.cicatrizador"
+  },
+  "max_cost": {
+    "base": 55,
+    "per_level_above_first": 15
+  },
+  "max_level": 4,
+  "min_cost": {
+    "base": 15,
+    "per_level_above_first": 12
+  },
+  "primary_items": "#cortescombat:enchantable/hoe",
+  "slots": [
+    "mainhand"
+  ],
+  "supported_items": "#cortescombat:enchantable/hoe",
+  "weight": 2
+}

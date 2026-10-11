@@ -644,6 +644,26 @@ tiene los números, y el hook vive donde el número se cobra.
 | `estocada` | ropera (molde `ropera`) | el golpe **del lunge** ignora **15 %/30 %** de armadura | `CombatEngine.lungePierce`, cobrado en `special/Lunge` |
 | `segundo_aliento` | espada (clase `sword`) | al **romperse tu guardia**, tu siguiente golpe en 3 s pega **+15 %/+25 %** y empuja **+50 %** | `GuardHandler.breakGuard` arma `SecondWindWindow`; `CombatEngine` la cobra |
 | `guardia_firme` | espada (clase `sword`) | **1 nivel** · el primer bloqueo de cada 3 s **no gasta aguante** | `GuardHandler.onShieldBlock` + `GuardFree` |
+| `cicatrizador` | azada (clase `hoe`) | el efecto **Anti-curación**: **−15 % por nivel** de toda curación, 4 niveles = 4 del efecto, 5 s | `CombatEngine.applyOnHitEffects` aplica; **`effect/AntiHealingHandler`** cobra en `LivingHealEvent` |
+| `destripamiento` | alabarda (molde `halberd`) | el **cargado** deja **Sangrado**: 1 ♥ cada 2 s durante 6 s (L1) / 10 s (L2) | `CombatEngine.applyOnHitEffects` |
+| `quebranto` | pesadas (clase `heavy`) | −8 % de armadura por stack, **máx 3**, 4 s, reaplicar refresca | `CombatEngine.applyOnHitEffects` |
+| `desvio_vampirico` | shotel (molde `sabre`) | al **parriar**, robás vida máxima: **+1/+2/+3/+4 ♥**, 10 s, refresca | `ParryHandler` -- **dos efectos**, `VAMPIRIC` y `DRAINED` |
+
+> **5 efectos nuevos, y las cuentas viven en `CombatEnchantRules` (pura) y no en los efectos.** Un
+> `MobEffect` extiende una clase de Minecraft, así que un método suyo **no se puede cargar en un
+> test**: la cuenta adentro del efecto sería una cuenta que ningún test mira. Es la línea exacta del
+> proyecto -- *"¿implementa algo de Minecraft?"* -- y los tests la cazaron **dos veces**:
+>
+> 1. **`antiHealingReduction` sin clampear**: con un amplifier alto la reducción **pasaba de 1** y
+>    `1 − reducción` daba **negativo** -- o sea, curarse hacía **daño**.
+> 2. **`DRAIN_PER_LEVEL` en positivo**: el robo *sumaba* vida máxima en vez de restarla. El techo del
+>    enemigo subía y el robo era un regalo para los dos lados. **La cuenta se ve bien leída y al
+>    revés**, que es la peor forma de fallar.
+>
+> **Y el robo no puede matar, pero sí baja la vida actual.** Bajarle el techo a un cuerpo le baja la
+> vida -- `LivingEntity#tick` clampea cada tick y no hay forma de evitarlo -- así que lo que se
+> garantiza es el **piso**: `canDrain` pregunta si le quedaría al menos un punto de techo, y si no,
+> el robo no se cobra.
 
 > **Los dos últimos necesitaron estado nuevo**, y son los primeros del proyecto que lo hacen: dos
 > attachments (`SECOND_WINDOW` y `GUARD_FREE`) con **vencimiento absoluto y sin codec**, el patrón de

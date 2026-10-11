@@ -70,11 +70,26 @@ public final class CombatEnchantRules {
     /** Espada -- Guardia Firme: el primer bloqueo de cada tres segundos es gratis. */
     public static final String GUARDIA_FIRME_ID = "guardia_firme";
 
+    /** Azada -- Cicatrizador: el efecto Anti-curacion. */
+    public static final String CICATRIZADOR_ID = "cicatrizador";
+
+    /** Alabarda -- Destripamiento: el cargado deja Sangrado. */
+    public static final String DESTRIPAMIENTO_ID = "destripamiento";
+
+    /** Generico de pesadas -- Quebranto: la armadura del rival vale menos. */
+    public static final String QUEBRANTO_ID = "quebranto";
+
+    /** Shotel -- Desvio Vampirico: el parry roba vida maxima. */
+    public static final String VAMPIRICO_ID = "desvio_vampirico";
+
     /** Todos, para que un test pueda recorrerlos en vez de nombrarlos. */
     public static final java.util.List<String> IDS = java.util.List.of(STEEL_REFLEX_ID, AUDACITY_ID,
             FLEETING_EDGE_ID, RHYTHM_OF_IRON_ID, RIPOSTE_ID, DRY_POWDER_ID, PUNTA_FINA_ID,
             FILO_ASTILLADO_ID, APUNALAR_ID, SANGUJUELA_ID, AVENTURERO_ID, CULATA_ID, ESTOCADA_ID,
-            SEGUNDO_ALIENTO_ID, GUARDIA_FIRME_ID);
+            SEGUNDO_ALIENTO_ID, GUARDIA_FIRME_ID, CICATRIZADOR_ID, DESTRIPAMIENTO_ID, QUEBRANTO_ID,
+            VAMPIRICO_ID);
+
+    /** Los genericos, que se ponen por clase y no por molde. */
 
     /**
      * Los genéricos, que se ponen por <b>clase</b> y no por molde.
@@ -86,7 +101,8 @@ public final class CombatEnchantRules {
      * ({@code #cortescombat:enchantable/sword}). Un test que exigiera molde a todos estaba afirmando
      * la regla de uno solo.</p>
      */
-    public static final java.util.List<String> GENERIC_IDS = java.util.List.of(RIPOSTE_ID);
+    public static final java.util.List<String> GENERIC_IDS = java.util.List.of(RIPOSTE_ID,
+            QUEBRANTO_ID);
 
     // ---------------------------------------------------------------- E2 · Reflejo de Acero (shotel)
 
@@ -457,6 +473,100 @@ public final class CombatEnchantRules {
      */
     public static boolean guardiaFirme(int level) {
         return clamp(level, 1) >= 1;
+    }
+
+    // ---------------------------------------------- los cuatro de los efectos (tanda 3)
+
+    /**
+     * El nivel del <b>efecto</b> que corresponde a este nivel del encantamiento: uno menos.
+     *
+     * <p>Minecraft numera los efectos desde cero -- el nivel I es {@code amplifier 0} -- y los
+     * encantamientos desde uno. La conversión vive acá y en un solo lugar porque cuatro
+     * encantamientos la necesitan, y cuatro copias de {@code nivel - 1} son cuatro lugares donde
+     * olvidarse de restar, que se ve como un efecto un nivel más fuerte y ningún error.</p>
+     */
+    public static int amplifierFor(int level) {
+        return Math.max(0, clamp(level, 4) - 1);
+    }
+
+    /** Destripamiento: seis segundos al nivel uno, diez al dos. */
+    public static final int DESTRIPAMIENTO_MAX_LEVEL = 2;
+
+    public static int sangradoTicks(int level) {
+        return switch (clamp(level, DESTRIPAMIENTO_MAX_LEVEL)) {
+            case 1 -> 120;
+            case 2 -> 200;
+            default -> 0;
+        };
+    }
+
+    /**
+     * Cicatrizador: cinco segundos, <b>iguales en los cuatro niveles</b>.
+     *
+     * <p>El nivel compra cuánto reduce, no cuánto dura -- la misma regla que Desvío Vampírico. Un
+     * encantamiento que además alargara la duración tendría dos ejes de escalado para el mismo
+     * número, y el jugador no podría aprender cuál está comprando.</p>
+     */
+    public static final int CICATRIZADOR_MAX_LEVEL = 4;
+
+    public static final int CICATRIZADOR_TICKS = 100;
+
+    /** Quebranto: cuatro segundos, y reaplicar refresca el timer sin apilar mas alla del tope. */
+    public static final int QUEBRANTO_MAX_LEVEL = 2;
+
+    public static final int QUEBRANTO_TICKS = 80;
+
+    /** Desvio Vampirico: cuatro niveles, y los diez segundos viven en el efecto. */
+    public static final int VAMPIRICO_MAX_LEVEL = 4;
+
+    /**
+     * Anti-curacion: la fraccion de curacion que se pierde con este nivel del EFECTO.
+     *
+     * <p><b>Vive aca y no en el efecto, y el motivo no es estetico.</b> Un {@code MobEffect} extiende
+     * una clase de Minecraft, asi que un test no puede ni cargar la clase que lo contiene: la cuenta
+     * adentro del efecto seria una cuenta que ningun test mira. Es la linea exacta del proyecto --
+     * "implementa algo de Minecraft?" -- y esta es la mitad que tiene que quedar afuera.</p>
+     */
+    public static final float ANTI_HEALING_PER_LEVEL = 0.15F;
+
+    /** El amplifier del último nivel del encantamiento. Cuatro niveles, así que tres. */
+    public static final int ANTI_HEALING_MAX_AMPLIFIER = 3;
+
+    public static float antiHealingReduction(int amplifier) {
+        int clamped = Math.min(ANTI_HEALING_MAX_AMPLIFIER, Math.max(0, amplifier));
+        return ANTI_HEALING_PER_LEVEL * (clamped + 1);
+    }
+
+    /**
+     * Desvio Vampirico: si este cuerpo puede pagar el robo sin quedar con el techo por debajo de uno.
+     *
+     * <p>Se pregunta con la vida <b>maxima actual</b> del cuerpo y no con su vida, porque lo que se
+     * baja es el techo: un enemigo a un punto de vida con veinte de techo puede pagar el robo sin
+     * morir, y uno a veinte con dos de techo no.</p>
+     *
+     * <p><b>Y el signo es negativo, que es el bug que el test cazo.</b> Un robo <em>baja</em> el techo
+     * del que lo paga: con el numero en positivo la funcion decia que si a todo, el techo del enemigo
+     * subia, y el robo era un regalo para los dos lados. La cuenta se ve bien leida y al reves, que
+     * es la peor forma de fallar.</p>
+     */
+    public static final double DRAIN_PER_LEVEL = -2.0D;
+
+    /** El techo minimo que un cuerpo puede conservar. Uno: nunca por debajo. */
+    public static final float MIN_CEILING = 1.0F;
+
+    public static boolean canDrain(float maxHealth, int amplifier) {
+        return maxHealth + DRAIN_PER_LEVEL * (Math.max(0, amplifier) + 1) >= MIN_CEILING;
+    }
+
+    /** Quebranto: ocho por ciento de armadura menos por stack. */
+    public static final double QUEBRANTO_PER_STACK = -0.08D;
+
+    /** Tres stacks: veinticuatro por ciento con el efecto al maximo. */
+    public static final int QUEBRANTO_MAX_STACKS = 3;
+
+    public static double quebrantoArmour(int amplifier) {
+        int stacks = Math.min(QUEBRANTO_MAX_STACKS, Math.max(1, amplifier + 1));
+        return QUEBRANTO_PER_STACK * stacks;
     }
 
     /**

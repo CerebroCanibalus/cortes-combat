@@ -14,6 +14,10 @@
     "cortescombat:culata",
     "cortescombat:estocada",
     "cortescombat:segundo_aliento",
-    "cortescombat:guardia_firme"
+    "cortescombat:guardia_firme",
+    "cortescombat:cicatrizador",
+    "cortescombat:destripamiento",
+    "cortescombat:quebranto",
+    "cortescombat:desvio_vampirico"
   ]
 }
