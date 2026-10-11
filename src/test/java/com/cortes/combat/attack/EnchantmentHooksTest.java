@@ -322,6 +322,21 @@ class EnchantmentHooksTest {
         assertTrue(arcabuz.contains("com.cortes.combat.registry.ModEntities.MOB_CLOUD.get()"),
                 "**El disparo no suelta la nube**");
 
+        // **Y cambia la munición, que es su identidad entera.** Sin esto el encantamiento era el
+        // mismo disparo con otro resultado: cuesta lo mismo, hay que fabricar lo mismo, y lo unico
+        // que cambiaba era un detalle visual. Le paso en un playtest -- se puso el encantamiento,
+        // se aprieto el boton cuarenta veces y las cuarenta salio "sin Firestone".
+        assertTrue(arcabuz.contains("return AmmoProfile.of(ROTTEN_FLESH_AMMO, 1);"),
+                "**Rey de las Moscas no cambia la munición**: sigue gastando Firestone, asi que el "
+                        + "jugador tiene que craftear lo mismo y el encantamiento no compra nada");
+        // Y el orden: el encantamiento se pregunta ANTES que el componente, porque es lo que el
+        // jugador eligio poner y lo que el tooltip promete.
+        assertTrue(arcabuz.indexOf("CombatEnchantments.REY_DE_LAS_MOSCAS) > 0")
+                        < arcabuz.indexOf("ModComponents.AMMO_PROFILE"),
+                "**El componente manda sobre el encantamiento**, y seria al reves: un arma que "
+                        + "declarara su propia municion y tuviera el encantamiento gastaria la suya "
+                        + "y no la que el jugador eligio");
+
         String cloud = readFile("src/main/java/com/cortes/combat/entity/MobCloud.java");
         assertTrue(cloud.contains("CombatEnchantRules.MOSCAS_DAMAGE"),
                 "**La nube no lastima**: es un enjambre de moscas que no le hace nada a nadie");

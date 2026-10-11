@@ -259,7 +259,7 @@ public final class Arcabuz {
      */
     private static boolean load(ServerPlayer player) {
         ItemStack weapon = player.getMainHandItem();
-        AmmoProfile ammo = declaredAmmo(weapon);
+        AmmoProfile ammo = declaredAmmo(player, weapon);
         int found = ammoSlot(player, weapon);
         if (found < 0) {
             trace(player, player.getData(ModAttachments.ARCABUZ.get()),
@@ -312,7 +312,7 @@ public final class Arcabuz {
      * which is the bug shape the paragraph above on {@link #load} is entirely about.</p>
      */
     private static int ammoSlot(ServerPlayer player, ItemStack weapon) {
-        AmmoProfile ammo = declaredAmmo(weapon);
+        AmmoProfile ammo = declaredAmmo(player, weapon);
         net.minecraft.world.item.Item wanted = resolveAmmo(ammo.itemId());
         if (wanted == net.minecraft.world.item.Items.AIR) {
             LOG.warn("[arcabuz] municion declarada como '{}' no resuelve a ningun item: el arma "
@@ -345,11 +345,30 @@ public final class Arcabuz {
      * mod ya hacia antes de que esto existiera. Un arma sin componente se comporta identica a
      * ayer, y eso es la mitad de la razon del default: las 31 armas que ya estaban no pueden
      * cambiar de precio por un refactor.</p>
+     *
+     * <h2>Rey de las Moscas cambia la munición, y esa es su identidad entera</h2>
+     *
+     * <p>Un arcabuz con ese encantamiento gasta <b>carne podrida</b>, que sobra en cualquier
+     * cofre, y no una Firestone, que hay que craftear. Sin esto el encantamiento era el mismo
+     * disparo con otro resultado -- cuesta lo mismo y hay que fabricar lo mismo -- y lo único que
+     * cambiaba era un detalle visual. <b>Lo que lo hace una elección es que el precio baja y lo
+     * que devuelve cambia de forma.</b></p>
+     *
+     * <p>Y va <b>antes</b> de leer el componente, no despues: un arma que declarara su propia
+     * munición y además tuviera el encantamiento gasta la del encantamiento, porque es la que el
+     * jugador eligió poner y la que el tooltip promete.</p>
      */
-    private static AmmoProfile declaredAmmo(ItemStack weapon) {
+    private static AmmoProfile declaredAmmo(ServerPlayer player, ItemStack weapon) {
+        if (CombatEnchantments.level(player.level().registryAccess(), weapon,
+                CombatEnchantments.REY_DE_LAS_MOSCAS) > 0) {
+            return AmmoProfile.of(ROTTEN_FLESH_AMMO, 1);
+        }
         AmmoProfile declared = weapon.get(com.cortes.combat.registry.ModComponents.AMMO_PROFILE);
         return declared == null ? AmmoProfile.firestone() : declared;
     }
+
+    /** Lo que gasta el arcabuz con Rey de las Moscas. Vanilla, y sobra en todos lados. */
+    private static final String ROTTEN_FLESH_AMMO = "minecraft:rotten_flesh";
 
     /**
      * Traduce el id declarado a un item, una sola vez y en el unico sitio que tiene el registro a
@@ -546,6 +565,13 @@ public final class Arcabuz {
                 CombatEnchantments.REY_DE_LAS_MOSCAS);
         if (flies > 0) {
             List<LivingEntity> seen = targetsInCone(player, level, stats.shotReach());
+            // **La traza va antes de decidir**, y no despues: si la rama no se alcanza nunca, el
+            // log no puede decir por que, y adivinar entre "el encantamiento no se lee", "el cono
+            // esta vacio" y "la entidad no se spawnea" cuesta tres vueltas. Un log que nombra la
+            // causa es mas barato que un debugger.
+            trace(player, player.getData(ModAttachments.ARCABUZ.get()),
+                    "rey de las moscas: nivel=" + flies + " objetivos=" + seen.size()
+                            + " munition=" + declaredAmmo(player, player.getMainHandItem()).itemId());
             if (seen.isEmpty()) {
                 trace(player, player.getData(ModAttachments.ARCABUZ.get()),
                         "rey de las moscas: sin objetivo, disparo perdido");
