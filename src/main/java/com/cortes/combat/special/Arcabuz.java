@@ -550,6 +550,18 @@ public final class Arcabuz {
             return;
         }
 
+        // **El disparo llego hasta aca.** Incondicional y al tope: la traza de Rey de las Moscas
+        // vive DENTRO de su `if`, asi que si el encantamiento se lee en cero el log no dice nada
+        // y hay que adivinar entre "fire() no se alcanza", "lee nivel 0" y "el cono esta vacio".
+        // Una linea que siempre se imprime es mas barata que tres vueltas de debugger.
+        trace(player, player.getData(ModAttachments.ARCABUZ.get()),
+                "DISPARO: rey_de_las_moscas="
+                        + CombatEnchantments.level(level.registryAccess(),
+                                player.getMainHandItem(), CombatEnchantments.REY_DE_LAS_MOSCAS)
+                        + " item=" + player.getMainHandItem()
+                                .getItem().getDescriptionId()
+                        + " municion=" + declaredAmmo(player, player.getMainHandItem()).itemId());
+
         // **Rey de las Moscas: el disparo deja una nube en vez de estallar.**
         //
         // Va aca, al tope y antes de resolver el cono, porque no es un bonus sobre el disparo --
