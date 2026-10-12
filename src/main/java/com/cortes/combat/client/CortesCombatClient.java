@@ -206,6 +206,9 @@ public class CortesCombatClient {
         // ahi. Lo que dibuja la nube son las particulas que el servidor le suelta adentro.
         event.registerEntityRenderer(com.cortes.combat.registry.ModEntities.MOB_CLOUD.get(),
                 MobCloudRenderer::new);
+        // Y el orbe de antimateria, por lo mismo: su renderer dibuja nada y tiene que existir.
+        event.registerEntityRenderer(com.cortes.combat.registry.ModEntities.ANTIMATTER_ORB.get(),
+                AntimatterOrbRenderer::new);
     }
 
     public static void onClientSetup(FMLClientSetupEvent event) {

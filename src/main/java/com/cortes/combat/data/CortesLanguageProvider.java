@@ -194,6 +194,7 @@ public class CortesLanguageProvider extends LanguageProvider {
     add("enchantment.cortescombat.corte_gemelo", spanish ? "Corte Gemelo" : "Twin Cut");
     add("enchantment.cortescombat.capacitor", spanish ? "Capacitor" : "Capacitor");
     add("enchantment.cortescombat.rey_de_las_moscas", spanish ? "Rey de las Moscas" : "Fly Lord");
+    add("enchantment.cortescombat.pala_antimaterial", spanish ? "Pala Antimaterial" : "Antimatter Shovel");
     }
 
     /**

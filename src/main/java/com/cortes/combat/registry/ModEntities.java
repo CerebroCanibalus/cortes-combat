@@ -1,6 +1,7 @@
 package com.cortes.combat.registry;
 
 import com.cortes.combat.CortesCombat;
+import com.cortes.combat.entity.AntimatterOrb;
 import com.cortes.combat.entity.MobCloud;
 import com.cortes.combat.entity.SlashWave;
 
@@ -59,6 +60,21 @@ public final class ModEntities {
                     .clientTrackingRange(10)
                     .updateInterval(1)
                     .build("mob_cloud"));
+
+    /**
+     * El orbe de antimateria de la pala.
+     *
+     * <p>Caja chica ({@code 0.4}) porque el orbe tiene que <b>chocar</b> con las paredes -- es un
+     * proyectil y su viaje termina contra algo -- pero no tan grande como para engancharse en el
+     * borde de un bloque al pasar por un hueco de un bloque de ancho.</p>
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<AntimatterOrb>> ANTIMATTER_ORB =
+            ENTITY_TYPES.register("antimatter_orb", () -> EntityType.Builder
+                    .<AntimatterOrb>of(AntimatterOrb::new, MobCategory.MISC)
+                    .sized(0.4F, 0.4F)
+                    .clientTrackingRange(10)
+                    .updateInterval(1)
+                    .build("antimatter_orb"));
 
     private ModEntities() {
     }

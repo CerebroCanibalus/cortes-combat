@@ -76,6 +76,19 @@ public final class SpecialHandler {
         // attack cooldown -- so it must NOT go through it. Routing the parry through the swing
         // cooldown would make the sabre unable to parry because it swung two ticks ago, which is a
         // rule nobody would design on purpose and which reads as the button being broken.
+        // **Pala Antimaterial: el click derecho suelta el orbe.**
+        //
+        // Va al tope, antes de todos los demas, porque el perfil de la pala tiene la especial en
+        // `NONE` -- el orbe no es "la especial de la pala", es lo que el encantamiento le agrega
+        // al boton. Asi que la puerta es el encantamiento y no el perfil, que es lo contrario de
+        // todos los otros casos y es correcto: sin el encantamiento la pala no tiene click derecho
+        // y con el si, sin que la tabla de perfiles se entere.
+        if (CombatEnchantments.level(level.registryAccess(), held,
+                CombatEnchantments.PALA_ANTIMATERIAL) > 0) {
+            launchAntimatter(player, level);
+            return;
+        }
+
         if (stats.special() == SpecialType.MULTI_HIT) {
             if (!AttackCooldown.isReady(player)) {
                 return;
@@ -375,6 +388,49 @@ public final class SpecialHandler {
      * not the weapon's: it reaches further and opens wider. Reading {@code stats.reach()} here is
      * what had the sweep hitting exactly what the thrust hits, only more of it.</p>
      */
+    /**
+     * El orbe de antimateria: se tira, atrae y revienta.
+     *
+     * <h2>El precio es el cooldown, y es el mas caro del juego</h2>
+     *
+     * <p>Ciento veinte ticks -- seis segundos -- contra los cuatro del barrido de la alabarda. Un
+     * especial que atrae y despues pega catorce en un radio de cuatro es lo mas fuerte que hay en
+     * el catalogo, y lo que lo hace justo es que <b>mientras se recarga no podes hacer nada con la
+     * pala</b>: la pala es una herramienta, y su unico boton de combate esta apagado seis segundos
+     * por cada uso.</p>
+     *
+     * <h2>Y lo que NO esta hecho, dicho aca</h2>
+     *
+     * <p>El diseño pide <b>cuarenta ticks de carga</b> antes de soltarlo, y eso no esta. La carga
+     * del proyecto es un canal del <em>click izquierdo</em> ({@code ChargeState} contra el
+     * {@code ChargeProfile} del arma) y el arcabuz tiene el suyo por el lado de la mecha; una
+     * tercera via para un solo encantamiento seria un segundo reloj que mantener en paralelo con
+     * los dos que ya hay. <b>Lo que se pierde es el aviso</b>: con carga, el rival ve que estas
+     * cargando y puede salir; sin ella, el orbe sale en el press. Los numeros del orbe no cambian
+     * -- atrae y pega lo mismo -- y el costo sigue siendo el cooldown.</p>
+     */
+    private static void launchAntimatter(ServerPlayer player, ServerLevel level) {
+        if (!AttackCooldown.isReady(player)) {
+            return;
+        }
+        AttackCooldown.consume(player, CombatEnchantRules.PALA_ANTIMATERIAL_COOLDOWN_TICKS);
+
+        net.minecraft.world.phys.Vec3 look = player.getLookAngle().normalize();
+        com.cortes.combat.entity.AntimatterOrb orb =
+                new com.cortes.combat.entity.AntimatterOrb(
+                        com.cortes.combat.registry.ModEntities.ANTIMATTER_ORB.get(), level);
+        // Del ojo y un bloque adelante, para que no nazca dentro del jugador y lo toque a el.
+        net.minecraft.world.phys.Vec3 spawn = player.getEyePosition().add(look.scale(1.0));
+        orb.setPos(spawn.x, spawn.y - 0.2, spawn.z);
+        orb.setOwner(player);
+        // Rápido pero visible: a 1,2 bloques por tick un orbe cruza el alcance de la pala en un
+        // tercio de segundo, que es lo que hace que se pueda esquivar. Mas rapido seria un hitscan
+        // con dibujo, y un hitscan no se esquiva.
+        orb.launch(look.scale(1.2));
+        level.addFreshEntity(orb);
+        CombatSounds.play(level, player, WeaponProfile.SHOVEL, ModSounds.Kind.LUNGE);
+    }
+
     private static List<LivingEntity> targetsInCone(ServerPlayer player, ReachProfile reach) {
         List<LivingEntity> found = new java.util.ArrayList<>();
         var box = player.getBoundingBox().inflate(reach.distance() + 1.0);
