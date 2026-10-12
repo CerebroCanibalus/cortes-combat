@@ -437,10 +437,12 @@ public final class SpecialHandler {
         net.minecraft.world.phys.Vec3 spawn = player.getEyePosition().add(look.scale(1.0));
         orb.setPos(spawn.x, spawn.y - 0.2, spawn.z);
         orb.setOwner(player);
-        // Rápido pero visible: a 1,2 bloques por tick un orbe cruza el alcance de la pala en un
-        // tercio de segundo, que es lo que hace que se pueda esquivar. Mas rapido seria un hitscan
-        // con dibujo, y un hitscan no se esquiva.
-        orb.launch(look.scale(1.2));
+        // **Lento y largo, que es lo que el playtest pidio.** Ver
+        // `PALA_ANTIMATERIAL_SPEED`: a 1,2 bloques por tick el orbe cruzaba el alcance de la pala
+        // en un tercio de segundo y el tiron del viaje no llegaba a pasar -- el orbe era un
+        // fogonazo y lo unico que tiraba era el estacazo del final. A 0,35 el viaje dura segundos,
+        // el jugador ve de donde viene el tiron y el enemigo tiene la opcion de correrse.
+        orb.launch(look.scale(CombatEnchantRules.PALA_ANTIMATERIAL_SPEED));
         level.addFreshEntity(orb);
         // El sonido del orbe, que es del usuario y no lo nombraba ningun evento. Reemplaza al
         // `LUNGE` que estaba de prestado: un orbe de antimateria no suena a estocada.

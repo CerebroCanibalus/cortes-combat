@@ -39,20 +39,25 @@ import net.minecraft.world.phys.Vec3;
  */
 public class AntimatterOrb extends Entity {
 
-    /** Lo que dura como mucho, en ticks. Pasado eso se apaga sin cobrar: un orbe perdido no espera. */
-    private static final int LIFETIME = 60;
-
-    /** Cuanto se le tira a lo que esta en el radio de atraccion, por tick de tiron. */
-    private static final double PULL_STRENGTH = 0.28D;
-
-    /** Cuantos ticks dura el tiron antes de reventar. */
-    private static final int PULL_TICKS = 10;
+    /**
+     * Los numeros viven en {@code CombatEnchantRules} y no aca, como todo el balance del proyecto.
+     *
+     * <p>Y son los que pidio el playtest: un viaje <b>lento y largo</b> que tira y lastima
+     * <em>mientras viaja</em>, y una <b>implosion</b> de seis ticks con un tiron violento al final.
+     * La version anterior hacia lo contrario -- el orbe cruzaba el alcance en un tercio de segundo
+     * y solo tiraba despues de clavarse, o sea que el tiron del camino no existia.</p>
+     */
+    private static final double TRAVEL_PULL_RADIUS =
+            CombatEnchantRules.PALA_ANTIMATERIAL_TRAVEL_PULL_RADIUS;
 
     /** El dueno, para que el estallido no le pegue a quien lo tiro. */
     private java.util.UUID owner;
 
     private int age;
     private boolean imploding;
+
+    /** Los ticks que lleva tragando. Ver {@code PALA_ANTIMATERIAL_IMPLODE_TICKS}. */
+    private int implodeTicks;
 
     public AntimatterOrb(EntityType<?> type, Level level) {
         super(type, level);
@@ -75,11 +80,7 @@ public class AntimatterOrb extends Entity {
             return;
         }
         ServerLevel server = (ServerLevel) this.level();
-
-        if (++age >= LIFETIME) {
-            this.discard();
-            return;
-        }
+        age++;
 
         // La cola del orbe. Va cada tick y no cada dos: a la velocidad a la que viaja, un punto
         // cada dos ticks deja huecos que se leen como un parpadeo.
@@ -87,11 +88,36 @@ public class AntimatterOrb extends Entity {
                 this.getX(), this.getY() + 0.2, this.getZ(), 2, 0.06, 0.06, 0.06, 0.0);
 
         if (imploding) {
-            pull(server);
-            if (age % PULL_TICKS == 0) {
+            // **La implosion son SEIS ticks de tiron fuerte, y despues el golpe.** Un tiron de un
+            // solo tick es un teleport: el cuerpo aparece pegado al orbe y el jugador no lee "me
+            // chupo", lee "se tecleo". Los seis ticks son lo que separa una implosion de una
+            // explosion, y ver `PALA_ANTIMATERIAL_IMPLODE_TICKS`.
+            pull(server, CombatEnchantRules.PALA_ANTIMATERIAL_PULL_RADIUS,
+                    CombatEnchantRules.PALA_ANTIMATERIAL_IMPLODE_PULL);
+            implodeTicks++;
+            if (implodeTicks >= CombatEnchantRules.PALA_ANTIMATERIAL_IMPLODE_TICKS) {
                 detonate(server);
             }
             return;
+        }
+
+        if (age >= CombatEnchantRules.PALA_ANTIMATERIAL_LIFETIME_TICKS) {
+            // **Se apaga sin cobrar, y eso lo separa de clavarse.** Un orbe que no toco nada en
+            // veintiocho bloques es un tiro al aire, y cobrarlo a esa distancia seria un ataque sin
+            // punteria. Un orbe perdido no espera.
+            this.discard();
+            return;
+        }
+
+        // **El viaje tira y lastima, y esa es la mitad del encantamiento.**
+        //
+        // Un orbe que solo explotara al final seria una granada con dibujo. Lo que lo hace otra
+        // cosa es que **arrastra mientras va**: el que esta a tres bloques viene, y el que queria
+        // correrse descubre que el orbe lo sigue alcanzando. Antes esto no pasaba -- el orbe cruzaba
+        // el alcance en un tercio de segundo y el tiron solo existia despues de clavarse.
+        pull(server, TRAVEL_PULL_RADIUS, CombatEnchantRules.PALA_ANTIMATERIAL_TRAVEL_PULL);
+        if (age % CombatEnchantRules.PALA_ANTIMATERIAL_TRAVEL_DAMAGE_TICKS == 0) {
+            bite(server);
         }
 
         // **El viaje se mueve a mano y no con `move()` a secas.** `hasPhysics` esta encendido,
@@ -107,18 +133,24 @@ public class AntimatterOrb extends Entity {
                 e -> e instanceof LivingEntity && e.isAlive() && !e.isSpectator());
 
         if (hitSomething || stopped || !touched.isEmpty()) {
-            // **Y no revienta en el instante en que toca: se clava y tira.** Los diez ticks de
-            // tiron son el encantamiento; el daño es la consecuencia. Reventar en el contacto
-            // haria que el radio de atraccion fuera decorativo.
+            // **Y no revienta en el instante en que toca: se clava y empieza a tragar.** Los seis
+            // ticks de la implosion SON el encantamiento; el dano es la consecuencia. Reventar en el
+            // contacto haria que el radio de atraccion fuera decorativo.
             imploding = true;
             this.setDeltaMovement(Vec3.ZERO);
-            age = Math.max(0, LIFETIME - PULL_TICKS - 1);
         }
     }
 
-    /** Tira de todo lo que este en el radio, hacia el orbe. */
-    private void pull(ServerLevel server) {
-        AABB box = this.getBoundingBox().inflate(CombatEnchantRules.PALA_ANTIMATERIAL_PULL_RADIUS);
+    /**
+     * Tira de todo lo que este en el radio, hacia el orbe, con la fuerza que le digan.
+     *
+     * <p>Un solo metodo para los dos tirones y no dos copias: el del viaje es suave y ancho y el de
+     * la implosion es fuerte y violento, y lo unico que cambia entre ellos son los dos argumentos.
+     * Dos bucles con las mismas cuatro guardas de "es un cuerpo que se puede mover" es como uno de
+     * los dos se olvida del dueno.</p>
+     */
+    private void pull(ServerLevel server, double radius, double strength) {
+        AABB box = this.getBoundingBox().inflate(radius);
         for (LivingEntity body : server.getEntitiesOfClass(LivingEntity.class, box)) {
             if (!body.isAlive() || body.isSpectator() || body.isRemoved()) {
                 continue;
@@ -130,7 +162,7 @@ public class AntimatterOrb extends Entity {
             if (toward.lengthSqr() < 1.0E-4) {
                 continue;
             }
-            Vec3 unit = toward.normalize().scale(PULL_STRENGTH);
+            Vec3 unit = toward.normalize().scale(strength);
             // Sin componente vertical: un tiron que levanta al rival lo saca del piso y el
             // estallido de despues lo encuentra en el aire, que es un cambio de posicion y no un
             // control. Se lo trae por el suelo.
@@ -139,6 +171,28 @@ public class AntimatterOrb extends Entity {
             server.sendParticles(ParticleTypes.PORTAL,
                     body.getX(), body.getY() + body.getBbHeight() * 0.5, body.getZ(),
                     3, 0.2, 0.2, 0.2, 0.05);
+        }
+    }
+
+    /**
+     * El mordisco del viaje: poco y seguido, para que el arrastre se sienta.
+     *
+     * <p><b>Va separado del tiron a proposito.</b> El tiron es posicion y esto es vida, y comparten
+     * el radio pero no el reloj: tirar todos los ticks esta bien -- es lo que hace que el cuerpo
+     * venga -- y pegar todos los ticks seria una ametralladora. Cada
+     * {@code PALA_ANTIMATERIAL_TRAVEL_DAMAGE_TICKS} ticks, y el numero lo lleva la regla.</p>
+     */
+    private void bite(ServerLevel server) {
+        AABB box = this.getBoundingBox().inflate(TRAVEL_PULL_RADIUS);
+        for (LivingEntity body : server.getEntitiesOfClass(LivingEntity.class, box)) {
+            if (!body.isAlive() || body.isSpectator() || body.isRemoved()) {
+                continue;
+            }
+            if (owner != null && owner.equals(body.getUUID())) {
+                continue;
+            }
+            body.invulnerableTime = 0;
+            body.hurt(ownerSource(server), CombatEnchantRules.PALA_ANTIMATERIAL_TRAVEL_DAMAGE);
         }
     }
 

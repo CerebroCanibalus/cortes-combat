@@ -1152,6 +1152,42 @@ public final class CombatEnchantRules {
     public static final float PALA_ANTIMATERIAL_BLAST_RADIUS = 4.0F;
     public static final float PALA_ANTIMATERIAL_DAMAGE = 14.0F;
 
+    /**
+     * Lo que viaja el orbe: despacio, y por eso se ve.
+     *
+     * <p><b>0,35 y no 1,2, que era el numero de la primera version.</b> El playtest pidio que la
+     * esfera "viaje toda la trayectoria, no debe ser muy rapida": a 1,2 bloques por tick cruzaba el
+     * alcance de la pala en un tercio de segundo, o sea que el orbe era un fogonazo y el tiron que
+     * tiene que hacer mientras viaja no llegaba a pasar. A 0,35 el viaje dura segundos, el jugador
+     * ve de donde viene el tiron y el enemigo tiene la opcion de correrse -- que es lo que hace que
+     * esto sea un ataque y no un boton.</p>
+     */
+    public static final double PALA_ANTIMATERIAL_SPEED = 0.35;
+
+    /** Lo que aguanta el orbe en vuelo. A la velocidad de arriba son unos veintiocho bloques. */
+    public static final int PALA_ANTIMATERIAL_LIFETIME_TICKS = 80;
+
+    /** El radio del tiron MIENTRAS viaja, y el tiron que aplica por tick. */
+    public static final float PALA_ANTIMATERIAL_TRAVEL_PULL_RADIUS = 3.0F;
+    public static final double PALA_ANTIMATERIAL_TRAVEL_PULL = 0.18;
+
+    /** Y el dano que va repartiendo en el camino: poco y seguido, para que se lea como arrastre. */
+    public static final float PALA_ANTIMATERIAL_TRAVEL_DAMAGE = 2.0F;
+    public static final int PALA_ANTIMATERIAL_TRAVEL_DAMAGE_TICKS = 5;
+
+    /**
+     * La implosion: los ticks que dura el tiron violento antes del golpe.
+     *
+     * <p><b>Seis ticks y no un instante, porque una implosion es un proceso y no un evento.</b> Un
+     * tiron de golpe es un teleport: el cuerpo aparece pegado al orbe y el jugador no lee "me
+     * chupo", lee "se tecleo". Seis ticks de tiron fuerte dan el tiempo justo para ver a los de
+     * alrededor venir, y son lo que separa una implosion de una explosion.</p>
+     */
+    public static final int PALA_ANTIMATERIAL_IMPLODE_TICKS = 6;
+
+    /** Y cuanto tira por tick en esos seis: casi dos bloques en total, contra los 0,18 del viaje. */
+    public static final double PALA_ANTIMATERIAL_IMPLODE_PULL = 0.32;
+
     // -------------------------------------------------- Rey de las Moscas (arcabuz)
 
     /**
