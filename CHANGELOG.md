@@ -1153,10 +1153,35 @@ Tres rondas, todas verificadas antes de dar por bueno cualquier guarda:
 | B (handler + adaptador + portabilidad) | borrar el gate de guardia, `heal()`→`setHealth()`, import de Minecraft en `SurvivalState`, descriptor a nombre pelado | exactamente 4: `theGuardGatesTheInterrupt`, `healingGoesThroughHeal`, `theRulesArePortable`, `liquidsAreRecognisedByAnimation` |
 | C (reglas + seam) | precio de curación a 0, borrar el reset del reloj, `food > 0`→`>= 0`, barra llena que cuenta en vez de descansar, `@At("HEAD")`→`@At(CONSTANT, "intValue=18")` | 9, y los 5 sabotajes están todos accounting: el de la barra llena mataba **dos** aserciones a la vez, que es correcto — el descanso del reloj es lo que sostiene ambas |
 
+### Tuneo de los dos números, antes del playtest (2026-10-12)
+
+El General pidió **la curación al doble de rápida y la comida al doble de lenta**:
+`healInterval` 40 → **20** (1 hp cada segundo) y `foodRegenInterval` 80 → **160** (1 punto cada ocho
+segundos). No son dos tweaks sueltos — juntos **cambian de dónde sale la tensión**: una barra entera
+compra veinte puntos de vida en veinte segundos y tarda 160 s en volver, así que la comida deja de
+ser un reloj que acompaña y pasa a ser lo que decide si se puede volver a pelear ahora o recién
+después.
+
+**Y el cambio expuso una segunda verdad que no estaba guardada.** Los defaults viven en dos
+sitios: `SurvivalTuning.DEFAULTS` (lo que corre antes de que cargue el config) y el
+`defineInRange` de `ServerConfig` (lo que se escribe en el TOML y lo que **todo mundo que ya tiene
+un `cortescombat-server.toml` tiene en disco**). Mover uno y no el otro habría dado un juego que
+cambia según cuál de los dos mires, sin ningún test que lo dijera. ∴ existe
+`theConfigDefaultsAreTheOnlyTruth`, que parsea los dos números del código y los compara contra el
+record — que es la misma clase de guard que el de los encantamientos, aplicada a un número en vez
+de a un archivo.
+
+Y el TOML de desarrollo se **borró**: NeoForge **no cambia** valores que ya están escritos, sólo
+agrega los faltantes, así que sin borrarlo el server de dev seguía corriendo 40/80 y toda
+verificación posterior habría mentido.
+
+1093 tests verdes.
+
 ### Lo que queda abierto
 
-- **Playtest.** `foodRegenInterval` (80) es, según el propio diseño, el número más importante del
-  proyecto, y sólo se tunea jugando. Y el seam de `FoodData` se ve corriendo con un jugador adentro.
+- **Playtest.** `foodRegenInterval` (160 desde el tuneo de 2026-10-12) es, según el propio diseño,
+  el número más importante del proyecto, y sólo se tunea jugando. Y el seam de `FoodData` se ve
+  corriendo con un jugador adentro.
 - **El golpe que interrumpe comer.** Implementado como `stopUsingItem()` de una sola vez; vanilla
   rearma el click sostenido cada 4 ticks, así que en la práctica **cada golpe pierde el mordisco y
   empieza de cero** — que es la lectura correcta de "se interrumpe", pero si en playtest suena a

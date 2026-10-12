@@ -128,9 +128,10 @@ Lo que necesito de esta vuelta:
 6. **La comida (paso 11, nuevo).** Lo que hay que mirar:
    - **Correr, picar y golpear ya no gastan comida.** Subí la barra a 20 con `/food`, corré un
      rato, rompé bloques: **tiene que quedarse en 20**. Si baja, el exhaustion sigue vivo.
-   - **La curación cuesta comida.** Bajate la vida y esperá: te cura 1 punto cada 2 s y **baja la
+   - **La curación cuesta comida.** Bajate la vida y esperá: te cura **1 punto cada 1 s** y **baja la
      comida 1 punto por punto curado**. Ese es el ciclo cerrado.
-   - **La comida vuelve sola.** 1 punto cada 4 s hasta 20, sin comer nada.
+   - **La comida vuelve sola.** 1 punto cada **8 s** hasta 20, sin comer nada. O sea: una barra
+     entera tarda 160 s en volver.
    - **Abajo de 6 de comida no te curás más.** Es el piso, y es el número a sentir.
    - **Líquidos: 20 ticks.** Poción, miel, leche y caldos se toman 1 s y no 1,6 s.
    - **Comer y recibir un golpe afuera de la guardia pierde el mordisco.** Con la guardia

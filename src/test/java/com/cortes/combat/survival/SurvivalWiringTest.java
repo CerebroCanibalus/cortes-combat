@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -258,7 +259,50 @@ class SurvivalWiringTest {
                         + "worst version of a silent bug");
     }
 
+    /**
+     * The two defaults are written in two files, and one of them is the number the game actually
+     * runs.
+     *
+     * <p>{@code SurvivalTuning.DEFAULTS} is what runs before a config has loaded;
+     * {@code ServerConfig}'s {@code defineInRange} is what the config file is written with and what
+     * every world that has a {@code cortescombat-server.toml} already has on disk. They are two
+     * copies of the same number, which is the exact shape this project keeps paying for -- so when
+     * the General halved the healing interval and doubled the food clock on 2026-10-12, moving one
+     * and not the other would have produced a game whose pre-config boot and whose config file
+     * disagreed, and no test anywhere would have said so.</p>
+     *
+     * <p>Parsed out of the source rather than loaded, because {@code ServerConfig} is NeoForge and
+     * cannot be touched by a bare JVM test. That also makes it survive a rename or a reformat, as
+     * long as the call still says what it does.</p>
+     */
+    @Test
+    @DisplayName("the config defaults and SurvivalTuning.DEFAULTS are the same numbers")
+    void theConfigDefaultsAreTheOnlyTruth() {
+        String config = read(ROOT.resolve("java").resolve("com").resolve("cortes").resolve("combat")
+                .resolve("config").resolve("ServerConfig.java"));
+
+        assertEquals(SurvivalTuning.DEFAULTS.healInterval(),
+                defaultFrom(config, "healInterval"),
+                "**healing interval is two different numbers.** One runs before the config loads, "
+                        + "the other is what every existing world already has on disk; a mismatch "
+                        + "means the game changes depending on which of the two you happen to be "
+                        + "reading, and nothing reports it");
+        assertEquals(SurvivalTuning.DEFAULTS.foodCycleInterval(),
+                defaultFrom(config, "foodRegenInterval"),
+                "**and so is the food clock.** Same argument, and this is the one the design calls "
+                        + "the most important number in the project");
+    }
+
     // --- helpers ----------------------------------------------------------------
+
+    private static int defaultFrom(String source, String name) {
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("defineInRange\\(\"" + name + "\", (\\d+),").matcher(source);
+        assertTrue(matcher.find(),
+                "`defineInRange(\"" + name + "\", <default>, ...)` has to be in ServerConfig, or "
+                        + "this guard is now asserting on nothing");
+        return Integer.parseInt(matcher.group(1));
+    }
 
     private static String methodBody(String source, String signature) {
         int start = source.indexOf(signature);

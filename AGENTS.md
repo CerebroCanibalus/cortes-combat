@@ -246,7 +246,8 @@ Pasos 1–10 hechos ⊕ verificados en cliente real. Librería de viewmodel, gua
 - **Aguante en HUD:** 3 esferitas tenues sobre la crosshair, visibles al llevar algo que bloquea.
 - **Supervivencia: la comida deja de ser energía.** ⊘ `exhaustion` — correr, picar y golpear no
   cuestan nada. La comida es **recurso de curación c/ ciclo cerrado**: se gasta al curar y se
-  regenera sola. Regen 1 hp cada 2 s, cura hasta 6 de comida; comer se interrumpe al recibir daño
+  regenera sola. Regen 1 hp cada s, comida cada 8 s (tuneado 2026-10-12), cura hasta 6 de comida;
+  comer se interrumpe al recibir daño
   **sólo si no estás cubierto** (la regen pasiva no); comida líquida 20 ticks. Pociones y manzana
   dorada rebalanceadas (curación
   I = 6, II = 12, manzana = 8).
@@ -401,8 +402,9 @@ ropera de madera en el tick 14 colapsara la tolerancia de un lunge ya legal.
 - **Guardia**: 100% excepto explosiones, aguante de **3 golpes**, arco frontal. Agotarse = stun. El
   hacha stunea de un golpe.
 - **Supervivencia**: la comida deja de ser energía (⊘ `exhaustion`) y es **recurso de curación c/ ciclo
-  cerrado**: se gasta al curar y se regenera sola. Regen 1 hp cada 2 s hasta 6 de comida; comer se
-  interrumpe al recibir daño; líquida 20 ticks.
+  cerrado**: se gasta al curar y se regenera sola. Regen 1 hp cada s y comida cada 8 s (tuneado
+  2026-10-12) hasta 6 de comida; comer se interrumpe al recibir daño **sólo si no estás cubierto**;
+  líquida 20 ticks.
 - **Aguante unificada escudo/espada**: se gasta **al recibir** un golpe bloqueado, **nunca** por
   mantener la guardia. ∴ la espada puede cubrirse indefinidamente gratis.
 - **Cubrir y comer es legal, c/ orden fijo**: primero te cubrís, después comés. Sale por construcción

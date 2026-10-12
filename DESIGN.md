@@ -180,12 +180,18 @@ El modelo final es un **recurso con ciclo cerrado**: la comida se gasta al curar
 
 ### Números propuestos (a validar en playtest)
 
-| Parámetro | Propuesta | Efecto |
+**Tuneado 2026-10-12, antes del primer playtest, por pedido del General:** `healInterval` **a la
+mitad** (40 → 20) y `foodRegenInterval` **al doble** (80 → 160). No son dos tweaks sueltos: curar
+el doble de rápido mientras la comida vuelve la mitad de rápido **hace que la barra de comida sea
+lo que decide la pelea y no el reloj**. Una barra entera compra veinte puntos de vida en veinte
+segundos, y reponerla tarda 160 s.
+
+| Parámetro | Valor | Efecto |
 |---|---|---|
-| `healInterval` | 40 ticks (2s) | 1 hp cada 2s |
-| `healFoodCost` | 1 de comida por hp | Curarse 20 de vida cuesta 20 de comida |
-| `foodRegenInterval` | 1 punto cada **4s** | Recuperas 1 hp cada 8s de forma sostenible |
-| Curar 20 de vida | ~160s de espera | Hay que comer para curar rápido en una pelea |
+| `healInterval` | 20 ticks (1s) | 1 hp cada 1s |
+| `healFoodCost` | 1 de comida por hp | Curarse 20 de vida cuesta 20 de comida, o sea la barra entera |
+| `foodRegenInterval` | 1 punto cada **8s** | Recuperas 1 hp cada 8s de forma sostenible |
+| Curar 20 de vida | 20s, y la barra tarda **160s** en volver | Hay que comer para curar rápido en una pelea |
 
 **`[TRAMPA]`** Si `foodRegenInterval` es rápido demais, la comida deja de importar y el sistema es decorativo. Si es lento demais, pelear es un callejón sin salida, que es justo lo que este mod viene a arreglar. Es el número más importante de tunear del proyecto y solo se ajusta con playtest, no con intuición.
 

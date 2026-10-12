@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * interrupted starts over. Those are rules, and a rule written backwards looks identical to one
  * written forwards until somebody plays it.</p>
  *
- * <p>Not asserted: whether forty ticks is the right interval, whether six is the right floor.
+ * <p>Not asserted: whether twenty ticks is the right interval, whether six is the right floor.
  * {@code ARCHITECTURE.md} section 7 is explicit that these are tuned by playing, and a test that
  * confirmed a number against itself would be the worst kind -- green while proving nothing.</p>
  */
@@ -314,12 +314,16 @@ class SurvivalRulesTest {
     }
 
     @Test
-    @DisplayName("the defaults are the numbers DESIGN section 5 proposes")
+    @DisplayName("the defaults are the numbers the game actually runs")
     void theDefaultsAreTheProposals() {
-        assertEquals(40, DEFAULTS.healInterval(), "one point every two seconds");
+        assertEquals(20, DEFAULTS.healInterval(),
+                "one point every second -- halved from the design's 40 on 2026-10-12, because "
+                        + "recovering during a fight has to be something a player feels");
         assertEquals(1, DEFAULTS.healFoodCost(), "one food per point healed");
         assertEquals(6, DEFAULTS.minFoodToHeal(), "healing down to six food, against vanilla's 18");
-        assertEquals(80, DEFAULTS.foodCycleInterval(), "one food point every four seconds");
+        assertEquals(160, DEFAULTS.foodCycleInterval(),
+                "one food point every eight seconds -- doubled from the design's 80 on 2026-10-12, "
+                        + "so the food bar decides the fight instead of the clock");
     }
 
     private static int countHeals(SurvivalTuning tuning, int ticks, int food) {
