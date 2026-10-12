@@ -126,7 +126,17 @@ public class CortesCombatClient {
         // art is an .mcmeta animation (four frames read off the strip's height), so the particle
         // only binds the sprite set and the atlas walks the frames. No UV cutting, no frame count
         // in Java. SimpleParticleType as the option type, because it carries no data.
-        event.registerSpriteSet(com.cortes.combat.registry.ModParticleTypes.SANGRE.get(),
+        //
+        // **Y decia SANGRE, que era el tipo equivocado.** El efecto de purificacion del cobre
+        // spawnea PURIFIED desde PurificationEffect:75, y con el proveedor registrado sobre SANGRE
+        // ese tipo se quedaba SIN proveedor: ParticleEngine devuelve null para un tipo sin
+        // proveedor y el cliente descarta la particula en silencio, sin error y sin log. O sea que
+        // la purificacion cobraba el dano y no se dibujaba nunca. El sintoma es el mismo que ya
+        // costo el slash: una particula que se registra, se spawnea, y no se ve.
+        //
+        // Y el segundo registerSpriteSet de abajo -- el de SangreParticle -- pisaba a este, asi que
+        // PurifiedParticle era codigo muerto por partida doble.
+        event.registerSpriteSet(com.cortes.combat.registry.ModParticleTypes.PURIFIED.get(),
                 sprites -> (options, level, x, y, z, dx, dy, dz) ->
                         new com.cortes.combat.particle.PurifiedParticle(
                                 level, x, y, z, dx, dy, dz, sprites));
@@ -145,6 +155,20 @@ public class CortesCombatClient {
         event.registerSpriteSet(com.cortes.combat.registry.ModParticleTypes.MOSCA.get(),
                 sprites -> (options, level, x, y, z, dx, dy, dz) ->
                         new com.cortes.combat.particle.MoscaParticle(
+                                level, x, y, z, dx, dy, dz, sprites));
+
+        // **La lectura de un golpe.** El proveedor recibe las opciones, y de ahi salen las dos
+        // cosas que el punto necesita: el color del split y cual de las DOS texturas usar. El
+        // sprite se elige por indice dentro de la particula, no por edad -- ver HurtParticle.
+        event.registerSpriteSet(com.cortes.combat.registry.ModParticleTypes.HURT.get(),
+                sprites -> (options, level, x, y, z, dx, dy, dz) ->
+                        new com.cortes.combat.particle.HurtParticle(
+                                level, x, y, z, dx, dy, dz, sprites, options));
+
+        // El corazoncito verde. Sin opciones: el color esta en el arte y el ascenso en la clase.
+        event.registerSpriteSet(com.cortes.combat.registry.ModParticleTypes.CURAR.get(),
+                sprites -> (options, level, x, y, z, dx, dy, dz) ->
+                        new com.cortes.combat.particle.CurarParticle(
                                 level, x, y, z, dx, dy, dz, sprites));
     }
 

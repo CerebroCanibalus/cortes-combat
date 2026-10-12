@@ -78,7 +78,7 @@ jugador aprende 12 sin que nadie se lo diga. **Todos los tipos de 1.21.1 están 
 | Tipo | Color | rgb | Por qué ese |
 |---|---|---|---|
 | `cortescombat:axe_charged` | rojo intenso | `0xFF3B1B` | el hacha cargada **conserva** la armadura y la destroza al doble → ⊘ es "puro" |
-| `cortescombat:warhammer_ignored_armour` | blanco puro | `0xFFFFFF` | **es** el que atraviesa → comparte familia con el "puro" |
+| `cortescombat:warhammer_ignored_armour` | blanco | `0xF2F2F2` | **es** el que atraviesa → comparte el color con el "puro", ⊘ uno propio |
 
 **Los efectos del mod** (veneno propio): `MOCO`, sangrado de `destripamiento`, `AntiHealing` →
 **verde enfermo `0x5FA83C`**. Es la familia "veneno" que tu ejemplo pide.

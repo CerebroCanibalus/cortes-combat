@@ -16,7 +16,8 @@
     "PlayerModelMixin",
     "SpecialRightClickMixin",
     "ArcabuzGuiIconMixin",
-    "TrabazonSprintMixin"
+    "TrabazonSprintMixin",
+    "OverlayTextureMixin"
   ],
   "injectors": {
     "defaultRequire": 1
