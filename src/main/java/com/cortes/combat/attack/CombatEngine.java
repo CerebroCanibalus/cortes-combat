@@ -368,11 +368,17 @@ public final class CombatEngine {
             if (pierced != null) {
                 armour.addTransientModifier(pierced);
             }
+            // **La vida de ESTE golpe, no la del swing.** El sable cargado pega dos veces, y tomar
+            // esto una sola vez antes del bucle haría que la segunda lectura restara las dos --
+            // o sea que el segundo corte se cobraría el daño del primero.
+            float beforeThisHit = armoured == null ? 0.0F : armoured.getHealth();
+            // **La fuente, una sola vez.** La necesitan el `hurt` y la lectura del impacto, y dos
+            // llamadas al mismo método serían dos lugares donde las dos pueden discrepar -- y
+            // discreparían justo cuando alguien agregue un arma con otro tipo de daño.
+            DamageSource hitSource = damageSource(player, result.ignoredArmour(), result.axeCharged());
             boolean hurt;
             try {
-                hurt = target.hurt(
-                        damageSource(player, result.ignoredArmour(), result.axeCharged()),
-                        result.damage());
+                hurt = target.hurt(hitSource, result.damage());
             } finally {
                 // En un `finally` y no después: `hurt` puede tirar por un mod de terceros, y una
                 // armadura que queda baja para siempre es exactamente el bug que este encantamiento
@@ -399,6 +405,22 @@ public final class CombatEngine {
                     player.heal(result.damage() * leech);
                 }
                 applyOnHitEffects(player, armoured, chargeRatio);
+                // **La lectura del impacto: los puntos de color.**
+                //
+                // Cuánto entró, cuánto comió la armadura y cuánto la poción, con el reparto de
+                // HitReadout sobre el total de vanilla. Va acá y no en `landTheHit` porque es
+                // **por golpe que aterriza**: el sable cargado pega dos veces y los dos cortes
+                // tienen que verse, que es justamente lo que el playtest pidió cuando dijo que
+                // "pega doble" y el juego no lo mostraba.
+                //
+                // Server-side como el slash, y por la misma razón: todos tienen que verlo.
+                if (armoured != null
+                        && player.level() instanceof net.minecraft.server.level.ServerLevel server) {
+                    com.cortes.combat.particle.HitParticles.impact(server, armoured,
+                            DamageSplit.of(armoured, hitSource, result.damage(),
+                                    beforeThisHit, armoured.getHealth()),
+                            chargeRatio >= DamageResolver.FULL_CHARGE);
+                }
                 // **The wear the replaced flow dropped, and the reason nothing in this game has
                 // ever lost a point of durability.** Vanilla's own `postHurtEnemy` calls
                 // `hurtAndBreak(1, attacker, MAINHAND)` on a landed hit, and it lives on the item
