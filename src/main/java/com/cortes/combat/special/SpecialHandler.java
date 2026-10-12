@@ -76,19 +76,18 @@ public final class SpecialHandler {
         // attack cooldown -- so it must NOT go through it. Routing the parry through the swing
         // cooldown would make the sabre unable to parry because it swung two ticks ago, which is a
         // rule nobody would design on purpose and which reads as the button being broken.
-        // **Pala Antimaterial: el click derecho suelta el orbe.**
+        // **Aca habia un `launchAntimatter` que disparaba el orbe en el PRESS, y era el bug que el
+        // playtest reporto como "doy click e inmediatamente saca el ataque".**
         //
-        // Va al tope, antes de todos los demas, porque el perfil de la pala tiene la especial en
-        // `NONE` -- el orbe no es "la especial de la pala", es lo que el encantamiento le agrega
-        // al boton. Asi que la puerta es el encantamiento y no el perfil, que es lo contrario de
-        // todos los otros casos y es correcto: sin el encantamiento la pala no tiene click derecho
-        // y con el si, sin que la tabla de perfiles se entere.
-        if (CombatEnchantments.level(level.registryAccess(), held,
-                CombatEnchantments.PALA_ANTIMATERIAL) > 0) {
-            launchAntimatter(player, level);
-            return;
-        }
-
+        // Cuando la pala estreno la carga, este bloque deberia haberse ido con ella y se quedo: el
+        // `SpecialPayload` del press llegaba, encontraba el encantamiento y soltaba el orbe en el
+        // mismo tick, asi que la carga nunca llegaba a contar. El `SpecialHeldPayload` del mismo
+        // press arrancaba el contador en paralelo, pero el orbe ya estaba en el aire.
+        //
+        // **El orbe se dispara en un solo lugar: `PalaOrbCharge#release`, al soltar con la carga
+        // llena.** Este metodo solo resuelve las especiales que el PERFIL declara, y la pala tiene
+        // la suya en `NONE` a proposito -- por eso cae por todos los `if` de abajo y no hace nada,
+        // que es exactamente lo que tiene que hacer un press que todavia no solto nada.
         if (stats.special() == SpecialType.MULTI_HIT) {
             if (!AttackCooldown.isReady(player)) {
                 return;
