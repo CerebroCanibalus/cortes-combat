@@ -410,7 +410,21 @@ public final class SpecialHandler {
      * -- atrae y pega lo mismo -- y el costo sigue siendo el cooldown.</p>
      */
     private static void launchAntimatter(ServerPlayer player, ServerLevel level) {
-        if (!AttackCooldown.isReady(player)) {
+        // **La linea que dice si el orbe sale, y va al tope y ANTES del `return`.**
+        //
+        // Hasta ahora este metodo no dejaba ninguna: disparar el orbe, no dispararlo y no llegar
+        // nunca aca daban el **mismo log vacio**. Un encantamiento que no hace nada y uno que hace
+        // algo que no se ve se diagnostican igual sin una linea, y este proyecto ya pago dos veces
+        // esa leccion -- la traza no puede vivir adentro del `if` que intenta diagnosticar.
+        //
+        // Imprime la puerta y su veredicto, que es el patron de `/cc input`: el numero que consulta
+        // y lo que contesto. Sin eso, "no sale el orbe" sigue significando ocho cosas.
+        boolean ready = AttackCooldown.isReady(player);
+        com.cortes.combat.CortesCombat.LOGGER.info("[pala] orbe: listo={} item={} nivel={}",
+                ready, player.getMainHandItem().getItem().getDescriptionId(),
+                CombatEnchantments.level(level.registryAccess(), player.getMainHandItem(),
+                        CombatEnchantments.PALA_ANTIMATERIAL));
+        if (!ready) {
             return;
         }
         AttackCooldown.consume(player, CombatEnchantRules.PALA_ANTIMATERIAL_COOLDOWN_TICKS);
