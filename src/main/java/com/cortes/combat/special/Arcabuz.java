@@ -136,6 +136,11 @@ public final class Arcabuz {
                 fuse = (int) (fuse * CombatEnchantRules.MUNGUS_CHARGE_FACTOR);
             }
             player.setData(ModAttachments.ARCABUZ.get(), state.light(fuse));
+            // **Y la accion queda anotada contra ESTA arma.** La mecha arde veinte ticks -- cuarenta
+            // con Mungus -- y en ese rato el arma puede salir de la mano. Sin esta linea, `fire`
+            // disparaba la que estuviera en la mano al final del conteo, con la potencia de la
+            // primera y las estadisticas de la segunda. Ver `ModAttachments.ARCABUZ_GUN`.
+            player.setData(ModAttachments.ARCABUZ_GUN.get(), player.getMainHandItem());
             // **And off the stack, in the same breath as off the record.**
             //
             // Spent in the chamber and not at the shot, so the two cannot drift: a gun that fired
@@ -154,7 +159,18 @@ public final class Arcabuz {
             return;
         }
 
-        if (state.canReload() && ammoSlot(player, player.getMainHandItem()) < 0) {
+        // **En creativo la recarga no pide la Firestone, y SOLO en creativo.**
+        //
+        // Es la unica excepcion a "el arma cobra lo que dice cobrar", y la razon es que en creativo
+        // el jugador ya tiene acceso infinito a la municion por otra via -- saca un stack del menu
+        // cuando quiera -- asi que exigirla no hace el arma mas cara: hace que probarla cueste dos
+        // pasos en vez de uno. Lo que NO cambia es el tiempo: la recarga sigue durando lo que dura y
+        // la mecha sigue ardiendo. Un creativo instantaneo si seria un arma distinta.
+        //
+        // El modo se pregunta por `isCreative` y no por `isSpectator` tambien: un espectador no
+        // deberia disparar nada, y `canReload` ya lo corta antes por otras vias.
+        boolean freeAmmo = player.isCreative();
+        if (state.canReload() && !freeAmmo && ammoSlot(player, player.getMainHandItem()) < 0) {
             // **The fifth refusal, and the one that had no line of its own.** The reload used to
             // open on any press of an empty gun, so holding the button for two and a half seconds
             // drew the entire reload motion -- the lean that reads as the loaded pose -- and then
@@ -181,6 +197,13 @@ public final class Arcabuz {
             // a flag the press had just cleared, so the gun took the reload and never filled.
             int reloadTotal = reloadTicks(player.getMainHandItem(), player);
             player.setData(ModAttachments.ARCABUZ.get(), state.startReload(reloadTotal).withHeld(true));
+            // **Y la recarga queda anotada contra ESTA arma.** Es el bug mas caro de la ronda:
+            // cincuenta ticks despues, `load` le ponia la Firestone a la que estuviera en la mano
+            // entonces -- y como cambiar de un arcabuz a otro no dispara el `shouldSnuff` de mas
+            // abajo (las dos son arcabuces), recargar una armaba la otra. Ver
+            // `ModAttachments.ARCABUZ_GUN` y, para el porque, `CrossbowItem#onUseTick`, que recibe el
+            // stack que se esta usando y escribe la carga en ESE.
+            player.setData(ModAttachments.ARCABUZ_GUN.get(), player.getMainHandItem());
             // **The press sound is NOT played here, and its absence is the fix.**
             //
             // It used to be, and this is the line that has to go for the reload to be able to
@@ -269,7 +292,11 @@ public final class Arcabuz {
         ItemStack weapon = player.getMainHandItem();
         AmmoProfile ammo = declaredAmmo(player, weapon);
         int found = ammoSlot(player, weapon);
-        if (found < 0) {
+        // **En creativo no hace falta tenerla, y no se cobra.** Ver `resolve`: el modo no abarata el
+        // TIEMPO de la recarga, solo el paso de conseguir el item. Fuera de creativo esto sigue
+        // siendo la quinta negativa silenciosa y sigue devolviendo `false`.
+        boolean freeAmmo = player.isCreative();
+        if (found < 0 && !freeAmmo) {
             trace(player, player.getData(ModAttachments.ARCABUZ.get()),
                     "sin munición (" + ammo.itemId() + ")");
             return false;
@@ -278,7 +305,9 @@ public final class Arcabuz {
         // y con `count` en el perfil un arma puede gastar mas de una por disparo -- que es como
         // se balancea un arma que dispara de a tres sin que el escaneo del inventario tenga que
         // saber nada de eso. El piso lo pone `AmmoProfile.of`, que nunca deja bajar de uno.
-        player.getInventory().removeItem(found, ammo.count());
+        if (found >= 0) {
+            player.getInventory().removeItem(found, ammo.count());
+        }
         // **The charge lands on the stack, in the same statement that pays for it.**
         //
         // The firestone comes out of the inventory here and goes into *this gun*, so the write is
@@ -446,6 +475,33 @@ public final class Arcabuz {
             return;
         }
 
+        // **Cambio de ARMA, y el filtro de arriba no lo ve.**
+        //
+        // `shouldSnuff` solo pregunta "¿dejo de haber un arcabuz en la mano?", asi que pasar de un
+        // arcabuz a otro lo atraviesa sin que nadie se entere. La accion en vuelo -- la recarga que
+        // corre o la mecha que arde -- pertenece **al arma que la empezo**, y con otro arcabuz en la
+        // mano ya no hay accion: la habria cobrado el arma equivocada. Ver
+        // `ModAttachments.ARCABUZ_GUN`, que es donde vive la respuesta a "¿cual?".
+        //
+        // **Y esto no es solo por el bug de la recarga: es tambien la mitad de #3.** El cliente se
+        // olvida de todo cuando el arma sale de la mano (`ItemViewModel.clearArcabuz`) y el servidor
+        // solo le vuelve a hablar cuando su estado *se mueve*. Retomar un arma cuyo estado ya estaba
+        // quieto no movia nada, asi que el cliente se quedaba dibujando lo que recordaba: un arma
+        // cargada con la pose de una vacia. Cancelar aca deja el estado en EMPTY, y la reconciliacion
+        // de mas abajo ve la diferencia contra la recamara del stack y **tiene** que mandarla.
+        net.minecraft.world.item.ItemStack heldNow = player.getMainHandItem();
+        net.minecraft.world.item.ItemStack ownerGun =
+                player.getData(ModAttachments.ARCABUZ_GUN.get());
+        if (ownerGun != net.minecraft.world.item.ItemStack.EMPTY && ownerGun != heldNow) {
+            LOG.info("[arcabuz] accion cancelada: el arma en la mano no es la que la empezo "
+                    + "(dejo de estar recargando/quemando)");
+            player.setData(ModAttachments.ARCABUZ_GUN.get(),
+                    net.minecraft.world.item.ItemStack.EMPTY);
+            player.setData(ModAttachments.ARCABUZ.get(), ArcabuzState.EMPTY);
+            ModNetworking.sendArcabuzFuse(player, false, 0, false, 0);
+            return;
+        }
+
         // **The gun came back to the hand, so the client needs telling what it is holding.**
         //
         // This is the other half of the snuff above, and it was the half nobody wrote. Swapping to a
@@ -555,6 +611,28 @@ public final class Arcabuz {
      * size has earned. A shotgun with its own wider cone would be a second set of numbers to keep
      * in step with this one, and the client would have to resolve both.</p>
      */
+    /**
+     * El culatazo: empuja al que disparo, hacia atras y por el suelo.
+     *
+     * <p><b>Hacia atras y no arriba.</b> El retroceso de un arma de verdad levanta el cañon; al
+     * jugador no lo levanta, y un empuje vertical lo saca del piso y lo deja en el aire despues de
+     * cada disparo -- que se lee como un glitch y no como un arma pesada. Se empuja por el suelo,
+     * que es lo que se siente como "me movio".</p>
+     *
+     * <p>Mungus empuja el doble: es el tiro mas caro del catalogo, y si algo tiene que sentirse como
+     * un cañon de asedio es ese.</p>
+     */
+    private static void recoil(ServerPlayer player, int mungus) {
+        Vec3 look = player.getLookAngle().normalize();
+        double push = ArcabuzMuzzle.RECOIL
+                * (mungus > 0 ? ArcabuzMuzzle.MUNGUS_RECOIL_FACTOR : 1.0D);
+        // `push` suma a la velocidad y `hurtMarked` es lo que manda esa velocidad al cliente: sin la
+        // segunda linea el empuje existe en el servidor y el jugador no lo ve, que es la forma en que
+        // un retroceso se siente como un teleport al siguiente paquete de posicion.
+        player.push(-look.x * push, 0.0D, -look.z * push);
+        player.hurtMarked = true;
+    }
+
     private static void fire(ServerPlayer player, ServerLevel level) {
         WeaponStats stats = WeaponStats.of(player.getMainHandItem());
         // The item could have changed in the twenty ticks the fuse burned -- and the left click
@@ -593,6 +671,14 @@ public final class Arcabuz {
         // tres TNT juntas, un crater que rompe piedra y tierra pero no obsidiana.
         int mungus = CombatEnchantments.level(level.registryAccess(), player.getMainHandItem(),
                 CombatEnchantments.MUNGUS);
+        // **El culatazo, y va ACA y no al final.**
+        //
+        // Un disparo empuja al que dispara hacia atras, y es lo unico que el jugador siente del
+        // retroceso: el arma no se mueve sola en primera persona sin algo que la respalde. Se aplica
+        // antes de las dos ramas de abajo porque las dos salen con `return` -- al final del metodo no
+        // correria nunca, y el sintoma seria "el culatazo no funciona con Mungus ni con las moscas",
+        // que es justo las dos que mas lo deberian sentir.
+        recoil(player, mungus);
         if (mungus > 0) {
             Vec3 aim = player.getEyePosition()
                     .add(player.getLookAngle().normalize().scale(ArcabuzMuzzle.FORWARD));

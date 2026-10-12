@@ -291,8 +291,24 @@ public final class ClientArcabuzShot {
         // has three candidate causes -- the frame is not captured, the frame is captured and the
         // offset is wrong, or the frame is wrong -- and they look identical from outside. One line
         // per lighting, at debug, separates them without a screenshot.
+        //
+        // **`distOjo` es el numero que decide, y por eso se agrego.** La posicion sola no dice nada
+        // sin saber donde estaba el jugador. La interfaz de esta posicion es
+        // `ojo + adelante + derecha + arriba`, asi que:
+        //   distOjo < 0,2  ->  las tres contribuciones son cero y el humo nace sobre la LENTE, o sea
+        //                      la matriz de pose esta degenerada. Es el reporte.
+        //   distOjo ~ 0,7  ->  el humo sale del arma, y lo que esta mal es el offset dentro del
+        //                      modelo, que si es un retune.
+        // Y `traslacion` es la matriz cruda: el desplazamiento del item en el marco de la vista
+        // deberia rondar (0,56, -0,52, -0,72) segun `ItemInHandRendererMixin`. Ceros ahi es la prueba
+        // directa de que la pose capturada no es la del arma dibujada.
+        org.joml.Matrix4f matrix = ItemViewModel.drawnFrame();
+        double eyeDistance = at.distanceTo(mc.gameRenderer.getMainCamera().getPosition());
         org.slf4j.LoggerFactory.getLogger("cortescombat").debug(
-                "[arcabuz/mecha] fumo en {} (matriz={})", at, ItemViewModel.drawnFrameIsValid());
+                "[arcabuz/mecha] fumo en {} (matriz={} traslacion=({}, {}, {}) distOjo={})",
+                at, ItemViewModel.drawnFrameIsValid(),
+                String.format("%.3f", matrix.m30()), String.format("%.3f", matrix.m31()),
+                String.format("%.3f", matrix.m32()), String.format("%.3f", eyeDistance));
     }
 
     /** Whether the fuse was lit on the previous call. See the method above. */

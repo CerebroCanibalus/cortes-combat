@@ -70,6 +70,20 @@ public final class ArcabuzMuzzle {
     public static final double UP = -0.18;
 
     /**
+     * El culatazo: cuanto empuja el disparo al que dispara, en velocidad.
+     *
+     * <p><b>0,25 es "ligeramente" medido, no elegido.</b> {@code push} suma a la velocidad y un
+     * jugador en el piso frena a razon de 0,6 por tick, asi que el desplazamiento total es
+     * {@code 0,25 / (1 - 0,6)} = <b>unos sesenta centimetros</b>: se siente el empujon y no te saca de
+     * donde estabas parado. Es un tercio del impulso base de un lunge y la mitad de un empuje de
+     * martillo, que es la escala que el juego ya tiene para "te movio un poco".</p>
+     */
+    public static final double RECOIL = 0.25;
+
+    /** Y Mungus empuja el doble. Ver {@code Arcabuz#recoil}. */
+    public static final double MUNGUS_RECOIL_FACTOR = 2.0;
+
+    /**
      * The flash: how many particles, and how far apart they are spread.
      *
      * <p>Three and a twentieth of a block. One particle is a dot, and a dot at the muzzle of a
@@ -131,39 +145,35 @@ public final class ArcabuzMuzzle {
     public static final double FUSE_SMOKE_SPEED = 0.05;
 
     /**
-     * Where the fuse is, in the item's own frame: right, up, and forward from where the hand puts
-     * the weapon.
+     * Donde esta la mecha, <b>en el marco del item</b>: a la derecha, arriba y adelante del punto
+     * donde la mano pone el arma.
      *
-     * <p><b>These three are the numbers to tune, and they are the only ones in this file that were
-     * not checked against something.</b> The rest of it is read off the model or off vanilla; these
-     * three are the distance from the item's root to the {@code mecha} element of
-     * {@code models/item/arcabuz.json}, and the conversion from that element's model units into
-     * this frame could <b>not</b> be derived from the sources: {@code ItemRenderer} applies the
-     * display transform and then {@code translate(-0.5, -0.5, -0.5)} and nothing else, so the
-     * model-to-pose scale is somewhere this reading did not reach.</p>
+     * <p><b>Estos tres son los unicos numeros SIN VERIFICAR del archivo</b>, y su propio texto lo
+     * admite: la conversion de unidades del modelo a este marco no se pudo derivar de las fuentes,
+     * asi que quedaron elegidos a ojo. El marco en el que se usan, en cambio, sale de la matriz de
+     * pose que el renderer entrega -- y ese marco es lo que se esta investigando ahora mismo.</p>
      *
-     * <p>They are seeded from where the <em>muzzle</em> already is relative to the same root --
-     * {@link #FORWARD}, {@link #RIGHT} and {@link #UP} are camera-relative and {@code ItemViewModel}
-     * places the root at {@code ITEM_POS}, so the difference between the two is the gun's own
-     * geometry in this frame -- and then pulled back towards the grip and down off the bore,
-     * because a flintlock's pan is behind and below its muzzle.</p>
+     * <p><b>NO se tocan todavia, y esa es la decision.</b> El playtest reporto "la particula de humo
+     * sale de en medio de la pantalla", y en medio de la pantalla es la camara: {@code fuseTip} arma
+     * la posicion como {@code ojo + adelante + derecha + arriba}, asi que <b>una matriz cuyo
+     * desplazamiento salga cero deja las tres contribuciones en nada</b> y el humo nace sobre la
+     * lente. Es el mismo sintoma que ya tuvo la version anterior con un offset fijo en el marco de la
+     * camara -- o sea que hay al menos dos causas posibles y se ven identicas.</p>
      *
-     * <p>What is <em>not</em> a guess is the frame they are used in. That comes from the pose
-     * matrix the renderer hands us, so the sparks leave the drawn weapon rather than the camera, and
-     * moving these three is a retune. Changing the frame would be a rewrite.</p>
+     * <p>Antes de mover un solo numero hace falta saber cual es, y eso lo contesta el log, que ya
+     * imprime la posicion: la linea {@code [arcabuz/mecha]} ahora imprime tambien la traslacion de
+     * la matriz y la distancia al ojo. <b>Distancia al ojo menor a 0,2 es la camara; alrededor de
+     * 0,7 es el arma.</b> Un tercer ancla inventada sin ese dato seria la tercera suposicion de la
+     * misma serie.</p>
      */
     public static final double FUSE_RIGHT = -0.15;
 
-    /** How far above the item's root the fuse sits, in the item's frame. */
+    /** Como referencia: cuanto sube la mecha desde la raiz del item, en su marco. */
     public static final double FUSE_UP = 0.10;
 
-    /**
-     * How far forward of the item's root the fuse sits, in the item's frame.
-     *
-     * <p>Near zero on purpose: the hand is roughly at the middle of a musket and the pan is a
-     * little behind that.</p>
-     */
+    /** Como referencia: cuanto avanza la mecha desde la raiz del item, en su marco. */
     public static final double FUSE_FORWARD = 0.02;
+
     public static final int LAVA_PER_TARGET = 4;
 
     /**

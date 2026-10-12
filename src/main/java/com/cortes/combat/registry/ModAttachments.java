@@ -207,6 +207,39 @@ public final class ModAttachments {
                     .build());
 
     /**
+     * <b>El arcabuz al que pertenece la accion en vuelo</b>: la recarga que esta corriendo o la
+     * mecha que esta ardiendo.
+     *
+     * <h2>Por que hace falta, y el bug que arregla</h2>
+     *
+     * <p>Porque el disparo y la recarga leian <b>{@code player.getMainHandItem()}</b> en el momento
+     * de cobrar, y ese momento puede ser cincuenta ticks despues de que el jugador apretara.
+     * Recargar un arcabuz, cambiar a otro a mitad de la recarga y esperar: al terminar, {@code load}
+     * le ponia la Firestone <b>al arma que estaba en la mano ahora</b> -- la segunda -- y le sacaba
+     * la municion del inventario al jugador. La segunda quedaba cargada sin que nadie la hubiera
+     * recargado, y la primera se quedaba vacia. Es el reporte del playtest, palabra por palabra.</p>
+     *
+     * <p><b>La ballesta de vanilla no tiene ese agujero, y la respuesta esta en su firma:</b>
+     * {@code CrossbowItem#onUseTick} recibe el {@code ItemStack} que se esta usando y
+     * {@code performCharge} escribe la carga <b>en ese stack</b>, no en el de la mano. La accion
+     * pertenece a un arma concreta porque el arma es el sujeto de la accion, no el jugador.</p>
+     *
+     * <p><b>Referencia y no copia, y a proposito.</b> {@code ItemStack} no sobreescribe
+     * {@code equals}, asi que comparar dos es comparar identidad: es exactamente la pregunta
+     * "sigue siendo el mismo objeto de inventario". Dos arcabuces vacios son indistinguibles por
+     * contenido -- {@code ItemStack.matches} diria que son el mismo -- y tienen que ser
+     * distinguibles por identidad, porque el jugador ve dos ranuras distintas.</p>
+     *
+     * <p>Sin codec: es una accion en vuelo, no un estado. Un arcabuz a medio recargar que se guarda
+     * con el mundo no existe -- ver {@code PENDING_HIT} para la misma regla.</p>
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<net.minecraft.world.item.ItemStack>>
+            ARCABUZ_GUN = ATTACHMENT_TYPES.register("arcabuz_gun", () -> AttachmentType
+                    .<net.minecraft.world.item.ItemStack>builder(
+                            () -> net.minecraft.world.item.ItemStack.EMPTY)
+                    .build());
+
+    /**
      * La carga del boton DERECHO: la pala antimaterial hoy, y las armas magicas que vengan.
      *
      * <p><b>Es el mismo {@link ChargeState} que la del izquierdo y no un tipo nuevo.</b> "Un boton

@@ -15,35 +15,47 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * The musket: a sprite in a screen, the gun everywhere else.
+ * The musket: the flat sprite where things are listed, the gun where it is held.
  *
- * <h2>What was wrong</h2>
+ * <h2>The question, and where it can be answered</h2>
  *
  * <p>The arcabuz ships two shapes -- the built model in three dimensions, and a flat sprite for
  * slots -- and the choice used to live in a model override keyed on a predicate that asked
  * {@code Minecraft.screen != null}. <b>That predicate is true for the hand too.</b> Open the
- * inventory while holding the gun and the item in hand stopped being a gun: the viewmodel was
- * drawn from the sprite the inventory uses, and it changed back the moment the screen closed. A
- * predicate answers "what does this stack look like", and the question is actually "where is it
- * being drawn", which only the renderer knows.</p>
+ * inventory while holding the gun and the item in hand stopped being a gun. A predicate answers
+ * "what does this stack look like", and the real question is "where is it being drawn", which only
+ * the renderer knows.</p>
  *
- * <h2>Where the question can be answered</h2>
+ * <p><b>Here, and nowhere else.</b> {@code render} receives the {@link ItemDisplayContext} for the
+ * frame it is about to draw, and vanilla solves this exact problem in this exact method for the
+ * trident and the spyglass:</p>
  *
- * <p><b>Here, and not in the predicate.</b> {@code render} receives the {@link ItemDisplayContext}
- * for the frame it is about to draw, and vanilla solves this exact problem in this exact method for
- * the trident and the spyglass: when the context is {@code GUI}, {@code GROUND} or {@code FIXED} it
- * swaps the three-dimensional model for the flat one, and in any other context it draws what the
- * item's own model resolved to. This is the same move with the same shape.</p>
+ * <pre>{@code
+ * boolean flat = displayContext == GUI || displayContext == GROUND || displayContext == FIXED;
+ * if (flat && stack.is(Items.TRIDENT)) { model = getModel(TRIDENT_MODEL); }
+ * }</pre>
  *
- * <p>The hotbar keeps the gun, and the reason is the same one the old predicate had: a screen being
- * open is what a GUI means, and the hotbar is not drawn from a screen. So {@code screen != null}
- * survives -- it just moved to the one place where it is the whole answer instead of half of it.</p>
+ * <p>So the three contexts are copied rather than invented, and this is the same move with the same
+ * shape.</p>
+ *
+ * <h2>Why {@code screen != null} had to go, and it is the playtest's bug</h2>
+ *
+ * <p>Because <b>the hotbar is drawn with {@code ItemDisplayContext.GUI} as well</b> -- the same
+ * context the inventory slot uses. So the old guard made the hotbar a gun only while no screen was
+ * open: open the inventory and the gun in the hotbar turned into the sprite, close it and it turned
+ * back. That is the report, word for word: "the 3D model and the 2D sprite keep swapping between the
+ * GUI and normal play". The context alone says the same thing in both places, so nothing swaps.</p>
+ *
+ * <p><b>What is lost is the three-dimensional gun in the hotbar.</b> It is a real loss and it is
+ * deliberate: the trident is exactly this, and there is no way to tell the hotbar from an inventory
+ * slot that does not go back to guessing. A gun that is a gun in the hotbar half the time is worse
+ * than a gun that is a sprite where every other item is a sprite.</p>
  *
  * <h2>What it does not do</h2>
  *
  * <p>It does not choose between the fuse frames, or between the flintlock up and down. Those are
  * the model's own overrides and they still resolve as they always did, in the hand and in the
- * world; only the flat sprite in a screen is decided here, which is also the only one of the three
+ * world; only the flat sprite in a listing is decided here, which is also the only one of the three
  * that a predicate cannot answer.</p>
  */
 @Mixin(ItemRenderer.class)
@@ -58,7 +70,7 @@ public class ArcabuzGuiIconMixin {
             ArcabuzModelProperties.ICON_MODEL;
 
     /**
-     * In a screen, the slot gets the sprite; everywhere else, the gun stays a gun.
+     * In a listing, the stack gets the sprite; in the hand, the gun stays a gun.
      *
      * <p>The recursion guard is {@code icon == p_model}: this calls {@code render} back with the
      * icon, that frame hits the same entry point, and this is the line that makes the second visit
@@ -72,14 +84,20 @@ public class ArcabuzGuiIconMixin {
                                            MultiBufferSource bufferSource, int combinedLight,
                                            int combinedOverlay, BakedModel p_model,
                                            CallbackInfo ci) {
-        if (displayContext != ItemDisplayContext.GUI || !itemStack.is(ModItems.ARCABUZ.get())) {
+        if (!itemStack.is(ModItems.ARCABUZ.get())) {
+            return;
+        }
+        // **Los tres contextos de vanilla, y ninguno mas.** Ver la nota de la clase: es el conjunto
+        // exacto del tridente -- `GUI` (ranura y hotbar), `GROUND` (tirado) y `FIXED` (marco de
+        // item). La mano no esta en la lista, asi que ahi el arma sigue siendo el modelo de tres
+        // dimensiones.
+        boolean flat = displayContext == ItemDisplayContext.GUI
+                || displayContext == ItemDisplayContext.GROUND
+                || displayContext == ItemDisplayContext.FIXED;
+        if (!flat) {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
-        // **No screen is the hotbar**, and the gun drawn beside the hand should be the gun.
-        if (mc.screen == null) {
-            return;
-        }
         BakedModel icon = mc.getModelManager().getModel(ICON);
         if (icon == null || icon == p_model) {
             return;
