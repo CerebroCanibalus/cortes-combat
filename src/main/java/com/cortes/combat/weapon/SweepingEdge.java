@@ -77,12 +77,20 @@ public final class SweepingEdge {
         };
     }
 
-    /** Hasta dónde llega, en bloques. */
+    /**
+     * Hasta donde llega, en bloques.
+     *
+     * <p><b>El playtest pidio un 30 % mas y esto es el 30 % mas</b>: la escalera era 8/10/12 y ahora
+     * es 10,4/13/15,6. La onda de filo es lo unico del encantamiento que el jugador <b>no puede
+     * compensar apuntando</b> -- a diferencia de un arma, que se acerca -- asi que quedarse corto se
+     * lee como "la onda no salio", y pasarse un poco no cuesta nada porque la vida de la onda sale
+     * de este numero y no de un segundo.</p>
+     */
     public static double distance(int level) {
         return switch (clampLevel(level)) {
-            case 1 -> 8.0;
-            case 2 -> 10.0;
-            case 3 -> 12.0;
+            case 1 -> 10.4;
+            case 2 -> 13.0;
+            case 3 -> 15.6;
             default -> 0.0;
         };
     }

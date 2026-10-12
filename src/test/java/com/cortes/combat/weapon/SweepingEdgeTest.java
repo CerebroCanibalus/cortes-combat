@@ -37,9 +37,13 @@ class SweepingEdgeTest {
         assertEquals(1.0, SweepingEdge.width(2), 1.0E-6);
         assertEquals(1.4, SweepingEdge.width(3), 1.0E-6);
 
-        assertEquals(8.0, SweepingEdge.distance(1), 1.0E-6);
-        assertEquals(10.0, SweepingEdge.distance(2), 1.0E-6);
-        assertEquals(12.0, SweepingEdge.distance(3), 1.0E-6);
+        // **El 30 % mas que pidio el playtest**, y son 10,4/13/15,6 en vez de 8/10/12. La onda es lo
+        // unico del encantamiento que no se compensa apuntando, asi que quedarse corto se lee como
+        // que no salio. La vida de la onda sale de aca (ver `lifeTicks`), asi que el alcance y la
+        // duracion siguen siendo un solo numero.
+        assertEquals(10.4, SweepingEdge.distance(1), 1.0E-6);
+        assertEquals(13.0, SweepingEdge.distance(2), 1.0E-6);
+        assertEquals(15.6, SweepingEdge.distance(3), 1.0E-6);
 
         assertEquals(3, SweepingEdge.pierce(1));
         assertEquals(4, SweepingEdge.pierce(2));

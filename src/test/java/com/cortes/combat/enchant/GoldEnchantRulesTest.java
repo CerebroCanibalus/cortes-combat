@@ -39,13 +39,18 @@ class GoldEnchantRulesTest {
         assertEquals(15, GoldEnchantRules.frenzyMaxStacks(3), "three levels are fifteen");
         assertEquals(0, GoldEnchantRules.frenzyMaxStacks(0), "no level, no ceiling");
 
-        // A level three pick at fifteen blocks sits at seventy five percent, and never past it.
-        assertEquals(0.75F, GoldEnchantRules.frenzyBonus(3, 15), 1e-6F,
+        // A level three pick at fifteen blocks sits at a hundred and twenty percent, and never past.
+        //
+        // **Los numeros subieron porque el playtest no los veia.** El reporte fue "compare con un
+        // pico sin encantar de oro y es la misma velocidad", y en el bloque cero eso es *literal*: la
+        // cadena arranca de cero por diseno. Con 5 % el escalon tampoco se notaba despues; con 8 %
+        // el tope del nivel tres es +120 %, que es mas del doble de rapido.
+        assertEquals(1.20F, GoldEnchantRules.frenzyBonus(3, 15), 1e-6F,
                 "fifteen blocks at level three is the ceiling");
-        assertEquals(0.75F, GoldEnchantRules.frenzyBonus(3, 999), 1e-6F,
+        assertEquals(1.20F, GoldEnchantRules.frenzyBonus(3, 999), 1e-6F,
                 "**the ceiling is what makes it a level** -- past it, the level stops mattering");
-        assertEquals(0.25F, GoldEnchantRules.frenzyBonus(1, 999), 1e-6F,
-                "level one tops out at a quarter");
+        assertEquals(0.40F, GoldEnchantRules.frenzyBonus(1, 999), 1e-6F,
+                "level one tops out at five blocks");
         assertEquals(0.0F, GoldEnchantRules.frenzyBonus(3, 0), 1e-6F, "an empty window pays nothing");
     }
 
@@ -99,8 +104,12 @@ class GoldEnchantRulesTest {
             assertTrue(state.stacks() <= GoldEnchantRules.frenzyMaxStacks(level),
                     "un estado por encima de su techo: " + state.stacks());
             assertEquals(state.stacks(),
-                    (int) (GoldEnchantRules.frenzyBonus(level, state.stacks()) * 20),
-                    "el bonus y el stack dicen lo mismo, porque el bonus ES el stack por cinco por ciento");
+                    Math.round(GoldEnchantRules.frenzyBonus(level, state.stacks())
+                            / GoldEnchantRules.FRENZY_PER_BLOCK),
+                    "el bonus y el stack dicen lo mismo: el bonus ES el stack por FRENZY_PER_BLOCK. "
+                            + "Se divide por la constante y no por su valor de hoy, porque el numero "
+                            + "se tunea con cada playtest y un test que se rompe en cada tuneo deja "
+                            + "de mirarse");
         }
     }
 }

@@ -56,9 +56,27 @@ public final class GoldEnchantRules {
 
     // ------------------------------------------------------------------ miner's frenzy
 
-    /** The bonus one broken block adds, and the window before the stack starts to fall. */
-    public static final float FRENZY_PER_BLOCK = 0.05F;
-    public static final int FRENZY_WINDOW_TICKS = 80;
+    /**
+     * The bonus one broken block adds, and the window before the stack starts to fall.
+     *
+     * <p><b>De 5 % a 8 % por bloque, y el motivo es el playtest.</b> El reporte fue "no lo noto, o
+     * es muy pequeño o no esta funcionando -- compare con un pico sin encantar de oro y es la misma
+     * velocidad". Las dos mitades eran ciertas: el mecanismo andaba -- vanilla multiplica el minado
+     * por {@code BLOCK_BREAK_SPEED} y el modificador se aplicaba -- y <b>5 % es literalmente
+     * invisible</b>. Peor: en el bloque <b>cero</b> el bonus es cero por diseño, porque la cadena
+     * tiene que arrancar. Asi que comparar el primer bloque da lo mismo con el encantamiento y sin
+     * el, que es exactamente el experimento que se hizo.</p>
+     *
+     * <p>Ocho por ciento se ve. Con los quince stacks del nivel tres son <b>+120 %</b>, o sea que un
+     * pico de oro con el tope mina mas del doble de rapido -- y el precio no cambio: si te detenes
+     * mas de cinco segundos, la cuenta vuelve a cero. La escalada es lo que se compra; el primer
+     * bloque no lo paga nadie.</p>
+     */
+    public static final float FRENZY_PER_BLOCK = 0.08F;
+    public static final int FRENZY_WINDOW_TICKS = 100;
+
+    /** Cada cuantos stacks se deja una linea, para ver que la cuenta sube sin inundar el log. */
+    public static final int FRENZY_LOG_EVERY = 5;
 
     /**
      * The ceiling as a count of blocks: five per level, so a level three pick may hold fifteen

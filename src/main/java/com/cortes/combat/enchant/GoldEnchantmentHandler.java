@@ -194,7 +194,20 @@ public final class GoldEnchantmentHandler {
         int now = (int) level.getGameTime();
         int ceiling = GoldEnchantRules.frenzyMaxStacks(frenzy);
         FrenzyState current = player.getData(ModAttachments.FRENZY).asOf(now);
-        player.setData(ModAttachments.FRENZY, current.broken(now, ceiling));
+        FrenzyState grown = current.broken(now, ceiling);
+        player.setData(ModAttachments.FRENZY, grown);
+        // **Una linea cada cinco bloques, y existe porque "no lo noto" no se contesta mirando.**
+        //
+        // El bono es una multiplicacion sobre el minado: no aparece en el inventario ni en ningun
+        // HUD, asi que sin una linea el jugador y yo discutimos sobre una sensacion -- que es
+        // literalmente lo que paso. Cada cinco stacks son tres lineas por cadena: suficiente para
+        // ver que la cuenta sube y poco para ahogar el log de una sesion de mineria.
+        if (grown.stacks() > current.stacks()
+                && grown.stacks() % GoldEnchantRules.FRENZY_LOG_EVERY == 0) {
+            com.cortes.combat.CortesCombat.LOGGER.info("[frenzy] stacks={} bonus={}%",
+                    grown.stacks(),
+                    Math.round(GoldEnchantRules.frenzyBonus(frenzy, grown.stacks()) * 100.0F));
+        }
     }
 
     /**

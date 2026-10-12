@@ -43,11 +43,13 @@ public class MungusShell extends LargeFireball implements net.minecraft.world.en
     /**
      * Cuanto se le resta a la velocidad vertical por tick.
      *
-     * <p>{@code 0.03} es el mismo numero que {@code ThrowableProjectile#getGravity}, y es el que
-     * el jugador ya conoce: es la caida de una perla de ender, una bola de nieve o un huevo. Un
-     * arco que se aprende una vez y sirve para todas las cosas que se tiran.</p>
+     * <p><b>0,006 y no 0,03, que era el numero de la primera version.</b> 0,03 es la caida de una
+     * bola de nieve y esta bien para un lanzamiento de diez bloques; el Firestone de Mungus tiene
+     * que cruzar un campo, y con esa gravedad aterrizaba en los pies del que disparaba. Con 0,006
+     * -- <b>un quinto</b> -- la caida es un arco: unos cinco bloques a los cuarenta de vuelo, que se
+     * compensan apuntando apenas arriba, y sigue siendo una curva y no una recta.</p>
      */
-    private static final double GRAVITY_PER_TICK = 0.03D;
+    private static final double GRAVITY_PER_TICK = 0.006D;
 
     public MungusShell(EntityType<? extends LargeFireball> type, Level level) {
         super(type, level);
@@ -59,10 +61,18 @@ public class MungusShell extends LargeFireball implements net.minecraft.world.en
 
     @Override
     public void tick() {
-        if (!this.level().isClientSide) {
-            Vec3 motion = this.getDeltaMovement();
-            this.setDeltaMovement(motion.x, motion.y - GRAVITY_PER_TICK, motion.z);
-        }
+        // **En los DOS lados, y ese `if (!isClientSide)` era el bug.**
+        //
+        // La primera version empujaba hacia abajo solo en el servidor, con el razonamiento de que
+        // "el servidor es la autoridad". Para un proyectil eso es al reves: **un proyectil lo simula
+        // tambien el cliente**, y si una mitad cae y la otra no, la posicion del cliente se corrige
+        // con cada paquete de movimiento. El sintoma no se lee como "falta gravedad": se lee como
+        // una bola que **cae a tirones**, que fue exactamente el reporte -- "imposible usarlo".
+        //
+        // El tipo propio (`ModEntities.MUNGUS_SHELL`) ya estaba para que las dos mitades crearan
+        // ESTA clase; faltaba que las dos hicieran lo mismo adentro.
+        Vec3 motion = this.getDeltaMovement();
+        this.setDeltaMovement(motion.x, motion.y - GRAVITY_PER_TICK, motion.z);
         super.tick();
     }
 

@@ -146,12 +146,15 @@ class SlashWaveModelTest {
     }
 
     @Test
-    @DisplayName("**la rotacion lleva el +Z del modelo a la direccion de vuelo**")
+    @DisplayName("**la rotacion lleva el -Z del modelo a la direccion de vuelo**")
     void theAimPointsTheSlashAlongItsFlight() {
         // La invariante, y no la aritmetica de una linea: se aplican las dos rotaciones con las
-        // convenciones de Minecraft y se pregunta a donde fue a parar el +Z del modelo. Es la unica
-        // forma de verificar los signos sin abrir el juego -- y los signos son exactamente lo que
-        // este proyecto pago tres veces con el arcabuz.
+        // convenciones de Minecraft y se pregunta a donde fue a parar **el frente del modelo, que es
+        // -Z**. Es la unica forma de verificar los signos sin abrir el juego -- y los signos son
+        // exactamente lo que este proyecto pago tres veces con el arcabuz.
+        //
+        // **Y el `-Z` no es un detalle:** hasta el playtest esta invariante se escribia sobre el +Z,
+        // y era cierta con un sprite que miraba para atras. Ver `SlashWaveModel#yawDegrees`.
         double[][] directions = {
                 {0, 0, 1}, {0, 0, -1}, {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0},
                 {0.6, 0.0, 0.8}, {0.6, -0.6, 0.53}, {-0.3, 0.4, 0.86},
@@ -187,10 +190,14 @@ class SlashWaveModelTest {
         double yaw = Math.toRadians(SlashWaveModel.yawDegrees(nx, nz));
         double pitch = Math.toRadians(SlashWaveModel.pitchDegrees(ny, horizontal));
 
-        // R_x sobre (0,0,1).
+        // R_x sobre (0,0,-1) -- el **frente** del modelo, que es -Z y no +Z. Ver la nota de
+        // `SlashWaveModel#yawDegrees`: el elemento tiene cero de espesor en X, asi que lo que decide
+        // hacia donde mira es su normal, y la normal esta en X. Alinear el +Z dejaba la cara visible
+        // mirando para atras, que es el bug que reporto el playtest ("el sprite esta volteado al
+        // reves, mira hacia mi").
         double x = 0.0;
-        double y = -Math.sin(pitch);
-        double z = Math.cos(pitch);
+        double y = Math.sin(pitch);
+        double z = -Math.cos(pitch);
         // y despues R_y.
         return new double[] {
                 x * Math.cos(yaw) + z * Math.sin(yaw),

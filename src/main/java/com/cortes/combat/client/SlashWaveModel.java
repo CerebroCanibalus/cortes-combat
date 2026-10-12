@@ -72,25 +72,40 @@ public final class SlashWaveModel {
     }
 
     /**
-     * El giro alrededor de Y que lleva el +Z del modelo a la dirección dada.
+     * El giro alrededor de Y que lleva el <b>-Z</b> del modelo a la dirección dada.
+     *
+     * <h2>Por que -Z y no +Z</h2>
+     *
+     * <p>El elemento del modelo tiene <b>cero de espesor en X</b>: es un plano, y su normal está
+     * entera en el eje X. Eso significa que "hacia dónde mira" no lo dice su largo, lo dice su
+     * <b>normal</b> -- y la normal está en X. Alinear el {@code +Z} con la dirección dejaba la cara
+     * visible <b>mirando para atrás</b>, y el playtest lo reportó tal cual: <i>"el sprite está
+     * volteado al revés, mira hacia mí en vez de al frente"</i>.</p>
+     *
+     * <p>Alinear el {@code -Z} gira el plano media vuelta sobre su propio eje vertical, que es
+     * exactamente lo que hace falta: <b>la cara visible pasa para adelante y el plano no se mueve de
+     * lugar</b>, porque el renderer lo recentra después y girar sobre el origen no cambia su
+     * centro.</p>
      *
      * <p>En el sistema de Minecraft, rotar {@code (0,0,1)} por {@code Axis.YP.rotationDegrees(t)}
-     * da {@code (sin t, 0, cos t)}, así que {@code t = atan2(dx, dz)} -- sin signo negativo, a
-     * diferencia del yaw de una entidad, que crece al revés. Por eso esto no es "el yaw": es la
-     * rotación que hace falta.</p>
+     * da {@code (sin t, 0, cos t)}, así que llevar {@code -Z} a {@code (dx, dz)} pide
+     * {@code t = atan2(dx, dz) + 180}. Sin signo negativo, a diferencia del yaw de una entidad, que
+     * crece al revés: por eso esto no es "el yaw", es la rotación que hace falta.</p>
      */
     public static float yawDegrees(double dx, double dz) {
-        return (float) Math.toDegrees(Math.atan2(dx, dz));
+        return (float) Math.toDegrees(Math.atan2(dx, dz)) + 180.0F;
     }
 
     /**
-     * La inclinación alrededor de X que lleva el +Z del modelo al plano de vuelo.
+     * La inclinación alrededor de X que lleva el <b>-Z</b> del modelo al plano de vuelo.
      *
-     * <p>Con {@code Axis.XP.rotationDegrees(p)}, {@code (0,0,1)} va a {@code (0, -sin p, cos p)}: el
-     * signo va al revés que la dirección, y por eso la resta. Se usa {@code atan2} y no
-     * {@code asin(dy/len)} porque un vector de largo cero tiene una respuesta y no una división.</p>
+     * <p>Con {@code Axis.XP.rotationDegrees(p)}, {@code (0,0,1)} va a {@code (0, -sin p, cos p)}. Con
+     * el frente en {@code -Z} -- ver {@link #yawDegrees} -- la composición lleva {@code -Z} a
+     * {@code (cos p · h, sin p, ...)}, así que el signo <b>no</b> se invierte como antes: una onda
+     * que sube quiere {@code p} positivo. Se usa {@code atan2} y no {@code asin(dy/len)} porque un
+     * vector de largo cero tiene una respuesta y no una división.</p>
      */
     public static float pitchDegrees(double dy, double horizontal) {
-        return (float) -Math.toDegrees(Math.atan2(dy, horizontal));
+        return (float) Math.toDegrees(Math.atan2(dy, horizontal));
     }
 }
