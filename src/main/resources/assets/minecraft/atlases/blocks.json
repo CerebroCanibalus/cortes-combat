@@ -1,0 +1,5 @@
+{
+  "sources": [
+    { "type": "minecraft:single", "resource": "cortescombat:projectile/slash" }
+  ]
+}

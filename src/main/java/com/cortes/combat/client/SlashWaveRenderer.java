@@ -92,8 +92,11 @@ public class SlashWaveRenderer extends EntityRenderer<SlashWave> {
      *
      * <p>{@code horneado=false} significa que {@code RegisterAdditional} no llego -- el modelo es un
      * archivo en disco y {@code getModel} devuelve el faltante. {@code horneado=true} con la pantalla
-     * en magenta significa que el modelo esta y <b>lo que falta es el sprite en el atlas</b>, que es
-     * el otro problema y se arregla por otro lado.</p>
+     * en magenta significa que el modelo esta y <b>lo que falta es el sprite en el atlas</b>: un
+     * modelo side-loaded llega a hornearse y <b>no aporta su material</b>, asi que la textura hay que
+     * declararla a mano en {@code assets/minecraft/atlases/blocks.json} -- que se CONCATENA con los
+     * del resto de los packs ({@code SpriteSourceList#load} usa {@code getResourceStack}), no los
+     * pisa. Este caso se dio de verdad: el log dijo {@code horneado=true} y la onda salia magenta.</p>
      */
     public static void onBakingCompleted(ModelEvent.BakingCompleted event) {
         BakedModel baked = event.getModelManager().getModel(MODEL);

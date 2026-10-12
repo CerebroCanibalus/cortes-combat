@@ -213,4 +213,43 @@ class SlashWaveModelTest {
         assertEquals(0.0, SlashWaveModel.scale(0), 1.0E-9,
                 "sin el encantamiento no hay onda, y una escala de cero no la dibuja");
     }
+
+    @Test
+    @DisplayName("el sprite esta declarado en el atlas de bloques, o el modelo se dibuja magenta")
+    void theSpriteIsInTheAtlas() throws IOException {
+        // **El ultimo eslabon, y el unico que ningun otro test miraba.**
+        //
+        // Un modelo side-loaded (`ModelEvent.RegisterAdditional`) llega a hornearse -- el log lo
+        // dijo: `horneado=true` -- y **igual le falta el sprite**. Un modelo sin hornear y un sprite
+        // sin coser se dibujan los dos como el patron magenta y negro, asi que el sintoma no
+        // distingue la causa y el diagnostico costo una ronda entera. Ver
+        // `SlashWaveRenderer#onBakingCompleted`, que ahora los separa con una linea.
+        //
+        // Se arregla declarando el sprite en `assets/minecraft/atlases/blocks.json`, y **eso no pisa
+        // nada**: `SpriteSourceList#load` lee con `getResourceStack` y CONCATENA los sources de todos
+        // los packs (`list.addAll`), verificado en las fuentes de 1.21.1. Era el miedo que me habia
+        // frenado -- un `blocks.json` mal puesto y desaparecen todas las texturas del juego.
+        Path atlas = Path.of("src", "main", "resources", "assets", "minecraft", "atlases",
+                "blocks.json");
+        assertTrue(Files.isRegularFile(atlas), "falta " + atlas
+                + ": sin el, el sprite no esta en el atlas y la onda se dibuja magenta");
+        String atlasJson = Files.readString(atlas, StandardCharsets.UTF_8);
+
+        Matcher sprite = Pattern.compile("\"resource\"\\s*:\\s*\"([^\"]+)\"").matcher(atlasJson);
+        assertTrue(sprite.find(), "el atlas no declara ningun sprite: " + atlasJson);
+        String id = sprite.group(1);
+
+        // Y el nombre tiene que ser EL MISMO que el modelo pide: dos nombres para una textura es un
+        // bug que se ve y no se lee en ningun archivo.
+        String model = Files.readString(MODEL, StandardCharsets.UTF_8);
+        assertTrue(model.contains("\"" + id + "\""),
+                "el atlas mete `" + id + "` y el modelo pide otra cosa: el sprite se cose al atlas y "
+                        + "el modelo sigue dibujando el faltante");
+
+        String[] parts = id.split(":", 2);
+        assertEquals(2, parts.length, "el sprite tiene que llevar namespace: " + id);
+        Path png = Path.of("src", "main", "resources", "assets", parts[0],
+                "textures", parts[1] + ".png");
+        assertTrue(Files.isRegularFile(png), "el atlas nombra `" + id + "` y no hay " + png);
+    }
 }
