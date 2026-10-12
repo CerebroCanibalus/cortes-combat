@@ -63,6 +63,9 @@ public class CortesCombatClient {
         // modelo que nada referencia es un archivo en disco: el juego no lo hornea y el renderer
         // recibe el modelo "missing" -- el cubo violeta, sin una línea de error en el log.
         modEventBus.addListener(SlashWaveRenderer::onRegisterAdditional);
+        // **Y la linea que dice si llego a hornearse.** Sin ella, "no se ve" y "falta el sprite" son
+        // el mismo magenta en pantalla.
+        modEventBus.addListener(SlashWaveRenderer::onBakingCompleted);
         modEventBus.addListener(CortesCombatClient::registerParticles);
         modEventBus.addListener(CortesCombatClient::registerLayers);
         modEventBus.addListener(CortesCombatClient::onClientSetup);

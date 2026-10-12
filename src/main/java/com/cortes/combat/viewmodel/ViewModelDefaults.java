@@ -827,20 +827,35 @@ public final class ViewModelDefaults {
                 // of yaw, because a weapon that reaches six bodies at arm's length has to look like
                 // it is sweeping a field rather than stabbing one of them.
                 //
-                // **El yaw esta invertido y el roll NO, y la asimetria es el arreglo.**
+                // **Los dos signos estaban al reves, y el "arreglo" anterior volteo el eje
+                // equivocado.**
                 //
-                // El tajo iba hacia la derecha y tenia que ir hacia la izquierda -- reportado en
-                // playtest -- y eso es el signo del yaw. El roll se queda en negativo porque es lo
-                // que hace que la hoja se de vuelta como una guadana en vez de barrer recto: es el
-                // roll el que la convierte en una cosecha, y girarlo con el yaw le habria dado la
-                // direccion nueva perdiendo el gesto. El test de la azada lo afirma desde el otro
-                // lado, y tenia razon.
+                // Hay dos ejes aca y los dos tienen signo: `x` mueve la mano a la derecha y `yaw`
+                // la gira a la izquierda. El tajo salia por la derecha de la pantalla y el comentario
+                // viejo decia haberlo mandado a la izquierda volteando el yaw de +112 a -112 -- o
+                // sea, **al reves**: con `x` todavia en +0,92 (casi un item a la derecha) y el yaw
+                // tambien en negativo, los dos ejes empujaban para el mismo lado y el arma se iba de
+                // cuadro. El playtest es la prueba: seguia yendose a la derecha despues del
+                // "arreglo", y lo que lo delataba era que el cambio de signo no habia cambiado el
+                // sintoma.
+                //
+                // Ahora los dos van para el mismo lado de verdad: **x negativo y yaw positivo**, que
+                // es la izquierda, y el tajo cruza la pantalla en vez de salirse de ella.
+                //
+                // **El roll NO se toca.** Es lo que hace que la hoja se de vuelta como una guadana
+                // en vez de barrer recto: el roll la convierte en una cosecha, y girarlo con el yaw
+                // le daria la direccion nueva perdiendo el gesto.
                 Track.of(Channel.CHOP, Curve.LINEAR,
-                        new Offset(0.92, -0.12, -0.24, -30.0, -112.0, -56.0)),
+                        new Offset(-0.92, -0.12, -0.24, -30.0, 112.0, -56.0)),
                 // The cleave. A hundred and ninety degrees is past a half turn, so the head starts
                 // behind the player's shoulder and comes all the way around to the hand. The roll
                 // turns it over on the way, which is what makes it a harvest rather than a spin.
+                //
+                // **El `x` cruza para la izquierda por lo mismo que el tajo.** El barrido ya giraba
+                // para ese lado -- `+190` es izquierda, y se queda --, asi que lo unico que lo sacaba
+                // de cuadro era la deriva lateral hacia la derecha. Un eje girado a la izquierda con
+                // la mano yendose a la derecha es la misma contradiccion que tenia el tajo.
                 Track.of(Channel.SWEEP, Curve.LINEAR,
-                        new Offset(0.70, -0.22, -0.16, -26.0, 190.0, -72.0)));
+                        new Offset(-0.70, -0.22, -0.16, -26.0, 190.0, -72.0)));
     }
 }

@@ -88,9 +88,19 @@ class ShovelAndHoeTest {
         Offset reap = hoe.evaluate(ViewModelInput.chopping(1.0F));
         Offset halberdChop = HALBERD.evaluate(ViewModelInput.chopping(1.0F));
 
-        assertTrue(reap.x() > 0.5,
-                "the reap crosses the view, so the lateral travel has to be most of an item; was x="
-                        + reap.x());
+        // **El signo, y no el tamano.**
+        //
+        // El `x > 0.5` que habia aca afirmaba que el tajo va hacia la DERECHA, que es exactamente el
+        // bug que el playtest reporto dos veces seguidas. Un test que afirma la convencion equivocada
+        // es peor que no tener test: le da un permiso escrito al bug, y el que lo lee despues cree
+        // que la direccion esta verificada. `x` mueve la mano a la derecha y `yaw` gira la hoja a la
+        // izquierda, asi que un tajo que cruza la pantalla hacia la izquierda necesita **los dos** de
+        // un solo lado: x negativo y yaw positivo.
+        assertTrue(reap.x() < -0.5,
+                "**the reap crosses the view to the LEFT**: x moves the hand right and yaw turns the "
+                        + "blade left, so crossing to the left needs a negative x. Was x=" + reap.x());
+        assertTrue(reap.yaw() > 0.0,
+                "and the yaw agrees with the hand instead of fighting it; was yaw=" + reap.yaw());
         assertTrue(Math.abs(reap.yaw()) > Math.abs(halberdChop.yaw()) * 1.5,
                 "and it turns far further than the halberd's chop (" + reap.yaw() + " against "
                         + halberdChop.yaw() + "). A sixty-degree cone that reaches six bodies is "
@@ -116,8 +126,10 @@ class ShovelAndHoeTest {
         assertTrue(Math.abs(cleave.yaw()) > Math.abs(arc.yaw()) * 2.0,
                 "and it is at least twice the halberd's arc, or the two area weapons are the same "
                         + "move and the hoe has no identity");
-        assertTrue(cleave.x() > 0.5,
-                "it also travels across, so the circle is not a spin in place; was x=" + cleave.x());
+        assertTrue(cleave.x() < -0.5,
+                "it also travels across, so the circle is not a spin in place; and it crosses to the "
+                        + "left, because a blade turning left with the hand sliding right is the same "
+                        + "contradiction the reap had. Was x=" + cleave.x());
         assertFalse(cleave.equals(arc),
                 "the hoe's cleave and the halberd's sweep cannot be the same offset. Two weapons "
                         + "sharing a track is a copy, and the hoe's whole premise is that it is not "

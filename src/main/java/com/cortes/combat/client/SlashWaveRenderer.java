@@ -80,6 +80,29 @@ public class SlashWaveRenderer extends EntityRenderer<SlashWave> {
         event.register(MODEL);
     }
 
+    /**
+     * Una linea al arranque que dice <b>si el modelo llego a hornearse</b>, y existe porque el
+     * sintoma no distingue.
+     *
+     * <p>Un modelo que no se hornea y un sprite que no llega al atlas se ven <b>igual</b>: magenta y
+     * negro. Son dos causas distintas con el mismo dibujo, y averiguar cual de las dos es sin una
+     * linea al arranque cuesta una ronda de playtest cada vez. Es exactamente el mismo razonamiento
+     * de {@code reportVanillaProfiles}, {@code reportOurRecipes} y {@code reportSurvivalSeam}: una
+     * linea que contesta en el arranque lo que si no se contesta mirando la pantalla.</p>
+     *
+     * <p>{@code horneado=false} significa que {@code RegisterAdditional} no llego -- el modelo es un
+     * archivo en disco y {@code getModel} devuelve el faltante. {@code horneado=true} con la pantalla
+     * en magenta significa que el modelo esta y <b>lo que falta es el sprite en el atlas</b>, que es
+     * el otro problema y se arregla por otro lado.</p>
+     */
+    public static void onBakingCompleted(ModelEvent.BakingCompleted event) {
+        BakedModel baked = event.getModelManager().getModel(MODEL);
+        boolean missing = baked == event.getModelManager().getMissingModel();
+        com.cortes.combat.CortesCombat.LOGGER.info(
+                "[onda] modelo={} horneado={}",
+                MODEL, !missing);
+    }
+
     @Override
     public ResourceLocation getTextureLocation(SlashWave entity) {
         return TEXTURE;
