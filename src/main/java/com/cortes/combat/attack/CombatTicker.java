@@ -56,7 +56,7 @@ public final class CombatTicker {
         // **Y la carga del boton derecho, que es el mismo tipo de cosa y por eso vive al lado.** El
         // orbe de la pala se carga sosteniendo y sale al soltar; sin este tick el attachment se
         // quedaria en cero y el disparo nunca llegaria al tope.
-        com.cortes.combat.special.PalaCharge.tick(player);
+        com.cortes.combat.special.SpecialCharges.tick(player);
         ModNetworking.syncTo(player);
         // **After every other tick above, and the order is load-bearing.**
         //

@@ -146,18 +146,13 @@ public final class PlayerStateSync {
     /**
      * La carga del boton derecho como fraccion de su tope, o cero si no esta cargando.
      *
-     * <p><b>Publica y con un solo lector por payload, porque es UNA cuenta.</b> El HUD local la
-     * manda en {@code CombatStatePayload} y la pose de los demas en {@code PlayerCombatState}; dos
-     * copias de "ticks sobre el tope" es exactamente la clase de duplicado que este proyecto ya pago
-     * con la barra de carga que iba por una funcion distinta que el dano.</p>
+     * <p><b>Delega entera en {@code SpecialCharges}, y eso es el punto del refactor.</b> Antes esta
+     * cuenta vivia aca y dividia por la constante de la PALA por su nombre: el sincronizador sabia
+     * de que arma era la carga. Ahora no sabe ni que existe -- pregunta quien carga y cuanto pide
+     * esa carga, y el dia que haya dos esto sigue siendo una linea.</p>
      */
     public static float specialChargeRatio(ServerPlayer player) {
-        ChargeState special = player.getData(ModAttachments.SPECIAL_CHARGE.get());
-        if (!special.holding()) {
-            return 0.0F;
-        }
-        return Math.min(1.0F,
-                special.ticks() / (float) CombatEnchantRules.PALA_ANTIMATERIAL_CHARGE_TICKS);
+        return com.cortes.combat.special.SpecialCharges.ratio(player);
     }
 
     /**

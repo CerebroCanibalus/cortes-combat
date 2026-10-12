@@ -45,7 +45,7 @@ public final class ModNetworking {
                         // del arcabuz, asi que cualquiera que tenga algo que hacer mientras este
                         // abajo tiene que enterarse: la pala carga el orbe asi. Que esto viva en el
                         // handler del arcabuz es historia, no diseño.
-                        com.cortes.combat.special.PalaCharge.setHeld(sp, payload.held());
+                        com.cortes.combat.special.SpecialCharges.setHeld(sp, payload.held());
                     }
                 });
         registrar.playToClient(CombatStatePayload.TYPE, CombatStatePayload.STREAM_CODEC,

@@ -32,6 +32,10 @@ public final class ClientTasks {
         // two places would draw the local swing at double speed for the person doing it and at
         // normal speed for everybody watching.
         RemotePoseStates.tick();
+        // **El sonido de una carga de boton derecho, siguiendo el estado y no el evento.** Arranca
+        // con la carga y se CORTA cuando la carga se corta, que es la mitad del aviso: un sonido que
+        // sigue despues de soltar dice lo contrario de lo que paso. Ver `SpecialChargeAudio`.
+        SpecialChargeAudio.tick(net.minecraft.client.Minecraft.getInstance());
         // The sabre's second cut is heard eight ticks after the first, and 1.21.1 cannot schedule a
         // sound, so the delay is held here.
         DelayedSounds.tick();
