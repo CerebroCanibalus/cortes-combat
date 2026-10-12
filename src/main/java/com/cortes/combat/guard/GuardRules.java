@@ -159,4 +159,36 @@ public final class GuardRules {
         // guard. Collapsing them to "is the guard ready" is the mirror image and it eats bread.
         return !handHoldsGuard || guardCanBeUsed;
     }
+
+    /**
+     * Cuanto de un golpe entrante se bloquea, <b>en unidades y no en fraccion</b>.
+     *
+     * <h2>El nombre del campo miente, y esto es la traduccion</h2>
+     *
+     * <p>{@code LivingShieldBlockEvent#setBlockedDamage} recibe <b>cuanto se bloquea</b>, y
+     * {@code DamageContainer} lo <b>resta</b> del dano que entra ({@code newDamage -= blockedDamage}).
+     * O sea que la convencion es la opuesta a la que sugiere leer "damage bloqueado" rapido:
+     * {@code incoming} bloquea todo, {@code 0} no bloquea nada.</p>
+     *
+     * <p><b>Y aca vivio el bug que dejo la guardia sin bloquear nada durante rondas.</b> El codigo
+     * escribia {@code incoming * (1 - fraccion)}, que con una fraccion de 1 da <b>cero</b>: un
+     * golpe frontal no paraba absolutamente nada. Y el sintoma se leia como <b>dos</b> bugs --
+     * "me hacen el dano" y "los efectos del ataque tambien pasan" -- cuando era uno: {@code hurt}
+     * devolvia {@code true}, asi que el motor aplicaba los efectos del golpe que creia aterrizado.
+     * Las explosiones funcionaban <b>de casualidad</b>, porque con 0,5 la cuenta invertida da el
+     * medio correcto.</p>
+     *
+     * <p>Se clampea a {@code [0, incoming]} porque el evento lo clampea igual, y una fraccion fuera
+     * de rango es una cuenta mal escrita en algun lado y no un golpe que cura.</p>
+     *
+     * @param incoming el dano que llega, que es {@code getOriginalBlockedDamage()}
+     * @param fraction cuanto se bloquea, de 0 a 1
+     * @return las unidades que se bloquean, listas para {@code setBlockedDamage}
+     */
+    public static float blockedAmount(float incoming, float fraction) {
+        if (incoming <= 0.0F) {
+            return 0.0F;
+        }
+        return incoming * Math.max(0.0F, Math.min(1.0F, fraction));
+    }
 }

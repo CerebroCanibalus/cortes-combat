@@ -3,6 +3,7 @@ package com.cortes.combat.guard;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -79,5 +80,35 @@ class GuardRulesTest {
         assertTrue(GuardRules.isFromFront(0, 0, 0, 0, 0, 1, x, 0, z, ARC));
         // Spun 180 degrees: the same hit is now from behind.
         assertFalse(GuardRules.isFromFront(0, 0, 0, 0, 0, -1, x, 0, z, ARC));
+    }
+
+    @Test
+    @DisplayName("a full block stops the WHOLE hit -- and this is the inverted formula's grave")
+    void fullBlockStopsEverything() {
+        // **El invariante del proyecto: cubrirse es 100 % de reduccion.** El bug que esto guarda
+        // escribia `incoming * (1 - fraccion)`, que con fraccion 1 da CERO: un golpe frontal no
+        // paraba nada. Se leia como dos bugs -- "me hacen el dano" y "los efectos tambien pasan" --
+        // y era uno solo, porque `hurt` devolvia `true` y el motor aplicaba los efectos de un
+        // golpe que creia aterrizado. Sabotear la cuenta a la forma vieja mata esta asercion.
+        assertEquals(10.0F, GuardRules.blockedAmount(10.0F, 1.0F), 0.0001F);
+    }
+
+    @Test
+    @DisplayName("an explosion blocks half, and the half that gets through is the whole point")
+    void explosionBlocksHalf() {
+        // La mitad que pasa es lo que mantiene a un creeper valiendo la pena esquivar.
+        assertEquals(5.0F, GuardRules.blockedAmount(10.0F, 0.5F), 0.0001F);
+    }
+
+    @Test
+    @DisplayName("no fraction is no block, and a fraction out of range cannot turn a hit into healing")
+    void nothingBlockedAndOutOfRange() {
+        assertEquals(0.0F, GuardRules.blockedAmount(10.0F, 0.0F), 0.0001F);
+        // Clampeado arriba y abajo: el evento lo clampea igual, pero un 4.0 aca seria una cuenta
+        // mal escrita en otro lado y no un golpe que cura.
+        assertEquals(10.0F, GuardRules.blockedAmount(10.0F, 4.0F), 0.0001F);
+        assertEquals(0.0F, GuardRules.blockedAmount(10.0F, -2.0F), 0.0001F);
+        // Un dano de cero no bloquea nada, ni siquiera con fraccion entera.
+        assertEquals(0.0F, GuardRules.blockedAmount(0.0F, 1.0F), 0.0001F);
     }
 }

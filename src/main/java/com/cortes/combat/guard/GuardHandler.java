@@ -224,7 +224,8 @@ public final class GuardHandler {
             // spent twice &mdash; so a follow-up cut is still stopped, which is what the player
             // sees as "the shield held".
             event.setBlocked(true);
-            event.setBlockedDamage(event.getOriginalBlockedDamage() * (1.0F - blocked));
+            event.setBlockedDamage(GuardRules.blockedAmount(
+                    event.getOriginalBlockedDamage(), blocked));
             event.setShieldDamage(0.0F);
             return;
         }
@@ -268,11 +269,25 @@ public final class GuardHandler {
                 com.cortes.combat.state.ContragolpeWindow.armedAt(now));
 
         event.setBlocked(true);
-        // The fraction, not a flag. The event starts with `dmgBlocked` at the FULL incoming
-        // damage, which is why the first version's `setBlockedDamage(0)` blocked nothing -- zero
-        // means "stop nothing", not "stop all of it". An explosion writes half of the original,
-        // and the other half is what keeps a creeper worth walking away from.
-        event.setBlockedDamage(event.getOriginalBlockedDamage() * (1.0F - blocked));
+        // **La fraccion, y no un booleano -- pero es una CANTIDAD, no una fraccion.**
+        //
+        // `setBlockedDamage` recibe cuanto se bloquea y `DamageContainer` lo RESTA del dano que
+        // entra (`this.newDamage -= this.blockedDamage`). O sea: `original` bloquea todo y `0` no
+        // bloquea nada, que es al reves de como suena el nombre del campo.
+        //
+        // **Aca vivio el bug que dejo la guardia sin bloquear nada durante rondas.** La version
+        // anterior escribia `original * (1 - bloqueado)`, que con `FULL_BLOCK = 1.0` da
+        // `original * 0` -- cero. Un golpe frontal no bloqueaba NADA, y el sintoma se leia como
+        // dos bugs: el dano pasaba (cierto) y los efectos negativos del ataque tambien (que era la
+        // consecuencia, no una causa: `hurt` devuelve `true` y `CombatEngine` aplica los efectos
+        // del golpe que aterrizo). Las explosiones funcionaban de casualidad, porque con `0.5` la
+        // cuenta invertida da el medio correcto.
+        //
+        // El numero sale de `GuardRules.blockedAmount` y no de una multiplicacion escrita aca, para
+        // que la unica parte del bloqueo que se puede testear en JVM pelada sea la que decide
+        // cuanto se bloquea.
+        event.setBlockedDamage(GuardRules.blockedAmount(
+                event.getOriginalBlockedDamage(), blocked));
         // No durability cost: the shield is not an item that wears out from doing the job it
         // exists for.
         event.setShieldDamage(0.0F);
