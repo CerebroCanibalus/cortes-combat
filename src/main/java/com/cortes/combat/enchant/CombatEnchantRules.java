@@ -156,7 +156,7 @@ public final class CombatEnchantRules {
             VAMPIRICO_ID, MECHA_CORTA_ID, BARREDOR_ID, ASTILLADORA_ID, MELLA_ID, SEGUNDA_PASADA_ID,
             SANTA_MUERTE_ID, INERCIA_ID, ENSARTE_ID, PALIZA_ID, RETIRADA_ID, SENTENCIA_ID,
             TRABAZON_ID, GRIPA_ID, CORTE_GEMELO_ID, CAPACITOR_ID, REY_DE_LAS_MOSCAS_ID,
-            PALA_ANTIMATERIAL_ID);
+            PALA_ANTIMATERIAL_ID, MUNGUS_ID);
 
     /** Los genericos, que se ponen por clase y no por molde. */
 

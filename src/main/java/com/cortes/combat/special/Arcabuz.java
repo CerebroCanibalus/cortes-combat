@@ -127,6 +127,14 @@ public final class Arcabuz {
             int fuse = CombatEnchantRules.fuseTicks(CombatEnchantments.level(
                     player.level().registryAccess(), player.getMainHandItem(),
                     CombatEnchantments.MECHA_CORTA), ArcabuzState.FUSE_TICKS);
+            // **Mungus: la carga al doble.** Es la otra mitad de su precio, y la que importa de
+            // verdad: el tiro mas fuerte del juego cuesta diez Firestones -- que se juntan -- y
+            // **el doble de tiempo con el arma apuntada y sin poder hacer otra cosa**. La municion
+            // se consigue; esos dos segundos largos son los que el rival te ve venir.
+            if (CombatEnchantments.level(player.level().registryAccess(), player.getMainHandItem(),
+                    CombatEnchantments.MUNGUS) > 0) {
+                fuse = (int) (fuse * CombatEnchantRules.MUNGUS_CHARGE_FACTOR);
+            }
             player.setData(ModAttachments.ARCABUZ.get(), state.light(fuse));
             // **And off the stack, in the same breath as off the record.**
             //
@@ -359,6 +367,15 @@ public final class Arcabuz {
      * jugador eligió poner y la que el tooltip promete.</p>
      */
     private static AmmoProfile declaredAmmo(ServerPlayer player, ItemStack weapon) {
+        // **Mungus primero, y no es un detalle de orden: es el que mas gasta.** Diez Firestones
+        // por disparo, contra la una de siempre -- y eso es lo que lo convierte en un tiro de
+        // asedio y no en un arma. `AmmoProfile` ya llevaba el `count` desde que se creo, asi que
+        // aca no hay nada nuevo: es el mismo mecanismo con otro numero.
+        if (CombatEnchantments.level(player.level().registryAccess(), weapon,
+                CombatEnchantments.MUNGUS) > 0) {
+            return AmmoProfile.of(com.cortes.combat.registry.ModItems.FIRESTONE.getId().toString(),
+                    CombatEnchantRules.MUNGUS_FIRESTONES);
+        }
         if (CombatEnchantments.level(player.level().registryAccess(), weapon,
                 CombatEnchantments.REY_DE_LAS_MOSCAS) > 0) {
             return AmmoProfile.of(ROTTEN_FLESH_AMMO, 1);
@@ -559,6 +576,43 @@ public final class Arcabuz {
                         CombatEnchantments.REY_DE_LAS_MOSCAS),
                 player.getMainHandItem().getItem().getDescriptionId(),
                 declaredAmmo(player, player.getMainHandItem()).itemId());
+
+        // **Mungus: un Firestone enorme, y es un proyectil de verdad.**
+        //
+        // Va antes que Rey de las Moscas porque los dos son "el disparo hace otra cosa" y un arma
+        // no puede tener los dos -- el orden decide cual gana si un datapack los pusiera juntos, y
+        // gana el que mas cuesta.
+        //
+        // **Y reusa `LargeFireball` de vanilla en vez de una entidad propia.** La regla del
+        // proyecto es extender antes de inventar, y esta bola ya trae todo lo que el diseño pide:
+        // viaja con gravedad, explota al tocar, prende fuego, rompe bloques y **el daño se le
+        // atribuye a quien la tiro** -- que es la mitad de por que un proyectil es un proyectil.
+        // Escribir una entidad propia seria reimplementar las cinco cosas y equivocarse en una.
+        //
+        // Lo unico que se le cambia es la potencia, que es el numero del encantamiento: 12 son
+        // tres TNT juntas, un crater que rompe piedra y tierra pero no obsidiana.
+        int mungus = CombatEnchantments.level(level.registryAccess(), player.getMainHandItem(),
+                CombatEnchantments.MUNGUS);
+        if (mungus > 0) {
+            Vec3 aim = player.getEyePosition()
+                    .add(player.getLookAngle().normalize().scale(ArcabuzMuzzle.FORWARD));
+            net.minecraft.world.entity.projectile.LargeFireball shell =
+                    new net.minecraft.world.entity.projectile.LargeFireball(
+                            level, player, player.getLookAngle().normalize(),
+                            CombatEnchantRules.MUNGUS_POWER);
+            shell.setPos(aim.x, aim.y - 0.3, aim.z);
+            level.addFreshEntity(shell);
+            // El estallido de la boca, igual que el de las moscas: un disparo que no deja nada en
+            // el aire es un sonido, y este es el mas caro del juego.
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE,
+                    aim.x, aim.y, aim.z, 20, 0.2, 0.2, 0.2, 0.03);
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLAME,
+                    aim.x, aim.y, aim.z, 16, 0.15, 0.15, 0.15, 0.05);
+            LOG.info("[arcabuz] DISPARO mungus={} potencia={} municion={}",
+                    mungus, CombatEnchantRules.MUNGUS_POWER,
+                    declaredAmmo(player, player.getMainHandItem()).itemId());
+            return;
+        }
 
         // **Rey de las Moscas: el disparo deja una nube en vez de estallar.**
         //
