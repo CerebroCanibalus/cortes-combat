@@ -199,6 +199,21 @@ public final class ParryHandler {
                         VampiricEffect.DURATION_TICKS, stolen - 1, false, true));
                 attacker.addEffect(new MobEffectInstance(ModEffects.DRAINED,
                         DrainedEffect.DURATION_TICKS, 0, false, true));
+                // **Y la vida actual viene con el techo, que era el bug que reporto el playtest.**
+                //
+                // Subirle `MAX_HEALTH` a un cuerpo <b>no le sube la vida actual</b>: el jugador se
+                // queda con los corazones nuevos vacios y lee "no me lo lleve". Es la misma
+                // asimetria que el comentario de arriba documenta para el enemigo -- bajarle el
+                // techo SI le baja la vida, porque vanilla la clampea cada tick -- y del otro lado
+                // no pasa sola. El robo que se ve era un robo que solo cobraba el enemigo.
+                //
+                // Se cura por los corazones <b>nuevos</b> de este desvio y no por el acumulado:
+                // los que ya tenias los cobraste cuando los robaste, y curarlos de nuevo seria
+                // convertir cada parry en una pocion.
+                int gained = stolen - alreadyStolen;
+                if (gained > 0) {
+                    player.heal((float) (gained * VampiricEffect.PER_LEVEL));
+                }
             }
         }
     }
