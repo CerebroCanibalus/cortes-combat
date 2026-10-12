@@ -478,28 +478,36 @@ public final class Arcabuz {
         // **Cambio de ARMA, y el filtro de arriba no lo ve.**
         //
         // `shouldSnuff` solo pregunta "¿dejo de haber un arcabuz en la mano?", asi que pasar de un
-        // arcabuz a otro lo atraviesa sin que nadie se entere. La accion en vuelo -- la recarga que
-        // corre o la mecha que arde -- pertenece **al arma que la empezo**, y con otro arcabuz en la
-        // mano ya no hay accion: la habria cobrado el arma equivocada. Ver
-        // `ModAttachments.ARCABUZ_GUN`, que es donde vive la respuesta a "¿cual?".
+        // arcabuz a otro lo atraviesa sin que nadie se entere.
         //
-        // **Y esto no es solo por el bug de la recarga: es tambien la mitad de #3.** El cliente se
-        // olvida de todo cuando el arma sale de la mano (`ItemViewModel.clearArcabuz`) y el servidor
-        // solo le vuelve a hablar cuando su estado *se mueve*. Retomar un arma cuyo estado ya estaba
-        // quieto no movia nada, asi que el cliente se quedaba dibujando lo que recordaba: un arma
-        // cargada con la pose de una vacia. Cancelar aca deja el estado en EMPTY, y la reconciliacion
-        // de mas abajo ve la diferencia contra la recamara del stack y **tiene** que mandarla.
+        // **Y esta es la linea que arregla el bug mas grave de la ronda.** `ArcabuzState.withChamber`
+        // es asimetrico a proposito: *"el stack solo puede decir que si"* -- nunca baja `loaded` a
+        // false, porque durante la combustion la recamara ya se gasto del stack y bajarlo vaciaria un
+        // arma a punto de disparar. Eso es correcto **para la misma arma** y falso en cuanto la mano
+        // cambia: el `loaded` pegajoso del arma anterior sobrevive al cambio. Con la version
+        // anterior, que solo reseteaba mientras hubiera una accion EN VUELO, el segundo viaje
+        // A(cargada) -> B(vacia) ya no reseteaba nada, el estado heredaba `loaded=true` de A y
+        // `resolve` encontraba `canLight()` verdadero sobre un arma sin recamara: **dos armas
+        // cargadas de una sola recarga.**
+        //
+        // **El estado describe a UNA arma, y esta comparacion es esa frase hecha codigo.** Se anota
+        // SIEMPRE, no solo cuando hay algo en vuelo, y por identidad -- `ItemStack` no sobreescribe
+        // `equals`, asi que `!=` es "sigue siendo el mismo objeto de inventario", que es la unica
+        // pregunta que distingue dos arcabuces vacios. Ver `ModAttachments.ARCABUZ_GUN`.
+        //
+        // **Y NO hay `return`.** Resetear y seguir deja que la reconciliacion de abajo corra en el
+        // mismo tick: el estado queda vacio, la recamara del stack dice si esa arma esta cargada, y
+        // el cliente recibe el valor bueno de una sola vez. Volver aca mandaria un "descargada" y la
+        // reconciliacion mandaria el "cargada" un tick despues, o sea un parpadeo de pose en cada
+        // cambio de arma.
         net.minecraft.world.item.ItemStack heldNow = player.getMainHandItem();
-        net.minecraft.world.item.ItemStack ownerGun =
+        net.minecraft.world.item.ItemStack described =
                 player.getData(ModAttachments.ARCABUZ_GUN.get());
-        if (ownerGun != net.minecraft.world.item.ItemStack.EMPTY && ownerGun != heldNow) {
-            LOG.info("[arcabuz] accion cancelada: el arma en la mano no es la que la empezo "
-                    + "(dejo de estar recargando/quemando)");
-            player.setData(ModAttachments.ARCABUZ_GUN.get(),
-                    net.minecraft.world.item.ItemStack.EMPTY);
+        if (described != heldNow) {
+            LOG.info("[arcabuz] estado reiniciado: el arma en la mano no es la que el estado describe "
+                    + "(recarga o mecha en vuelo cancelada)");
+            player.setData(ModAttachments.ARCABUZ_GUN.get(), heldNow);
             player.setData(ModAttachments.ARCABUZ.get(), ArcabuzState.EMPTY);
-            ModNetworking.sendArcabuzFuse(player, false, 0, false, 0);
-            return;
         }
 
         // **The gun came back to the hand, so the client needs telling what it is holding.**

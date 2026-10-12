@@ -46,14 +46,39 @@ class ArcabuzGuardsTest {
                         + "haber un arcabuz en la mano. Es el reporte del playtest: \"si recargas un "
                         + "arcabuz y pasas a uno sin recargar, este podra disparar como si fuera "
                         + "recargado\"");
-        assertTrue(code.contains("ownerGun != heldNow"),
-                "**y hay que CANCELAR cuando el arma cambio.** Anotar sin comparar no arregla nada: "
-                        + "el contador sigue corriendo y la accion se cobra igual, solo que ahora "
-                        + "sabemos contra cual");
-        assertTrue(code.contains("ArcabuzState.EMPTY"),
-                "la cancelacion deja el estado vacio, que es lo que ademas obliga a la "
-                        + "reconciliacion de mas abajo a hablarle al cliente otra vez -- ver el test "
-                        + "del sprite, ese es el otro sintoma que arregla la misma linea");
+        assertTrue(code.contains("if (described != heldNow) {"),
+                "**la comparacion tiene que ser EXACTAMENTE esa, sin condiciones extra.** Anotar sin "
+                        + "comparar no arregla nada, y cualquier condicion de mas -- como exigir que el "
+                        + "anotado no sea vacio -- reabre el bug: tras la primera cancelacion el "
+                        + "anotado queda vacio, el segundo cambio de arma ya no resetea, el estado "
+                        + "hereda `loaded=true` del arma anterior y `resolve` encuentra "
+                        + "`canLight()` verdadero sobre un arma sin recamara. **Dos armas cargadas de "
+                        + "una sola recarga**");
+        assertFalse(code.contains("ownerGun != net.minecraft.world.item.ItemStack.EMPTY"),
+                "y la version condicionada del bug tiene que seguir fuera");
+    }
+
+    @Test
+    @DisplayName("la asimetria de withChamber es una decision, y el llamador es quien la compensa")
+    void theStickyLoadedIsCompensatedAtTheCallSite() {
+        // **Las dos mitades del bug, ancladas por separado, porque cada una sola es correcta.**
+        //
+        // `withChamber` NO baja `loaded` a false, y esta bien que no lo haga: durante la combustion
+        // la recamara ya se gasto del stack, y un record que releyera `false` cada tick vaciaria un
+        // arma a punto de disparar. Lo que no puede pasar es que ese `loaded` pegajoso sobreviva a un
+        // cambio de arma -- y eso se arregla en el llamador, no aca.
+        String state = strip(read(
+                "src/main/java/com/cortes/combat/state/ArcabuzState.java"));
+        assertTrue(state.contains("if (!chamberOnStack) {")
+                        && state.contains("return this;"),
+                "**`withChamber` solo puede LLENAR.** Si alguien lo hace simetrico para \"arreglar\" "
+                        + "esto, vacia el arma en cada uno de los veinte ticks que dura la mecha. El "
+                        + "comentario que lo explica tiene que seguir ahi");
+        String arcabuz = strip(read(ARCABUZ));
+        assertTrue(arcabuz.contains("player.setData(ModAttachments.ARCABUZ.get(), ArcabuzState.EMPTY)"),
+                "**y el llamador compensa vaciando el estado entero cuando el arma cambia.** Reinicia "
+                        + "la recamara Y la accion en vuelo de una vez, que es lo que hace que el "
+                        + "`loaded` pegajoso no pueda cruzar de un arcabuz a otro");
     }
 
     @Test

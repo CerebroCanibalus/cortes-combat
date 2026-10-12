@@ -80,8 +80,16 @@ public final class ArcabuzMuzzle {
      */
     public static final double RECOIL = 0.25;
 
-    /** Y Mungus empuja el doble. Ver {@code Arcabuz#recoil}. */
-    public static final double MUNGUS_RECOIL_FACTOR = 2.0;
+    /**
+     * Y Mungus empuja <b>cuatro veces</b> eso. Ver {@code Arcabuz#recoil}.
+     *
+     * <p><b>Era dos, y el playtest pidio "mucho mas".</b> Con dos el empuje era de un bloque y cuarto
+     * -- del orden del de un martillo -- y el tiro mas caro del juego tiene que sentirse como un
+     * cañon de asedio, no como un martillazo. Con cuatro son unos <b>dos bloques y medio</b>: te
+     * mueve de donde estabas parado, que es lo que un arma de ese tamaño le hace al que la
+     * dispara.</p>
+     */
+    public static final double MUNGUS_RECOIL_FACTOR = 4.0;
 
     /**
      * The flash: how many particles, and how far apart they are spread.
@@ -145,34 +153,36 @@ public final class ArcabuzMuzzle {
     public static final double FUSE_SMOKE_SPEED = 0.05;
 
     /**
-     * Donde esta la mecha, <b>en el marco del item</b>: a la derecha, arriba y adelante del punto
-     * donde la mano pone el arma.
+     * Donde esta la mecha, <b>en el marco de la camara y no en el del item</b>: adelante, a la
+     * derecha y apenas por debajo de la linea de mira.
      *
-     * <p><b>Estos tres son los unicos numeros SIN VERIFICAR del archivo</b>, y su propio texto lo
-     * admite: la conversion de unidades del modelo a este marco no se pudo derivar de las fuentes,
-     * asi que quedaron elegidos a ojo. El marco en el que se usan, en cambio, sale de la matriz de
-     * pose que el renderer entrega -- y ese marco es lo que se esta investigando ahora mismo.</p>
+     * <h2>Por que dejaron de ser un punto en el marco del item</h2>
      *
-     * <p><b>NO se tocan todavia, y esa es la decision.</b> El playtest reporto "la particula de humo
-     * sale de en medio de la pantalla", y en medio de la pantalla es la camara: {@code fuseTip} arma
-     * la posicion como {@code ojo + adelante + derecha + arriba}, asi que <b>una matriz cuyo
-     * desplazamiento salga cero deja las tres contribuciones en nada</b> y el humo nace sobre la
-     * lente. Es el mismo sintoma que ya tuvo la version anterior con un offset fijo en el marco de la
-     * camara -- o sea que hay al menos dos causas posibles y se ven identicas.</p>
+     * <p>La version anterior pasaba un punto por la matriz de pose que el renderer entrega para el
+     * arma dibujada, con el razonamiento de que un offset fijo en el marco de la camara "es un punto
+     * delante de la cara, siempre, haga lo que haga el arma". El playtest reporto que el humo sale de
+     * en medio de la pantalla, se instrumento la linea del log, y <b>el dato cerro la pregunta</b>:
+     * durante nueve encendidos la traslacion de esa matriz tuvo <b>magnitud constante 1,08</b> -- que
+     * coincide con {@code |ITEM_POS| = 1,05}, o sea que la matriz SI es la del arma -- pero su
+     * <b>componente Z salto entre -0,92 y +0,71</b>. Y el eje Z del marco de la vista es la distancia
+     * hacia adelante: <b>una distancia al frente no puede ser negativa</b>. La matriz esta en un marco
+     * que rota con el jugador, no en el de la vista, y pasarla por {@code inViewSpace} aplica esa
+     * rotacion dos veces.</p>
      *
-     * <p>Antes de mover un solo numero hace falta saber cual es, y eso lo contesta el log, que ya
-     * imprime la posicion: la linea {@code [arcabuz/mecha]} ahora imprime tambien la traslacion de
-     * la matriz y la distancia al ojo. <b>Distancia al ojo menor a 0,2 es la camara; alrededor de
-     * 0,7 es el arma.</b> Un tercer ancla inventada sin ese dato seria la tercera suposicion de la
-     * misma serie.</p>
+     * <p>Asi que la mecha vuelve al marco que <b>si esta verificado</b>: el mismo del fogonazo, que
+     * lleva dos rondas de playtest sin una queja. Los numeros salen de {@link #FORWARD},
+     * {@link #RIGHT} y {@link #UP} -- que son la boca del cañon -- corridos <b>hacia atras, un poco
+     * menos a la derecha y un poco hacia arriba</b>, porque la mecha esta sobre el cañon y detras de
+     * su boca. Y lo que se gana es que el modo de falla reportado dos veces -- el humo en la lente, o
+     * detras del jugador -- deja de ser posible: son numeros fijos contra una base ortonormal.</p>
      */
-    public static final double FUSE_RIGHT = -0.15;
+    public static final double FUSE_RIGHT = 0.26;
 
-    /** Como referencia: cuanto sube la mecha desde la raiz del item, en su marco. */
-    public static final double FUSE_UP = 0.10;
+    /** Un poco menos abajo que la boca del cañon, porque la mecha esta sobre el cañon. */
+    public static final double FUSE_UP = -0.10;
 
-    /** Como referencia: cuanto avanza la mecha desde la raiz del item, en su marco. */
-    public static final double FUSE_FORWARD = 0.02;
+    /** Y mas cerca que la boca: la mecha esta a media arma, no en la punta. */
+    public static final double FUSE_FORWARD = 0.80;
 
     public static final int LAVA_PER_TARGET = 4;
 

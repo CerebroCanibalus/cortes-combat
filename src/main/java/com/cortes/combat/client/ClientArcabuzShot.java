@@ -229,35 +229,15 @@ public final class ClientArcabuzShot {
      * very first tick from spawning nothing at all.</p>
      */
     public static Vec3 fuseTip(Minecraft mc) {
-        if (!ItemViewModel.drawnFrameIsValid()) {
-            return inViewSpace(mc, FALLBACK_FORWARD, FALLBACK_RIGHT, FALLBACK_UP);
-        }
-        org.joml.Matrix4f frame = ItemViewModel.drawnFrame();
-        double x = ArcabuzMuzzle.FUSE_RIGHT;
-        double y = ArcabuzMuzzle.FUSE_UP;
-        double z = ArcabuzMuzzle.FUSE_FORWARD;
-        double viewX = frame.m00() * x + frame.m10() * y + frame.m20() * z + frame.m30();
-        double viewY = frame.m01() * x + frame.m11() * y + frame.m21() * z + frame.m31();
-        double viewZ = frame.m02() * x + frame.m12() * y + frame.m22() * z + frame.m32();
-
-        // **-Z is away from the camera**, which is the one sign this conversion cannot get wrong by
-        // accident: `ItemInHandRendererMixin`'s frame documents `ITEM_POS = (0.56, -0.52, -0.72)`,
-        // and an item at a negative Z that is not behind the camera is an item in front of it.
-        // `inViewSpace` takes a distance *along the view axis*, so a view-space z of -0.33 is a
-        // third of a block forward and arrives here negated.
-        return inViewSpace(mc, -viewZ, viewX, viewY);
+        // **Los ejes de la camara, que son los unicos verificados.**
+        //
+        // Ver `ArcabuzMuzzle#FUSE_RIGHT` para el dato que cerro la pregunta: la matriz del item
+        // tiene el eje Z rotando con el jugador -- salto entre -0,92 y +0,71 en nueve muestras -- y
+        // una distancia AL FRENTE no puede ser negativa. Pasarla por `inViewSpace` aplicaba esa
+        // rotacion dos veces, y el humo terminaba donde la camara apuntara en vez de sobre el arma.
+        return inViewSpace(mc, ArcabuzMuzzle.FUSE_FORWARD, ArcabuzMuzzle.FUSE_RIGHT,
+                ArcabuzMuzzle.FUSE_UP);
     }
-
-    /**
-     * Where the fuse was drawn, in the camera's own basis, for the frame before any matrix exists.
-     *
-     * <p>The numbers the playtest rejected, kept for exactly one frame's worth of frames. They are
-     * <em>wrong</em> and they are here so that lighting a fuse on the first tick draws something
-     * rather than nothing -- a wrong position for one frame beats a hole.</p>
-     */
-    private static final double FALLBACK_FORWARD = 0.72;
-    private static final double FALLBACK_RIGHT = 0.22;
-    private static final double FALLBACK_UP = -0.26;
 
     /**
      * Smoke off the fuse when it is struck, and nothing at all the rest of the time.
