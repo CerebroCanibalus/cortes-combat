@@ -25,14 +25,19 @@ public final class ClientConfig {
     public static final ModConfigSpec.IntValue STARTING_FOV;
 
     /**
-     * Whether the nether star's overload may move the camera.
+     * Whether anything in the mod may move the camera.
      *
      * <p>A camera that rocks on its own is the classic motion-sickness trigger, and this project
-     * treats every screen effect as something a player can switch off. The shake is small
-     * ({@code ReactorOverload.QUAKE_MAX_DEGREES}), so on is the right default, and off costs the
-     * player nothing but the rumble -- the particles, the sound and the countdown all stay.</p>
+     * treats every screen effect as something a player can switch off.</p>
+     *
+     * <p><b>One key for both shakes, and that is the point.</b> It used to be
+     * {@code reactorShake} and only the nether star read it, which meant the orb's blast would
+     * have gone on moving the camera for a player who had explicitly asked it not to. The
+     * complaint this key answers is "the camera moves on its own" -- it does not know which
+     * explosion moved it, and neither should the setting. Off costs the rumble and nothing else:
+     * the particles, the sound and the countdown all stay.</p>
      */
-    public static final ModConfigSpec.BooleanValue REACTOR_SHAKE;
+    public static final ModConfigSpec.BooleanValue CAMERA_SHAKE;
 
     static {
         STARTING_FOV = BUILDER
@@ -41,10 +46,11 @@ public final class ClientConfig {
                         "never touches it again.")
                 .defineInRange("startingFov", 90, 30, 110);
 
-        REACTOR_SHAKE = BUILDER
-                .comment("Whether a nether star overload may rock the camera. Turn it off for",
-                        "motion sickness; the sound and the particles are unaffected.")
-                .define("reactorShake", true);
+        CAMERA_SHAKE = BUILDER
+                .comment("Whether explosions may rock the camera (the nether star's overload and",
+                        "the pala's antimatter orb). Turn it off for motion sickness; the sound",
+                        "and the particles are unaffected.")
+                .define("cameraShake", true);
 
         SPEC = BUILDER.build();
     }

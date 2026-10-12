@@ -73,7 +73,7 @@ public final class ReactorShake {
 
     @SubscribeEvent
     public static void onCameraAngles(ViewportEvent.ComputeCameraAngles event) {
-        if (SHAKING.isEmpty() || !ClientConfig.REACTOR_SHAKE.get()) {
+        if (SHAKING.isEmpty() || !ClientConfig.CAMERA_SHAKE.get()) {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();

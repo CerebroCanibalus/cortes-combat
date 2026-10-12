@@ -58,6 +58,8 @@ public final class ModNetworking {
                 ModNetworking::handleParryState);
         registrar.playToClient(ArcabuzFusePayload.TYPE, ArcabuzFusePayload.STREAM_CODEC,
                 ModNetworking::handleArcabuzFuse);
+        registrar.playToClient(CameraShakePayload.TYPE, CameraShakePayload.STREAM_CODEC,
+                ModNetworking::handleCameraShake);
 
         // Another player's combat state, so this client can work out their pose.
         //
@@ -179,6 +181,18 @@ public final class ModNetworking {
     private static void handleArcabuzFuse(ArcabuzFusePayload payload, IPayloadContext context) {
         com.cortes.combat.client.ArcabuzFuseState.accept(
                 payload.lit(), payload.fuseTicks(), payload.loaded(), payload.reloadTicks());
+    }
+
+    /**
+     * El reventon le avisa a la camara del que lo ve.
+     *
+     * <p><b>Un temblor es un momento y no un estado</b>, asi que no entra en `CombatStatePayload`:
+     * ese va por jugador y describe lo que el jugador ESTA haciendo, y el orbe revienta una vez
+     * cada ciento veinte ticks. Lo que viaja es el aviso -- donde, cuanto y por cuanto -- y el
+     * cliente lo gasta. Ver {@code CameraShake}.</p>
+     */
+    private static void handleCameraShake(CameraShakePayload payload, IPayloadContext context) {
+        com.cortes.combat.client.CameraShake.accept(payload);
     }
 
     /**

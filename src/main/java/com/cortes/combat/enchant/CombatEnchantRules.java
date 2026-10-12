@@ -1164,8 +1164,20 @@ public final class CombatEnchantRules {
      */
     public static final double PALA_ANTIMATERIAL_SPEED = 0.35;
 
-    /** Lo que aguanta el orbe en vuelo. A la velocidad de arriba son unos veintiocho bloques. */
-    public static final int PALA_ANTIMATERIAL_LIFETIME_TICKS = 80;
+    /**
+     * Lo que aguanta el orbe en vuelo. A la velocidad de arriba son unos treintaitres bloques.
+     *
+     * <p><b>Noventa y seis ticks y no ochenta: el playtest pidio el rango un veinte por ciento mas
+     * largo.</b> El rango es <em>velocidad por vida</em> y la velocidad esta fijada por "que se
+     * vea viajar", asi que la palanca es la vida: ochenta por 1,2 son noventa y seis, o de
+     * veintiocho a treintaitres y medio bloques. Se toca la vida y no la velocidad a proposito --
+     * subir la velocidad habria acortado el viaje en segundos, que es justo lo que hace que el
+     * orbe sea un ataque con aviso y no un fogonazo.</p>
+     *
+     * <p>Y esta constante ahora es <b>el radio maximo de verdad</b>, no solo un temporizador: el
+     * orbe implosiona al agotarla en vez de apagarse. Ver {@code AntimatterOrb#tick}.</p>
+     */
+    public static final int PALA_ANTIMATERIAL_LIFETIME_TICKS = 96;
 
     /** El radio del tiron MIENTRAS viaja, y el tiron que aplica por tick. */
     public static final float PALA_ANTIMATERIAL_TRAVEL_PULL_RADIUS = 3.0F;

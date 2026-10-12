@@ -43,6 +43,10 @@ public class CortesCombatClient {
         // The nether star's camera shake. Registered here like every other client listener, on the
         // game bus, because it is a per-frame viewport event fired from Camera.setup.
         NeoForge.EVENT_BUS.register(ReactorShake.class);
+        // **Y los temblores puntuales, que son otra lista.** El del reactor vive mientras el bloque
+        // este; el de un reventon tiene que sobrevivir catorce ticks a la cosa que lo causo. Los
+        // dos suman al mismo pitch y al mismo roll, asi que se componen solos.
+        NeoForge.EVENT_BUS.register(CameraShake.class);
         NeoForge.EVENT_BUS.register(ConeDebugRenderer.class);
         // The weapon tooltips. Registered here rather than through @EventBusSubscriber because
         // this class already is the client's subscription list, and a second list is a second
