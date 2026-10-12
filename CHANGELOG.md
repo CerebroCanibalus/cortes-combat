@@ -1003,3 +1003,28 @@ flotando en el aire al lado del que lo tiro. Y los dos ejes perpendiculares sale
 cruz, asi que zigzaguea en dos dimensiones y no en un plano, que se lee como un dibujo.
 
 1066 tests verdes.
+
+### Nota de honestidad sobre el commit 1134a1b
+
+**Ese commit contiene mas de lo que su mensaje dice, y es un error mio.** El mensaje describe dos
+cosas -- el estallido al disparar al aire y los pesos de los encantamientos -- y el commit trae
+**13 archivos**, porque corri `git add src` sin listar que habia adentro y barri todo el Paso 11
+(supervivencia) que estaba sin trackear en el arbol:
+
+- `survival/` (5 archivos: `SurvivalRules`, `SurvivalState`, `SurvivalTicker`, `SurvivalTuning`,
+  `EatInterruptHandler`)
+- `mixin/FoodDataMixin`, `mixin/ItemStackDrinkDurationMixin`
+- `config/ServerConfig`
+- `CortesCombat` (+7, el `registerConfig` del server), `ModAttachments` (+18)
+
+**Ninguno de esos lo escribi yo en esa sesion, y no los revise.** El codigo tiene la voz y las
+convenciones del proyecto y el `registerConfig` es el patron documentado, pero eso no es una
+revision: es una impresion. Quien lea ese commit tiene que saber que su mensaje no alcanza para
+saber que hay adentro.
+
+**La leccion, y es la misma que ya estaba escrita con las texturas:** un `git add` a ciegas le
+pone mi nombre a trabajo ajeno. La regla es **listar los archivos antes de commitear**
+(`git diff --cached --name-only`), que es una linea y ya la usaba cuando el cambio era mio.
+
+**No se reescribio el historial**: el commit esta pusheado y rehacerlo seria un force-push.
+Queda anotado, y si se decide limpiarlo, se hace sabiendo que hay que forzar el remoto.
