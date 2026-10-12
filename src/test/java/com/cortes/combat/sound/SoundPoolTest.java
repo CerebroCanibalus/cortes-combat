@@ -51,6 +51,11 @@ class SoundPoolTest {
     private static final Pattern EVENT = Pattern.compile("\"([a-z0-9_]+)\"\\s*:\\s*\\{");
     private static final Pattern NAME = Pattern.compile("\"name\"\\s*:\\s*\"([^\"]+)\"");
     /**
+     * El namespace propio. Se saca al comparar contra el disco; el de otro mod no, porque es una
+     * pista que el juego resuelve y este jar no.
+     */
+    private static final String OWN_NAMESPACE = "cortescombat:";
+    /**
      * Lo que una ruta de recurso de Minecraft admite: {@code namespace:path}, y en cada mitad
      * {@code [a-z0-9/._-]}. El `:` separa las dos y es legal; lo que no lo es, una mayuscula.
      */
@@ -103,8 +108,24 @@ class SoundPoolTest {
             Matcher names = NAME.matcher(body);
             while (names.find()) {
                 String id = names.group(1);
-                int slash = id.lastIndexOf('/');
-                files.add(id.substring(slash + 1));
+                // **El namespace propio se saca y la CARPETA se queda, y esa linea es el arreglo.**
+                //
+                // Antes esto hacia `id.lastIndexOf('/')` y guardaba el nombre pelado, mientras
+                // `filesOnDisk` guardaba el nombre pelado del otro lado: los dos tiraban la carpeta,
+                // que es **lo unico que puede estar mal**. `arcabuz_mosca_loop.ogg` vivia en
+                // `sounds/combat_fx/` y `sounds.json` lo declaraba en `sounds/weapons/`, el juego lo
+                // reportaba en el log y este guard decia que estaba todo bien. Los dos nombres
+                // normalizados eran `arcabuz_mosca_loop`.
+                //
+                // Es exactamente el mismo error que `sweeping_edgeV2`: un guard que normaliza la
+                // parte que pregunta. La primera vez fue una mayuscula, esta vez una carpeta.
+                //
+                // El namespace de OTRO mod se deja intacto, porque es una pista que el juego resuelve
+                // y este jar no: `everyNameResolves` lo salta por eso.
+                if (id.startsWith(OWN_NAMESPACE)) {
+                    id = id.substring(OWN_NAMESPACE.length());
+                }
+                files.add(id);
             }
             pools.put(matcher.group(1), files);
         }
@@ -116,9 +137,15 @@ class SoundPoolTest {
         Set<String> names = new LinkedHashSet<>();
         try (Stream<Path> walk = Files.walk(SOUND_DIR)) {
             walk.filter(Files::isRegularFile)
-                    .map(p -> p.getFileName().toString())
-                    .filter(n -> n.endsWith(".ogg"))
-                    .forEach(n -> names.add(n.substring(0, n.length() - 4)));
+                    .forEach(p -> {
+                        // **La ruta RELATIVA a `sounds/`, con su carpeta.** Ver la nota de `pools()`:
+                        // comparar nombres pelados es lo que dejo pasar un archivo en la carpeta
+                        // equivocada durante toda una ronda.
+                        String relative = SOUND_DIR.relativize(p).toString().replace('\\', '/');
+                        if (relative.endsWith(".ogg")) {
+                            names.add(relative.substring(0, relative.length() - 4));
+                        }
+                    });
         }
         return names;
     }
