@@ -1039,22 +1039,51 @@ public final class CombatEnchantRules {
         };
     }
 
-    public static int gripaInterval(int level) {
-        return switch (clamp(level, GRIPA_MAX_LEVEL)) {
-            case 1 -> 20;
-            case 2 -> 15;
-            default -> 0;
-        };
+    /**
+     * Cada cuantos ticks estornuda el cuerpo, segun cuantos mocos tenga encima.
+     *
+     * <p><b>La frecuencia sube con los stacks, y el estornudo es el UNICO dano del
+     * encantamiento.</b> Ese es el rediseno que pidio el playtest, y las dos mitades van juntas: con
+     * un moco el cuerpo estornuda cada tres segundos, y con los seis del tope estornuda <b>una vez
+     * por segundo</b>. "Mas seguido" es exactamente "mas dano por segundo", asi que la escalada
+     * entera del encantamiento vive en este numero.</p>
+     *
+     * <p><b>Y el dano por tick que habia antes se fue.</b> Multiplicaba un punto por stack cada
+     * veinte ticks y no se veia: el rival perdia vida y nada lo decia. El estornudo si se ve -- es
+     * la particula del panda, el sonido y un envion -- y cobrar las dos cosas era cobrar dos veces
+     * por el mismo moco.</p>
+     *
+     * <p>El piso de veinte no es decorativo: sin el, seis mocos serian un estornudo por tick y el
+     * encantamiento dejaria de ser una cuenta que sube para volverse un interruptor.</p>
+     */
+    public static int gripaSneezeInterval(int stacks) {
+        int s = Math.max(1, stacks);
+        return Math.max(GRIPA_SNEEZE_MIN_TICKS,
+                GRIPA_SNEEZE_BASE_TICKS - (s - 1) * GRIPA_SNEEZE_STEP_TICKS);
     }
 
-    /** El daño por stack, cada intervalo. Un punto: el encantamiento es de acumulacion. */
-    public static final float GRIPA_DAMAGE_PER_STACK = 1.0F;
-    public static final int GRIPA_SNEEZE_TICKS = 40;
+    /** Un moco solo: un estornudo cada tres segundos. */
+    public static final int GRIPA_SNEEZE_BASE_TICKS = 60;
+    /** Lo que adelanta cada moco mas. */
+    public static final int GRIPA_SNEEZE_STEP_TICKS = 8;
+    /** El piso: un estornudo por segundo, que es lo mas seguido que puede pasar. */
+    public static final int GRIPA_SNEEZE_MIN_TICKS = 20;
 
     /** Cuanto dura el moco en el cuerpo. Cuatro segundos, y se renueva con cada golpe. */
     public static final int GRIPA_TICKS = 80;
-    public static final float GRIPA_SNEEZE_DAMAGE = 1.0F;
-    public static final float GRIPA_SNEEZE_JUMP = 0.4F;
+
+    /**
+     * El estornudo: <b>el unico dano del encantamiento, y es grande a proposito.</b>
+     *
+     * <p>Dos corazones y medio por estornudo. Un moco solo son 2,5 cada tres segundos; los seis del
+     * tope son 2,5 <b>por segundo</b>, que es mas de lo que pega cualquier arma del catalogo. El
+     * precio es que hay que llegar a los seis, y que el rival se quede el tiempo suficiente para que
+     * la cuenta suba.</p>
+     */
+    public static final float GRIPA_SNEEZE_DAMAGE = 5.0F;
+
+    /** El envion hacia arriba, que es lo que un estornudo tiene de estornudo. */
+    public static final float GRIPA_SNEEZE_JUMP = 0.6F;
     public static final float GRIPA_CLOUD_RADIUS = 2.0F;
     public static final float GRIPA_CLOUD_DAMAGE = 2.0F;
 

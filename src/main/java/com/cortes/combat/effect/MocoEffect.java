@@ -10,28 +10,29 @@ import net.minecraft.world.entity.LivingEntity;
 /**
  * Moco: lo que deja un golpe de la daga con Gripa.
  *
- * <h2>Los stacks son el nivel del efecto</h2>
+ * <h2>El unico dano es el estornudo, y los stacks lo hacen mas seguido</h2>
  *
- * <p>{@code amplifier} es la cuenta de mocos menos uno, asi que el daño por tick se multiplica por
- * cuantos haya. Es lo que hace que el encantamiento se sienta como una cuenta que sube en vez de un
- * temporizador: el rival no pierde vida mas <em>tiempo</em>, pierde mas vida <em>por golpe que le
- * pegaste</em>, y eso es una recompensa por insistir.</p>
+ * <p>Ese es el rediseno que pidio el playtest, y reemplaza a un dano por tick que <b>no se veia</b>:
+ * el rival perdia un punto por stack cada veinte ticks y nada lo decia. Ahora el moco cobra de una
+ * sola forma -- el estornudo -- y lo que sube con los stacks es <b>cada cuanto estornuda</b>: de uno
+ * cada tres segundos con un moco solo a <b>uno por segundo</b> con los seis del tope. Ver
+ * {@code CombatEnchantRules#gripaSneezeInterval}.</p>
  *
- * <h2>El intervalo depende de los stacks, y hay que decirlo</h2>
+ * <h2>El nivel del encantamiento NO viaja en el efecto</h2>
  *
- * <p>El documento pide <b>20 ticks por tick de daño en el L1 y 15 en el L2</b>, y <b>el nivel del
- * encantamiento no viaja en el efecto</b> -- lo que viaja es el {@code amplifier}, que son los stacks.
- * Preguntar "que nivel lo puso" no tiene respuesta desde aca, asi que el intervalo se ata al unico
- * numero que si esta: <b>un moco que llego al tope pega mas seguido</b>. Es la misma historia que pega
- * mas fuerte contada en el otro eje, y es preferible a inventar un campo en el efecto para llevar un
- * dato que ya esta en la pila.</p>
+ * <p>Lo que viaja es el {@code amplifier}, que son los stacks. Preguntar "que nivel lo puso" no tiene
+ * respuesta desde aca, y por eso el intervalo se ata al unico numero que si esta. El tope de stacks es
+ * lo que le pone un techo a la escalada, en vez de un campo nuevo en el efecto que llevara un dato que
+ * ya esta en la pila.</p>
  *
- * <h2>El estornudo, que es lo que se ve</h2>
+ * <h2>Un reloj solo, y el reloj es el del cuerpo</h2>
  *
- * <p>Un daño por tick no tiene feedback: el rival pierde vida y nada lo dice. Cada cuarenta ticks del
- * cuerpo el moco lo hace estornudar -- un punto de daño, un salto de 0,4 y la particula del panda --
- * y esa es la mitad visible del encantamiento. <b>Sin arte nuevo</b>: la particula y el sonido son los
- * del panda, que es exactamente el animal que estornuda en este juego.</p>
+ * <p>Antes habia dos y no coincidian: la puerta del efecto dejaba entrar al metodo cada tanto y aca
+ * adentro habia un modulo aparte, asi que el estornudo necesitaba que los dos cayeran juntos y casi
+ * nunca pasaba. El reloj del efecto tampoco sirve porque <b>se reinicia en cada golpe</b>: su resto
+ * vuelve siempre al mismo valor y un moco recien puesto estornudaria al instante. El cuerpo trae su
+ * propio contador y sigue corriendo pase lo que pase. <b>Sin arte nuevo</b>: la particula y el sonido
+ * son los del panda, que es el animal que estornuda en este juego.</p>
  */
 public class MocoEffect extends MobEffect {
 
@@ -41,14 +42,22 @@ public class MocoEffect extends MobEffect {
 
     @Override
     public boolean applyEffectTick(LivingEntity entity, int amplifier) {
-        int stacks = amplifier + 1;
-        entity.hurt(entity.damageSources().magic(),
-                CombatEnchantRules.GRIPA_DAMAGE_PER_STACK * stacks);
+        int stacks = Math.min(amplifier + 1,
+                CombatEnchantRules.gripaMaxStacks(CombatEnchantRules.GRIPA_MAX_LEVEL));
 
-        // El estornudo, sobre el reloj de la entidad y no sobre el del efecto: el efecto se reaplica
-        // con cada golpe y su duracion se renueva, asi que un contador adentro nunca llegaria a
-        // cuarenta. El tick del cuerpo si sigue corriendo.
-        if (entity.tickCount % CombatEnchantRules.GRIPA_SNEEZE_TICKS == 0) {
+        // **Un solo reloj, el del cuerpo, y ese es el arreglo.**
+        //
+        // Habia dos y no coincidian: `shouldApplyEffectTickThisTick` dejaba entrar al metodo cada
+        // `interval` ticks y aca adentro habia un `% 40` aparte. Para que el estornudo saliera, los
+        // dos modulos tenian que caer juntos, y casi nunca caian -- el playtest lo reporto como "no
+        // hace nada" y tenia razon: casi nunca pasaba.
+        //
+        // El reloj del efecto no sirve para esto porque **se reinicia en cada golpe** (la duracion
+        // se renueva), asi que su resto vuelve siempre al mismo valor. `entity.tickCount` sigue
+        // corriendo pase lo que pase.
+        int interval = CombatEnchantRules.gripaSneezeInterval(stacks);
+
+        if (entity.tickCount % interval == 0) {
             entity.hurt(entity.damageSources().magic(), CombatEnchantRules.GRIPA_SNEEZE_DAMAGE);
             entity.push(0.0, CombatEnchantRules.GRIPA_SNEEZE_JUMP, 0.0);
             entity.hurtMarked = true;
@@ -66,11 +75,10 @@ public class MocoEffect extends MobEffect {
 
     @Override
     public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
-        // El tope del nivel dos son seis stacks; ver la nota de la clase sobre por que el intervalo se
-        // ata a los stacks y no al nivel del encantamiento.
-        int interval = amplifier + 1 >= 6
-                ? CombatEnchantRules.gripaInterval(CombatEnchantRules.GRIPA_MAX_LEVEL)
-                : CombatEnchantRules.gripaInterval(1);
-        return duration % interval == 0;
+        // **Siempre, y ese "siempre" es la otra mitad del arreglo.** La frecuencia del estornudo
+        // depende de los stacks y la decide `applyEffectTick` sobre el reloj del cuerpo;
+        // preguntarlo tambien aca seria el segundo reloj otra vez, que es exactamente lo que estaba
+        // roto. Un tick por cuerpo con moco es lo que cuesta, y un moco lo tienen pocos.
+        return true;
     }
 }

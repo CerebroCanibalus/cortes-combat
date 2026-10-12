@@ -494,12 +494,23 @@ class CombatEnchantRulesTest {
                 "**y el efecto es corto**: un segundo y medio es una ventana de guardia, y mas seria "
                         + "un control de mas");
 
-        // Gripa: los stacks suben con el nivel, el intervalo baja.
+        // Gripa: los stacks suben con el nivel, y el estornudo se adelanta con cada stack.
         assertEquals(0, CombatEnchantRules.gripaMaxStacks(0));
         assertEquals(4, CombatEnchantRules.gripaMaxStacks(1));
         assertEquals(6, CombatEnchantRules.gripaMaxStacks(2));
-        assertEquals(20, CombatEnchantRules.gripaInterval(1));
-        assertEquals(15, CombatEnchantRules.gripaInterval(2));
+        assertEquals(60, CombatEnchantRules.gripaSneezeInterval(1),
+                "un moco solo: un estornudo cada tres segundos");
+        assertTrue(CombatEnchantRules.gripaSneezeInterval(2)
+                        < CombatEnchantRules.gripaSneezeInterval(1),
+                "**mas mocos, mas seguido**: es la unica forma en que el encantamiento escala ahora "
+                        + "que el estornudo es el unico dano");
+        assertEquals(20, CombatEnchantRules.gripaSneezeInterval(6),
+                "el tope de seis stacks es un estornudo por segundo, que es el piso");
+        assertEquals(20, CombatEnchantRules.gripaSneezeInterval(60),
+                "y pasado el tope no sigue bajando: el piso es un piso, no una pendiente");
+        assertEquals(60, CombatEnchantRules.gripaSneezeInterval(0),
+                "**cero stacks se lee como uno**: un intervalo de cero seria un estornudo por tick, "
+                        + "asi que el Math.max(1, ...) no es defensivo sino la definicion");
         assertTrue(CombatEnchantRules.gripaMaxStacks(2) > CombatEnchantRules.gripaMaxStacks(1),
                 "y el nivel dos sube los dos numeros: mas stacks y mas seguido");
 
