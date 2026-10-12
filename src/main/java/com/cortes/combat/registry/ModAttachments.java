@@ -158,26 +158,26 @@ public final class ModAttachments {
                     .build());
 
     /**
-     * The arcabuz: a firestone in the chamber and twenty ticks of fuse.
+     * <b>El boton derecho del arcabuz, y lo unico del arma que sigue viviendo en el jugador.</b>
      *
-     * <p><b>No {@code copyOnDeath}, and this is the same rule the guard's points follow.</b>
-     * {@code loaded} is a button the player pressed. It rode through the guard's held flag once
-     * already -- the player came back from the death screen with the guard already up -- and the
-     * arcabuz would have handed them a loaded gun nobody loaded, which is the same category of
-     * bug in a different item.</p>
+     * <p><b>Aca vivia {@code ArcabuzState} entero</b> -- la recamara, la mecha y la recarga -- y ese
+     * unico hecho produjo los tres bugs del arma: cambiar de arcabuz <b>heredaba el estado del
+     * otro</b>, asi que el segundo salia cargado, terminaba la recarga del primero, y disparaba una
+     * mecha que arranco en el primero. Ver {@code ModComponents#ARCABUZ}, que es donde vive ese
+     * estado ahora.</p>
      *
-     * <p>So dying costs the fuse <em>and</em> the charge, and both come back on the empty. Which
-     * is also the honest reading of the design: a player who just lost the fight did not come
-     * back with a loaded weapon.</p>
+     * <p><b>El boton SI es del jugador y tiene que quedarse.</b> Es el estado fisico del mouse, no
+     * del arma: un solo boton, y lo que hace es decidir si la recarga del arma que tiene en la mano
+     * avanza o se tira. Ponerlo en el stack seria escribir un componente cada vez que el jugador
+     * aprieta y suelta, que es la clase de escritura que mueve el arma.</p>
      *
-     * <p>The type witness is not decoration, the same as {@link #LUNGE_HITS}: this
-     * {@code DeferredRegister<AttachmentType<?>>} takes a {@code Supplier<? extends I>} and the
-     * diamond of {@code ArcabuzState.EMPTY} cannot be solved without being told what it is for.</p>
+     * <p>Sin codec y sin {@code copyOnDeath}, por la regla que ya siguen {@link #PENDING_HIT} y
+     * {@code FALL_DEFERRAL}: un boton apretado no sobrevive una muerte ni un cambio de mundo, y un
+     * boton que volviera apretado recargaria un arma que nadie esta sosteniendo.</p>
      */
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<ArcabuzState>> ARCABUZ =
-            ATTACHMENT_TYPES.register("arcabuz", () -> AttachmentType
-                    .<ArcabuzState>builder(() -> ArcabuzState.EMPTY)
-                    .serialize(ArcabuzState.CODEC)
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Boolean>> ARCABUZ_BUTTON =
+            ATTACHMENT_TYPES.register("arcabuz_button", () -> AttachmentType
+                    .<Boolean>builder(() -> Boolean.FALSE)
                     .build());
 
     /**
@@ -204,39 +204,6 @@ public final class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<PendingHit>> PENDING_HIT =
             ATTACHMENT_TYPES.register("pending_hit", () -> AttachmentType
                     .<PendingHit>builder(() -> PendingHit.NONE)
-                    .build());
-
-    /**
-     * <b>El arcabuz al que pertenece la accion en vuelo</b>: la recarga que esta corriendo o la
-     * mecha que esta ardiendo.
-     *
-     * <h2>Por que hace falta, y el bug que arregla</h2>
-     *
-     * <p>Porque el disparo y la recarga leian <b>{@code player.getMainHandItem()}</b> en el momento
-     * de cobrar, y ese momento puede ser cincuenta ticks despues de que el jugador apretara.
-     * Recargar un arcabuz, cambiar a otro a mitad de la recarga y esperar: al terminar, {@code load}
-     * le ponia la Firestone <b>al arma que estaba en la mano ahora</b> -- la segunda -- y le sacaba
-     * la municion del inventario al jugador. La segunda quedaba cargada sin que nadie la hubiera
-     * recargado, y la primera se quedaba vacia. Es el reporte del playtest, palabra por palabra.</p>
-     *
-     * <p><b>La ballesta de vanilla no tiene ese agujero, y la respuesta esta en su firma:</b>
-     * {@code CrossbowItem#onUseTick} recibe el {@code ItemStack} que se esta usando y
-     * {@code performCharge} escribe la carga <b>en ese stack</b>, no en el de la mano. La accion
-     * pertenece a un arma concreta porque el arma es el sujeto de la accion, no el jugador.</p>
-     *
-     * <p><b>Referencia y no copia, y a proposito.</b> {@code ItemStack} no sobreescribe
-     * {@code equals}, asi que comparar dos es comparar identidad: es exactamente la pregunta
-     * "sigue siendo el mismo objeto de inventario". Dos arcabuces vacios son indistinguibles por
-     * contenido -- {@code ItemStack.matches} diria que son el mismo -- y tienen que ser
-     * distinguibles por identidad, porque el jugador ve dos ranuras distintas.</p>
-     *
-     * <p>Sin codec: es una accion en vuelo, no un estado. Un arcabuz a medio recargar que se guarda
-     * con el mundo no existe -- ver {@code PENDING_HIT} para la misma regla.</p>
-     */
-    public static final DeferredHolder<AttachmentType<?>, AttachmentType<net.minecraft.world.item.ItemStack>>
-            ARCABUZ_GUN = ATTACHMENT_TYPES.register("arcabuz_gun", () -> AttachmentType
-                    .<net.minecraft.world.item.ItemStack>builder(
-                            () -> net.minecraft.world.item.ItemStack.EMPTY)
                     .build());
 
     /**

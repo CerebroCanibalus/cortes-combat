@@ -100,21 +100,18 @@ public final class Arcabuz {
      * ({@code loaded && fuseTicks > 0} is refused by both gates at once).</p>
      */
     public static void resolve(ServerPlayer player, ServerLevel level, WeaponStats stats) {
-        ArcabuzState state = player.getData(ModAttachments.ARCABUZ.get());
-        // **The stack is the truth about the chamber, and this is the one place the two disagree.**
+        // **El estado es del ARMA, y se lee de la mano.**
         //
-        // The attachment still carries a `loaded` flag because the gates on the record are pure and
-        // cannot see an inventory -- and that used to make the player's *person* hold the
-        // firestone: load a gun, swap to the other, and the second could be fired without ever
-        // being loaded. So before either gate is asked, the flag is read off the stack in hand.
-        //
-        // One place, at the press, is enough: the press is the only moment the answer changes what
-        // happens, and asking it once means the two answers cannot disagree about a gun that was
-        // just loaded.
-        boolean chamber = chamber(player);
-        state = state.withChamber(chamber);
+        // Aca vivia `state.withChamber(chamber(player))`, una reconciliacion entre el attachment del
+        // jugador y el stack -- porque el estado estaba en el jugador y el stack era la verdad sobre
+        // la recamara. Con el estado en el stack esa reunion no existe: <b>lo que dice el arma ES lo
+        // que hay</b>, y no hay segundo lugar del que pueda discrepar. Ver `ModComponents#ARCABUZ`
+        // para los tres bugs que esa reunion produjo.
+        net.minecraft.world.item.ItemStack gun = player.getMainHandItem();
+        ArcabuzState state = state(gun);
+        long now = level.getGameTime();
 
-        if (state.canLight()) {
+        if (state.loaded() && !state.isBurning() && !state.isReloading()) {
             // The firestone is gone on this tick, before the fuse has moved one step. That is the
             // rule the whole state exists for and putting it here makes it true by construction
             // rather than by the order of two statements further down.
@@ -135,19 +132,12 @@ public final class Arcabuz {
                     CombatEnchantments.MUNGUS) > 0) {
                 fuse = (int) (fuse * CombatEnchantRules.MUNGUS_CHARGE_FACTOR);
             }
-            player.setData(ModAttachments.ARCABUZ.get(), state.light(fuse));
-            // **Y la accion queda anotada contra ESTA arma.** La mecha arde veinte ticks -- cuarenta
-            // con Mungus -- y en ese rato el arma puede salir de la mano. Sin esta linea, `fire`
-            // disparaba la que estuviera en la mano al final del conteo, con la potencia de la
-            // primera y las estadisticas de la segunda. Ver `ModAttachments.ARCABUZ_GUN`.
-            player.setData(ModAttachments.ARCABUZ_GUN.get(), player.getMainHandItem());
-            // **And off the stack, in the same breath as off the record.**
+            // **La mecha y la recamara se escriben en la MISMA escritura y sobre el MISMO stack.**
             //
-            // Spent in the chamber and not at the shot, so the two cannot drift: a gun that fired
-            // but still reports itself charged would let a player reload-cancel their way into a
-            // second shot off one firestone.
-            player.getMainHandItem().remove(
-                    com.cortes.combat.registry.ModComponents.ARCABUZ_CHAMBER);
+            // Antes eran dos lugares: `light()` iba al attachment y el `remove(ARCABUZ_CHAMBER)` al
+            // stack, y de ahi salia el `ARCABUZ_GUN` que anotaba contra que arma iban. Ahora hay un
+            // solo objeto de estado y no hay nada que pueda quedar apuntando a otra arma.
+            gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ, state.light(now, fuse));
             // **loaded = true, and that one word is the whole of "apunta hacia abajo".** The
             // firestone is spent from the CHAMBER's point of view at the shot, not at the light:
             // the ball is still in the barrel while the fuse burns, so the loaded pose stays for
@@ -189,21 +179,14 @@ public final class Arcabuz {
             //
             // The price the reload used to pay -- the attack cooldown, and the reload sound --
             // moved with it, to the tick that finishes.
-            // **`withHeld(true)` and not the flag we happen to be holding.**
             //
-            // A press IS evidence that the button is down -- it is the server being told the
-            // button went down, or came up a second time. Relying on the held packet having
-            // arrived first is what broke this: the reload began in a state whose only clock was
-            // a flag the press had just cleared, so the gun took the reload and never filled.
-            int reloadTotal = reloadTicks(player.getMainHandItem(), player);
-            player.setData(ModAttachments.ARCABUZ.get(), state.startReload(reloadTotal).withHeld(true));
-            // **Y la recarga queda anotada contra ESTA arma.** Es el bug mas caro de la ronda:
-            // cincuenta ticks despues, `load` le ponia la Firestone a la que estuviera en la mano
-            // entonces -- y como cambiar de un arcabuz a otro no dispara el `shouldSnuff` de mas
-            // abajo (las dos son arcabuces), recargar una armaba la otra. Ver
-            // `ModAttachments.ARCABUZ_GUN` y, para el porque, `CrossbowItem#onUseTick`, que recibe el
-            // stack que se esta usando y escribe la carga en ESE.
-            player.setData(ModAttachments.ARCABUZ_GUN.get(), player.getMainHandItem());
+            // **Lo que NO hace falta declarar es el boton.** Un press ES la evidencia de que el boton
+            // esta abajo, asi que la recarga no depende de que el paquete de "apretado" haya llegado
+            // antes: el `tick` pregunta por el boton del jugador, que es donde vive, y esta recarga
+            // solo avanza si lo esta.
+            int reloadTotal = reloadTicks(gun, player);
+            gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ,
+                    state.startReload(now, reloadTotal));
             // **The press sound is NOT played here, and its absence is the fix.**
             //
             // It used to be, and this is the line that has to go for the reload to be able to
@@ -248,10 +231,15 @@ public final class Arcabuz {
      * state nothing in the game is producing.</p>
      */
     public static void setHeld(ServerPlayer player, boolean held) {
-        ArcabuzState state = player.getData(ModAttachments.ARCABUZ.get());
-        player.setData(ModAttachments.ARCABUZ.get(), state.withHeld(held));
-        LOG.info("[arcabuz] held={} (antes {}) -> {}", held, state.reloadHeld(),
-                player.getData(ModAttachments.ARCABUZ.get()).reloadHeld());
+        boolean before = player.getData(ModAttachments.ARCABUZ_BUTTON.get());
+        if (before == held) {
+            return;
+        }
+        player.setData(ModAttachments.ARCABUZ_BUTTON.get(), held);
+        // **The log line is not decoration: it is one of the five refusals.** A reload that does not
+        // advance and a reload that was never started look identical from outside, and this is the
+        // cheapest half of telling them apart.
+        LOG.info("[arcabuz] held={} (antes {})", held, before);
     }
 
     /**
@@ -297,7 +285,7 @@ public final class Arcabuz {
         // siendo la quinta negativa silenciosa y sigue devolviendo `false`.
         boolean freeAmmo = player.isCreative();
         if (found < 0 && !freeAmmo) {
-            trace(player, player.getData(ModAttachments.ARCABUZ.get()),
+            trace(player, state(player.getMainHandItem()),
                     "sin munición (" + ammo.itemId() + ")");
             return false;
         }
@@ -308,26 +296,19 @@ public final class Arcabuz {
         if (found >= 0) {
             player.getInventory().removeItem(found, ammo.count());
         }
-        // **The charge lands on the stack, in the same statement that pays for it.**
-        //
-        // The firestone comes out of the inventory here and goes into *this gun*, so the write is
-        // here too and not one call later: a gun that was paid for and not charged is the one
-        // state a player cannot read, and it would be read as the model lying.
-        player.getMainHandItem().set(com.cortes.combat.registry.ModComponents.ARCABUZ_CHAMBER,
-                Boolean.TRUE);
+        // **No escribe el estado.** El pago y la carga son dos cosas y las hace el mismo tick, pero
+        // en dos lineas: esta cobra la Firestone, y el `tick` que llama pone `finished()` en el
+        // componente del arma. Cuando la recamara era un segundo componente y una bandera en el
+        // attachment, "cobre y no cargo" era un estado que el jugador no podia leer; ahora es
+        // imposible por construccion, porque el que cobra no escribe estado y el que escribe estado
+        // es el mismo que cobra.
         return true;
     }
 
-    /**
-     * Whether the musket in the player's hand has a firestone in it.
-     *
-     * <p><b>Absent means empty.</b> Not "false": the component is written when the reload finishes
-     * and removed when the gun fires, so a gun that has never been loaded and one that has just
-     * been fired are the same stack of components -- which is what makes them the same gun.</p>
-     */
-    private static boolean chamber(ServerPlayer player) {
-        return player.getMainHandItem()
-                .get(com.cortes.combat.registry.ModComponents.ARCABUZ_CHAMBER) != null;
+    /** El estado del arcabuz que hay en ese stack. <b>Ausente = un arma recien salida de la caja.</b> */
+    private static ArcabuzState state(ItemStack gun) {
+        ArcabuzState found = gun.get(com.cortes.combat.registry.ModComponents.ARCABUZ);
+        return found == null ? ArcabuzState.EMPTY : found;
     }
 
     /**
@@ -444,167 +425,96 @@ public final class Arcabuz {
      * The parry's ticker used to decide, and the decision it made ("the window is closed, nothing
      */
     public static void tick(ServerPlayer player) {
-        // **Read before the step, not after.** These ungated lines exist because four of the
-        // five places this path can refuse were silent, and a silent refusal reads as the weapon
-        // being broken rather than as the player having nothing to load it with.
-        ArcabuzState previous = player.getData(ModAttachments.ARCABUZ.get());
+        // **Aca vivian `shouldSnuff`, `ARCABUZ_GUN` y la reconciliacion, y los tres eran el mismo
+        // error visto tres veces: estado del ARMA guardado en el JUGADOR.**
+        //
+        // `shouldSnuff` preguntaba "¿dejo de haber un arcabuz en la mano?" -- y dos arcabuces pasan
+        // ese filtro sin que nadie se entere. `ARCABUZ_GUN` anotaba contra que arma iba todo, y
+        // dependia de que el tick llegara antes que el paquete del press, que no es algo que se
+        // pueda pedir. La reconciliacion comparaba dos copias de la misma pregunta.
+        //
+        // **Con el estado en el componente del stack no hay nada que comparar ni que resetear:** lo
+        // que se lee es del arma que esta en la mano, por construccion. Un arma que no esta en la
+        // mano no se tickea, asi que su mecha no dispara y su recarga no avanza. Ver
+        // `ModComponents#ARCABUZ` y `ArcabuzState` para el porque completo.
+        net.minecraft.world.item.ItemStack gun = player.getMainHandItem();
+        if (!gun.is(ModItems.ARCABUZ.get())) {
+            return;
+        }
+        ArcabuzState state = state(gun);
+        if (state.isEmpty()) {
+            // Un arma quieta no hace nada, y no escribir nada es lo que mantiene el componente
+            // callado: cada escritura reemplaza el stack del cliente y mueve el arma.
+            return;
+        }
+        long now = player.level().getGameTime();
 
-        // **The gun has to still be in the hand, and this is the only place that can know.**
+        // **Sin `step()`, sin conteo y sin escritura por tick.**
         //
-        // The press is refused when the held stack is not the one that was pressed -- and
-        // `SpecialHandler#resolve` already does that -- but `ItemStack#isSameItemSameComponents`
-        // compares the *item and its components*, not the identity of the stack. Two arcabuz are
-        // the same item with the same components, so that guard has never been able to tell them
-        // apart and never will. It is the wrong tool for this question, not a tool misused.
-        //
-        // Which is why the shot went off from the wrong gun: **the fuse is lit at the press and
-        // goes off in this tick**, and nothing between the two ever asked what was in the hand. Lit
-        // with one musket, swapped to the other, and the second one fired on the first one's
-        // firestone. The recharge was correct and the shot was stolen.
-        //
-        // Here, and not at the press, because a press cannot see the future. The whole window
-        // between lighting and firing is twenty ticks of the player being free to walk away.
-        //
-        // **A snuff, not a transfer.** The firestone is spent at the light, so a gun that goes out
-        // this way is empty and its ball is gone. That is the price of swapping, it is the same
-        // price as missing, and it is legible: the gun goes down and stays down until reloaded.
-        if (previous.shouldSnuff(player.getMainHandItem().is(ModItems.ARCABUZ.get()))) {
-            LOG.info("[arcabuz] mecha apagada: cambio de objeto en la mano");
-            player.setData(ModAttachments.ARCABUZ.get(), ArcabuzState.EMPTY);
+        // Todo lo que hacia falta era un reloj: el estado guarda el tick del mundo en que termina la
+        // mecha y el que termina la recarga, asi que decidir es comparar y avanzar no existe. Eso es
+        // lo que permite que el estado viva en el componente del arma sin pagar la animacion de
+        // cambio de item, que era el precio que obligaba a tenerlo en el jugador -- y tenerlo en el
+        // jugador es de donde salieron los tres bugs. Ver `ModComponents#ARCABUZ`.
+        if (state.dueToFire(now)) {
+            // **El disparo sale del arma en la mano, y ya no puede salir de otra.** La mecha esta en
+            // el componente del stack: un arma que no esta en la mano no se tickea, asi que su mecha
+            // no dispara aca. Antes esto necesitaba un `shouldSnuff` y una comparacion de identidad
+            // para preguntar "¿esta es la que encendio?"; ahora la pregunta no existe.
+            gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ, state.afterShot());
+            // El cliente tiene que bajar la mecha: la pose cargada dura lo que duro la combustion.
+            ModNetworking.sendArcabuzFuse(player, false, 0, false, 0);
+            if (player.level() instanceof ServerLevel server) {
+                fire(player, server);
+            }
+            return;
+        }
+
+        if (!state.isReloading()) {
+            return;
+        }
+
+        boolean button = player.getData(ModAttachments.ARCABUZ_BUTTON.get());
+        if (!button) {
+            // **La cancelacion, y es la mitad que el cliente no puede deducir solo.**
+            //
+            // Su cuenta corre en su reloj, asi que el que suelta a mitad tiene al servidor
+            // cancelando mientras al cliente le quedan veinte ticks por dibujar: el arma seguiria
+            // bajando el cañon y volveria sola, por una recarga que ya no existe.
+            LOG.info("[arcabuz] recarga CANCELADA (boton soltado en {} de {})",
+                    state.reloadTotal() - state.reloadLeft(now), state.reloadTotal());
+            gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ, state.cancelReload());
             ModNetworking.sendArcabuzFuse(player, false, 0, false, 0);
             return;
         }
 
-        // **Cambio de ARMA, y el filtro de arriba no lo ve.**
-        //
-        // `shouldSnuff` solo pregunta "¿dejo de haber un arcabuz en la mano?", asi que pasar de un
-        // arcabuz a otro lo atraviesa sin que nadie se entere.
-        //
-        // **Y esta es la linea que arregla el bug mas grave de la ronda.** `ArcabuzState.withChamber`
-        // es asimetrico a proposito: *"el stack solo puede decir que si"* -- nunca baja `loaded` a
-        // false, porque durante la combustion la recamara ya se gasto del stack y bajarlo vaciaria un
-        // arma a punto de disparar. Eso es correcto **para la misma arma** y falso en cuanto la mano
-        // cambia: el `loaded` pegajoso del arma anterior sobrevive al cambio. Con la version
-        // anterior, que solo reseteaba mientras hubiera una accion EN VUELO, el segundo viaje
-        // A(cargada) -> B(vacia) ya no reseteaba nada, el estado heredaba `loaded=true` de A y
-        // `resolve` encontraba `canLight()` verdadero sobre un arma sin recamara: **dos armas
-        // cargadas de una sola recarga.**
-        //
-        // **El estado describe a UNA arma, y esta comparacion es esa frase hecha codigo.** Se anota
-        // SIEMPRE, no solo cuando hay algo en vuelo, y por identidad -- `ItemStack` no sobreescribe
-        // `equals`, asi que `!=` es "sigue siendo el mismo objeto de inventario", que es la unica
-        // pregunta que distingue dos arcabuces vacios. Ver `ModAttachments.ARCABUZ_GUN`.
-        //
-        // **Y NO hay `return`.** Resetear y seguir deja que la reconciliacion de abajo corra en el
-        // mismo tick: el estado queda vacio, la recamara del stack dice si esa arma esta cargada, y
-        // el cliente recibe el valor bueno de una sola vez. Volver aca mandaria un "descargada" y la
-        // reconciliacion mandaria el "cargada" un tick despues, o sea un parpadeo de pose en cada
-        // cambio de arma.
-        net.minecraft.world.item.ItemStack heldNow = player.getMainHandItem();
-        net.minecraft.world.item.ItemStack described =
-                player.getData(ModAttachments.ARCABUZ_GUN.get());
-        if (described != heldNow) {
-            LOG.info("[arcabuz] estado reiniciado: el arma en la mano no es la que el estado describe "
-                    + "(recarga o mecha en vuelo cancelada)");
-            player.setData(ModAttachments.ARCABUZ_GUN.get(), heldNow);
-            player.setData(ModAttachments.ARCABUZ.get(), ArcabuzState.EMPTY);
+        if (!state.dueToLoad(now) || !(player.level() instanceof ServerLevel server)) {
+            return;
         }
 
-        // **The gun came back to the hand, so the client needs telling what it is holding.**
+        LOG.info("[arcabuz] recarga TERMINADA, cobrando la Firestone");
+        // **The price, paid the tick the gun is actually loaded.**
         //
-        // This is the other half of the snuff above, and it was the half nobody wrote. Swapping to a
-        // sword makes the client's `ItemViewModel` run `clearArcabuz()`, which wipes
-        // `ArcabuzFuseState` -- the countdown, and `loaded`. The gun is drawn empty. Picking the
-        // musket back up changes nothing on the client, because the client has nothing left to
-        // change: `sendArcabuzFuse` only fires when the state *moves* (`Step#tellClient`), and this
-        // gun has not moved. So the player gets a charged weapon drawn as an empty one, and the next
-        // shot asks for a firestone they already spent.
+        // If the player cannot pay, the gun goes back to empty rather than becoming loaded: a gun
+        // that reports itself loaded and then cannot light is the one state of this weapon a player
+        // cannot read, because the model would draw a charged musket over a gun with nothing in it.
+        // Cheaper to say nothing happened.
         //
-        // **The server was right the whole time.** The chamber lives on the stack, so
-        // `chamber(player)` here reads true and the attachment's `loaded` is the stale half. The
-        // same reconciliation `resolve` does on the press, done on the tick instead -- because the
-        // press is not the only event that can leave the client holding a stale answer, and the tick
-        // is the one that always runs.
-        //
-        // **Why this is cheap, which is the only reason to do it here.** It is one boolean compare
-        // per tick against a value already on the stack, and it sends only on the tick where they
-        // disagree. A player holding a musket they just loaded pays this once and never again.
-        ArcabuzState current = player.getData(ModAttachments.ARCABUZ.get());
-        boolean inHand = player.getMainHandItem().is(ModItems.ARCABUZ.get());
-        if (inHand) {
-            ArcabuzState reconciled = current.withChamber(chamber(player));
-            if (reconciled != current) {
-                LOG.info("[arcabuz] resincronizado al retomar el arma: cargada={}",
-                        reconciled.loaded());
-                player.setData(ModAttachments.ARCABUZ.get(), reconciled);
-                // **The countdown goes with it, not just the flag.** A gun picked back up mid-burn
-                // has `fuseTicks > 0` on the server and zero on the client, and the frame comes off
-                // the countdown -- so sending only the flag would draw a gun that is neither lit nor
-                // empty, with a fuse a third spent rendering as its first frame.
-                ModNetworking.sendArcabuzFuse(player, false, reconciled.fuseTicks(),
-                        reconciled.loaded(), reconciled.reloadTicks());
-                return;
-            }
-        }
-
-        ArcabuzState.Step step = previous.step();
-        player.setData(ModAttachments.ARCABUZ.get(), step.state());
-
-        // **The fuse frame is NOT written here any more, and that is the fix for the weapon
-        // bobbing in the hand.** It used to be a data component on the held stack, set every
-        // tick of the burn -- and setting a component on the held stack syncs the stack, the
-        // client ends up with a different ItemStack, and vanilla plays its item-swap animation,
-        // which moves the weapon sixty centimetres while it settles. Four frames in a one second
-        // burn is four item swaps a second. The client now computes the frame from the countdown
-        // it already keeps; see ArcabuzModelProperties#frameForTicks.
-
-        if (step.state().isReloading() && !previous.isReloading()) {
-            LOG.info("[arcabuz] recarga EN CURSO {} ticks", step.state().reloadTicks());
-        }
-        // **And the cancellation, which is the half the client cannot work out on its own.**
-        //
-        // The client's countdown runs on the client's clock, so a player who lets go halfway
-        // through has the server cancel while the client still has twenty ticks left to draw. The
-        // gun would carry on tipping its muzzle down and come back up on its own, for a reload
-        // that no longer exists.
-        if (previous.isReloading() && !step.state().isReloading() && !step.reloadDone()) {
-            int cancellingTotal = reloadTicks(player.getMainHandItem(), player);
-            LOG.info("[arcabuz] recarga CANCELADA (boton soltado en {} de {})",
-                    cancellingTotal - previous.reloadTicks(), cancellingTotal);
+        // The cooldown is here rather than on the press because this is where the reload is really
+        // paid for. Half a second of holding a button is not a swing, and the bracket around the
+        // crosshair is the only number the player already knows how to read.
+        if (load(player)) {
+            // **Cobrar y cargar son la misma linea, y sobre el mismo objeto.** Cuando la recamara era
+            // un componente aparte de una bandera en el attachment del jugador, "cobre y no cargo"
+            // era un estado alcanzable que el jugador no podia leer.
+            gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ, state.finished());
+            AttackCooldown.consume(player, AttackCooldown.intervalFor(player));
+            CombatSounds.play(server, player, WeaponProfile.ARCABUZ, ModSounds.Kind.LOADED);
+            ModNetworking.sendArcabuzFuse(player, false, 0, true, 0);
+            trace(player, state, "cargada");
+        } else {
+            gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ, state.cancelReload());
             ModNetworking.sendArcabuzFuse(player, false, 0, false, 0);
-        }
-        if (step.reloadDone() && player.level() instanceof ServerLevel level) {
-            LOG.info("[arcabuz] recarga TERMINADA, cobrando la Firestone");
-            // **The price, paid the tick the gun is actually loaded.**
-            //
-            // If the player cannot pay, the gun goes back to empty rather than becoming loaded:
-            // a gun that reports itself loaded and then cannot light is the one state of this
-            // weapon a player cannot read, because the model would draw a charged musket over a
-            // gun with nothing in it. Cheaper to say nothing happened.
-            //
-            // The cooldown is here rather than on the press because this is where the reload is
-            // really paid for. Half a second of holding a button is not a swing, and the bracket
-            // around the crosshair is the only number the player already knows how to read.
-            if (load(player)) {
-                AttackCooldown.consume(player, AttackCooldown.intervalFor(player));
-                CombatSounds.play(level, player, WeaponProfile.ARCABUZ, ModSounds.Kind.LOADED);
-                ModNetworking.sendArcabuzFuse(player, false, 0, true, 0);
-                trace(player, step.state(), "cargada");
-            } else {
-                player.setData(ModAttachments.ARCABUZ.get(), ArcabuzState.EMPTY);
-                ModNetworking.sendArcabuzFuse(player, false, 0, false, 0);
-            }
-        }
-
-        if (step.tellClient()) {
-            // The state's own `loaded`, not a literal. It was written `true` here first and that
-            // told the client a gun with nothing in it was loaded, which is a viewmodel drawing a
-            // charged musket over an empty one -- the same shape as a signal that does not carry
-            // the state it is supposed to carry, only its own optimism about it.
-            ModNetworking.sendArcabuzFuse(player, false, 0, step.state().loaded(), 0);
-        }
-        if (step.fireNow() && player.level() instanceof ServerLevel level) {
-            fire(player, level);
         }
     }
 
@@ -648,7 +558,7 @@ public final class Arcabuz {
         // something that is no longer a gun: the shot is what the player did, and paying it with
         // a different weapon's numbers would be a damage number nobody chose.
         if (stats.special() != SpecialType.FUSEE) {
-            trace(player, player.getData(ModAttachments.ARCABUZ.get()),
+            trace(player, state(player.getMainHandItem()),
                     "el item ya no es un arcabuz, disparo perdido");
             return;
         }
@@ -756,10 +666,10 @@ public final class Arcabuz {
             level.playSound(null, player, CombatSounds.event(ModSounds.ARCABUZ_SHOT_MOSCA),
                     net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
 
-            trace(player, player.getData(ModAttachments.ARCABUZ.get()),
+            trace(player, state(player.getMainHandItem()),
                     "rey de las moscas: nivel=" + flies + " objetivos=" + seen.size());
             if (seen.isEmpty()) {
-                trace(player, player.getData(ModAttachments.ARCABUZ.get()),
+                trace(player, state(player.getMainHandItem()),
                         "rey de las moscas: sin objetivo, la nube no cae");
                 return;
             }
@@ -800,7 +710,7 @@ public final class Arcabuz {
             LivingEntity first = seen.get(0);
             level.playSound(null, first, CombatSounds.event(ModSounds.ARCABUZ_MOSCA_LOOP),
                     net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
-            trace(player, player.getData(ModAttachments.ARCABUZ.get()),
+            trace(player, state(player.getMainHandItem()),
                     "rey de las moscas: infestados=" + infested);
             ModNetworking.sendFeedback(player, CombatFeedback.HIT);
             CombatSounds.play(level, first, WeaponProfile.ARCABUZ, ModSounds.Kind.HIT);
@@ -1026,9 +936,11 @@ private static void blast(ServerPlayer player, ServerLevel level, Vec3 muzzle,
      * longer exists is state nothing in the game is producing.</p>
      */
     public static void clear(ServerPlayer player) {
-        player.setData(ModAttachments.ARCABUZ.get(), ArcabuzState.EMPTY);
-        // Not loaded, because that is what EMPTY says. Sending `true` here was the same mistake
-        // as the one in tick(): a constant in the place the state belonged.
+        // **Solo el boton, y esa es la consecuencia del refactor.** El estado del arma vive en el
+        // arma: un arcabuz guardado en un cofre conserva su recamara, que es lo que se quiere, y no
+        // hay nada del jugador que resetear salvo el boton. Antes esto vaciaba una recamara que podia
+        // ser de cualquier arma, y por eso el jugador perdia la carga al reconectar.
+        player.setData(ModAttachments.ARCABUZ_BUTTON.get(), false);
         ModNetworking.sendArcabuzFuse(player, false, 0, false, 0);
     }
 
@@ -1067,7 +979,7 @@ private static void blast(ServerPlayer player, ServerLevel level, Vec3 muzzle,
     private static void trace(ServerPlayer player, ArcabuzState state, String message) {
         if (com.cortes.combat.CombatTrace.isEnabled()) {
             com.cortes.combat.CombatTrace.server(player.getName().getString(),
-                    "[arcabuz] " + message + " (mecha=" + state.fuseTicks()
+                    "[arcabuz] " + message + " (mecha=" + state.isBurning()
                             + " cargada=" + state.loaded() + ")");
         }
     }

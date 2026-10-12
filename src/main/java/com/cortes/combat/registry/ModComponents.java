@@ -49,27 +49,37 @@ public final class ModComponents {
             ARCABUZ_FUSE = component("arcabuz_fuse", Codec.INT);
 
     /**
-     * A firestone is in the chamber of <b>this stack</b>.
+     * <b>Todo el estado de este arcabuz</b>: la recamara, la mecha y la recarga.
      *
-     * <p><b>On the stack and not in the player's attachment, and that is the fix for two bugs at
-     * once.</b> The chamber used to be a field on {@code ArcabuzState}, which is an attachment on
-     * the <em>player</em>, so the charge travelled with the player rather than with the gun: load a
-     * musket, swap to the other one, and the second came out of the inventory charged and ready to
-     * fire. The model lied about it too, because the client's mirror of the chamber was a static
-     * with no idea which stack it was describing, so the flintlock was drawn down on a gun that had
-     * never been loaded -- and once, down permanently.</p>
+     * <h2>En el stack y no en el jugador, y esa es la cura de los tres bugs del arma</h2>
      *
-     * <p>Read as "present", not as a boolean value, so an absent component means an empty gun and
-     * a gun that has never been loaded is indistinguishable from one that has just been fired.</p>
+     * <p>Esto nacio como un attachment del <em>jugador</em> -- {@code ArcabuzState} entero, con la
+     * recamara adentro -- y ese unico hecho produjo tres sintomas que se reportaron por separado y
+     * son el mismo: el segundo arcabuz salia cargado, el segundo terminaba la recarga del primero, y
+     * el segundo disparaba una mecha que habia arrancado en el primero. <b>Cambiar de arma heredaba
+     * el estado del otro</b>, porque el estado no era del arma.</p>
      *
-     * <p>The cost of putting it here is the item-swap animation: writing a component on the stack
-     * the hand holds replaces the client's {@code ItemStack}, which is what moves the weapon sixty
-     * centimetres while it settles. That is the same write that used to happen sixty times a second
-     * for the fuse frame; here it is twice per shot, once on the reload completing and once at the
-     * shot. <b>Bounded, not free</b> -- suppressing it is the next thing this needs.</p>
+     * <p>Los tres arreglos que se intentaron antes -- reconciliar en el press, reconciliar en el
+     * tick, y anotar contra que arma iba todo -- fallaron uno por uno, y el ultimo <em>empeoro</em>
+     * las cosas. La razon es que los tres eran parches sobre el mismo error: <b>estado del arma
+     * guardado en el jugador</b>. Con el estado en el stack no hay nada que heredar, y no hay
+     * reconciliacion, ni comparacion de identidad, ni reset. Los tres desaparecen.</p>
+     *
+     * <p>Es lo que hace vanilla con la ballesta ({@code CHARGED_PROJECTILES} vive en el stack) y con
+     * el tridente. Y tiene un premio que no era el objetivo: un arma guardada en un cofre <b>conserva
+     * su estado</b>, porque viaja con el item.</p>
+     *
+     * <h2>El costo, que es escribir el componente</h2>
+     *
+     * <p>Escribir un componente sobre el stack que la mano sostiene reemplaza el {@code ItemStack} del
+     * cliente, lo que dispara la animacion de cambio de item de vanilla y mueve el arma sesenta
+     * centimetros mientras se asienta. Es el mismo precio que ya pagaba la recamara, y por eso el
+     * estado guarda el <b>tick absoluto de fin</b> en vez de un contador: se escribe <b>cuatro veces
+     * por ciclo de disparo</b> y nunca entre medio. Un contador obligaria a escribirlo cada tick, que
+     * es el bug que el proyecto ya pago con la animacion de la mecha.</p>
      */
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>>
-            ARCABUZ_CHAMBER = component("arcabuz_chamber", Codec.BOOL);
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<com.cortes.combat.state.ArcabuzState>>
+            ARCABUZ = component("arcabuz", com.cortes.combat.state.ArcabuzState.CODEC);
 
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ReachProfile>> REACH_PROFILE =
             component("reach_profile", ReachProfile.CODEC);

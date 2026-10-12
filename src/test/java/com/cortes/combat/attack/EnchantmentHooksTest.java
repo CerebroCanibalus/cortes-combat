@@ -678,7 +678,7 @@ class EnchantmentHooksTest {
         assertTrue(arcabuz.contains("CombatEnchantRules.fuseTicks("),
                 "**el servidor no acorta la mecha**: el encantamiento existe, se puede poner en el "
                         + "arcabuz y el disparo sale igual a los veinte ticks");
-        assertTrue(arcabuz.contains("state.light(fuse)"),
+        assertTrue(arcabuz.contains("state.light(now, fuse)"),
                 "y el estado tiene que arrancar con ESE largo: `light()` sin argumentos cuenta la "
                         + "mecha de fabrica");
 

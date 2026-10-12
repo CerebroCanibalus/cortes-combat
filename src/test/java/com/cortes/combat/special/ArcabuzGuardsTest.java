@@ -26,6 +26,8 @@ class ArcabuzGuardsTest {
 
     private static final String ARCABUZ = "src/main/java/com/cortes/combat/special/Arcabuz.java";
     private static final String STATE = "src/main/java/com/cortes/combat/state/ArcabuzState.java";
+    private static final String ATTACHMENTS = "src/main/java/com/cortes/combat/registry/ModAttachments.java";
+    private static final String COMPONENTS = "src/main/java/com/cortes/combat/registry/ModComponents.java";
     private static final String MUZZLE = "src/main/java/com/cortes/combat/special/ArcabuzMuzzle.java";
     private static final String MIXIN =
             "src/main/java/com/cortes/combat/mixin/ArcabuzGuiIconMixin.java";
@@ -33,55 +35,58 @@ class ArcabuzGuardsTest {
             "src/main/java/com/cortes/combat/client/ClientArcabuzShot.java";
 
     @Test
-    @DisplayName("la recarga y la mecha quedan atadas al arma que las empezo")
-    void theActionBelongsToAGun() {
-        String code = strip(read(ARCABUZ));
-        // **Dos anotaciones: una al encender la mecha y otra al empezar la recarga.** Son las dos
-        // acciones que cobran ticks despues -- veinte la mecha, cincuenta la recarga -- y las dos
-        // cobraban contra `getMainHandItem()` en el momento del cobro, no en el del apriete.
-        assertEquals(2, count(code, "player.setData(ModAttachments.ARCABUZ_GUN.get(), player.getMainHandItem());"),
-                "**las dos acciones en vuelo tienen que anotar contra que arma van.** Recargar un "
-                        + "arcabuz, cambiar a otro y esperar terminaba con la Firestone puesta en el "
-                        + "SEGUNDO y gastada del inventario del jugador -- porque cambiar de un "
-                        + "arcabuz a otro no dispara el `shouldSnuff`, que solo pregunta si dejo de "
-                        + "haber un arcabuz en la mano. Es el reporte del playtest: \"si recargas un "
-                        + "arcabuz y pasas a uno sin recargar, este podra disparar como si fuera "
-                        + "recargado\"");
-        assertTrue(code.contains("if (described != heldNow) {"),
-                "**la comparacion tiene que ser EXACTAMENTE esa, sin condiciones extra.** Anotar sin "
-                        + "comparar no arregla nada, y cualquier condicion de mas -- como exigir que el "
-                        + "anotado no sea vacio -- reabre el bug: tras la primera cancelacion el "
-                        + "anotado queda vacio, el segundo cambio de arma ya no resetea, el estado "
-                        + "hereda `loaded=true` del arma anterior y `resolve` encuentra "
-                        + "`canLight()` verdadero sobre un arma sin recamara. **Dos armas cargadas de "
-                        + "una sola recarga**");
-        assertFalse(code.contains("ownerGun != net.minecraft.world.item.ItemStack.EMPTY"),
-                "y la version condicionada del bug tiene que seguir fuera");
+    @DisplayName("el estado vive en el ARMA: el jugador solo guarda el boton")
+    void theGunOwnsItsOwnState() {
+        // **El invariante entero del refactor, y la razon de que exista.**
+        //
+        // Los tres bugs del arcabuz -- la recamara heredada, la recarga heredada y la mecha heredada
+        // -- son el mismo error: **estado del arma guardado en el jugador**. Los tres parches
+        // anteriores (reconciliar en el press, reconciliar en el tick, anotar contra que arma iba)
+        // fueron parches sobre ese error, y el ultimo lo empeoro. Con el estado en el componente del
+        // stack no hay nada que heredar, ni que reconciliar, ni que comparar.
+        String arcabuz = strip(read(ARCABUZ));
+        String attachments = strip(read(ATTACHMENTS));
+        String components = strip(read(COMPONENTS));
+        String state = strip(read(STATE));
+
+        assertTrue(components.contains("ARCABUZ = component("),
+                "**el estado entero del arma va en UN componente del stack**: la recamara, la mecha y "
+                        + "la recarga. Partirlo en dos -- que es lo que habia -- es como se llega a "
+                        + "'cobre y no cargo'");
+        assertTrue(attachments.contains("ARCABUZ_BUTTON"),
+                "y el jugador guarda el BOTON, que si es suyo: es el estado fisico del mouse, no del "
+                        + "arma");
+        assertFalse(attachments.contains("AttachmentType<ArcabuzState>"),
+                "**y no queda ningun attachment que guarde el estado del arma.** Si esto vuelve a "
+                        + "aparecer, los tres bugs vuelven con el, porque la causa es esa y no los "
+                        + "sintomas");
+        assertFalse(arcabuz.contains("player.getData(ModAttachments.ARCABUZ.get())"),
+                "ni el arcabuz debe leer el estado del jugador: lo lee del stack en la mano");
+        assertTrue(arcabuz.contains("gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ"),
+                "y lo escribe en ESE stack, que es la mitad que hace que un arma fuera de la mano no "
+                        + "tenga estado en ningun lado");
     }
 
     @Test
-    @DisplayName("withChamber es un espejo SIMETRICO: el stack manda en las DOS direcciones")
-    void theChamberMirrorIsSymmetric() {
-        // **La asimetria era el bug, y este guard la exigia.** Se escribio creyendo que protegia un
-        // arma a punto de disparar durante la combustion; su propia justificacion era falsa, porque
-        // `light()` ya devuelve la recamara vacia -- encender la mecha ES lo que la gasta. Lo unico
-        // que hacia era que un `true` viejo no se pudiera limpiar nunca, y ese `true` es el que
-        // hacia que el segundo arcabuz disparara sin recamara.
+    @DisplayName("no hay maquina de estados: el tick compara un tick de fin contra el reloj")
+    void thereIsNoStateMachine() {
+        // **Por que el estado puede vivir en el arma sin mover el modelo.**
         //
-        // **La leccion que vale mas que el arreglo:** un guard puede fijar una equivocacion con la
-        // misma firmeza con que fija un invariante. Este exigia la asimetria con un mensaje que la
-        // explicaba, y por eso la direccion no se podia corregir sin borrarlo.
+        // Un contador relativo obliga a escribir el componente cada tick, y cada escritura reemplaza
+        // el `ItemStack` del cliente y dispara la animacion de cambio de item de vanilla, que mueve
+        // el arma sesenta centimetros. Eso es lo que obligaba a tener el estado en el jugador.
+        // Guardando el tick ABSOLUTO de fin el componente se escribe cuatro veces por ciclo de
+        // disparo y nunca entre medio.
         String state = strip(read(STATE));
-        assertFalse(state.contains("if (!chamberOnStack) {"),
-                "**el espejo NO puede ser de una sola direccion.** Que el stack diga vacia sobre un "
-                        + "record que dice cargada es el bug mas caro del arcabuz: un `true` viejo que "
-                        + "no se puede limpiar sobrevive el cambio de arma y el segundo arcabuz "
-                        + "dispara sin recamara. Reportado dos veces como \"ambas armas quedan "
-                        + "cargadas\"");
-        assertTrue(state.contains("chamberOnStack == loaded ? this"),
-                "y la comparacion tiene que devolver la misma instancia **solo** cuando ya coinciden, "
-                        + "en cualquier direccion: eso es lo que hace que el llamador mande el paquete "
-                        + "exactamente cuando hay algo que corregir");
+        assertFalse(state.contains("ArcabuzState step()"),
+                "**`step()` ya no existe.** Avanzar el estado un tick es exactamente lo que obligaba a "
+                        + "escribirlo cada tick, y eso es lo que no se puede pagar");
+        assertTrue(state.contains("fuseEndsAt") && state.contains("reloadEndsAt"),
+                "los dos campos son ticks de fin, no cuentas atras");
+        assertTrue(state.contains("public boolean dueToFire(long now)")
+                        && state.contains("public boolean dueToLoad(long now)"),
+                "y decidir es comparar contra el reloj que entra por argumento: una funcion pura, "
+                        + "testeable, sin escribir nada");
     }
 
     @Test
