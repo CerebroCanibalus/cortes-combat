@@ -110,8 +110,9 @@ defensor, adentro de `hurt`**, y para cuando el daño se aplicó el desglose ya 
 - **`DamageResolver` / `CombatEngine` tienen que emitir el desglose** en el momento en que lo conocen:
   `raw`, `pierced`, `absorbedByArmor`, `absorbedByEffect`, `final`. Los cuatro números son
   **restas de valores que ya están en la mano** — ⊘ hace falta un segundo cálculo.
-- **Y tiene que viajar.** El que golpea es el que tiene que ver los puntos, y el defensor puede ser
-  otro cliente: el desglose va en un payload (el patrón de `CameraShakePayload`).
+- **Y no tiene que viajar por la red.** El diseño v1 decía que sí, y era falso: los puntos se
+  spawnean **server-side** con `sendParticles`, igual que el slash y la sangre, así que todos ven lo
+  mismo y no hay nada que predecir. El split se mide y se consume en el mismo lugar.
 - **El `axe_charged` es el caso que hace ruido**: su daño **no** atraviesa armadura, así que su split
   es rojo ⊕ azul, ⊘ blanco. El tipo dice "hacha", el split dice la verdad. **Los dos ejes conviven y
   ⊘ se contradicen.**

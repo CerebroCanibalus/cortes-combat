@@ -238,7 +238,7 @@ public final class CombatEngine {
         // to ask -- and the source it builds is the same one every target is hit with.
         AttackResult flags = DamageResolver.resolve(base, stats.charge(), stats.profile(),
                 chargeRatio, streak, player.fallDistance);
-        DamageSource source = damageSource(player, flags.ignoredArmour(), flags.axeCharged());
+        DamageSource source = damageSource(player, flags.kind());
 
         // **Per target, because the enchantment does not have one answer.** Sharpness is the same
         // for every body the swing touches, but Smite is not, and neither is a crowd charge that
@@ -375,7 +375,7 @@ public final class CombatEngine {
             // **La fuente, una sola vez.** La necesitan el `hurt` y la lectura del impacto, y dos
             // llamadas al mismo método serían dos lugares donde las dos pueden discrepar -- y
             // discreparían justo cuando alguien agregue un arma con otro tipo de daño.
-            DamageSource hitSource = damageSource(player, result.ignoredArmour(), result.axeCharged());
+            DamageSource hitSource = damageSource(player, result.kind());
             boolean hurt;
             try {
                 hurt = target.hurt(hitSource, result.damage());
@@ -446,7 +446,7 @@ public final class CombatEngine {
                     // After `hurt` and inside it: a swing that missed breaks nothing, and a
                     // second hit of a double cut does not break it twice. `target` may not be a
                     // player at all, and a mob has no guard to spend.
-                    boolean breaksGuard = result.ignoredArmour() || result.axeCharged();
+                    boolean breaksGuard = result.kind().breaksGuard();
                     if (breaksGuard && target instanceof Player defender) {
                         com.cortes.combat.guard.GuardHandler.breakGuard(defender);
                     }
@@ -499,7 +499,7 @@ public final class CombatEngine {
             // twice is not twice the fire, it is the same fire set a tick later.
             if (player.level() instanceof net.minecraft.server.level.ServerLevel level) {
                 EnchantmentHelper.doPostAttackEffects(level, target,
-                        damageSource(player, result.ignoredArmour(), result.axeCharged()));
+                        damageSource(player, result.kind()));
             }
 
             // **Adrenalina: el golpe cobra lo que el cuerpo se ahorro.**
@@ -1412,7 +1412,7 @@ public final class CombatEngine {
         }
         ItemStack weapon = player.getWeaponItem();
         float strength = EnchantmentHelper.modifyKnockback(level, weapon, target,
-                damageSource(player, result.ignoredArmour(), result.axeCharged()),
+                damageSource(player, result.kind()),
                 NO_WEAPON_KNOCKBACK);
         float push = ENCHANT_KNOCKBACK_SCALE * Math.max(0.0F, strength);
 
@@ -1483,12 +1483,11 @@ public final class CombatEngine {
  * than by asking a tag to do it. One weapon reaches past armour and one weapon takes it apart, and
  * they are two entries in this method rather than one rule with a flag.</p>
  */
-    private static DamageSource damageSource(Player player, boolean ignoreArmour,
-                                            boolean axeCharged) {
-        if (ignoreArmour) {
-            return ModDamageTypes.warhammerIgnoredArmour(player);
-        }
-        return axeCharged ? ModDamageTypes.axeCharged(player)
-                : player.damageSources().playerAttack(player);
+    private static DamageSource damageSource(Player player, DamageKind kind) {
+        return switch (kind) {
+            case PURE -> ModDamageTypes.warhammerIgnoredArmour(player);
+            case AXE_CHARGED -> ModDamageTypes.axeCharged(player);
+            case NORMAL -> player.damageSources().playerAttack(player);
+        };
     }
 }

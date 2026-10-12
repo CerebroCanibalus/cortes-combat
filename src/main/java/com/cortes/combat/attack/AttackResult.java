@@ -12,26 +12,23 @@ package com.cortes.combat.attack;
  * into the damage result is what made a sword, a warhammer and a block in the hand all shove a
  * mob the same distance. It is now the weapon's own {@code KnockbackProfile}, applied separately.</p>
  *
- * @param damage       final damage before armour, after charge and escalation
- * @param chargeRatio  0..1, how charged the swing was
- * @param ignoredArmour whether this swing bypasses armour (warhammer's charged hit)
- * @param axeCharged   whether this is the axe's charged swing, which wears armour twice as fast
- *                     and empties a guard in one hit. <b>A second boolean and not a third
- *                     {@code SpecialType}:</b> these two are properties of the <em>hit</em> that
- *                     have to travel to the damage source and to the armour event, and an enum
- *                     would have meant a lookup at each of those. They are mutually exclusive by
- *                     construction -- one is the warhammer and one is the axe -- so a result with
- *                     both true is impossible rather than merely unlikely.
+ * <h2>Y la clase de golpe es un tipo, no dos booleanos</h2>
+ *
+ * <p>Llevaba {@code ignoredArmour} y {@code axeCharged}, con un javadoc explicando que <em>"son
+ * mutuamente excluyentes por construcción"</em>. <b>Eso era una promesa y no un tipo</b>: nada
+ * impedía construir un resultado con los dos en {@code true} y el único guard era el comentario.
+ * Ahora es {@link DamageKind}, y las tres consecuencias -- si la armadura participa, si se desgasta
+ * al doble y si la guardia se rompe -- se leen de un solo lugar en vez de estar repartidas entre
+ * dos booleanos acá, un tag en {@code ModDamageTypes} y dos modificadores de atributo en
+ * {@code CombatEngine}.</p>
+ *
+ * @param damage      final damage before armour, after charge and escalation
+ * @param chargeRatio 0..1, how charged the swing was
+ * @param kind        what this hit does to the target's armour and guard
  */
-public record AttackResult(float damage, float chargeRatio, boolean ignoredArmour,
-                           boolean axeCharged) {
+public record AttackResult(float damage, float chargeRatio, DamageKind kind) {
 
-    public static final AttackResult MISS = new AttackResult(0.0F, 0.0F, false, false);
-
-    /** The old three-argument shape, for the cases that only care about damage. */
-    public AttackResult(float damage, float chargeRatio, boolean ignoredArmour) {
-        this(damage, chargeRatio, ignoredArmour, false);
-    }
+    public static final AttackResult MISS = new AttackResult(0.0F, 0.0F, DamageKind.NORMAL);
 
     public boolean isMiss() {
         return damage <= 0.0F;

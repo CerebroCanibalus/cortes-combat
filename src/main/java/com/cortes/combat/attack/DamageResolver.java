@@ -179,9 +179,17 @@ public final class DamageResolver {
         // tag -- so its type exists to be recognised rather than to behave differently. It also
         // empties a guard in one hit, same as the warhammer, which is why both flags come off the
         // same threshold: a full charge is a full charge and there is no third state.
-        boolean ignoreArmour = warhammer && ratio >= FULL_CHARGE;
-        boolean axeCharged = profile == WeaponProfile.AXE && ratio >= FULL_CHARGE;
+        // **La clase de golpe, decidida una sola vez.** El orden del if/else no cambia nada -- las
+        // dos condiciones son excluyentes porque una exige WARHAMMER y la otra AXE -- pero tenerla
+        // en una sola variable es lo que hace imposible el estado que los dos booleanos permitian:
+        // un resultado con las dos consecuencias a la vez.
+        DamageKind kind = DamageKind.NORMAL;
+        if (warhammer && ratio >= FULL_CHARGE) {
+            kind = DamageKind.PURE;
+        } else if (profile == WeaponProfile.AXE && ratio >= FULL_CHARGE) {
+            kind = DamageKind.AXE_CHARGED;
+        }
 
-        return new AttackResult(damage, ratio, ignoreArmour, axeCharged);
+        return new AttackResult(damage, ratio, kind);
     }
 }

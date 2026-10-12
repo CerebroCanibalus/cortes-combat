@@ -193,20 +193,30 @@ class AxeBalanceTest {
         AttackResult charged = DamageResolver.resolve(
                 VANILLA_AXE_DAMAGE, AXE, WeaponProfile.AXE, 1.0F, null);
 
-        assertFalse(uncharged.axeCharged(),
+        assertFalse(uncharged.kind() == DamageKind.AXE_CHARGED,
                 "half a charge is a normal swing. The guard takes its point the normal way, which "
                         + "is a point");
-        assertTrue(charged.axeCharged(), "and a full one empties it");
-        assertFalse(charged.ignoredArmour(),
+        assertTrue(charged.kind() == DamageKind.AXE_CHARGED, "and a full one empties it");
+        assertFalse(charged.kind().piercesArmour(),
                 "without touching the armour. A charged axe hit is still reduced by a diamond "
                         + "plate; the weapon takes the plate apart faster rather than ignoring it");
 
-        // And the two flags cannot both be true, because they belong to two different weapons.
+        // **Y ahora "las dos a la vez" es imposible por TIPO, no por comentario.**
+        //
+        // El guard viejo afirmaba que los dos booleanos no pudieran estar los dos en true, y esa
+        // promesa la sostenia el javadoc. Con el enum el estado no se puede construir, asi que lo
+        // que se afirma en su lugar es mas fuerte: que la clase de golpe sea exactamente la que el
+        // perfil del arma promete, para TODOS los perfiles del juego.
         for (WeaponProfile profile : WeaponProfile.values()) {
             AttackResult result = DamageResolver.resolve(
                     7.0F, WeaponTables.charge(profile), profile, 1.0F, null);
-            assertFalse(result.ignoredArmour() && result.axeCharged(),
-                    profile + " resolved as both a warhammer and an axe at once");
+            DamageKind expected = switch (profile) {
+                case WARHAMMER -> DamageKind.PURE;
+                case AXE -> DamageKind.AXE_CHARGED;
+                default -> DamageKind.NORMAL;
+            };
+            assertTrue(result.kind() == expected,
+                    profile + " resolvio a " + result.kind() + " y su perfil promete " + expected);
         }
     }
 

@@ -197,19 +197,19 @@ class DamageResolverTest {
         @Test
         @DisplayName("a full charge flags the swing as armour ignoring")
         void armourIgnore() {
-            assertTrue(hammer(0, 1.0F).ignoredArmour());
+            assertTrue(hammer(0, 1.0F).kind().piercesArmour());
         }
 
         @Test
         @DisplayName("a partial charge does not ignore armour")
         void noArmourIgnoreBelowFull() {
-            assertFalse(hammer(0, 0.99F).ignoredArmour());
+            assertFalse(hammer(0, 0.99F).kind().piercesArmour());
         }
 
         @Test
         @DisplayName("other weapons never ignore armour")
         void onlyWarhammer() {
-            assertFalse(sword(1.0F).ignoredArmour());
+            assertFalse(sword(1.0F).kind().piercesArmour());
         }
     }
 
