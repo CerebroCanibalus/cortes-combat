@@ -15,7 +15,8 @@
     "ItemInHandRendererMixin",
     "PlayerModelMixin",
     "SpecialRightClickMixin",
-    "ArcabuzGuiIconMixin"
+    "ArcabuzGuiIconMixin",
+    "TrabazonSprintMixin"
   ],
   "injectors": {
     "defaultRequire": 1
