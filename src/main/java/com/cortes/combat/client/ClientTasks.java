@@ -60,6 +60,9 @@ public final class ClientTasks {
         // `SwingInputHandler.tick` would draw the arms one tick behind the weapon, which on a
         // three-second axe charge is a charge bar and an arm that disagree for three seconds.
         com.cortes.combat.thirdperson.BodyPoseDispatcher.tick(Minecraft.getInstance().player);
+        // **El zumbido de una flecha que pasa al lado.** Escanea cada tres ticks y no cada tick, por
+        // la leccion del reactor -- ver `ArrowWhizz`.
+        ArrowWhizz.tick(Minecraft.getInstance());
         // Last, because it clears the verdict on the press: vanilla can run the attack path more
         // than once in a tick, and every one of those has to see the same verdict. Clearing it
         // anywhere earlier would let the second of them through to a free vanilla attack.

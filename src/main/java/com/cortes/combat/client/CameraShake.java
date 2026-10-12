@@ -59,7 +59,31 @@ public final class CameraShake {
 
     /** Un temblor en curso: donde, cuanto, y entre que ticks del mundo vive. */
     private record Impulse(ResourceKey<Level> dimension, double x, double y, double z, float degrees,
-                           float bornTick, float diesTick) {
+                           float bornTick, float diesTick, float rollSign) {
+    }
+
+    /**
+     * Un temblor que nace en el CLIENTE, sin pasar por la red.
+     *
+     * <p>Existe por un caso concreto: el zumbido de una flecha que pasa al lado. Esa pregunta es del
+     * observador -- "me paso cerca <em>a mi</em>" -- asi que el servidor tendria que mandar la flecha
+     * a todos para que cada uno mida lo suyo, cuando la flecha <b>ya esta en cada cliente</b>. El
+     * dato esta donde se usa.</p>
+     *
+     * <p>{@code rollSign} es lo unico que un impulso local necesita y uno de red no: el lado por el
+     * que paso. Se aplica <b>solo al roll</b> y no al pitch, porque "de la derecha" es una pregunta
+     * horizontal y el pitch no tiene lados. Un signo negativo y no un angulo negativo: el filtro de
+     * amplitud descarta los negativos, asi que un angulo con signo apagaria el impulso entero.</p>
+     */
+    public static void localImpulse(double x, double y, double z, float degrees, int ticks,
+                                    float rollSign) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null) {
+            return;
+        }
+        float now = minecraft.level.getGameTime();
+        ACTIVE.add(new Impulse(minecraft.level.dimension(), x, y, z, degrees,
+                now, now + ticks, rollSign));
     }
 
     /** Llego un aviso del servidor. El reloj es el del mundo, para que todos los frames coincidan. */
@@ -70,7 +94,7 @@ public final class CameraShake {
         }
         float now = minecraft.level.getGameTime();
         ACTIVE.add(new Impulse(minecraft.level.dimension(), payload.x(), payload.y(), payload.z(),
-                payload.degrees(), now, now + payload.ticks()));
+                payload.degrees(), now, now + payload.ticks(), 1.0F));
     }
 
     /** Un cambio de mundo: nada del viejo deberia sobrevivir. Misma forma que {@code ReactorShake}. */
@@ -115,7 +139,9 @@ public final class CameraShake {
             float life = (impulse.diesTick() - time) / (impulse.diesTick() - impulse.bornTick());
             float energy = amplitude * Math.max(0.0F, life);
             pitch += energy * Mth.sin(time * PITCH_HZ);
-            roll += energy * Mth.cos(time * ROLL_HZ);
+            // El signo va aca y no en la amplitud: ver `localImpulse`. Un impulso de red siempre
+            // trae 1, asi que su roll no cambia.
+            roll += energy * impulse.rollSign() * Mth.cos(time * ROLL_HZ);
         }
         if (pitch != 0.0F || roll != 0.0F) {
             event.setPitch(event.getPitch() + pitch);
