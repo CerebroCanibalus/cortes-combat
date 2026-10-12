@@ -347,3 +347,138 @@ martillo **pierde** Sharpness.
 5. **Barredor**: **sin tope de objetivos** — decidido acá. Un tope de "+2" sería un nerf con nombre de
    encantamiento, porque el barrido ya golpea a todos los que atraviesa.
 6. **La onda de filo y el parry contra jugadores** necesitan **2 jugadores** para verificarse.
+
+
+---
+
+# 10 - Los implementados (tabla con el hook)
+
+> Extraído de `AGENTS.md` (2026-10-12). La columna *dónde* es el sitio donde el número se cobra.
+
+## Encantamientos propios (ronda 2026-10-10)
+
+**6 custom, todos datos + reglas puras.** El patrón: el JSON dice en qué ítems puede estar
+(`supported_items`, **un solo tag**, ver Trampas del build), `CombatEnchantRules` (pura, JVM pelada)
+tiene los números, y el hook vive donde el número se cobra.
+
+> **El diseño completo (los ~30 por arma, con números y hooks) vive en `docs/encantamientos.md`**, que
+> absorbió y reemplazó a los dos docs anteriores. Acá queda sólo lo implementado.
+
+| id | arma | efecto | dónde |
+|---|---|---|---|
+| `steel_reflex` | shotel (molde `sabre`) | parry 100 → 80 → 60 ticks | `ParryState.activate(nivel)` |
+| `audacity` | ropera | lunge −20 %/nivel (fracción) | `SpecialHandler.lunge` |
+| `adrenalina` | daga (molde `dagger`) | al **recibir daño**: **−25 %/−35 %** de ese daño y **Velocidad I/II** (5 s). Cooldown **30 s/15 s**. **L2: lo ahorrado se suma al siguiente golpe** | `AdrenalinaHandler` (`LivingIncomingDamageEvent`) + `CombatEngine.cashAdrenalina`. **Reemplaza a `fleeting_edge`**, que hacía otra cosa |
+| `rhythm_of_iron` | martillo | ventana de la cadena 80 → 100 → 120 | `StreakState` (la ventana es un **campo**) |
+| `riposte` | espada (clase `sword`) | tras bloquear de verdad, el siguiente golpe ignora 25/50 % de armadura | `GuardHandler` arma, `CombatEngine` cobra |
+| `dry_powder` | arcabuz (molde `arcabuz`) | recarga 50 → 40 → 30 ticks | `Arcabuz.reloadTicks` |
+| `punta_fina` | ropera (molde `ropera`) | +15 %/+25 % de daño a **1,5 bloques o menos** | `CombatEngine.perTargetBonus` |
+| `filo_astillado` | hacha (clase `axe`) | +6 %/+10 % de daño **por pieza de armadura** del rival (máx 4) | `CombatEngine.perTargetBonus` |
+| `apunalar` | daga (molde `dagger`) | +60 %/+90 % si pegás **desde más de 90° de la espalda** | `CombatEngine.perTargetBonus` |
+| `sanguijuela` | daga (molde `dagger`) | +8 %/+14 % del daño del golpe como **curación** | `CombatEngine.apply`, por golpe que aterriza |
+| `aventurero` | espada (clase `sword`) | **+20 % de XP por nivel**, máx 5 (al 5 = +100 %) | `enchant/AdventurerExperience` -- **al MORIR, no al golpear** |
+| `culata` | arcabuz (molde `arcabuz`) | la bayoneta empuja **+25 %/+50 %/+75 %** | `CombatEngine.enchantPush` |
+| `estocada` | ropera (molde `ropera`) | el golpe **del lunge** ignora **15 %/30 %** de armadura | `CombatEngine.lungePierce`, cobrado en `special/Lunge` |
+| `segundo_aliento` | espada (clase `sword`) | al **romperse tu guardia**, tu siguiente golpe en 3 s pega **+15 %/+25 %** y empuja **+50 %** | `GuardHandler.breakGuard` arma `SecondWindWindow`; `CombatEngine` la cobra |
+| `guardia_firme` | espada (clase `sword`) | **1 nivel** · el primer bloqueo de cada 3 s **no gasta aguante** | `GuardHandler.onShieldBlock` + `GuardFree` |
+| `cicatrizador` | azada (clase `hoe`) | el efecto **Anti-curación**: **−15 % por nivel** de toda curación, 4 niveles = 4 del efecto, 5 s | `CombatEngine.applyOnHitEffects` aplica; **`effect/AntiHealingHandler`** cobra en `LivingHealEvent` |
+| `destripamiento` | alabarda (molde `halberd`) | el **cargado** deja **Sangrado**: 1 ♥ cada 2 s durante 6 s (L1) / 10 s (L2) | `CombatEngine.applyOnHitEffects` |
+| `quebranto` | pesadas (clase `heavy`) | −8 % de armadura por stack, **máx 3**, 4 s, reaplicar refresca | `CombatEngine.applyOnHitEffects` |
+| `desvio_vampirico` | shotel (molde `sabre`) | al **parriar** robás **1 ♥ de vida máxima** y cada parry **suma otro**; el nivel es el **tope** (L1 1 ♥ · L4 4 ♥), 10 s, refresca | `ParryHandler` -- **dos efectos**, `VAMPIRIC` (el acumulado) y `DRAINED` (1 ♥ por parry) |
+| `mecha_corta` | arcabuz (molde `arcabuz`) | la mecha **20 → 15 → 10** ticks | `Arcabuz.light(fuse)` (el total por argumento) + `ArcabuzFuseState.progress(totalTicks)` -- **el cliente divide por el total, no por la constante** |
+| `barredor` | alabarda (molde `halberd`) | el cono del **barrido** crece **×1,15/×1,30** (sobre el ×1,35 base), en distancia **y** en ancho | `HalberdSweep.reachFor(reach, nivel)` + **`MaceAir.displayedFor(stats, holder, sweepLevel)`**: el HUD muestra el cono del **barrido**, y los **4 sitios de display** leen el nivel (`CombatEnchantments.barredorLevel`) |
+| `astilladora` | hacha (clase `axe`) | un golpe bloqueado gasta **2** de aguante en vez de 1 | `GuardState.block(regen, cost)` -- **el coste es un parámetro y no dos llamadas**, porque gastar de a uno baja la guardia en el primero |
+| `mella` | hacha (clase `axe`) | el desgaste a la armadura sube **×1,5/×2/×2,5/×3** (sobre el ×2 del hacha cargada → hasta **×6**) | `ArmorWearHandler` (el `newDamage` mutable) -- **el único encantamiento que no toca el daño** |
+| `segunda_pasada` | alabarda (molde `halberd`) | el barrido que **no mató a nadie** devuelve el **30 %/50 %** del cooldown | `CooldownState.refund(ticks)` + `SpecialHandler.sweep` (cuenta **muertes**, no aciertos) |
+| `santa_muerte` | azada (clase `hoe`) | **matar** deja una nube putrefacta: **Wither I 5 s** en radio **3**, con `SQUID_INK` + `LARGE_SMOKE` (sin arte) | `enchant/SantaMuerte` -- `LivingDeathEvent`, **y el asesino queda afuera** (veto C2) |
+| `inercia` | martillo (molde `warhammer`) | el empuje de la cadena va **entero al aire**: **+10 %/20 % de vertical por golpe**, **horizontal cero** | `Knockback.applyLift` + el call site del martillo. **Es la excepción con nombre** al javadoc de `Knockback.apply`, que prohíbe mandar un encantamiento al vertical |
+| `ensarte` | largas (clase `enchantable/reach` = alabarda + tridente) | la estocada **atraviesa**: **50 %/100 %** del daño base a **un** cuerpo alineado del otro lado | `CombatEngine.ensarte` -- **el segundo cuerpo no cobra bonus por objetivo**, y el gate es el perfil (`HALBERD`/`TRIDENT`) |
+| `paliza` | pala (molde `shovel`) | el golpe **cargado** que cierra una serie empuja **2,4 horiz. / 0,6 vert.** (L1 serie de 2, L2 de 1) | `ModAttachments.PALIZA_STREAK` (`StreakState`) + `Knockback.applyLift` con el perfil de Paliza |
+| `sentencia` | martillo (molde `warhammer`) | a los **5 golpes de cadena** el cuerpo **revienta**: **8/12** a él y **4/6** en radio **2,5**. **L2 encadena** a los de al lado | `CombatEngine.sentencia`, desde `onHit`. **El que ataca queda afuera** |
+| `trabazon` | martillo (molde `warhammer`) | el golpe **cargado** deja **sin saltar** (L1) **y sin correr** (L2), 1,5 s | `enchant/TrabazonHandler` -- **el salto no se cancela, se devuelve** (`LivingJumpEvent` no es cancelable) |
+| `gripa` | daga (molde `dagger`) | stacks de **Moco**: 1 de daño por stack cada 20/15 ticks, máx 4/6, y **estornuda** cada 40 (partícula del panda) | `ModEffects.MOCO` + `MocoEffect` -- **sin arte nuevo** |
+| `corte_gemelo` | shotel (molde `sabre`) | el golpe normal da un **segundo corte al 50 %**; **L1 cada 4 s**, **L2 siempre** | `state/CorteGemelo` (el reloj) + `CombatEngine.lastRoundOnHit` |
+| `capacitor` | shotel (molde `sabre`) | el proyectil parriado vuelve como **rayo**: **3/4 + el daño base**, y **quema 4 s** | `ParryHandler` -- la rama de `ParrySource.cameThroughTheAir`, **que ya existía** |
+| `rey_de_las_moscas` | arcabuz (molde `arcabuz`) | el disparo deja una **nube de moscas en CADA cuerpo del cono**: **4 de daño cada 10 ticks, 4 s, radio 3**. El **dueño queda afuera** | `MobCloud` (entidad invisible) + `MobCloudRenderer` (**vacío, pero REGISTRADO**) + rama al tope de `Arcabuz.fire` -- **la munición sigue siendo Firestone, no carne podrida todavia**. Una nube por cuerpo (el cono ya decidía a quién llega, y tomar solo el primero era devolver un golpe por un disparo), con **un solo zumbido** aunque haya ocho |
+| `retirada` | ropera (molde `ropera`) | **agachado**, el lunge sale **para atrás** y el golpe al frente (100 %) se cobra **en el press** | `SpecialHandler.retreat` + `LungeMotion` (el **signo** del impulso) — **el golpe va a `Lunge.prehit`**, al mismo conjunto que barre la marcha, para no cobrar dos veces |
+
+> **La linea "nada en `src/test` puede nombrar un tipo de Minecraft" es mas larga de lo que parece: la
+> clase QUE EL TEST CARGA tampoco.** `MaceAir` llamaba a `CombatEnchantments.level(...)`, cuya firma
+> declara un `HolderLookup.Provider`, y **los tres tests de `MaceAir` murieron con
+> `NoClassDefFoundError` antes de la primera asercion** — sin que el archivo de test nombrara nada.
+> La regla real es *"la clase que un test carga no puede **nombrar** un tipo de Minecraft, ni en su
+> firma ni en un metodo al que llame"*, y el nivel de Barredor entra como **argumento** por eso: el
+> sitio de display, que no se testea, es quien lee el encantamiento y lo pasa.
+
+> **Y un guard de wiring que busca un string tiene que pedir LA LLAMADA AL RAS, no el nombre de la
+> funcion.** Es la **cuarta vez** que este proyecto paga lo mismo: `assertTrue(x.contains("regla("))`
+> queda **verde con la llamada envuelta en un `if (false)`**, porque el string sigue ahi. Lo que
+> distingue "esta escrita" de "se ejecuta" es el contexto -- `"\n        cashAdrenalina(player,
+> target);"`, con su indentacion -- y sin el, el sabotaje que apaga la llamada **no muere**. Los cuatro
+> casos fueron: `ensarteShare(`, `event.setAmount(`, `cashAdrenalina(` y, antes, el `perTargetBonus(`
+> de la ronda de las tandas. **La forma barata de escribirlo bien es copiar la linea del codigo con su
+> indentacion en vez de escribir el nombre del metodo.**
+
+> **5 efectos nuevos, y las cuentas viven en `CombatEnchantRules` (pura) y no en los efectos.** Un
+> `MobEffect` extiende una clase de Minecraft, así que un método suyo **no se puede cargar en un
+> test**: la cuenta adentro del efecto sería una cuenta que ningún test mira. Es la línea exacta del
+> proyecto -- *"¿implementa algo de Minecraft?"* -- y los tests la cazaron **dos veces**:
+>
+> 1. **`antiHealingReduction` sin clampear**: con un amplifier alto la reducción **pasaba de 1** y
+>    `1 − reducción` daba **negativo** -- o sea, curarse hacía **daño**.
+> 2. **`DRAIN_PER_LEVEL` en positivo**: el robo *sumaba* vida máxima en vez de restarla. El techo del
+>    enemigo subía y el robo era un regalo para los dos lados. **La cuenta se ve bien leída y al
+>    revés**, que es la peor forma de fallar.
+>
+> **Y el robo no puede matar, pero sí baja la vida actual.** Bajarle el techo a un cuerpo le baja la
+> vida -- `LivingEntity#tick` clampea cada tick y no hay forma de evitarlo -- así que lo que se
+> garantiza es el **piso**: `canDrain` pregunta si le quedaría al menos un punto de techo, y si no,
+> el robo no se cobra.
+
+> **Los dos últimos necesitaron estado nuevo**, y son los primeros del proyecto que lo hacen: dos
+> attachments (`SECOND_WINDOW` y `GUARD_FREE`) con **vencimiento absoluto y sin codec**, el patrón de
+> `ContragolpeWindow` -- un contador habría que bajarlo cada tick para todos los jugadores, y una
+> ventana que reaparece tras reconectar es un premio que el jugador no ganó.
+> **`GuardFree.READY` es `-INTERVAL_TICKS` y no cero**, y el test lo afirma: con cero, "listo" sería
+> `now - 0 >= 60` y el primer bloqueo gratis de una partida no llegaría hasta el tick sesenta del
+> mundo. Saboteado a cero: muere.
+
+> **Punta Fina, Filo Astillado y Apuñalar comparten un solo canal** (`CombatEngine.perTargetBonus`), y
+> es a propósito:
+> los tres son "un porcentaje del daño que depende de algo del objetivo o de la posición", y el modo
+> de falla de un canal que nadie llama es que **el build queda verde**. El guard de wiring afirma
+> `enchanted + perTargetBonus(` -- **la suma, no la existencia de la función** -- porque la primera
+> versión afirmaba `perTargetBonus(` y el sabotaje que quitaba la suma **no la hacía morir**.
+> Y el hacha necesitó un tag de clase nuevo, `#cortescombat:enchantable/axe` (`#minecraft:axes` + el
+> molde), por la misma razón que la espada: el hacha del juego es la de vanilla reworkeada, y su
+> alcance no puede ser un tag de molde que sólo tiene las nuestras.
+
+- **`CombatEnchantRules.IDS`** es la lista canónica y `CombatEnchantmentFilesTest` la camina: agregar
+  un id hace que el test cubra solo el archivo, el tag, la forma del campo y **los 8 idiomas**.
+- **Y hay que estar en un TAG DE ENCANTAMIENTO o no se consiguen.** En 1.21.1 el campo `"treasure"`
+  del JSON **no existe** (verificado: ninguno de los 42 de vanilla lo declara) -- son **tags de
+  registro**: `in_enchanting_table` (lo lee la mesa, `EnchantmentMenu:207`), `treasure`, `tradeable`
+  (aldeanos) y `on_random_loot` (cofres). Los 6 nuestros se registraban, tenían archivo e idioma,
+  se podían dar con `/enchant`... y **no salían nunca en una mesa**, sin un solo error en el log. ∴
+  `data/minecraft/tags/enchantment/{in_enchanting_table,tradeable}.json`, y el guard pregunta si
+  **cada id está adentro**, no si el archivo existe.
+- **El parry devuelve el daño de un proyectil al tirador, y era casualidad.** `getEntity()` de una
+  flecha es **el arquero** (la flecha es `getDirectEntity()`), así que el `instanceof LivingEntity`
+  del handler lo aceptaba sin preguntar nada. Formalizado en `ParrySource.cameThroughTheAir(...)`
+  (pregunta por **identidad**, no por tipo: así la onda de filo, que no extiende `Projectile`,
+  también entra), el proyectil se **descarta** (antes quedaba clavado en el que parrió) y el guard
+  afirma que el handler **usa** la respuesta -- una pregunta sin consumidor es el bug.
+- **Los ids viven en la clase pura** (`*_ID` como `String`) y no en `CombatEnchantments`, que nombra
+  `ResourceKey`/`Enchantment` y no se puede cargar en un test.
+- **Identidad = molde** (`#cortescombat:profile/<familia>`), **genérico = clase**
+  (`#cortescombat:enchantable/<x>`). `GENERIC_IDS` marca la excepción.
+- **Quick Charge se probó y se revirtió.** Se reutilizó el de vanilla (regla: extender antes de
+  inventar) y el playtest lo midió: el efecto es **−0,25 s absolutos por nivel**, que sobre la
+  ballesta (1,25 s) es −20 % y sobre nuestro arcabuz (2,5 s) es **−10 %** -- la mitad de lo que el
+  diseño pedía. El log lo mostró (`de 50` sin encantamiento, `de 40` con Quick Charge II, cuando el
+  diseño decía 30). **Lección: un efecto absoluto reutilizado sobre una base distinta da otro
+  porcentaje**, y una reutilización que da la mitad del número no es una reutilización.
+- **Idiomas: 8 archivos** (`ModLocales`): `en_us` + los **siete** españoles. **Ninguna variante es
+  alias de otra** -- la pila es *[seleccionado, en_us]*, así que `es_mx` cae a inglés, no a `es_es`.
+- **El entorno de dev no tiene idiomas de vanilla**: el cliente trae **solo** `en_us.json`, así que
+  elegir español deja las cadenas de *vanilla* en inglés aunque las nuestras salgan bien.
