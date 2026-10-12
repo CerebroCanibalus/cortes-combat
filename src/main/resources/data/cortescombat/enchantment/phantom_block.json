@@ -1,0 +1,11 @@
+{
+  "anvil_cost": 2,
+  "description": { "translate": "enchantment.cortescombat.phantom_block" },
+  "max_cost": { "base": 18, "per_level_above_first": 8 },
+  "max_level": 1,
+  "min_cost": { "base": 5, "per_level_above_first": 3 },
+  "primary_items": "#cortescombat:enchantable/golden_tool",
+  "slots": [ "mainhand" ],
+  "supported_items": "#cortescombat:enchantable/golden_tool",
+  "weight": 2
+}

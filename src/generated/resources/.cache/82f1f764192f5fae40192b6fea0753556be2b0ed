@@ -1,4 +1,4 @@
-// 1.21.1	2026-10-11T02:41:44.1711446	Tags for minecraft:item mod id cortescombat
+// 1.21.1	2026-10-12T02:01:30.6956337	Tags for minecraft:item mod id cortescombat
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/axe.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/dagger.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/cortescombat/tags/item/category/hammer.json
@@ -12,11 +12,14 @@ de1a714d5453882d208166b7d607e5dee121805c data/cortescombat/tags/item/enchantable
 985e45246596885198dc805e25b75e4dc7ce82cf data/cortescombat/tags/item/enchantable/axe.json
 508192ad9f0e1da0f231d396c8139d243dcfd8db data/cortescombat/tags/item/enchantable/blade.json
 0e501179b5dba0c8d5d4ec5090383a8d5e1899ff data/cortescombat/tags/item/enchantable/blunt.json
+64bfe7b2a4207f9f9739d9a5538fc62da3cd2545 data/cortescombat/tags/item/enchantable/golden_tool.json
+ca0c7f185e264340545cad5c650100f73591e85d data/cortescombat/tags/item/enchantable/golden_weapon.json
 e733b5474b3de962175a497bb6e7efb30bc5a257 data/cortescombat/tags/item/enchantable/heavy.json
 5a122d91f48433e76244a4dd757d8800cc701367 data/cortescombat/tags/item/enchantable/hoe.json
 6f0c6c78a546829fc28bbde32f25cb9a95cd701f data/cortescombat/tags/item/enchantable/loot.json
 e25bbb69a988e60f828a69f84c4e679c66662973 data/cortescombat/tags/item/enchantable/reach.json
 631fc0284b48c40d78fe0aee61e377518c21be29 data/cortescombat/tags/item/enchantable/shove.json
+6b2bb9337b6880f1f713f5f1b64d968a65c6daa0 data/cortescombat/tags/item/enchantable/shovel.json
 57f39d6fee925b3989ee48d1a81a34802bfcd91c data/cortescombat/tags/item/enchantable/sword.json
 85cde72e10b24d086f8f684a75887bd8f9185d99 data/cortescombat/tags/item/profile/arcabuz.json
 cea51846590e1c97af683c95ff9a128fe42ad950 data/cortescombat/tags/item/profile/axe.json

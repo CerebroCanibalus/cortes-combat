@@ -1,0 +1,11 @@
+{
+  "anvil_cost": 1,
+  "description": { "translate": "enchantment.cortescombat.wind_walker" },
+  "max_cost": { "base": 10, "per_level_above_first": 6 },
+  "max_level": 5,
+  "min_cost": { "base": 5, "per_level_above_first": 2 },
+  "primary_items": "#cortescombat:enchantable/golden_weapon",
+  "slots": [ "mainhand" ],
+  "supported_items": "#cortescombat:enchantable/golden_weapon",
+  "weight": 2
+}

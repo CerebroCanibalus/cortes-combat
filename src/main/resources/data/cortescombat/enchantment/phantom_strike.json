@@ -1,0 +1,11 @@
+{
+  "anvil_cost": 2,
+  "description": { "translate": "enchantment.cortescombat.phantom_strike" },
+  "max_cost": { "base": 18, "per_level_above_first": 9 },
+  "max_level": 2,
+  "min_cost": { "base": 5, "per_level_above_first": 3 },
+  "primary_items": "#cortescombat:enchantable/golden_weapon",
+  "slots": [ "mainhand" ],
+  "supported_items": "#cortescombat:enchantable/golden_weapon",
+  "weight": 2
+}

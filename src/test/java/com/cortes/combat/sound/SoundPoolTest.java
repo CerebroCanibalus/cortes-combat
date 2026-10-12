@@ -47,8 +47,25 @@ class SoundPoolTest {
     private static final Path SOUND_DIR =
             Path.of("src/main/resources/assets/cortescombat/sounds");
 
+    private static final Pattern LEGAL = Pattern.compile("[a-z0-9/._-]+");
     private static final Pattern EVENT = Pattern.compile("\"([a-z0-9_]+)\"\\s*:\\s*\\{");
     private static final Pattern NAME = Pattern.compile("\"name\"\\s*:\\s*\"([^\"]+)\"");
+    /**
+     * Lo que una ruta de recurso de Minecraft admite: {@code namespace:path}, y en cada mitad
+     * {@code [a-z0-9/._-]}. El `:` separa las dos y es legal; lo que no lo es, una mayuscula.
+     */
+    private static boolean isLegalLocation(String id) {
+        String[] parts = id.split(":", -1);
+        if (parts.length > 2) {
+            return false;
+        }
+        for (String part : parts) {
+            if (!LEGAL.matcher(part).matches()) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     /** The pools that are supposed to have more than one take, and therefore to sound varied. */
     private static final Set<String> SHOULD_RANDOMISE = Set.of(
@@ -104,6 +121,53 @@ class SoundPoolTest {
                     .forEach(n -> names.add(n.substring(0, n.length() - 4)));
         }
         return names;
+    }
+
+    @Test
+    @DisplayName("every name in sounds.json is a LEGAL resource path, or the whole file is dropped")
+    void theNamesAreLegalLocations() throws IOException {
+        // **Este es el test que faltaba, y su ausencia costo TODOS los sonidos del mod.**
+        //
+        // `everyNameResolves` compara el nombre contra los .ogg del disco, asi que
+        // `sweeping_edgeV2` coincidia con `sweeping_edgeV2.ogg` y el test pasaba. Lo que nadie
+        // preguntaba es si el nombre era una **ruta de recurso valida**: Minecraft solo admite
+        // `[a-z0-9/._-]`, y una V mayuscula en el `name` hace que el juego tire
+        // `ResourceLocationException` y **descarte sounds.json completo**.
+        //
+        // El sintoma del playtest fue "un monton de armas no tienen sonidos, estan totalmente
+        // rotos", y suena a que se rompio el sistema de audio. No: se rompio un archivo, y lo rompio
+        // una letra. Un guard que compara nombres contra nombres no ve un nombre invalido -- hay que
+        // preguntar por la GRAMATICA del nombre, que es la misma leccion de los encantamientos.
+        String json = Files.readString(SOUNDS_JSON, StandardCharsets.UTF_8);
+        List<String> illegal = new ArrayList<>();
+        Matcher names = NAME.matcher(json);
+        while (names.find()) {
+            String id = names.group(1);
+            if (!isLegalLocation(id)) {
+                illegal.add(id);
+            }
+        }
+        assertTrue(illegal.isEmpty(),
+                "**estos nombres no son rutas de recurso validas** (`[a-z0-9/._-]`), y UNO SOLO hace "
+                        + "que el juego descarte sounds.json ENTERO y que ningun sonido del mod suene: "
+                        + illegal);
+    }
+
+    @Test
+    @DisplayName("every .ogg on disk has a lowercase name, because a resource path is lowercase")
+    void theFilesAreLowercase() throws IOException {
+        List<String> illegal = new ArrayList<>();
+        try (Stream<Path> walk = Files.walk(SOUND_DIR)) {
+            walk.filter(Files::isRegularFile)
+                    .map(p -> p.getFileName().toString())
+                    .filter(n -> n.endsWith(".ogg"))
+                    .filter(n -> !n.equals(n.toLowerCase(java.util.Locale.ROOT)))
+                    .forEach(illegal::add);
+        }
+        assertTrue(illegal.isEmpty(),
+                "un .ogg con mayusculas no se puede nombrar desde sounds.json -- la ruta que lo apunta "
+                        + "seria invalida y tiraria el archivo entero. Renombralo en minusculas: "
+                        + illegal);
     }
 
     @Test

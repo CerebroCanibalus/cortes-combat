@@ -1,0 +1,11 @@
+{
+  "anvil_cost": 1,
+  "description": { "translate": "enchantment.cortescombat.golden_hands" },
+  "max_cost": { "base": 25, "per_level_above_first": 10 },
+  "max_level": 1,
+  "min_cost": { "base": 5, "per_level_above_first": 5 },
+  "primary_items": "#cortescombat:enchantable/golden_tool",
+  "slots": [ "mainhand" ],
+  "supported_items": "#cortescombat:enchantable/golden_tool",
+  "weight": 2
+}

@@ -95,7 +95,7 @@
     "sounds": [ { "name": "cortescombat:weapons/shovel_orb_explosion" } ]
   },
   "sweeping_edge": {
-    "sounds": [ { "name": "cortescombat:weapons/sweeping_edgeV2" } ]
+    "sounds": [ { "name": "cortescombat:weapons/sweeping_edge_v2" } ]
   },
   "arcabuz_reload": { "sounds": [ { "name": "cortescombat:weapons/arcabuz_reload" } ] },
   "arcabuz_loaded": { "sounds": [ { "name": "cortescombat:weapons/arcabuz_loaded" } ] }

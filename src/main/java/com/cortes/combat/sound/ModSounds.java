@@ -195,10 +195,17 @@ public final class ModSounds {
     /**
      * La onda de filo que sale del tajo cargado de la espada con Sweeping Edge.
      *
-     * <p>El archivo es {@code sweeping_edgeV2.ogg} y el evento se llama sin el {@code V2}: la
+     * <p>El archivo es {@code sweeping_edge_v2.ogg} y el evento se llama sin el {@code v2}: la
      * version vive en el nombre del archivo, que es lo que se reemplaza cuando hay una V3, y no en
      * el id, que es lo que el codigo nombra. Un id con la version adentro obliga a tocar Java cada
      * vez que el usuario redibuja un sonido.</p>
+     *
+     * <p><b>Y el nombre del archivo tiene que ser TODO en minusculas.</b> La primera version de esto
+     * fue {@code sweeping_edgeV2.ogg} con la V mayuscula, y una ruta de recurso solo admite
+     * {@code [a-z0-9/._-]}: el juego tira <b>{@code sounds.json} entero</b> con
+     * {@code Non [a-z0-9/._-] character in path of location}, o sea que <b>ningun sonido del mod
+     * suena</b> -- no el del sweeping edge, todos. El sintoma del playtest fue "un monton de armas
+     * sin sonidos" y la causa era una letra. El test de sonidos lo afirma ahora.</p>
      */
     public static final String SWEEPING_EDGE = "cortescombat:sweeping_edge";
 

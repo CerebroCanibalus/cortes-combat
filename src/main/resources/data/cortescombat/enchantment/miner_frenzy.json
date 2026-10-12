@@ -1,0 +1,11 @@
+{
+  "anvil_cost": 1,
+  "description": { "translate": "enchantment.cortescombat.miner_frenzy" },
+  "max_cost": { "base": 20, "per_level_above_first": 8 },
+  "max_level": 3,
+  "min_cost": { "base": 5, "per_level_above_first": 4 },
+  "primary_items": "#cortescombat:enchantable/golden_tool",
+  "slots": [ "mainhand" ],
+  "supported_items": "#cortescombat:enchantable/golden_tool",
+  "weight": 2
+}

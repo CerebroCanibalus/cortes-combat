@@ -1,0 +1,11 @@
+{
+  "anvil_cost": 2,
+  "description": { "translate": "enchantment.cortescombat.life_steal" },
+  "max_cost": { "base": 16, "per_level_above_first": 8 },
+  "max_level": 3,
+  "min_cost": { "base": 5, "per_level_above_first": 3 },
+  "primary_items": "#cortescombat:enchantable/golden_weapon",
+  "slots": [ "mainhand" ],
+  "supported_items": "#cortescombat:enchantable/golden_weapon",
+  "weight": 2
+}

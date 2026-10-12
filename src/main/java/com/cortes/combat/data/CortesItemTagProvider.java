@@ -259,14 +259,38 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         // vacio a proposito. Un tag de clase es exactamente para esto, y es la razon por la que
         // `supported_items` no puede llevar una lista de tags.
         TagKey<Item> reach = own("enchantable/reach");
+        // **Y la clase de la PALA, que es la que necesita la Pala Antimaterial.** Su
+        // `supported_items` apuntaba a `profile/shovel`, que es el MOLDE -- la lista canonica de las
+        // nuestras que usan ese perfil, o sea solo la pala de cobre. El encantamiento no se podia
+        // poner en NINGUNA pala de vanilla, y el playtest recibio un "Pala de hierro no admite este
+        // encantamiento" que es la verdad y no explica nada.
+        //
+        // Es la misma distincion que ya estaba escrita para la espada y el hacha: **identidad =
+        // molde, generico = clase.** Un encantamiento que le da una habilidad a "la pala" es
+        // generico, y su tag es `#minecraft:shovels` mas las nuestras del molde.
+        TagKey<Item> shovel = own("enchantable/shovel");
+        // **Y las dos clases del ORO, que son lo que los once encantamientos de oro necesitan para no
+        // repetir siete ids once veces.** Son dos y no una porque el diseño tambien son dos: los seis
+        // de arma y los cinco de herramienta, y una lista unica de once items dejaria que Manos
+        // Doradas se pusiera en una espada.
+        //
+        // Las nuestras se agregan por el camino del item y no preguntando el material del enum: el
+        // material decide durabilidad y dano, esto decide quien puede llevarlo, y son dos preguntas.
+        TagKey<Item> goldenWeapon = own("enchantable/golden_weapon");
+        TagKey<Item> goldenTool = own("enchantable/golden_tool");
         TagKey<Item> durability = TagKey.create(Registries.ITEM,
                 ResourceLocation.withDefaultNamespace("enchantable/durability"));
 
         for (WeaponFamily family : WeaponFamily.values()) {
             for (WeaponMaterial material : family.materialsInOrder()) {
-                Item item = ModItems.weapon(family.itemName(material)).get();
+                var held = ModItems.weapon(family.itemName(material));
+                Item item = held.get();
                 tag(all).add(item);
                 tag(durability).add(item);
+                // La dorada entra a su clase por el nombre del item: ver la nota de arriba.
+                if (held.getId().getPath().contains("golden")) {
+                    tag(goldenWeapon).add(item);
+                }
                 if (family == WeaponFamily.MARTILLO) {
                     tag(blunt).add(item);
                 } else {
@@ -336,6 +360,18 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
         // usan) y el tridente por `Items`, porque es de vanilla y no tiene molde nuestro.
         tag(reach).addTag(own("profile/halberd"));
         tag(reach).add(Items.TRIDENT);
+        // Y la pala, completada con las de vanilla: la del juego es la de vanilla reworkeada, asi
+        // que su clase es `#minecraft:shovels` mas las nuestras del molde.
+        tag(shovel).addTag(ItemTags.SHOVELS);
+        tag(shovel).addTag(own("profile/shovel"));
+        // Y la clase del oro: la de vanilla que el diseño incluye -- la espada y el hacha doradas
+        // son armas que el rework ya come -- mas las cuatro doradas de vanilla que son herramientas.
+        tag(goldenWeapon).add(Items.GOLDEN_SWORD);
+        tag(goldenWeapon).add(Items.GOLDEN_AXE);
+        tag(goldenTool).add(Items.GOLDEN_PICKAXE);
+        tag(goldenTool).add(Items.GOLDEN_SHOVEL);
+        tag(goldenTool).add(Items.GOLDEN_HOE);
+        tag(goldenTool).add(Items.GOLDEN_AXE);
     }
 
     /** Un tag de vanilla por id, para completar una clase de encantamiento con su alcance original. */
