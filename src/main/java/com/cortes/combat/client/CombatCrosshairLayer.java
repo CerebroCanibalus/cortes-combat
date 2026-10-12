@@ -26,15 +26,6 @@ import net.minecraft.resources.ResourceLocation;
  */
 public class CombatCrosshairLayer implements LayeredDraw.Layer {
 
-    private static final ResourceLocation CHARGE = sprite("charge_bar");
-    private static final ResourceLocation CHARGE_EMPTY = sprite("charge_bar_emtpy");
-
-    private static final int CHARGE_WIDTH = 30;
-    private static final int CHARGE_HEIGHT = 15;
-
-    /** Clearance between the bottom of the crosshair and the top of the charge bar. */
-    private static final int CHARGE_GAP = 9;
-
     @Override
     public void render(GuiGraphics graphics, DeltaTracker delta) {
         Minecraft mc = Minecraft.getInstance();
@@ -49,42 +40,13 @@ public class CombatCrosshairLayer implements LayeredDraw.Layer {
         CrosshairSprites.render(graphics, centreX, centreY, growth,
                 CrosshairFeedback.shakeX(), CrosshairFeedback.shakeY(), CrosshairFeedback.rgb());
 
-        renderCharge(graphics, centreX, centreY);
-    }
-
-    /**
-     * The charge bar, below the crosshair.
-     *
-     * <p>Two sprites rather than a fill rectangle: the empty one is the socket and the full one
-     * carries the splatter at the end of the stroke, so drawing a scaled fill would have had to
-     * invent that detail. Scaling the full sprite by charge and drawing the empty one underneath
-     * gives the splatter for free, and it only appears when the charge is actually full.</p>
-     *
-     * <p>Positioned off the crosshair's <em>grown</em> half-height, from {@link HudAnchor}. On a
-     * hit the crosshair is 38% bigger and would otherwise be sitting on the bar for the six
-     * ticks of the flash. Measuring from the anchor rather than from a literal is what keeps
-     * the two from drifting apart when the crosshair art changes size.</p>
-     */
-    private static void renderCharge(GuiGraphics graphics, int centreX, int centreY) {
-        float charge = ClientCombatState.chargeRatio();
-        if (charge <= 0.0F) {
-            return;
-        }
-        int x = centreX - CHARGE_WIDTH / 2;
-        int y = centreY + HudAnchor.crosshairReach() + CHARGE_GAP;
-
-        RenderSystem.enableBlend();
-        graphics.blit(CHARGE_EMPTY, x, y, CHARGE_WIDTH, CHARGE_HEIGHT,
-                0.0F, 0.0F, CHARGE_WIDTH, CHARGE_HEIGHT, CHARGE_WIDTH, CHARGE_HEIGHT);
-
-        int filled = Math.max(1, Math.round(CHARGE_WIDTH * Math.min(1.0F, charge)));
-        graphics.blit(CHARGE, x, y, filled, CHARGE_HEIGHT,
-                0.0F, 0.0F, filled, CHARGE_HEIGHT, CHARGE_WIDTH, CHARGE_HEIGHT);
-        RenderSystem.disableBlend();
-    }
-
-    private static ResourceLocation sprite(String name) {
-        return ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID,
-                "textures/gui/sprites/hud/" + name + ".png");
+        // **Dos barras, dos botones, dos colores.** La blanca es el golpe cargado y va arriba; la
+        // morada es la carga de un arma magica y va debajo. Pueden estar vivas a la vez -- un arma
+        // que cargue con los dos botones -- y por eso el `slot` es un parametro y no una constante
+        // repetida en cada llamada. Ver {@link ChargeBar}.
+        ChargeBar.render(graphics, centreX, centreY, ClientCombatState.chargeRatio(),
+                ChargeBar.TINT_PLAIN, 0);
+        ChargeBar.render(graphics, centreX, centreY, ClientCombatState.specialCharge(),
+                ChargeBar.TINT_ARCANE, 1);
     }
 }

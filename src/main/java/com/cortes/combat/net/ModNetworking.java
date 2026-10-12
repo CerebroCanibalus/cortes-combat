@@ -41,6 +41,11 @@ public final class ModNetworking {
                 (payload, context) -> {
                     if (context.player() instanceof ServerPlayer sp) {
                         com.cortes.combat.special.Arcabuz.setHeld(sp, payload.held());
+                        // **Y el segundo que escucha el boton derecho.** El flag es del BOTON y no
+                        // del arcabuz, asi que cualquiera que tenga algo que hacer mientras este
+                        // abajo tiene que enterarse: la pala carga el orbe asi. Que esto viva en el
+                        // handler del arcabuz es historia, no diseño.
+                        com.cortes.combat.special.PalaCharge.setHeld(sp, payload.held());
                     }
                 });
         registrar.playToClient(CombatStatePayload.TYPE, CombatStatePayload.STREAM_CODEC,
@@ -300,6 +305,7 @@ public final class ModNetworking {
             return;
         }
         com.cortes.combat.client.ClientCombatState.set(payload.chargeRatio(), payload.cooldownRatio());
+        com.cortes.combat.client.ClientCombatState.setSpecialCharge(payload.specialCharge());
         com.cortes.combat.client.ClientCombatState.setGuard(
                 payload.guardStamina(),
                 payload.guardMax(),
@@ -365,13 +371,18 @@ public final class ModNetworking {
         boolean held = guard.isActive();
 
         SyncState last = player.getData(ModAttachments.LAST_SYNCED.get());
-        if (!last.isDirty(charge, cooldown, stamina, max, held, SYNC_EPSILON)) {
+        // **La carga del boton derecho sale de la MISMA funcion que la de la pose**, y no de una
+        // cuenta escrita aca: dos copias de "ticks sobre el tope" es lo que este proyecto ya pago
+        // con una barra que iba por una funcion distinta que el dano.
+        float specialCharge =
+                com.cortes.combat.net.PlayerStateSync.specialChargeRatio(player);
+        if (!last.isDirty(charge, cooldown, stamina, max, held, specialCharge, SYNC_EPSILON)) {
             return;
         }
         player.setData(ModAttachments.LAST_SYNCED.get(),
-                new SyncState(charge, cooldown, stamina, max, held));
+                new SyncState(charge, cooldown, stamina, max, held, specialCharge));
         PacketDistributor.sendToPlayer(player,
-                new CombatStatePayload(charge, cooldown, stamina, max, held));
+                new CombatStatePayload(charge, cooldown, stamina, max, held, specialCharge));
     }
 
 }

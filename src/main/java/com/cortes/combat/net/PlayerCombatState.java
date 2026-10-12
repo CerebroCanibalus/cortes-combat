@@ -67,7 +67,8 @@ public record PlayerCombatState(int entityId, WeaponProfile weapon,
                                 boolean holding, int holdTicks,
                                 boolean guarding, float stagger,
                                 boolean parryActive, int parryCooldown,
-                                boolean lunging, float cooldownRatio) {
+                                boolean lunging, float cooldownRatio,
+                                float specialCharge) {
     /**
      * Nothing happening, for a player this client has heard nothing about.
      *
@@ -76,7 +77,7 @@ public record PlayerCombatState(int entityId, WeaponProfile weapon,
      * {@code onSweep} is called once and the clock runs it down.</p>
      */
     public static final PlayerCombatState STILL = new PlayerCombatState(
-            -1, WeaponProfile.NONE, false, 0, false, 0.0F, false, 0, false, 1.0F);
+            -1, WeaponProfile.NONE, false, 0, false, 0.0F, false, 0, false, 1.0F, 0.0F);
     /** No tremble clock and no state: the clock's own version of this record. */
     public PlayerCombatState {
         if (weapon == null) {
@@ -98,6 +99,18 @@ public record PlayerCombatState(int entityId, WeaponProfile weapon,
             stagger = 0.0F;
         } else if (stagger > 1.0F) {
             stagger = 1.0F;
+        }
+        // **La carga del boton derecho, clampeada igual que las otras dos.**
+        //
+        // Y viaja como <b>fraccion</b> y no como ticks, que es lo contrario de `holdTicks` -- y la
+        // asimetria es a proposito. La duracion de la carga del ataque vive en el `ChargeProfile`
+        // del arma, que el cliente YA tiene, asi que mandar los ticks no agrega nada. La de una
+        // carga especial vive en una regla del encantamiento, y re-derivarla en el cliente seria una
+        // segunda copia de "cuanto dura" que se desincroniza la primera vez que se tunea.
+        if (specialCharge < 0.0F) {
+            specialCharge = 0.0F;
+        } else if (specialCharge > 1.0F) {
+            specialCharge = 1.0F;
         }
         if (cooldownRatio < 0.0F) {
             cooldownRatio = 0.0F;
@@ -139,8 +152,9 @@ public record PlayerCombatState(int entityId, WeaponProfile weapon,
         buf.writeInt(state.parryCooldown());
         buf.writeBoolean(state.lunging());
         buf.writeFloat(state.cooldownRatio());
+        buf.writeFloat(state.specialCharge());
     }
-    /** The same nine, in the same order, which is the whole contract. */
+    /** The same, in the same order, which is the whole contract. */
     public static PlayerCombatState decode(ByteBuf buf) {
         int entityId = buf.readInt();
         WeaponProfile weapon = WeaponProfile.byOrdinal(buf.readByte());
@@ -152,7 +166,8 @@ public record PlayerCombatState(int entityId, WeaponProfile weapon,
         int parryCooldown = buf.readInt();
         boolean lunging = buf.readBoolean();
         float cooldownRatio = buf.readFloat();
+        float specialCharge = buf.readFloat();
         return new PlayerCombatState(entityId, weapon, holding, holdTicks, guarding, stagger,
-                parryActive, parryCooldown, lunging, cooldownRatio);
+                parryActive, parryCooldown, lunging, cooldownRatio, specialCharge);
     }
 }

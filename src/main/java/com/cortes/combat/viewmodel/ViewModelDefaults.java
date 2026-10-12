@@ -785,7 +785,12 @@ public final class ViewModelDefaults {
                 Track.of(Channel.WINDUP, Curve.LINEAR,
                         new Offset(-0.03, -0.16, 0.16, -30.0, -10.0, 10.0)),
                 Track.shaking(Channel.WINDUP, Curve.LINEAR, Offset.ZERO,
-                        new Offset(0.0, 0.0, 0.014, 1.6, 0.8, 0.8),
+                        // **El temblor subio de 0,014 a 0,030 para la carga del orbe.** El playtest
+                        // pidio que el arma "tiemble bastante" mientras se carga la esfera, y este
+                        // temblor es el mismo canal que usa la carga del izquierdo -- la pala es una
+                        // sola arma y su gesto de juntar es uno. Al doble se lee como algo que se
+                        // esta por soltar en vez de un pulso.
+                        new Offset(0.0, 0.0, 0.030, 1.6, 0.8, 0.8),
                         13.0F, Curve.EXPO),
                 // The throw. Forward and up, which is the half of a shovel that no other profile
                 // does: a scoop that ends where it started is a shovel that never emptied. EXPO so

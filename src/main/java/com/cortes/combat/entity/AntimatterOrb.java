@@ -216,10 +216,20 @@ public class AntimatterOrb extends Entity {
                 this.getX(), this.getY() + 0.3, this.getZ(), 1, 0.0, 0.0, 0.0, 0.0);
         server.sendParticles(ParticleTypes.REVERSE_PORTAL,
                 this.getX(), this.getY() + 0.3, this.getZ(), 60, 1.2, 0.8, 1.2, 0.15);
+        // **Volumen 4 y no 1,4, porque el volumen ES el alcance.**
+        //
+        // En Minecraft el radio audible de un sonido sale de `SoundEvent#getRange(volume)`, que
+        // multiplica el rango base por el volumen: con 1,4 el reventon del orbe se escuchaba a unos
+        // veintidos bloques y el playtest lo reporto como "muy bajo y con muy poco rango". Con 4 son
+        // unos sesenta y cuatro -- el mismo numero que usa la detonacion del reactor -- asi que el
+        // golpe mas caro del catalogo se anuncia desde donde se tiene que anunciar.
+        //
+        // El pitch se queda en 1: subir el volumen no pide tocar el tono, y el archivo ya es del
+        // usuario.
         server.playSound(null, this.getX(), this.getY(), this.getZ(),
                 com.cortes.combat.sound.CombatSounds.event(
                         com.cortes.combat.sound.ModSounds.SHOVEL_ORB_EXPLOSION),
-                net.minecraft.sounds.SoundSource.PLAYERS, 1.4F, 1.0F);
+                net.minecraft.sounds.SoundSource.PLAYERS, 4.0F, 1.0F);
         this.discard();
     }
 

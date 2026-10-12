@@ -6,6 +6,7 @@ import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.guard.GuardStats;
 import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
+import com.cortes.combat.enchant.CombatEnchantRules;
 import com.cortes.combat.state.GuardState;
 import com.cortes.combat.state.ParryState;
 
@@ -132,7 +133,31 @@ public final class PlayerStateSync {
                 // sabre's BREAK track: pinned at a value nothing could move, in every frame of
                 // every session, and nobody noticed for a round.
                 player.getData(ModAttachments.COOLDOWN.get())
-                        .ratio(AttackCooldown.intervalFor(player)));
+                        .ratio(AttackCooldown.intervalFor(player)),
+                // **La carga del boton derecho, que hoy solo tiene la pala.**
+                //
+                // Va como fraccion porque la duracion la decide una regla del encantamiento y no un
+                // `ChargeProfile` que el cliente ya tenga: re-derivarla alla seria una segunda copia
+                // de "cuanto dura" que se desincroniza en el primer tuneo. Ver el clamp de
+                // `PlayerCombatState`, que tiene el argumento entero.
+                PlayerStateSync.specialChargeRatio(player));
+    }
+
+    /**
+     * La carga del boton derecho como fraccion de su tope, o cero si no esta cargando.
+     *
+     * <p><b>Publica y con un solo lector por payload, porque es UNA cuenta.</b> El HUD local la
+     * manda en {@code CombatStatePayload} y la pose de los demas en {@code PlayerCombatState}; dos
+     * copias de "ticks sobre el tope" es exactamente la clase de duplicado que este proyecto ya pago
+     * con la barra de carga que iba por una funcion distinta que el dano.</p>
+     */
+    public static float specialChargeRatio(ServerPlayer player) {
+        ChargeState special = player.getData(ModAttachments.SPECIAL_CHARGE.get());
+        if (!special.holding()) {
+            return 0.0F;
+        }
+        return Math.min(1.0F,
+                special.ticks() / (float) CombatEnchantRules.PALA_ANTIMATERIAL_CHARGE_TICKS);
     }
 
     /**

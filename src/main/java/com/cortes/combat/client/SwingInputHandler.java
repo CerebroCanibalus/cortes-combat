@@ -800,8 +800,20 @@ public final class SwingInputHandler {
         // it. That is what "any attack starts the charge" was, on both sides: the camera was
         // reading the wind-up's number. The camera wants to know whether the swing IS a charge,
         // so it gets the thresholded one, and a tap moves nothing at all.
-        ItemViewModel.tick(holding, predictedRatio(player), chargedRatio(player),
-                ClientCombatState.guardHeld());
+        // **La carga del boton derecho entra por la misma puerta que la del izquierdo.**
+        //
+        // El playtest pidio que el arma se levante y tiemble mientras carga el orbe, y eso es
+        // exactamente lo que el canal WINDUP del perfil ya hace: el mismo gesto que la carga del
+        // ataque, con el mismo temblor. No hay perfil nuevo que escribir -- el arma ya sabe
+        // levantarse.
+        //
+        // Se toma el MAYOR de las dos cargas y no la suma: un arma que cargara con los dos botones a
+        // la vez levantaria el doble, y el doble de una pose es otra pose. Y se pasa `holding` en
+        // `true` mientras haya carga especial para que el canal arranque igual que con un press.
+        float special = ClientCombatState.specialCharge();
+        boolean winding = holding || special > 0.0F;
+        ItemViewModel.tick(winding, Math.max(predictedRatio(player), special),
+                chargedRatio(player), ClientCombatState.guardHeld());
 
         // **The fire-on-press strike, announced after the tick that owns the press edge.** See
         // pressStrikePending: announcing it earlier, while the button was still down, is exactly

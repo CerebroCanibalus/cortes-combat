@@ -207,6 +207,23 @@ public final class ModAttachments {
                     .build());
 
     /**
+     * La carga del boton DERECHO: la pala antimaterial hoy, y las armas magicas que vengan.
+     *
+     * <p><b>Es el mismo {@link ChargeState} que la del izquierdo y no un tipo nuevo.</b> "Un boton
+     * sostenido que acumula ticks" es literalmente el mismo estado, y una segunda clase con los
+     * mismos dos campos se desincronizaria de la primera en cuanto una de las dos cambie. Lo que
+     * separa las dos cargas es <b>cual boton</b>, y eso lo dice el attachment, no el tipo.</p>
+     *
+     * <p><b>Sin codec y sin {@code copyOnDeath}, por la misma razon que la recamara del arcabuz:</b>
+     * {@code holding} es un boton que el jugador aprieta. Un jugador que vuelve de la pantalla de
+     * muerte con la carga armada tendria un tiro que nadie cargo.</p>
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<ChargeState>> SPECIAL_CHARGE =
+            ATTACHMENT_TYPES.register("special_charge", () -> AttachmentType
+                    .<ChargeState>builder(() -> ChargeState.EMPTY)
+                    .build());
+
+    /**
      * Segundo Aliento: la ventana que abre que te rompan la guardia. See {@link SecondWindWindow}.
      *
      * <p><b>No codec and no {@code copyOnDeath}.</b> Tres segundos que mueren solos: una ventana que

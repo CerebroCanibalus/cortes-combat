@@ -17,6 +17,7 @@ package com.cortes.combat.client;
 public final class ClientCombatState {
 
     private static float chargeRatio;
+    private static float specialCharge;
 
     /**
      * The server's answer to "may I swing", and {@code 1} until one arrives.
@@ -110,6 +111,22 @@ public final class ClientCombatState {
         chargeRatio = charge;
         cooldownRatio = cooldown;
         cooldownKnown = true;
+    }
+
+    /**
+     * La carga del boton derecho: hoy la pala, y el numero que dibuja la barra morada.
+     *
+     * <p><b>Se setters separado y no un tercer argumento de {@link #set},</b> porque las dos cargas
+     * tienen relojes distintos: el del ataque lo mueve el izquierdo y este el derecho, asi que
+     * atarlos a la misma llamada obligaria a mandar los dos juntos siempre. Y la barra necesita
+     * distinguirlas: la blanca es el golpe, la morada es el arma magica.</p>
+     */
+    public static void setSpecialCharge(float charge) {
+        specialCharge = charge;
+    }
+
+    public static float specialCharge() {
+        return specialCharge;
     }
 
     public static void setGuard(int stamina, int max, boolean held) {

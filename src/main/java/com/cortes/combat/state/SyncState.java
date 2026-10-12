@@ -14,19 +14,21 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  * <p>Not a gameplay value. Nothing reads this to decide damage or cooldown.</p>
  */
 public record SyncState(float lastCharge, float lastCooldown, int lastStamina, int lastGuardMax,
-                        boolean lastGuardHeld) {
+                        boolean lastGuardHeld, float lastSpecialCharge) {
 
-    public static final SyncState NEVER = new SyncState(-1.0F, -1.0F, -1, 0, false);
+    public static final SyncState NEVER = new SyncState(-1.0F, -1.0F, -1, 0, false, -1.0F);
     public static final Codec<SyncState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.FLOAT.fieldOf("last_charge").forGetter(SyncState::lastCharge),
             Codec.FLOAT.fieldOf("last_cooldown").forGetter(SyncState::lastCooldown),
             Codec.INT.fieldOf("last_stamina").forGetter(SyncState::lastStamina),
             Codec.INT.optionalFieldOf("last_guard_max", 0).forGetter(SyncState::lastGuardMax),
-            Codec.BOOL.optionalFieldOf("last_guard_held", false).forGetter(SyncState::lastGuardHeld)
+            Codec.BOOL.optionalFieldOf("last_guard_held", false).forGetter(SyncState::lastGuardHeld),
+            Codec.FLOAT.optionalFieldOf("last_special_charge", -1.0F)
+                    .forGetter(SyncState::lastSpecialCharge)
     ).apply(instance, SyncState::new));
 
     public boolean isDirty(float charge, float cooldown, int stamina, int guardMax,
-                            boolean guardHeld, float epsilon) {
+                            boolean guardHeld, float specialCharge, float epsilon) {
         if (lastCharge < 0.0F) {
             return true;
         }
@@ -34,6 +36,7 @@ public record SyncState(float lastCharge, float lastCooldown, int lastStamina, i
                 || Math.abs(cooldown - lastCooldown) >= epsilon
                 || stamina != lastStamina
                 || guardMax != lastGuardMax
-                || guardHeld != lastGuardHeld;
+                || guardHeld != lastGuardHeld
+                || Math.abs(specialCharge - lastSpecialCharge) >= epsilon;
     }
 }

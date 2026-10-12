@@ -409,7 +409,7 @@ public final class SpecialHandler {
      * cargando y puede salir; sin ella, el orbe sale en el press. Los numeros del orbe no cambian
      * -- atrae y pega lo mismo -- y el costo sigue siendo el cooldown.</p>
      */
-    private static void launchAntimatter(ServerPlayer player, ServerLevel level) {
+    public static void launchAntimatter(ServerPlayer player, ServerLevel level) {
         // **La linea que dice si el orbe sale, y va al tope y ANTES del `return`.**
         //
         // Hasta ahora este metodo no dejaba ninguna: disparar el orbe, no dispararlo y no llegar

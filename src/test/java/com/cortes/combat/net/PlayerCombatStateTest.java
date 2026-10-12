@@ -35,7 +35,7 @@ class PlayerCombatStateTest {
     /** Nine fields, each one carrying a number no other field could carry. */
     private static PlayerCombatState everyFieldItsOwnNumber() {
         return new PlayerCombatState(4242, WeaponProfile.SABRE,
-                true, 31, true, 0.37F, true, 97, true, 0.62F);
+                true, 31, true, 0.37F, true, 97, true, 0.62F, 0.44F);
     }
 
     private static PlayerCombatState roundTrip(PlayerCombatState state) {
@@ -72,6 +72,7 @@ class PlayerCombatStateTest {
         assertEquals(97, buf.readInt(), "parryCooldown");
         assertTrue(buf.readBoolean(), "lunging");
         assertEquals(0.62F, buf.readFloat(), "cooldownRatio");
+        assertEquals(0.44F, buf.readFloat(), "specialCharge");
         assertEquals(0, buf.readableBytes(), "and nothing after it");
     }
 
@@ -143,6 +144,7 @@ class PlayerCombatStateTest {
         buf.writeInt(0);
         buf.writeBoolean(false);
         buf.writeFloat(1.0F);
+        buf.writeFloat(0.0F);
 
         PlayerCombatState back = PlayerCombatState.decode(buf);
 
@@ -168,7 +170,7 @@ class PlayerCombatStateTest {
     void nonsenseIsClamped() {
         PlayerCombatState back = roundTrip(
                 new PlayerCombatState(7, WeaponProfile.SABRE, true, -50, true, 4.2F,
-                        false, -3, false, 9.0F));
+                        false, -3, false, 9.0F, -2.0F));
 
         assertEquals(0, back.holdTicks(),
                 "a negative hold is not a hold. The wind-up divides by the charge length and "

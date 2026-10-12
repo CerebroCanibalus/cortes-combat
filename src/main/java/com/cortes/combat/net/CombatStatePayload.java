@@ -23,13 +23,21 @@ import net.minecraft.resources.ResourceLocation;
  * @param guardStamina remaining blockable hits
  * @param guardMax how many the held item is worth, which is not a constant: a sword is 1
  * @param guardHeld whether the server currently considers the guard up
+ * @param specialCharge 0..1 right-button charge, for the magic weapons that have one
  */
 public record CombatStatePayload(float chargeRatio, float cooldownRatio, int guardStamina,
-                                int guardMax, boolean guardHeld) implements CustomPacketPayload {
+                                int guardMax, boolean guardHeld, float specialCharge)
+        implements CustomPacketPayload {
 
     public static final Type<CombatStatePayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "combat_state"));
 
+    /**
+     * <p><b>Seis componentes, que es el techo de {@code StreamCodec.composite} en 1.21.1.</b> El
+     * siguiente campo que quiera viajar por aca obliga a partirlo en dos payloads o a escribirlo a
+     * mano como {@code PlayerCombatState}; esta anotado aca para que el que lo agregue no lo
+     * descubra con un error que no nombra ni el archivo.</p>
+     */
     public static final StreamCodec<RegistryFriendlyByteBuf, CombatStatePayload> STREAM_CODEC =
             StreamCodec.composite(
                     ByteBufCodecs.FLOAT, CombatStatePayload::chargeRatio,
@@ -37,6 +45,7 @@ public record CombatStatePayload(float chargeRatio, float cooldownRatio, int gua
                     ByteBufCodecs.VAR_INT, CombatStatePayload::guardStamina,
                     ByteBufCodecs.VAR_INT, CombatStatePayload::guardMax,
                     ByteBufCodecs.BOOL, CombatStatePayload::guardHeld,
+                    ByteBufCodecs.FLOAT, CombatStatePayload::specialCharge,
                     CombatStatePayload::new);
 
     @Override
