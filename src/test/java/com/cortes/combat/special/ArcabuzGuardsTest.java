@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 class ArcabuzGuardsTest {
 
     private static final String ARCABUZ = "src/main/java/com/cortes/combat/special/Arcabuz.java";
+    private static final String STATE = "src/main/java/com/cortes/combat/state/ArcabuzState.java";
     private static final String MUZZLE = "src/main/java/com/cortes/combat/special/ArcabuzMuzzle.java";
     private static final String MIXIN =
             "src/main/java/com/cortes/combat/mixin/ArcabuzGuiIconMixin.java";
@@ -59,26 +60,28 @@ class ArcabuzGuardsTest {
     }
 
     @Test
-    @DisplayName("la asimetria de withChamber es una decision, y el llamador es quien la compensa")
-    void theStickyLoadedIsCompensatedAtTheCallSite() {
-        // **Las dos mitades del bug, ancladas por separado, porque cada una sola es correcta.**
+    @DisplayName("withChamber es un espejo SIMETRICO: el stack manda en las DOS direcciones")
+    void theChamberMirrorIsSymmetric() {
+        // **La asimetria era el bug, y este guard la exigia.** Se escribio creyendo que protegia un
+        // arma a punto de disparar durante la combustion; su propia justificacion era falsa, porque
+        // `light()` ya devuelve la recamara vacia -- encender la mecha ES lo que la gasta. Lo unico
+        // que hacia era que un `true` viejo no se pudiera limpiar nunca, y ese `true` es el que
+        // hacia que el segundo arcabuz disparara sin recamara.
         //
-        // `withChamber` NO baja `loaded` a false, y esta bien que no lo haga: durante la combustion
-        // la recamara ya se gasto del stack, y un record que releyera `false` cada tick vaciaria un
-        // arma a punto de disparar. Lo que no puede pasar es que ese `loaded` pegajoso sobreviva a un
-        // cambio de arma -- y eso se arregla en el llamador, no aca.
-        String state = strip(read(
-                "src/main/java/com/cortes/combat/state/ArcabuzState.java"));
-        assertTrue(state.contains("if (!chamberOnStack) {")
-                        && state.contains("return this;"),
-                "**`withChamber` solo puede LLENAR.** Si alguien lo hace simetrico para \"arreglar\" "
-                        + "esto, vacia el arma en cada uno de los veinte ticks que dura la mecha. El "
-                        + "comentario que lo explica tiene que seguir ahi");
-        String arcabuz = strip(read(ARCABUZ));
-        assertTrue(arcabuz.contains("player.setData(ModAttachments.ARCABUZ.get(), ArcabuzState.EMPTY)"),
-                "**y el llamador compensa vaciando el estado entero cuando el arma cambia.** Reinicia "
-                        + "la recamara Y la accion en vuelo de una vez, que es lo que hace que el "
-                        + "`loaded` pegajoso no pueda cruzar de un arcabuz a otro");
+        // **La leccion que vale mas que el arreglo:** un guard puede fijar una equivocacion con la
+        // misma firmeza con que fija un invariante. Este exigia la asimetria con un mensaje que la
+        // explicaba, y por eso la direccion no se podia corregir sin borrarlo.
+        String state = strip(read(STATE));
+        assertFalse(state.contains("if (!chamberOnStack) {"),
+                "**el espejo NO puede ser de una sola direccion.** Que el stack diga vacia sobre un "
+                        + "record que dice cargada es el bug mas caro del arcabuz: un `true` viejo que "
+                        + "no se puede limpiar sobrevive el cambio de arma y el segundo arcabuz "
+                        + "dispara sin recamara. Reportado dos veces como \"ambas armas quedan "
+                        + "cargadas\"");
+        assertTrue(state.contains("chamberOnStack == loaded ? this"),
+                "y la comparacion tiene que devolver la misma instancia **solo** cuando ya coinciden, "
+                        + "en cualquier direccion: eso es lo que hace que el llamador mande el paquete "
+                        + "exactamente cuando hay algo que corregir");
     }
 
     @Test

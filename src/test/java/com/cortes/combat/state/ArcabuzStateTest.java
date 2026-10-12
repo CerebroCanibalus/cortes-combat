@@ -374,9 +374,64 @@ class ArcabuzStateTest {
                         + "it and refuses to fire is a weapon the player cannot read");
     }
 
-    /** And the reconciliation must not touch the two fields it has no opinion about. */
+    /**
+     * Un espejo que no cambia devuelve la misma instancia; uno que cambia, no.
+     *
+     * <p><b>Porque el llamador compara por identidad para decidir si manda un paquete.</b> Eso es
+     * todo lo que "barato" significa: una comparacion por tick contra un valor que ya esta en el
+     * stack, y un paquete solo en el tick en que los dos discrepan. Un metodo que armara un record
+     * nuevo e igual mandaria el estado al cliente veinte veces por segundo para siempre.</p>
+     */
     @Test
-    @DisplayName("reconciling the chamber keeps the countdown and the button")
+    void agreeingWithTheStackSendsNothing() {
+        ArcabuzState empty = ArcabuzState.EMPTY;
+        assertSame(empty, empty.withChamber(false),
+                "el record y el stack ya coinciden en vacio, asi que no se reconstruye nada");
+        assertNotSame(empty, empty.withChamber(true),
+                "y un stack que dice cargada SI cambia el record, porque la recamara es una noticia");
+    }
+
+    /**
+     * <b>La direccion que faltaba, y es el bug mas caro del arcabuz.</b>
+     *
+     * <p>Un record que dice cargada y un stack que dice vacia es un arma que se va a disparar sin
+     * recamara. Antes esta direccion devolvia {@code this} -- el record solo podia llenarse, nunca
+     * vaciarse -- asi que el {@code true} heredado de un arma sobrevivia el cambio a otra y el
+     * segundo arcabuz disparaba sin haber sido recargado jamas. El playtest lo reporto dos veces
+     * como "ambas armas quedan cargadas".</p>
+     *
+     * <p><b>Y la asimetria que lo causaba se justificaba sola con algo falso.</b> El comentario decia
+     * que durante la combustion releer {@code false} "vaciaria un arma a punto de disparar" -- pero
+     * {@link ArcabuzState#light(int)} ya devuelve la recamara vacia, porque encender la mecha
+     * <em>es</em> lo que la gasta. Durante la combustion los dos valores ya coinciden, y la asimetria
+     * no protegia nada: solo impedia limpiar un {@code true} viejo.</p>
+     */
+    @Test
+    @DisplayName("un stack vacio VACIA el record, que es la direccion que era el bug")
+    void anEmptyStackEmptiesTheRecord() {
+        ArcabuzState stale = ArcabuzState.EMPTY.finishReload();
+        assertTrue(stale.loaded(), "el escenario arranca con el record diciendo que hay recamara");
+
+        ArcabuzState fixed = stale.withChamber(false);
+        assertFalse(fixed.loaded(),
+                "**el stack manda en las dos direcciones.** Un record que solo puede llenarse guarda "
+                        + "un `true` viejo para siempre, y ese `true` es el que hacia que el segundo "
+                        + "arcabuz disparara sin recamara");
+        assertFalse(fixed.canLight(), "y un arma sin recamara no enciende nada");
+        assertNotSame(stale, fixed,
+                "y es un cambio de verdad, asi que el espejo se reconstruye y el llamador manda el "
+                        + "paquete que lo dice");
+    }
+
+    /**
+     * Y el espejo no opina sobre los dos campos que no son suyos.
+     *
+     * <p><b>Esta prueba nacio defendiendo la asimetria y ahora defiende lo contrario</b>, que es lo
+     * que tiene que pasar cuando la decision que afirmaba se revela mala: lo que sobrevive es la
+     * regla -- el espejo solo toca {@code loaded} -- y no el numero ni la direccion.</p>
+     */
+    @Test
+    @DisplayName("reconciliar la recamara no toca la mecha ni el boton")
     void reconcilingKeepsTheCountdownAndTheButton() {
         ArcabuzState burning = ArcabuzState.EMPTY.finishReload().light();
         for (int tick = 0; tick < 7; tick++) {
@@ -389,103 +444,11 @@ class ArcabuzStateTest {
 
         ArcabuzState reconciled = burning.withChamber(false);
         assertEquals(fuseBefore, reconciled.fuseTicks(),
-                "a gun picked up mid-burn keeps the countdown it had. Sending only the loaded flag "
-                        + "would draw a fuse a third spent as though it had just been lit, because "
-                        + "the frame comes off the countdown");
+                "una mecha retomada a mitad conserva el conteo: mandar solo la bandera de la recamara "
+                        + "dibujaria una mecha a un tercio como recien encendida, porque el frame sale "
+                        + "del conteo");
         assertEquals(heldBefore, reconciled.reloadHeld(),
-                "and the button flag survives, because the reconciliation is about the chamber and "
-                        + "knows nothing about what the mouse is doing");
-    }
-
-    /**
-     * A reconciliation that changes nothing returns the same instance.
-     *
-     * <p><b>Because the caller compares by identity to decide whether to send a packet.</b> That is
-     * the whole of "cheap": one compare per tick against a value already on the stack, and a packet
-     * only on the tick where the two answers actually disagree. A method that built a fresh equal
-     * record would send the state to the client twenty times a second forever.</p>
-     */
-    @Test
-    void agreeingWithTheStackSendsNothing() {
-        ArcabuzState loaded = ArcabuzState.EMPTY.finishReload();
-        assertSame(loaded, loaded.withChamber(true),
-                "the gun agrees with the stack, so nothing is rebuilt and no packet is sent");
-        assertSame(loaded, loaded.withChamber(false),
-                "and a stack that says empty does not rebuild the record either -- see the test "
-                        + "below for why that direction is not the negation of this one");
-    }
-
-    /**
-     * The stack can only fill the gun, never empty it, and that asymmetry is the whole mechanic.
-     *
-     * <p><b>This is a bug the first version of this method had, and it was nearly invisible.</b>
-     * {@code withChamber} was written as "the stack wins", which reads symmetric and is not: the
-     * chamber component is removed at the <em>light</em>, in the same statement that lights the
-     * fuse. So for the twenty ticks a fuse burns, the honest server state is
-     * {@code loaded == false} while the gun is about to fire -- the ball is in the barrel. A
-     * symmetric reconciliation would empty the gun on that tick, and again on every tick after, and
-     * the player would watch a charged musket drain itself while the fuse burned.
-     *
-     * <p><b>The empty direction belongs to the shot alone.</b> {@code resolve} takes the component
-     * and lights the fuse in one breath, and there is no other event anywhere in this weapon that
-     * turns a charged gun into an empty one. So this method fills and nothing else does, and a stack
-     * that says "no" to a record that says "yes" is a gun the server has never heard of.</p>
-     */
-    @Test
-    @DisplayName("the stack can fill the gun but cannot empty it while the fuse burns")
-    void theStackCanFillButNotEmpty() {
-        ArcabuzState burning = ArcabuzState.EMPTY.finishReload().light();
-        assertFalse(burning.loaded(),
-                "the firestone was spent at the light, so the chamber is empty on the stack from "
-                        + "the moment the fuse is lit");
-        assertTrue(burning.isBurning(), "and the gun is about to go off");
-
-        ArcabuzState reconciled = burning.withChamber(false);
-        assertFalse(reconciled.loaded(),
-                "the record stays empty too, because the light already decided that and nothing "
-                        + "here gets to decide it a second time");
-        assertSame(burning, reconciled,
-                "and the reconciliation does not even rebuild the record: the stack agreeing with "
-                        + "the record is the no-packet case");
-        assertFalse(reconciled.canLight(),
-                "and a gun already burning cannot be lit twice, which is the gate that made the "
-                        + "first version of this method look harmless");
-
-        // **And a fuse that runs out does not come back**, which is the half the bug above could
-        // not have told us: a one-way fill is only safe because something else empties the gun.
-        ArcabuzState afterShot = burning;
-        for (int tick = 0; tick < ArcabuzState.FUSE_TICKS + 1; tick++) {
-            afterShot = afterShot.step().state();
-        }
-        assertFalse(afterShot.isBurning(), "the fuse ran out");
-        assertFalse(afterShot.loaded(), "and there is nothing left to light");
-    }
-
-    /**
-     * A charged stack fills a record that lost the charge.
-     *
-     * <p><b>The bug as reported.</b> Load a musket, swap to a sword, come back: the client wiped
-     * its copy on the way out and the server's record was never consulted, so the gun drew empty
-     * and the next shot wanted a firestone that was already spent. The reconciliation existed but
-     * only in {@code resolve()}, which runs on the press -- and picking a gun back up is not a
-     * press.</p>
-     */
-    @Test
-    @DisplayName("a charged stack fills a record that lost the charge")
-    void aChargedStackFillsARecordThatLostTheCharge() {
-        // The scenario: the server's record is stale-empty while the stack says charged. That is
-        // what the swap leaves behind, and it is also what a lost sync looks like.
-        ArcabuzState stale = ArcabuzState.EMPTY;
-        assertFalse(stale.loaded(), "the record is empty, which is what the swap left behind");
-
-        ArcabuzState fixed = stale.withChamber(true);
-        assertTrue(fixed.loaded(),
-                "the stack carries the chamber, so the gun is charged. This one is still empty, "
-                        + "which is the reported bug: the weapon draws unloaded and asks for a "
-                        + "firestone the player already paid");
-        assertTrue(fixed.canLight(), "and it can be lit, which is what a loaded gun is for");
-        assertNotSame(stale, fixed,
-                "a real change returns a different instance, because the caller sends a packet "
-                        + "exactly when this returns something new");
+                "y la bandera del boton sobrevive, porque el espejo es de la recamara y no sabe nada "
+                        + "de lo que hace el mouse");
     }
 }

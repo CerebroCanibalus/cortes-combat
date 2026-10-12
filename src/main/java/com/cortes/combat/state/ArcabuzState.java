@@ -234,49 +234,45 @@ public record ArcabuzState(int fuseTicks, int reloadTicks, boolean loaded, boole
     public static final int MIN_RELOAD_TICKS = 20;
 
     /**
-     * What the state becomes when the stack in hand says the chamber is loaded.
+     * El valor del stack, <b>en las dos direcciones</b>.
      *
-     * <p><b>The same reconciliation {@code Arcabuz#resolve} does on the press, moved into the pure
-     * class so it can be tested and so the two places cannot be written differently.</b> The record
-     * carries {@code loaded} because its gates are pure and cannot see an inventory, and the stack
-     * carries it because the inventory is the truth about which particular gun is charged. They are
-     * two answers to one question and they drift apart the moment the gun leaves the hand.
+     * <p><b>Aca vivia el bug mas caro del arcabuz, y era una asimetria que se justificaba sola.</b>
+     * La version anterior era:</p>
      *
-     * <p>Concretely: swap to a sword and the client's viewmodel wipes its own copy, so picking the
-     * musket back up draws an empty gun and asks for a firestone that was already spent. The state
-     * here was right the whole time; nobody had asked it.
+     * <pre>{@code
+     * if (chamberOnStack == loaded) return this;
+     * if (!chamberOnStack) return this;        // <-- el stack solo podia decir "si"
+     * return new ArcabuzState(fuseTicks, reloadTicks, true, reloadHeld);
+     * }</pre>
      *
-     * @param chamberOnStack whether the stack in hand carries the chamber component
-     * @return this when the two already agree, which is every tick of normal play
+     * <p>El razonamiento escrito era: durante la combustion la recamara ya se gasto del stack, asi
+     * que un record que releyera {@code false} cada tick "vaciaria un arma a punto de disparar".
+     * <b>Y es falso</b>: {@link #light(int)} ya devuelve un estado con la recamara vacia, porque el
+     * encendedor es justamente lo que la gasta. Durante la combustion los dos valores coinciden, y la
+     * asimetria no protegia nada.</p>
+     *
+     * <p><b>Lo unico que hacia era que un {@code true} viejo no se pudiera limpiar nunca.</b> Y un
+     * valor cacheado que solo puede subir es la peor clase de estado: no se equivoca al azar, se
+     * equivoca <em>hacia adelante</em>. El sintoma concreto, reportado dos veces: recargar un
+     * arcabuz, cambiar a otro, y el segundo queda armado -- porque {@code canLight()} leia el
+     * {@code true} heredado del primero y el stack en la mano no tenia recamara ninguna.</p>
+     *
+     * <p><b>La regla, ahora estructural:</b> {@code loaded} en este record es <b>un espejo</b> del
+     * stack y no una segunda opinion. Se escribe solo desde aca, solo con el valor del stack, y
+     * {@code Arcabuz#resolve} lo reescribe <b>en el momento de decidir</b> -- que es el unico
+     * momento en que la respuesta cambia lo que pasa. Un espejo que se reescribe antes de cada
+     * decision no puede quedar viejo; uno que solo puede llenarse, si.</p>
+     *
+     * @param chamberOnStack si el stack en la mano lleva el componente de la recamara
+     * @return {@code this} cuando ya coinciden, que es casi todos los ticks de juego normal
      */
     public ArcabuzState withChamber(boolean chamberOnStack) {
-        // The same instance when nothing changed, for the reason step() and withHeld give: this goes
-        // into an attachment, and a record that compares equal still costs a write and a sync. The
-        // caller also compares by identity to decide whether to send a packet, so this is the whole
-        // of "cheap": one compare against a value already on the stack, and a packet only on the
-        // tick where the two answers disagree.
-        if (chamberOnStack == loaded) {
-            return this;
-        }
-        // **The stack can only ever say "yes".** This is the asymmetry, and it is the whole reason
-        // the empty direction is not simply the negation.
-        //
-        // A chamber is spent at the light, in the same statement that lights the fuse, and the
-        // stack loses the component there. So `loaded == false` on the server is normal while a fuse
-        // burns -- the ball is in the barrel -- and a record that re-read `false` from the stack on
-        // every tick would empty a gun that is about to fire, and then empty it again every tick
-        // after. The tick's own reconciliation calls this with the stack's answer; writing
-        // `chamberOnStack` blindly would be correct for the "picked the gun back up" case and wrong
-        // for the twenty ticks around every shot.
-        //
-        // The empty direction is therefore the shot's business and nobody else's: `resolve` removes
-        // the component and lights the fuse in one breath, and there is no other event in which a
-        // charged gun becomes empty. So this method only ever fills, and a stack that says "no" to a
-        // record that says "yes" means the player is holding a gun the server has never heard of.
-        if (!chamberOnStack) {
-            return this;
-        }
-        return new ArcabuzState(fuseTicks, reloadTicks, true, reloadHeld);
+        // La misma instancia cuando no cambio nada, por la razon de `step()` y `withHeld`: esto va a
+        // un attachment, y un record que compara igual cuesta una escritura y una sincronizacion
+        // igual. El llamador ademas compara por identidad para decidir si manda un paquete, asi que
+        // esto es todo lo que "barato" significa aca.
+        return chamberOnStack == loaded ? this
+                : new ArcabuzState(fuseTicks, reloadTicks, chamberOnStack, reloadHeld);
     }
 
     /** What the server now believes about the mouse button. */
