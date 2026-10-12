@@ -675,6 +675,11 @@ public final class Arcabuz {
             // que es lo contrario de lo que hace un enjambre.
             cloud.setTarget(landing);
             level.addFreshEntity(cloud);
+            // El zumbido del enjambre, que el usuario dejo en `arcabuz_mosca_loop.ogg` y que
+            // ningun evento nombraba. Suena en el cuerpo donde cae la nube y no en la boca del
+            // arcabuz: el disparo ya tiene el suyo, y esto es el enjambre, que vive en el objetivo.
+            level.playSound(null, landing, CombatSounds.event(ModSounds.ARCABUZ_MOSCA_LOOP),
+                    net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
             ModNetworking.sendFeedback(player, CombatFeedback.HIT);
             CombatSounds.play(level, landing, WeaponProfile.ARCABUZ, ModSounds.Kind.HIT);
             return;

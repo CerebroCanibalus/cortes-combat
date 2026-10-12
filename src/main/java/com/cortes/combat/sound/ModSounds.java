@@ -178,6 +178,15 @@ public final class ModSounds {
     public static final String ARCABUZ_SHOT_MOSCA = "cortescombat:arcabuz_shot_mosca";
 
     /**
+     * El zumbido del enjambre de Rey de las Moscas.
+     *
+     * <p>Segundo archivo que el usuario dejo sin evento detras ({@code arcabuz_mosca_loop.ogg}).
+     * Suena sobre el cuerpo donde cae la nube y no en la boca del arcabuz: el disparo ya tiene el
+     * suyo y esto es el enjambre, que vive en el objetivo.</p>
+     */
+    public static final String ARCABUZ_MOSCA_LOOP = "cortescombat:arcabuz_mosca_loop";
+
+    /**
      * How far down the blaze's shot is played for the arcabuz.
      *
      * <p><b>0.55, and it is a multiplier on the pitch rather than an absolute.</b> The vanilla

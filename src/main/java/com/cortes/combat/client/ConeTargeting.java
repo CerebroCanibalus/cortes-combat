@@ -24,8 +24,10 @@ import java.util.Optional;
  * happened to be under the crosshair, so aiming a few degrees off silently does nothing. The
  * client has to pick the target with the same cone the server validates with.</p>
  *
- * <p>Target choice is by smallest angle from the look direction rather than nearest, so the
- * player hits what they are pointing at and not whatever happens to be physically closest.</p>
+ * <p>Target choice is by <b>nearest</b> and not by smallest angle, and the rule lives in
+ * {@code ConeTargets.nearest} because the server already ordered by distance: two answers to
+ * "who am I hitting" meant the client aimed at the enemy behind while the server charged the one
+ * in front, which a playtest read as an Ensarte bug. See that method for the whole story.</p>
  */
 public final class ConeTargeting {
 
@@ -57,23 +59,27 @@ public final class ConeTargeting {
         List<LivingEntity> candidates = player.level().getEntitiesOfClass(
                 LivingEntity.class, player.getBoundingBox().inflate(reach.distance() + SEARCH_MARGIN));
 
-        LivingEntity best = null;
-        double bestAngle = Double.MAX_VALUE;
+        // **El mas cercano, y no el de angulo mas chico.** Ver `ConeTargets.nearest`, que es donde
+        // vive la regla y por que: el servidor (`nearestInCone`) siempre ordeno por cercania y esto
+        // elegia por angulo, asi que las dos mitades de la misma pregunta -- "a quien le pego" --
+        // daban respuestas distintas. Con un arma larga el cliente apuntaba al enemigo de mas atras
+        // mientras el servidor le cobraba al de adelante, y el playtest lo leyo como un bug de
+        // Ensarte ("el cono prefiere al mas lejano") cuando era de las dos mitades.
+        //
+        // El angulo NO desempata: entre dos cuerpos que ya pasaron el cono, el de mas cerca es el
+        // que el jugador se va a comer, y un desempate por angulo es volver a tener dos opiniones
+        // con un margen mas chico.
+        List<LivingEntity> reached = new java.util.ArrayList<>();
         for (LivingEntity candidate : candidates) {
             if (!isCandidate(player, candidate)) {
                 continue;
             }
-            AABB box = candidate.getBoundingBox();
-            if (!inCone(eye, look, box, reach)) {
-                continue;
-            }
-            double angle = angleFrom(eye, box.getCenter(), look);
-            if (angle < bestAngle) {
-                bestAngle = angle;
-                best = candidate;
+            if (inCone(eye, look, candidate.getBoundingBox(), reach)) {
+                reached.add(candidate);
             }
         }
-        return Optional.ofNullable(best);
+        return Optional.ofNullable(com.cortes.combat.reach.ConeTargets.nearest(
+                reached, candidate -> candidate.distanceToSqr(player)));
     }
 
     /**

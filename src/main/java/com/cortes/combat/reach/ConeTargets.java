@@ -78,6 +78,43 @@ public final class ConeTargets {
         return nearestInCone(level, source, reach, 0);
     }
 
+    /**
+     * El mas cercano de una lista que <b>ya</b> paso el cono, o {@code null} si no hay ninguno.
+     *
+     * <h2>Existe porque el cliente y el servidor contestaban distinto</h2>
+     *
+     * <p>{@link #nearestInCone} ordenaba por cercania y {@code ConeTargeting} elegia por
+     * <b>angulo</b>. O sea que las dos mitades de la misma pregunta -- "a quien le pego" -- daban
+     * respuestas distintas, y con un arma larga el cliente apuntaba al enemigo de mas atras
+     * mientras el servidor le cobraba al de adelante. El playtest lo leyo como un bug de Ensarte
+     * ("el cono prefiere al mas lejano") y <b>era de las dos respuestas, no del encantamiento</b>:
+     * el mismo par de enemigos en una espada daba el mismo desacuerdo, solo que ahi la diferencia
+     * de un bloque no se nota.</p>
+     *
+     * <p><b>La regla es una sola y es esta: el mas cercano, siempre.</b> El angulo no desempata
+     * porque los dos ya pasaron el cono, y entre dos cuerpos que estan dentro de lo que el arma
+     * alcanza, el de mas cerca es el que el jugador se va a comer. Un desempate por angulo es
+     * volver a tener dos opiniones, con un margen mas chico.</p>
+     *
+     * <p>Pura y con la distancia como funcion para que se pueda testear sin un mundo: la decision
+     * no es de Minecraft, lo que la alimenta si.</p>
+     *
+     * @param inCone   los candidatos que ya pasaron el filtro del cono
+     * @param distance la distancia de cada uno al que pega
+     */
+    public static <T> T nearest(List<T> inCone, java.util.function.ToDoubleFunction<T> distance) {
+        T best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (T candidate : inCone) {
+            double d = distance.applyAsDouble(candidate);
+            if (d < bestDistance) {
+                bestDistance = d;
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
     /** Kept so a caller with a position does not need a {@link BlockPos} import it does not use. */
     static double distanceSquaredTo(LivingEntity from, LivingEntity to) {
         return from.distanceToSqr(to);
