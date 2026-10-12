@@ -133,7 +133,17 @@ public final class SpecialInputHandler {
             return;
         }
         WeaponStats stats = WeaponStats.of(player.getMainHandItem());
-        if (stats.special() == SpecialType.NONE) {
+        // **La puerta tiene que preguntar QUIEN da el boton, y no que dice el perfil.**
+        //
+        // Aca habia un `stats.special() == NONE -> return` a secas, y eso dejaba afuera a la pala
+        // entera: el perfil de la pala tiene la especial en NONE **a proposito** -- se le saco el
+        // SWEEP copiado en la ronda de las seis herramientas -- y el boton derecho del orbe lo da el
+        // ENCANTAMIENTO, que el perfil no puede ver. Sin paquete, la rama del servidor no corre
+        // nunca y el encantamiento no hace nada, que es exactamente lo que reporto el playtest.
+        //
+        // Es la misma forma de bug que el `return` que una vez entrego el click entero de la ropera
+        // a vanilla: un gate escrito sobre la pregunta facil en vez de sobre la pregunta correcta.
+        if (stats.special() == SpecialType.NONE && !orbGranted(player)) {
             return;
         }
 
@@ -266,5 +276,27 @@ public final class SpecialInputHandler {
         lastSentHeld = down;
         PacketDistributor.sendToServer(new SpecialHeldPayload(down));
         return true;
+    }
+
+    /**
+     * Si el arma en mano tiene un boton derecho que <b>el perfil no declara</b>.
+     *
+     * <p>Hoy es uno solo: el orbe de la pala, que lo da el encantamiento. El perfil de la pala dice
+     * {@code NONE} y dice la verdad -- una pala sin el encantamiento no tiene especial --, asi que la
+     * pregunta "tiene especial" no alcanza para decidir si el boton se manda.</p>
+     *
+     * <p><b>Se pregunta el nivel del encantamiento y no el tipo de item</b>, porque el nivel ya
+     * implica el tipo: {@code supported_items} del encantamiento es el tag del molde de la pala, asi
+     * que un item que no puede llevarlo devuelve cero solo. Una segunda condicion sobre el tipo seria
+     * una copia de esa regla en otro archivo, y dos copias de "esto puede" es como el cliente y el
+     * servidor terminan contestando distinto.</p>
+     */
+    private static boolean orbGranted(LocalPlayer player) {
+        if (player.level() == null) {
+            return false;
+        }
+        return com.cortes.combat.enchant.CombatEnchantments.level(
+                player.level().registryAccess(), player.getMainHandItem(),
+                com.cortes.combat.enchant.CombatEnchantments.PALA_ANTIMATERIAL) > 0;
     }
 }
