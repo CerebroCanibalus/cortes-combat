@@ -75,9 +75,39 @@ public final class GoldEnchantmentHandler {
 
     // ------------------------------------------------------------------ helper
 
-    /** The level of one of ours on the stack, and what a {@code Holder<Enchantment>} costs. */
+    /**
+     * The level of one of ours on the stack, resolved <b>por clave y no por holder</b>.
+     *
+     * <h2>Por que por clave</h2>
+     *
+     * <p>{@code ModEnchantments} declara sus once como {@code DeferredHolder}, y esos holders
+     * <b>nunca se atan</b>: los encantamientos son datos, y una {@code DeferredRegister} sobre un
+     * registro de datapack no registra nada. El problema es que un {@code DeferredHolder} sin atar
+     * <b>no es la misma instancia</b> que el {@code Holder.Reference} que el item guarda, y
+     * {@code ItemEnchantments} compara por <b>identidad</b> -- {@code Reference2IntMap#getInt},
+     * verificado en las fuentes.</p>
+     *
+     * <p>Asi que {@code getEnchantmentLevel(holder)} devolvia <b>cero siempre</b>: el encantamiento
+     * se ponia en la mesa, se leia en el tooltip, se gastaba el nivel del yunque... y <b>no hacia
+     * absolutamente nada</b>. Sin un error y sin una linea de log: la peor forma en que un
+     * encantamiento puede estar roto, porque se ve como si funcionara.</p>
+     *
+     * <p>La clave del holder si existe desde que se construye, asi que se resuelve contra el
+     * componente del propio item y no hace falta acceso al registro. Es la misma idea que
+     * {@code CombatEnchantments.level} hace contra el registro: <b>por clave, nunca por
+     * instancia.</b></p>
+     */
     private static int level(ItemStack stack, DeferredHolder<Enchantment, Enchantment> enchantment) {
-        return stack.getEnchantmentLevel(enchantment);
+        net.minecraft.resources.ResourceKey<Enchantment> key = enchantment.unwrapKey().orElse(null);
+        if (key == null) {
+            return 0;
+        }
+        for (net.minecraft.core.Holder<Enchantment> held : stack.getEnchantments().keySet()) {
+            if (held.unwrapKey().filter(key::equals).isPresent()) {
+                return stack.getEnchantments().getLevel(held);
+            }
+        }
+        return 0;
     }
 
     /** A fresh roll source per table, so two kills in the same tick do not correlate. */
