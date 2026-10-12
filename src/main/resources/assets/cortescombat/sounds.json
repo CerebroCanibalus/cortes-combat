@@ -82,6 +82,9 @@
   ,  "arcabuz_shot": {
     "sounds": [ { "name": "cortescombat:weapons/arcabuz_shot" } ]
   },
+  "arcabuz_shot_mosca": {
+    "sounds": [ { "name": "cortescombat:weapons/arcabuz_shot_mosca" } ]
+  },
   "arcabuz_reload": { "sounds": [ { "name": "cortescombat:weapons/arcabuz_reload" } ] },
   "arcabuz_loaded": { "sounds": [ { "name": "cortescombat:weapons/arcabuz_loaded" } ] }
   ,

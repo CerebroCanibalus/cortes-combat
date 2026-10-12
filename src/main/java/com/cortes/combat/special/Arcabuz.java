@@ -645,6 +645,13 @@ public final class Arcabuz {
                     level, muzzle.x, muzzle.y, muzzle.z, 20, 0.35D);
             level.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE,
                     muzzle.x, muzzle.y, muzzle.z, 14, 0.15, 0.15, 0.15, 0.02);
+            // **Y el sonido, que faltaba y por eso el tiro salia mudo.** El usuario dejo
+            // `arcabuz_shot_mosca.ogg` para esto y ningun evento lo nombraba; y como esta rama
+            // hace `return`, el `FUSEE` de mas abajo -- el disparo normal -- nunca llegaba. Va aca
+            // arriba, con el humo, y no despues del `if (seen.isEmpty())`: dispararle al aire
+            // tambien suena, y ese es el caso donde el jugador mas necesita saber que hizo algo.
+            level.playSound(null, player, CombatSounds.event(ModSounds.ARCABUZ_SHOT_MOSCA),
+                    net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
 
             trace(player, player.getData(ModAttachments.ARCABUZ.get()),
                     "rey de las moscas: nivel=" + flies + " objetivos=" + seen.size());

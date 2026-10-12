@@ -168,6 +168,16 @@ public final class ModSounds {
     public static final String ARCABUZ_SHOT = "cortescombat:arcabuz_shot";
 
     /**
+     * El disparo de Rey de las Moscas, que tiene su propia grabacion.
+     *
+     * <p>La dejo el usuario en {@code arcabuz_shot_mosca.ogg} y <b>no la nombraba ningun evento</b>,
+     * asi que no sonaba nunca -- y encima la rama de las moscas hace {@code return} antes del
+     * disparo normal, con lo cual el tiro mas caro del juego salia <b>mudo</b>. El archivo sin
+     * evento no da error en el log: es peso muerto en el jar y silencio en el juego.</p>
+     */
+    public static final String ARCABUZ_SHOT_MOSCA = "cortescombat:arcabuz_shot_mosca";
+
+    /**
      * How far down the blaze's shot is played for the arcabuz.
      *
      * <p><b>0.55, and it is a multiplier on the pitch rather than an absolute.</b> The vanilla
