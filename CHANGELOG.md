@@ -1004,6 +1004,172 @@ cruz, asi que zigzaguea en dos dimensiones y no en un plano, que se lee como un 
 
 1066 tests verdes.
 
+## Ronda de la comida y la regeneración de vida — paso 11 (2026-10-11)
+
+**Estado: implementado. Servidor de dev arrancando limpio (0 ERROR), 1092 tests verdes, y los 13
+sabotajes de esta ronda mataron los 13 guardas. Pendiente de playtest** — que es donde se tunean
+los números, y donde se ve el seam de `FoodData` corriendo con un jugador adentro.
+
+### Primero: la documentación se contradecía, y había que resolverlo antes de escribir nada
+
+DESIGN.md §5 y dos bloques de AGENTS.md dicen **"comer se interrumpe al recibir daño"**.
+`docs/api-trampas.md` y otros dos bloques dicen **"el daño no interrumpe comer, no lo rompamos"**.
+Las dos son ciertas y no son la misma afirmación: la primera es una mecánica que **hay que
+agregar**, la segunda es lo que hace **vanilla**.
+
+Verificado contra las fuentes de 1.21.1 (no de memoria): `Player#hurt` son 106 bytes que chequean
+invulnerable, escalan y delegan a `super`; `LivingEntity#hurt` y `actuallyHurt` **no llaman nunca**
+a `stopUsingItem`. Nada en el juego corta una comida. Por eso el faq de trampas tiene razón y la
+fila del diseño también: vanilla no interrumpe, y nosotros tenemos que hacerlo.
+
+Resuelto con el usuario: **el golpe interrumpe sólo si no estás cubierto.** Satisface las dos
+reglas a la vez — la fila del diseño y la más vieja, "cubrir y comer es legal". Un gate de una
+línea sobre `GuardHandler.isGuarding`.
+
+### La arquitectura, y el contrato de portabilidad
+
+El pedido fue explícito: **que sea fácilmente porteable a otras versiones.** Eso sólo es posible si
+la superficie específica de la versión está nombrada y es chica, y lo está:
+
+| Capa | Archivos | Cambia al portar |
+|---|---|---|
+| Reglas | `SurvivalRules`, `SurvivalTuning`, `SurvivalState` | **Nunca.** Ninguno importa un tipo de Minecraft. El paquete se copia entero y sus tests siguen pasando |
+| Adaptador | `SurvivalTicker` | Sólo si renombran un método. Todo lo que llama es API pública de `Player`/`FoodData`, verificada con `javap` contra el jar runtime |
+| Seams | `FoodDataMixin`, `ItemStackDrinkDurationMixin` | Dos puntos de inyección, cada uno con su descriptor escrito completo. Es el único sitio donde un cambio de versión puede romper, y rompe fuerte |
+
+El tercer punto es una **línea que está escrita en un test**: `theRulesArePortable` afirma que
+ninguno de los tres archivos de reglas importa `net.minecraft` ni `net.neoforged`. Un `Player` que
+aparezca en un parámetro de una regla hace fallar el build.
+
+### Por qué se reemplaza el tick entero y no se parchean constantes
+
+`refs/combatify` hace exactamente lo contrario y es la mejor demostración de por qué no: su
+`FoodDataMixin` cambia el suelo de curación con `@ModifyExpressionValue` sobre el literal `18`
+dentro del método, los timers sobre el `10` y los dos `80`, **cada uno addressed por ordinal**.
+Funciona hasta que Mojang mueve un número, y entonces cada inyección **deja de matchear en
+silencio**, sobre un método que igual compila y corre.
+
+El nuestro es `@Inject(at = HEAD, cancellable)` sobre `tick`, cancelar, y delegar a
+`SurvivalTicker`. Un punto de inyección que aplica o revienta en bootstrap, y el comportamiento
+donde se puede leer y testear. `theSeamDoesNotPatchConstants` prohíbe `ModifyExpressionValue` y
+`intValue=` en el archivo.
+
+### `javap` antes de cada mixin — los tres, contra el jar runtime
+
+La regla propia del proyecto, y se siguió al pie de la letra (`neoforge-21.1.250-merged.jar`):
+
+```
+FoodData.tick(net.minecraft.world.entity.player.Player)
+    descriptor: (Lnet/minecraft/world/entity/player/Player;)V
+FoodData.addExhaustion(float)      descriptor: (F)V
+FoodData.setExhaustion(float)      descriptor: (F)V
+ItemStack.getUseDuration(LivingEntity)  descriptor: (Lnet/minecraft/world/entity/LivingEntity;)I
+```
+
+Y `Player.isHurt()`, `LivingEntity.heal(F)`, `stopUsingItem()` — los tres públicos, presentes.
+
+**`FoodData` no tiene ningún patch de NeoForge**: leída la clase entera, cero comentarios `// Neo:`.
+CONFIRMADO lo que DESIGN.md §5 decía.
+
+### Dos relojes, no uno
+
+Vanilla tiene **un** `tickTimer` porque sus tres ramas son mutuamente excluyentes (curar, morir de
+hambre, o ninguna). Las nuestras **no lo son**: un jugador puede estar a mitad del reloj de curar
+y a mitad del reloj de comida en el mismo tick. `SurvivalState` son dos ints, y es un attachment
+**sin codec y sin `copyOnDeath`** por la misma razón que `ContragolpeWindow`: son contadores de
+cuatro segundos, y sobrevivir a un guardado sería progreso que el jugador no ganó.
+
+**Un reloj, dos salidas.** El de comida regenera cuando hay lugar y sólo pide hambre en cero
+exacto, así que el ciclo se cierra solo: la curación gasta comida, el reloj la devuelve, y las dos
+cosas son mutuamente excluyentes por construcción — un tick nunca regenera y mata a la vez.
+
+### El exhaustion se apaga en su llave, no en su consecuencia
+
+Cancelar sólo el tick habría quitado el **efecto** (es el único lugar donde se lee el número), pero
+el número seguiría siendo escrito por `Player#causeFoodExhaustion` — correr, saltar, pegar, romper
+bloques — y se subiría al tope de 40 y se quedaría ahí. Cualquier mod que lea
+`getExhaustionLevel()` le diría que este juego tiene un sistema de hambre **lleno y sin usar**.
+
+`addExhaustion` es el embudo único por el que pasan todos esos escritores, así que se cancela ahí
+**y se pone en cero**, que es lo que limpia un valor que un save viejo ya trae.
+
+### `lastFoodLevel` no se escribe, y por eso está documentado
+
+Es `private` con sólo getter, y **nadie en 1.21.1 lo lee** — verificado buscando
+`getLastFoodLevel` en las fuentes del juego entero: sólo la definición. El parpadeo de la barra de
+comida lo maneja la saturación, no esto. Escribirlo exigiría un accessor mixin sobre un campo sin
+consumidor, que es la sección 9 de ARCHITECTURE.
+
+### `ConfigValue.get()` lanza, no devuelve el default
+
+Verificado en las fuentes de NeoForge: `getRaw()` hace
+`Preconditions.checkState(loadedConfig != null, "Cannot get config value before config is loaded")`.
+Un config SERVER está atado a un mundo, así que hay una ventana real al arranque en la que nadie lo
+cargó. **`ServerConfig` pregunta `SPEC.isLoaded()` antes de leer** y devuelve los defaults: cuesta
+un field read y quita una clase de crash que se reportaría como bug del mod. El TOML salió con los
+cinco valores y sus rangos.
+
+### El diagnóstico que este round necesitaba y ningún test puede hacer
+
+`FoodData` **no se carga hasta que entra el primer jugador.** Verificado con
+`jcmd GC.class_histogram` contra un server dedicado vivo y sin nadie conectado: `FoodData` y
+`Player` **no estaban cargados**; `ItemStack` ya tenía 4594 instancias.
+
+O sea que **nada del arranque iba a notar un seam caído**: el primer síntoma habría sido un crash
+en la primera conexión. Por eso hay un tercer reporte de arranque, al lado de los dos que ya
+existen (`[perfiles]` y `[recetas]`): carga la clase y pregunta `FoodDataSeam.isAssignableFrom`.
+
+**Y es un marker interface, no un class literal**, a propósito: cargar `FoodData` y loguear "seam
+en su lugar" sería **verdadero justo en el caso que existe para atrapar** — si el config de mixins
+nunca se registró, la clase carga perfecto, no aplica nada, y la línea miente. Preguntarle a la
+clase qué se convirtió es la única versión de esa línea que no puede mentir. Y **reporta sin
+crashar**: un seam caído deja la comida en vanilla, que funciona.
+
+Ese hueco también cerró la mitad que faltaba de la cadena: `theTomlNamesTheMixinConfig` afirma que
+`neoforge.mods.toml` tiene el bloque `[[mixins]]` nombrando `config="${mod_id}.mixins.json"`.
+**Esa línea es la que hace que los mixins del jar se apliquen**, y la ausencia no tiene ningún
+síntoma — misma forma que el bug de las recetas.
+
+### Dos bugs que salieron de escribir los tests
+
+1. **Un guard que no podía fallar.** `theFloorStopsHealing` afirmaba `healTicks == 0` corriendo
+   sólo con la comida ya bajo el piso — donde el reloj **nunca se incrementó**, así que la
+   aserción era verdadera con o sin el `else { healTicks = 0; }`. Se reescribió para **cargar el
+   reloj arriba del piso primero y después sacarle el piso**: ahora saboteando el reset, muere.
+   *Un guard que no puede fallar no afirma nada.*
+2. **Un guard que leía prosa.** `theSeamDoesNotPatchConstants` buscaba `ModifyExpressionValue` en
+   el archivo — y el **javadoc del propio mixin** nombra esa anotación para explicar por qué no la
+   usa. El test falló contra mi explicación de que no lo hago. Arreglo: `read()` **borra los
+   comentarios** en los `.java` antes de assertar. *Un test que no distingue código de una
+   explicación del código está verde hasta el día que importa.*
+
+### Los sabotajes: 13, y los 13 mataron
+
+Tres rondas, todas verificadas antes de dar por bueno cualquier guarda:
+
+| Ronda | Sabotajes | Guardas que murieron |
+|---|---|---|
+| A (seams + config) | invertir `ci.cancel()`/delegación, borrar el `cancel()` de `addExhaustion`, sacar `FoodDataMixin` del JSON, borrar `registerConfig` | exactamente 4: `theVanillaTickIsReplacedNotAddedTo`, `exhaustionIsShutOff`, `bothMixinsAreRegistered`, `theConfigIsRegistered` |
+| B (handler + adaptador + portabilidad) | borrar el gate de guardia, `heal()`→`setHealth()`, import de Minecraft en `SurvivalState`, descriptor a nombre pelado | exactamente 4: `theGuardGatesTheInterrupt`, `healingGoesThroughHeal`, `theRulesArePortable`, `liquidsAreRecognisedByAnimation` |
+| C (reglas + seam) | precio de curación a 0, borrar el reset del reloj, `food > 0`→`>= 0`, barra llena que cuenta en vez de descansar, `@At("HEAD")`→`@At(CONSTANT, "intValue=18")` | 9, y los 5 sabotajes están todos accounting: el de la barra llena mataba **dos** aserciones a la vez, que es correcto — el descanso del reloj es lo que sostiene ambas |
+
+### Lo que queda abierto
+
+- **Playtest.** `foodRegenInterval` (80) es, según el propio diseño, el número más importante del
+  proyecto, y sólo se tunea jugando. Y el seam de `FoodData` se ve corriendo con un jugador adentro.
+- **El golpe que interrumpe comer.** Implementado como `stopUsingItem()` de una sola vez; vanilla
+  rearma el click sostenido cada 4 ticks, así que en la práctica **cada golpe pierde el mordisco y
+  empieza de cero** — que es la lectura correcta de "se interrumpe", pero si en playtest suena a
+  que "sólo parpadea", la ventana de rechazo es una línea más acá.
+- **Rebalanceo de pociones y manzana dorada** (I: 6, II: 12, daño I: 6, manzana 8) — decisión
+  cerrada del diseño, ronda aparte: necesita otro seam sobre `InstantenousMobEffect`, porque en
+  21.1 las pociones no son datapack. **Planificado, no empezado.**
+- **La barra de comida ya no tiembla.** El temblor vanilla sale de `saturation <= 0`, y con el
+  exhaustion fuera la saturación nunca baja de su inicial 5. Es coherente con "la saturación no es
+  mecánica", pero es un cambio visual silencioso que conviene mirar.
+
+1092 tests verdes.
+
 ### Nota de honestidad sobre el commit 1134a1b
 
 **Ese commit contiene mas de lo que su mensaje dice, y es un error mio.** El mensaje describe dos

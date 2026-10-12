@@ -246,8 +246,9 @@ Pasos 1–10 hechos ⊕ verificados en cliente real. Librería de viewmodel, gua
 - **Aguante en HUD:** 3 esferitas tenues sobre la crosshair, visibles al llevar algo que bloquea.
 - **Supervivencia: la comida deja de ser energía.** ⊘ `exhaustion` — correr, picar y golpear no
   cuestan nada. La comida es **recurso de curación c/ ciclo cerrado**: se gasta al curar y se
-  regenera sola. Regen 1 hp cada 2 s, cura hasta 6 de comida, comer se interrumpe al recibir daño
-  (la regen pasiva ⊘), comida líquida 20 ticks. Pociones y manzana dorada rebalanceadas (curación
+  regenera sola. Regen 1 hp cada 2 s, cura hasta 6 de comida; comer se interrumpe al recibir daño
+  **sólo si no estás cubierto** (la regen pasiva no); comida líquida 20 ticks. Pociones y manzana
+  dorada rebalanceadas (curación
   I = 6, II = 12, manzana = 8).
 - **Crafteo:** 5 grids canónicos, forma única por arma. Tiers **desiguales**: daga 7 (única c/
   madera), ropera/alabarda/shotel 6, martillo 5 (s/ madera ni piedra). **30 items.**
@@ -277,8 +278,15 @@ Pasos 1–10 hechos ⊕ verificados en cliente real. Librería de viewmodel, gua
   c/ un solo botón porque la guardia se lee de **cualquiera** de las dos manos y comer sale de la
   principal → un press arranca las dos y el orden sale **por construcción**, ⊘ por arbitrar. Lo
   único prohibido es subir la guardia a mitad de mordisco.
-- **Te pegan cubierto ⊘ interrumpe la comida.** ⊘ es regla nuestra: en 1.21.1 el daño ⊘ interrumpe
-  comer. Lo único a cuidar es ⊘ romperlo.
+- **Comer y el daño: la contradicción resuelta, y eran dos afirmaciones distintas.** Verificado en
+  las fuentes de 1.21.1: **vanilla NO interrumpe comer** — `Player#hurt` son 106 bytes que
+  chequean invulnerable, escalan y delegan; `LivingEntity#hurt`/`actuallyHurt` **no llaman nunca**
+  a `stopUsingItem`. DESIGN §5 y "Mecánicas acordadas" dicen *se interrumpe*; `docs/api-trampas.md`
+  y este archivo decían *no interrumpe*. **Las dos son ciertas**: la primera es una mecánica que
+  **hay que agregar**, la segunda es lo que hace vanilla. Implementado así: **el golpe interrumpe
+  sólo si NO estás cubierto** (`EatInterruptHandler`, `LivingDamageEvent.Post`, gate sobre
+  `GuardHandler.isGuarding`, server-only). Satisface la fila del diseño y "cubrir y comer es legal"
+  a la vez. Decidido con el General el 2026-10-11.
 
 ## Arquitectura (`ARCHITECTURE.md`)
 
@@ -479,6 +487,13 @@ dice y lo que el juego hace**, o entre lo que el test afirma y lo que el jugador
 - **Un test que falla puede tener razón el código.** 3 veces: un eje `up` imposible a 60°, una
   aserción sobre el relleno de la barra, y una comparación escrita al revés. Reconocer cuándo el
   test está mal es parte del trabajo.
+- **Y un guard que no *puede* fallar no afirma nada.** El del piso de comida afirmaba
+  `healTicks == 0` corriendo sólo con la comida ya bajo el piso — donde el reloj nunca se
+  incrementó, así que era verdadera con o sin el `else` que resetea. Se arregló **cargando el
+  reloj arriba del piso primero y después sacándole el piso**. Igual de grave y más silencioso:
+  **un guard que lee *prosa* en vez de código** — buscaba `ModifyExpressionValue` en un archivo
+  cuyo javadoc nombra esa anotación para explicar por qué no la usa. El test falló contra mi
+  explicación de que no lo hago. ∴ **los guards de source leen el archivo sin comentarios.**
 - **Un test acoplado a datos provisorios es peor ⊘ tener test.** El invariante va **en el canal**,
   ⊘ en el offset compuesto.
 - **El invariante va en el canal.** "El wind-up no pierde más que un tick de valor en un frame" es
@@ -906,8 +921,11 @@ rechazan un press, 6 silenciosos a propósito. **Lee los campos, ⊘ recalcula n
    **cerrado** (2026-10-10).
 1. **Rotar el worldmodel en la guardia** (3ª persona) — mixin sobre `ItemInHandLayer`.
 2. **Arcabuz**: feedback por objetivo y el flash a 1.7 m (los dos siguen abiertos).
-3. **Paso 11: supervivencia (`FoodData`)** — el cambio más caro, en commit propio. **Los umbrales
-   internos hay que leerlos en las fuentes de 1.21.1 antes de escribir el mixin.**
+3. **Paso 11 (supervivencia) — HECHO 2026-10-11.** Cerrado y documentado en `ARCHITECTURE.md` §13
+   (arquitectura de 3 capas + contrato de portabilidad + el seam de arranque). Quedan **playtest de
+   `foodRegenInterval`** —el número más importante del proyecto— y **el rebalanceo de pociones**, ya
+   **planificado** en esa sección con `HealOrHarmMobEffect` verificado en fuentes. ⚠ Ojo: DESIGN §5
+   dice *"poción de daño I: 4 → 6"* y **vanilla ya hace 6** (`6 << 0`), esa fila es un no-op.
 4. **Sonido de carga completa** y el valor `CHARGED` de `CombatFeedback`.
 5. **Afinar a playtest**: la bayoneta del arcabuz (`STRIKE` −0.28/−14°), los números de los
    tooltips, y los perfiles de las armas nuevas.
@@ -1533,7 +1551,7 @@ Saboteados a propósito, uno por uno. **6 sabotajes → 6 muertes por su razón:
 | 5 | Particulas de brujas disparandose al final de la sobrecarga por nether star. | pedido del usuario, PENDIENTE |
 | 6 | Playtest del reactor: radio del crater 48, dano/kb/fuego, volumen 16, shake 1,2 grados, onda 6000/tick. El crater no prende fuego en el terreno (solo entidades). `forceOverload(FIRESTONE)` usa `debugActive` no guardado (solo debug). | **VERIFICADO 2026-10-08** (radio crater y volumetria salieron del rediseno; el crater sigue sin prender fuego al terreno) |
 | 7 | Playtest de la pala (scoop 0.4/33, y +0.28) y la azada (tajo CHOP 112 de yaw, cleave SWEEP 190, sin WINDUP). Icono 2D del arcabuz en GUI real; si molesta en la preview, mixin sobre `ItemInHandLayer`. | **VERIFICADO 2026-10-08** |
-| 8 | Paso 11: supervivencia (`FoodData`) -- el cambio mas caro, en commit propio. Los umbrales internos hay que LEERLOS en las fuentes de 1.21.1, no de memoria. | pendiente |
+| 8 | Paso 11: supervivencia (`FoodData`) -- el cambio mas caro, en commit propio. Los umbrales internos hay que LEERLOS en las fuentes de 1.21.1, no de memoria. | **HECHO 2026-10-11**: 3 capas (`survival/` puro + `SurvivalTicker` + 2 seams), 1092 tests, 13 sabotajes que mataron los 13 guardas, server `Done` con 0 ERROR y la linea `[supervivencia] FoodDataMixin aplicado`. Arquitectura en `ARCHITECTURE.md` S13. **Quedan**: playtest de `foodRegenInterval` y el rebalanceo de pociones (planificado ahi) |
 | 9 | Rework de ORO y COBRE: diseno cerrado (seccion de abajo), sin implementar. | pendiente |
 | 10 | Parry contra jugadores + prueba de multijugador real: se cierra solo con **2 jugadores** (`/cc trace` y un compa). | pendiente |
 | 11 | `/cc weapons` trae 11 vanilla. Arcabuz: feedback por objetivo, flash a 1,7 m, sonido de carga completa, `CombatFeedback.CHARGED`. | deuda |

@@ -1,5 +1,6 @@
 package com.cortes.combat.mixin;
 
+import com.cortes.combat.survival.FoodDataSeam;
 import com.cortes.combat.survival.SurvivalTicker;
 
 import net.minecraft.world.entity.player.Player;
@@ -52,7 +53,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * shuts the system at its source instead of at its consequence.</p>
  */
 @Mixin(FoodData.class)
-public abstract class FoodDataMixin {
+public abstract class FoodDataMixin implements FoodDataSeam {
 
     /**
      * {@code SurvivalTicker} takes the {@code FoodData} as an argument instead of casting inside

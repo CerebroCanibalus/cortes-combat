@@ -198,6 +198,54 @@ class SurvivalWiringTest {
     // --- The config -------------------------------------------------------------
 
     @Test
+    @DisplayName("the TOML names the mixin config, or nothing in the jar is ever applied")
+    void theTomlNamesTheMixinConfig() {
+        String toml = read(ROOT.resolve("templates").resolve("META-INF")
+                .resolve("neoforge.mods.toml"));
+
+        assertTrue(toml.contains("[[mixins]]"),
+                "**this is the half of the chain no other assertion covers.** The config file in "
+                        + "the jar does nothing on its own: FML finds it through this block. Its "
+                        + "absence applies no mixins at all and reports a perfectly clean boot, "
+                        + "which is the same silent failure the recipe round paid for with a "
+                        + "different file");
+        assertTrue(toml.contains("config=\"${mod_id}.mixins.json\""),
+                "**and it has to name the file, not the mixins inside it.** The block takes one "
+                        + "config file per line; naming a mixin class here is an error that says "
+                        + "so in a way nobody reads, and the block is the single line this mod "
+                        + "must never edit by hand");
+    }
+
+    /**
+     * The boot-time seam check, and why it cannot be the na&iuml;ve version of itself.
+     *
+     * <p>Merely loading {@code FoodData} and logging that all is well would be <b>true in exactly
+     * the case it exists to catch</b>: if the mixin config never registered, the class loads
+     * perfectly, applies nothing, and the line says the rework is in place while vanilla food runs
+     * the whole time. Three assertions, because there are three links and dropping any one of them
+     * turns the check into decoration.</p>
+     */
+    @Test
+    @DisplayName("the boot check reads a marker the mixin actually declares, and it is wired")
+    void theBootCheckIsWiredAndCannotLie() {
+        String mixin = read(MIXIN_DIR.resolve("FoodDataMixin.java"));
+        assertTrue(mixin.contains("implements FoodDataSeam"),
+                "**the mixin has to declare the marker.** Without it the check can only ask "
+                        + "whether the class loaded, which is a question that answers 'yes' in the "
+                        + "one scenario that produces no symptom -- a config that never got "
+                        + "registered and therefore applied nothing");
+
+        String entry = read(ROOT.resolve("java").resolve("com").resolve("cortes").resolve("combat")
+                .resolve("CortesCombat.java"));
+        assertTrue(entry.contains("FoodDataSeam.class.isAssignableFrom("),
+                "**and it has to ask that marker**, not just load the class and announce a result");
+        assertTrue(entry.contains("CortesCombat::reportSurvivalSeam"),
+                "**and the report has to be registered**, or the check runs never: the whole "
+                        + "point is that `FoodData` is not loaded until the first player joins, "
+                        + "so an unregistered check is a seam nobody ever looks at");
+    }
+
+    @Test
     @DisplayName("the balance numbers are registered as a SERVER config")
     void theConfigIsRegistered() {
         String entry = read(ROOT.resolve("java").resolve("com").resolve("cortes").resolve("combat")

@@ -153,15 +153,24 @@ Es la clase más testeable del proyecto: geometría pura, sin estado. Le van a e
 
 | Sistema vanilla | Qué hacemos | Riesgo |
 |---|---|---|
-| `FoodData` | Reemplazo total del tick: sin exhaustion, regen nueva | **Alto** — toca supervivencia |
+| `FoodData` | Reemplazo total del tick: sin exhaustion, regen nueva | **Alto** — toca supervivencia — **HECHO, verificado en server** |
 | `Player#attack` / `Item#hurtEnemy` | Reemplazo total | Medio — es el corazón del mod |
 | `LivingEntity#isBlocking` / escudo | Reemplazo: aguante + arco frontal | Medio |
 | `getAttackStrengthScale` | Se ignora completamente | Bajo |
 | Mobs | **Sin tocar** | — |
 | Proyectiles | **Sin tocar** | — |
-| Comida (`Item#finishUsingItem`) | Solo el timing líquido a 20 ticks | Bajo |
+| Comida líquida (`ItemStack#getUseDuration`) | 20 ticks en vez de 32, sólo `UseAnim.DRINK` | Bajo — **HECHO** |
+| Pociones (`HealOrHarmMobEffect`) | Rebalanceo de curación y daño | Medio — **planificado, ver §13** |
 
-`FoodData` es el cambio más caro y el que más conviene aislar. Va **último**, no primero, y en un commit propio para que si se rompe sea bisectable.
+`FoodData` es el cambio más caro y el que más conviene aislar. Va **último**, no primero, y en un
+commit propio para que si se rompe sea bisectable. **Ya está hecho**: ver §13 para la arquitectura
+y el contrato de portabilidad que salió de él.
+
+> **El método de la comida líquida estaba escrito mal acá.** Decía `Item#finishUsingItem`, que es
+> donde se *aplica* la comida; el tiempo se decide en `ItemStack#getUseDuration(LivingEntity)`,
+> que es además el único embudo — los cuatro líquidos (`PotionItem`, `MilkBucketItem`,
+> `HoneyBottleItem`, `OminousBottleItem`) **overridean** `Item#getUseDuration`, así que inyectar
+> ahí no habría matcheado ninguno.
 
 ---
 
@@ -414,3 +423,117 @@ Ese ítem pasa a tener alcance de alabarda, con su propio special. El jugador pu
 La config va en **JSON plano**, no en `ModConfigSpec`. Motivo: no pude verificar en el cache local si `ModConfigSpec` soporta mapas (las sources de FML no están descargadas), y **un archivo que se regenera necesita Priorities explícitas y estables** — una tabla autogenerada dentro de un TOML de Gradle es frágil. JSON nos da precedencia clara, y es independiente de la API.
 
 `ModConfigSpec` se queda para lo que sí es estático: los números globales de balance (`healInterval`, `foodRegenInterval`, escalado del martillo).
+
+---
+
+## 13. Supervivencia: `survival/`, y el contrato de portabilidad
+
+**Hecho (paso 11), 2026-10-11.** Servidor de dev: `Done (1.595s)`, 0 ERROR, y los 11 WARN son los
+mismos de la linea base (ambiguedades de `/teleport`, schema de assets, modo offline). 1092 tests.
+
+### El contrato de portabilidad, en tres capas
+
+El pedido fue explicito: **facilmente porteable a otras versiones.** Eso solo es cierto si la
+superficie especifica de la version esta nombrada, y lo esta:
+
+| Capa | Archivos | Cambia al portar |
+|---|---|---|
+| Reglas | `SurvivalRules`, `SurvivalTuning`, `SurvivalState` | **Nunca.** Ninguno importa `net.minecraft` ni `net.neoforged` — **y hay un test que lo afirma** (`theRulesArePortable`). El paquete se copia entero y sus tests siguen pasando |
+| Adaptador | `SurvivalTicker` | Solo si renombran un metodo. Todo lo que llama es API publica de `Player`/`FoodData`, verificada con `javap` contra el jar runtime |
+| Seams | `FoodDataMixin`, `ItemStackDrinkDurationMixin` | Dos puntos de inyeccion, cada uno con su descriptor escrito completo. Unico sitio donde un cambio de version puede romper — y rompe fuerte, no en silencio |
+
+Un `Player` en el parametro de una regla hace fallar el build. Esa es la linea entera.
+
+### Se reemplaza el tick, no se parchean constantes
+
+`refs/combatify` hace lo contrario y es la demostracion: su `FoodDataMixin` cambia el suelo de
+curacion con `@ModifyExpressionValue` sobre el literal `18`, los timers sobre el `10` y los `80`,
+**cada uno addressed by ordinal**. Funciona hasta que Mojang mueve un numero, y entonces cada
+inyeccion **deja de matchear en silencio** sobre un metodo que igual compila y corre. El nuestro es
+`@Inject(HEAD, cancellable)` + delegar. Un punto que aplica o revienta en bootstrap, y el
+comportamiento donde se puede leer. `theSeamDoesNotPatchConstants` prohibe `ModifyExpressionValue`
+y `intValue=` en el archivo.
+
+### Que hizo el tick de vanilla, y a donde fue cada parte
+
+- **Exhaustion** (4 unidades drenan saturacion, despues comida) → **eliminada entera**, cancelada
+  en `addExhaustion` — el embudo unico por el que pasan `Player#causeFoodExhaustion` (correr,
+  saltar, pegar, romper) y el propio tick — **y a cero**, que limpia un valor que un save viejo ya
+  trae. Cancelar solo el tick habria quitado el efecto y dejado el numero subiendo al tope, para
+  que cualquier mod que lea `getExhaustionLevel()` vea un sistema de hambre lleno y sin usar.
+- **Curacion rapida** (saturacion, cada 10 ticks, comida a 20) → **eliminada**, porque la
+  saturacion dejo de ser mecanica: la regla del diseno es un numero y una regla.
+- **Curacion lenta** (comida a 18, cada 80 ticks) → **reemplazada** por `SurvivalRules.step`:
+  piso e intervalo son config, y **la curacion cuesta comida**.
+- **Inanicion** → **conservada textual**, con sus condiciones de vida y dificultad
+  (`starveFires`, puro y testado). Es comportamiento vanilla que nadie pidio cambiar.
+- **`lastFoodLevel`** → **no se escribe**. `private` con solo getter, y **nadie en 1.21.1 lo lee**
+  (buscado en las fuentes del juego entero: solo la definicion); el parpadeo de la barra lo maneja
+  la saturacion. Escribirlo exigiria un accessor mixin sobre un campo sin consumidor — seccion 9.
+
+### Dos relojes, no uno
+
+Vanilla tiene **un** `tickTimer` porque sus tres ramas son mutuamente excluyentes. Las nuestras no:
+un jugador puede estar a mitad del reloj de curar **y** del reloj de comida en el mismo tick.
+`SurvivalState` son dos ints, attachment **sin codec y sin `copyOnDeath`** por la razon de
+`ContragolpeWindow`: contadores de cuatro segundos, y sobrevivir a un guardado seria progreso que
+el jugador no gano.
+
+**Un reloj, dos salidas:** regenera cuando hay lugar, y pide hambre **solo en cero exacto** — asi
+el ciclo se cierra por construccion y un tick nunca regenera y mata a la vez.
+
+### El seam que ningun test puede ver, y por que tiene linea de arranque
+
+`FoodData` **no se carga hasta que entra el primer jugador** — verificado con
+`jcmd GC.class_histogram` contra un server dedicado vivo y sin nadie: `FoodData` y `Player` no
+estaban cargados, `ItemStack` tenia 4594 instancias. O sea que **nada del arranque iba a notar un
+seam caido**: el primer sintoma habria sido un crash en la primera conexion.
+
+Por eso hay un tercer reporte de arranque (al lado de `[perfiles]` y `[recetas]`): carga la clase y
+pregunta `FoodDataSeam.isAssignableFrom`. **Es un marker interface y no un class literal a
+proposito**: cargar `FoodData` y loguear "seam en su lugar" seria *verdadero justo en el caso que
+existe para atrapar* — si el config de mixins nunca se registro, la clase carga perfecto, no aplica
+nada, y la linea miente. **Verificado mordiendo**: sacando `FoodDataMixin` del JSON, el arranque
+sigue limpio (0 ERROR, `[perfiles]` y `[recetas]` normales) y **la unica** senal es la linea ERROR.
+Reporta y no crasha: un seam caido deja la comida en vanilla, que funciona.
+
+Y cerro la mitad que faltaba de la cadena: `theTomlNamesTheMixinConfig` afirma que
+`neoforge.mods.toml` tiene `[[mixins]] config="${mod_id}.mixins.json"`. **Esa linea es la que hace
+que los mixins del jar se apliquen** y su ausencia no tiene ningun sintoma — la misma forma que el
+bug de las recetas.
+
+### Dos trampas de API que habia que leer, no recordar
+
+- **`ModConfigSpec.ConfigValue#get()` lanza, no devuelve el default.** `getRaw()` hace
+  `Preconditions.checkState(loadedConfig != null, ...)`. Un config SERVER esta atado a un mundo, asi
+  que hay ventana real al arranque. `ServerConfig` pregunta `SPEC.isLoaded()` y devuelve defaults.
+- **Los cuatro liquidos overridean `Item#getUseDuration`**, asi que inyectar en `Item` no habria
+  matcheado ninguno. El embudo es `ItemStack#getUseDuration(LivingEntity)`, y cubre ambos lados
+  gratis porque el cliente calcula el mismo numero.
+
+### Proximo: rebalanceo de curacion (paso propio, **planificado**)
+
+Decision cerrada de DESIGN §5, ronda aparte. **Ya verificado en fuentes, no de memoria:**
+
+- **`HealOrHarmMobEffect`** (`net.minecraft.world.effect`, **clase package-private**) es el que
+  hacen **los dos** efectos: `MobEffects.HEAL` y `MobEffects.HARM`, distinguidos por un
+  `boolean isHarm`. Dos metodos:
+  - `applyEffectTick(LivingEntity, int amplifier)` → `heal(4 << amplifier)` /
+    `hurt(magic, 6 << amplifier)`
+  - `applyInstantenousEffect(source, indirectSource, entity, amplifier, double health)` →
+    `heal((int)(health * (4 << amplifier) + 0.5))` /
+    `hurt(..., (int)(health * (6 << amplifier) + 0.5))`
+- **Las pociones son de codigo**, no datapack: `Potions.HEALING = register("healing", new
+  Potion(new MobEffectInstance(MobEffects.HEAL, 1)))`, con `STRONG_HEALING` en amplifier 1. En
+  1.21.1 **no hay ruta de datapack** → hace falta seam.
+- **Jerarquía:** **AT no** (los numeros son codigo inline, no campos). **Evento solo no** —
+  `LivingHealEvent` es el embudo de *toda* curacion (pocion, manzana, regen, y **la nuestra**), y
+  no trae ningun discriminador de origen; deducirlo por el valor (4 u 8) seria una segunda verdad.
+  ∴ **Mixin sobre `HealOrHarmMobEffect`**, discriminando por **identidad del efecto** y no por
+  monto, un solo seam para las dos direcciones. **`javap` antes**, como siempre — y el hecho de que
+  la clase sea *package-private* es exactamente el tipo de detalle que hay que confirmar contra el
+  jar runtime y no contra las fuentes descompiladas.
+- **Un error en la tabla de DESIGN §5, encontrado al verificarla:** dice *"Pocion de dano I: 4 de
+  dano → 6"*, pero **vanilla ya hace 6** (`6 << 0`). Esa fila, tal cual, es un no-op. La de
+  curacion si calza (vanilla 4 → 6). **Revisar la fila de dano antes de implementar**, y decidir
+  que se quiere realmente ahi.

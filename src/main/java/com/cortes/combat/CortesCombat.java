@@ -104,6 +104,47 @@ private static void reportOurRecipes(
     }
 }
 
+/**
+ * Asks {@code FoodData} itself whether this mod's tick replaced its own, once the world is up.
+ *
+ * <p><b>Three things have to be true for survival to work, and a test can only reach two of
+ * them.</b> The config file has to be in the jar, {@code neoforge.mods.toml}'s {@code [[mixins]]}
+ * block has to name it, and the injection has to match. The first two are asserted at build time
+ * by {@code SurvivalWiringTest}; the third only happens inside a running game, and it happens when
+ * {@code FoodData} is first <em>loaded</em>.</p>
+ *
+ * <p><b>Which is not at startup, and that is the whole problem.</b> Verified with
+ * {@code jcmd GC.class_histogram} against a live dedicated server with nobody connected: neither
+ * {@code FoodData} nor {@code Player} was loaded at all, while {@code ItemStack} already had 4594
+ * instances. So nothing in the boot sequence would have noticed a broken seam until the first
+ * player joined, and the first symptom would have been a crash for whoever was testing. Loading
+ * the class here moves that to world start.</p>
+ *
+ * <p>And it is {@code isAssignableFrom} rather than a bare class literal, on purpose: merely
+ * loading {@code FoodData} and then logging "seam in place" would be <em>true</em> in the case
+ * where the mixin config never registered &mdash; which is precisely the case that produces no
+ * symptom at all. Asking the class what it became is the only version of this line that cannot
+ * lie. See {@code FoodDataSeam}.</p>
+ *
+ * <p><b>It reports and does not crash.</b> A seam that failed to apply leaves vanilla food
+ * working, so the correct response is a line nobody can miss and a game that still runs &mdash;
+ * which is also this project's rule about not crashing over something that could be reported.</p>
+ */
+private static void reportSurvivalSeam(
+        net.neoforged.neoforge.event.server.ServerStartedEvent event) {
+    Class<?> target = net.minecraft.world.food.FoodData.class;
+    if (com.cortes.combat.survival.FoodDataSeam.class.isAssignableFrom(target)) {
+        LOGGER.info("[supervivencia] FoodDataMixin aplicado: este server corre con la comida "
+                + "reescrita (ciclo cerrado, sin exhaustion).");
+    } else {
+        LOGGER.error("[supervivencia] FoodDataMixin NO se aplico a {}. La comida corre en vanilla "
+                + "y el exhaustion sigue activo, y el arranque no mostro ningun error. Revisa que "
+                + "neoforge.mods.toml tenga [[mixins]] config=\"{}.mixins.json\" y que "
+                + "FoodDataMixin este en la lista de ese archivo.",
+                target.getName(), CortesCombat.MODID);
+    }
+}
+
 public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         // Supervivencia, y va en el constructor común y no en el cliente porque es SERVER: decide
         // cuánto vida se cura y a qué precio en comida, así que los dos lados tienen que leer lo
@@ -167,6 +208,12 @@ public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         // it. They were not, and nothing said so for three rounds of playtesting. One line with
         // our number in it is the whole fix for the diagnosis.
         NeoForge.EVENT_BUS.addListener(CortesCombat::reportOurRecipes);
+        // **Y una tercera, sobre el seam que este mod no puede ver desde un test.** Los dos de
+        // arriba preguntan cosas que existen antes de que nadie juegue; ésta carga la clase
+        // contra la que va el mixin de comida, que si no nadie carga hasta que entra el primer
+        // jugador, y pregunta si le pegamos. Sin esta línea, un FoodDataMixin caído se descubre
+        // como un crash en la primera conexión y no como una línea en el arranque.
+        NeoForge.EVENT_BUS.addListener(CortesCombat::reportSurvivalSeam);
         NeoForge.EVENT_BUS.register(CombatTicker.class);
         NeoForge.EVENT_BUS.register(GuardHandler.class);
         // Gold's nine, and the only subscriber that knows what they do: every hook lives in the

@@ -47,6 +47,11 @@ serializador. `InventoryChangeTrigger.hasItems` **⊘ tiene overload de `TagKey<
 - **El daño ⊘ interrumpe comer en 1.21.1.** `Player#hurt` son 106 bytes → chequea invulnerable,
   escala, devuelve `super.hurt`. ⊘ `addCooldown`; `LivingEntity#hurt`/`actuallyHurt` ⊘ llaman
   `stopUsingItem`. **Si dudás de una mecánica de vanilla: `javap` antes de poner un mixin encima.**
+  > **2026-10-11:** esto sigue siendo cierto de vanilla, y por eso **la interrupción de comer es
+  > un hook nuestro** (`EatInterruptHandler` sobre `LivingDamageEvent.Post`) y no algo que
+  > "ya hace el juego". La regla es **sólo si no estás cubierto** — `GuardHandler.isGuarding` —
+  > que es lo que reconcilia esta línea con la fila de `DESIGN.md` §5. Detalle en
+  > `ARCHITECTURE.md` §13.
 - **`Item#isEdible` ⊘ existe** (se fue en 1.20.5). Discriminador: **`ItemStack#getUseAnimation()`**
   (no-arg) contra `UseAnim` → `EAT`/`DRINK` comida, `BLOCK` escudo. Preguntar "usando un item" ⊘
   sirve: un escudo bloqueando también lo está, y gatear la guardia con eso la traba.
