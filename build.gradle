@@ -61,6 +61,19 @@ neoForge {
 
         server {
             server()
+            // **Su propio directorio, y no es una preferencia de orden.**
+            //
+            // Sin esto `server`, `gameTestServer` y `data` caen todos en `run/`, el mismo que el
+            // cliente. Dos instancias con DOS `ConfigWatcher` sobre el mismo
+            // `cortescombat-server.toml`: cada una escribe lo que la otra acaba de corregir.
+            // El sintoma es un `is not correct. Correcting` cada medio segundo y un `.bak` numerado
+            // por vuelta -- cinco en dos segundos el 2026-10-12 -- y **cero en todos los otros
+            // logs**, porque en los otros solo corria una instancia. Ese cero es la prueba de que
+            // el spec esta bien y el problema era el directorio compartido.
+            //
+            // Y el spam es lo de menos: lo que de verdad comparten es `run/saves/`, y dos instancias
+            // sobre el mismo nivel es como se pierde un mundo de pruebas.
+            gameDirectory = project.file('runs/server')
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
@@ -69,6 +82,8 @@ neoForge {
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
             type = "gameTestServer"
+            // Su propio directorio, por lo mismo que el server: ver la nota de arriba.
+            gameDirectory = project.file('runs/gameTest')
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
@@ -77,6 +92,11 @@ neoForge {
 
             // example of overriding the workingDirectory set in configureEach above, uncomment if you want to use it
             // gameDirectory = project.file('run-data')
+            //
+            // **Y se descomenta, por lo mismo que el server.** `runData` corre en el mismo directorio
+            // que el cliente si este esta abierto, y los dos se pisan el `cortescombat-*.toml` de la
+            // misma forma. `run-data/` ya esta en `.gitignore`.
+            gameDirectory = project.file('run-data')
 
             // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
             //
