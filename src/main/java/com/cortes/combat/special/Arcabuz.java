@@ -588,6 +588,18 @@ public final class Arcabuz {
                 return;
             }
             LivingEntity landing = seen.get(0);
+
+            // **El estallido en la boca del arcabuz.** Un disparo que no deja nada en el aire es
+            // un sonido: el rayo de las moscas tiene que salir de algun lado y ese lado es el
+            // cannon. Humo porque un arcabuz quema polvora, y moscas porque esto no dispara
+            // plomo. Van juntos y en el mismo punto -- son el mismo evento.
+            Vec3 muzzle = player.getEyePosition()
+                    .add(player.getLookAngle().normalize().scale(ArcabuzMuzzle.FORWARD));
+            com.cortes.combat.particle.MoscaParticles.swarm(
+                    level, muzzle.x, muzzle.y, muzzle.z, 20, 0.35D);
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE,
+                    muzzle.x, muzzle.y, muzzle.z, 14, 0.15, 0.15, 0.15, 0.02);
+
             com.cortes.combat.entity.MobCloud cloud = new com.cortes.combat.entity.MobCloud(
                     com.cortes.combat.registry.ModEntities.MOB_CLOUD.get(), level);
             // A la altura de la caja y no a los pies, que es la regla que ya pagan el fogonazo y
@@ -596,6 +608,10 @@ public final class Arcabuz {
             cloud.setPos((box.minX + box.maxX) * 0.5,
                     (box.minY + box.maxY) * 0.5 - 0.5, (box.minZ + box.maxZ) * 0.5);
             cloud.setOwner(player);
+            // **Y se va con el cuerpo.** Sin esto la nube nace donde el enemigo ESTABA y un zombi
+            // que da un paso queda fuera: el encantamiento estaria castigando al que se mueve,
+            // que es lo contrario de lo que hace un enjambre.
+            cloud.setTarget(landing);
             level.addFreshEntity(cloud);
             ModNetworking.sendFeedback(player, CombatFeedback.HIT);
             CombatSounds.play(level, landing, WeaponProfile.ARCABUZ, ModSounds.Kind.HIT);

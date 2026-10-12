@@ -980,3 +980,26 @@ y una reversión que pisa no es una reversión.**
 
 1061 tests verdes. Faltan tres cosas y ninguna es chica: **la munición de Rey de las Moscas**,
 **Pala Antimaterial** y **Mungus**.
+
+### Tres correcciones de un playtest: la nube sigue al cuerpo, el disparo suelta moscas, y el rayo es una linea
+
+**La nube de moscas no seguia al enemigo**, y eso la hacia lo contrario de una nube: nacia donde
+el cuerpo ESTABA en el tick del disparo, asi que un zombi que daba un paso quedaba afuera -- el
+encantamiento estaria castigando al que se mueve. Ahora el servidor le pasa el cuerpo y la nube
+se va con el, y **muere con el**: si el infectado cae, el seguimiento se apaga y la nube se queda
+donde estaba cobrando a los de alrededor, porque una nube que se fuera a buscar a otro no seria el
+remate de un disparo sino una bala teledirigida.
+
+**El disparo ahora suelta moscas y humo en la boca del arcabuz.** Un disparo que no deja nada en
+el aire es un sonido: el rayo tiene que salir de algun lado. Van juntos porque son el mismo evento
+-- un arcabuz quema polvora y esto no dispara plomo.
+
+**Y Capacitor dibuja la linea entera.** Antes spawnaba END_ROD en el objetivo y se leia como
+"particulas que aparecen ahi"; **un rayo sin origen no dice quien lo tiro**, y en un duelo eso es
+la mitad de la informacion. `LightningParticles.zigzag` camina la linea a mano -- diez puntos, un
+paquete por punto -- porque `sendParticles` sabe mandar UNA CAJA y no una trayectoria. El zigzag
+va dentro de una envolvente senoidal que es CERO en los extremos: sin eso el rayo empezaria
+flotando en el aire al lado del que lo tiro. Y los dos ejes perpendiculares salen de un producto
+cruz, asi que zigzaguea en dos dimensiones y no en un plano, que se lee como un dibujo.
+
+1066 tests verdes.

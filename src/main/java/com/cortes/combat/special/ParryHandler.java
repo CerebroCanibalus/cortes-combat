@@ -121,9 +121,13 @@ public final class ParryHandler {
                 living.setRemainingFireTicks(Math.max(living.getRemainingFireTicks(),
                         CombatEnchantRules.CAPACITOR_FIRE_TICKS));
                 if (player.level() instanceof net.minecraft.server.level.ServerLevel server) {
-                    server.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
-                            living.getX(), living.getY() + 1.0, living.getZ(),
-                            20, 0.4, 0.6, 0.4, 0.05);
+                    // **La linea entera, del jugador al cuerpo**, y no un penacho en el objetivo.
+                    // Un rayo sin origen no dice quién lo tiro, y en un duelo eso es la mitad de la
+                    // información -- el playtest lo vio como "particulas que aparecen ahi".
+                    com.cortes.combat.particle.LightningParticles.zigzag(server,
+                            player.getEyePosition(),
+                            new net.minecraft.world.phys.Vec3(living.getX(),
+                                    living.getY() + living.getBbHeight() * 0.6, living.getZ()));
                 }
             }
         }

@@ -93,6 +93,20 @@ public class MobCloud extends Entity {
     /** Quien tiro el disparo. La nube no le hace daño, igual que el reventon de Sentencia. */
     private java.util.UUID owner;
 
+    /**
+     * El cuerpo que esta nube esta infectando, si aun existe.
+     *
+     * <p><b>El id y no la referencia</b>, por la misma razon que {@code Lunge#wasHit} no guarda
+     * enteros y este archivo no guarda la entidad: un id viejo se convierte en "ya no hay nada que
+     * seguir" y la nube se queda donde el cuerpo cayo, que es exactamente el comportamiento
+     * correcto. Una referencia a una entidad que murio seria un null esperando pasar.</p>
+     *
+     * <p>Y <b>no se sincroniza</b>: el seguimiento lo hace el servidor con {@code setPos}, que ya
+     * se propaga a los jugadores que la trackean. Un dato viajando dos veces es una segunda
+     * verdad.</p>
+     */
+    private java.util.UUID target;
+
     public MobCloud(EntityType<?> type, Level level) {
         super(type, level);
         // Sin fisica y sin choque: una nube no cae y no se estanca contra la primera pared, que es
@@ -111,6 +125,45 @@ public class MobCloud extends Entity {
         this.owner = thrower == null ? null : thrower.getUUID();
     }
 
+    /** Marca el cuerpo que esta nube va a seguir. Opcional: sin el, la nube se queda donde cayo. */
+    public void setTarget(LivingEntity body) {
+        this.target = body == null ? null : body.getUUID();
+    }
+
+    /**
+     * Sigue al cuerpo, o se queda donde el cuerpo cayo.
+     *
+     * <p><b>Esto es lo que separa una nube de moscas de un charco.</b> Sin seguimiento la nube
+     * nace donde el enemigo ESTABA en el tick del disparo, y un zombi que da un paso ya no esta
+     * adentro -- el encantamiento castiga al que no se queda quieto, que es al revés de lo que un
+     * enjambre hace. Las moscas nacen sobre el cuerpo y el cuerpo se las lleva.</p>
+     *
+     * <p><b>Y muere con el cuerpo.</b> Si el que estaba infectado muere o se va del mundo, el
+     * seguimiento se apaga y la nube se queda donde estaba, a cobrarle a los de alrededor hasta
+     * que se le acabe la vida. Eso es lo correcto: una nube que se fuera a buscar a otro no seria
+     * el remate de un disparo, seria una bala teledirigida.</p>
+     */
+    private void followTarget() {
+        if (target == null) {
+            return;
+        }
+        // `ServerLevel#getEntity(UUID)` devuelve la entidad o null -- no un Optional, que es lo
+        // que hace el overload por id entero. Tiparlo como Optional era una lectura equivocada de
+        // la firma, y aca el null ademas es lo correcto: "ya no hay nada que seguir".
+        net.minecraft.world.entity.Entity found = server().getEntity(target);
+        if (!(found instanceof LivingEntity body) || !body.isAlive()) {
+            target = null;
+            return;
+        }
+        var box = body.getBoundingBox();
+        this.setPos((box.minX + box.maxX) * 0.5, (box.minY + box.maxY) * 0.5 - 0.5,
+                (box.minZ + box.maxZ) * 0.5);
+    }
+
+    private ServerLevel server() {
+        return (ServerLevel) this.level();
+    }
+
     @Override
     public void tick() {
         super.tick();
@@ -126,6 +179,11 @@ public class MobCloud extends Entity {
         }
 
         ServerLevel server = (ServerLevel) this.level();
+
+        // **Seguir al cuerpo va primero**, porque las moscas y el daño van a salir de donde este
+        // la nube en ESTE tick. Al reves, el enjambre del primer tick saldria en el punto donde
+        // nacio y el cuerpo ya se habria movido.
+        followTarget();
 
         // Las moscas primero: aunque el daño no encuentre a nadie, la nube se ve. Un especial que
         // solo hace ruido cuando conecta deja de significar algo cuando lo ves en el aire.
@@ -161,6 +219,9 @@ public class MobCloud extends Entity {
         if (owner != null) {
             tag.putUUID("Owner", owner);
         }
+        if (target != null) {
+            tag.putUUID("Target", target);
+        }
     }
 
     @Override
@@ -168,6 +229,9 @@ public class MobCloud extends Entity {
         this.getEntityData().set(DATA_AGE, tag.getInt("Age"));
         if (tag.hasUUID("Owner")) {
             this.owner = tag.getUUID("Owner");
+        }
+        if (tag.hasUUID("Target")) {
+            this.target = tag.getUUID("Target");
         }
     }
 }
