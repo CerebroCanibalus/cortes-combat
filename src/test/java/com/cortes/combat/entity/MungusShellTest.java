@@ -96,6 +96,29 @@ class MungusShellTest {
     }
 
     @Test
+    @DisplayName("el tipo propio: sin esto el cliente simula una bola de fuego VANILLA")
+    void theTypeIsItsOwn() {
+        String code = code();
+        // **El bug de la ronda, y el sintoma era "tirones raros, la fisica se siente correcta".**
+        //
+        // `LargeFireball(Level, LivingEntity, Vec3, int)` -- el constructor que dispara -- hace
+        // `super(EntityType.FIREBALL, ...)`, asi que heredar el disparo significa heredar el tipo de
+        // vanilla. Y el paquete de spawn lleva `getType()`, no la clase: el cliente creaba una bola
+        // de fuego de vanilla (sin gravedad, con auto-aceleracion 0,1, inercia 0,95) mientras el
+        // servidor simulaba esta clase. Dos fisicas sobre la misma entidad, corregidas cada dos
+        // ticks. **Poner la gravedad en los dos lados no podia alcanzar: el cliente nunca ejecutaba
+        // esta clase.**
+        assertTrue(code.contains("public EntityType<?> getType()"),
+                "**`MungusShell` tiene que devolver su PROPIO tipo.** No es un detalle de registro: "
+                        + "el paquete de spawn lo lleva, y sin esta sobreescritura el cliente "
+                        + "construye una bola de fuego vanilla y simula otra fisica. Silencio total "
+                        + "en el log -- el tipo de vanilla existe y la entidad se crea");
+        assertTrue(code.contains("ModEntities.MUNGUS_SHELL.get()"),
+                "y el que devuelve es `MUNGUS_SHELL`, el tipo que el cliente puede crear: "
+                        + "`EntityType.create` usa la fabrica del tipo, y la de ese es `MungusShell::new`");
+    }
+
+    @Test
     @DisplayName("el playtest pidio la potencia un 30% abajo, y el numero lo dice")
     void thePowerCameDown() {
         double power = number(stripComments(read(RULES)), "MUNGUS_POWER");

@@ -129,6 +129,57 @@ public class MungusShell extends LargeFireball implements net.minecraft.world.en
     }
 
     /**
+     * El tipo propio, <b>y esta es la linea que arregla los tirones.</b>
+     *
+     * <h2>Que pasa si no esta</h2>
+     *
+     * <p>{@code LargeFireball} tiene dos constructores, y <b>el que dispara pisa el tipo</b>:</p>
+     *
+     * <pre>{@code
+     * public LargeFireball(Level level, LivingEntity owner, Vec3 movement, int explosionPower) {
+     *     super(EntityType.FIREBALL, owner, movement, level);   // <-- nuestro tipo, a la basura
+     *     this.explosionPower = explosionPower;
+     * }
+     * }</pre>
+     *
+     * <p>No hay overload que acepte un {@code EntityType} <em>y</em> un dueno <em>y</em> una potencia, asi
+     * que heredar el disparo significa heredar el tipo de vanilla. Y como el paquete de spawn lleva
+     * {@code getType()} y no la clase, <b>el cliente creaba una bola de fuego vanilla y el servidor
+     * simulaba esto</b>: dos fisicas distintas sobre la misma entidad. La copia del cliente se
+     * corregia contra la del servidor en cada paquete de posicion, y eso es exactamente lo que el
+     * playtest describio como "tirones raros, es un problema de sincronizacion, la fisica se siente
+     * correcta" -- porque la posicion que se ve ES la del servidor, y lo que salta es la distancia
+     * entre las dos copias.</p>
+     *
+     * <p><b>Y no era sutil: el cliente simulaba una bola SIN gravedad y CON auto-aceleracion</b>
+     * ({@code accelerationPower 0,1}, inercia 0,95) mientras el servidor simulaba una con gravedad y
+     * sin auto-aceleracion. Las dos se separaban {@code 0,1} por tick al cuadrado y la correccion
+     * llegaba cada dos ticks. Poner la gravedad en los dos lados -- el arreglo anterior -- no podia
+     * alcanzar, porque el cliente nunca ejecutaba esta clase.</p>
+     *
+     * <h2>Por que se arregla sobreescribiendo y no pasando el tipo</h2>
+     *
+     * <p>Porque <b>no hay constructor de vanilla que deje las dos cosas</b>: {@code Fireball} tiene uno
+     * que acepta el tipo y el dueno, pero no la potencia, y {@code explosionPower} es privado y sin
+     * setter. Las dos salidas eran: reescribir {@code onHit} para tener potencia propia, o devolver el
+     * tipo desde el acceso. La segunda es una linea y no duplica el reventon -- y la regla del
+     * proyecto es extender antes de inventar.</p>
+     *
+     * <p><b>Es seguro porque {@code Entity#getType()} no es final</b>, y porque los unicos lugares de
+     * vanilla que leen el campo crudo en vez del acceso son dos y los dos dan igual: las dimensiones
+     * ({@code FIREBALL} mide 1,0 por 1,0 y este tambien -- ver {@code ModEntities}) y un tag de dano por
+     * caida que a un proyectil no le importa. Todo lo demas -- el paquete de spawn, el guardado, el
+     * tracking, el intervalo de actualizacion -- pasa por {@code getType()}.</p>
+     *
+     * <p><b>Y el sintoma de que esto vuelva a faltar es silencio.</b> El tipo de vanilla existe, la
+     * entidad se crea, no hay error en el log: lo unico que se ve es una bola que tiembla.</p>
+     */
+    @Override
+    public EntityType<?> getType() {
+        return com.cortes.combat.registry.ModEntities.MUNGUS_SHELL.get();
+    }
+
+    /**
      * La inercia propia, y es la mitad del arreglo. Ver {@link #INERTIA}.
      *
      * <p>{@code AbstractHurtingProjectile#tick} la lee de aca, asi que sobreescribirla es lo que

@@ -1155,24 +1155,23 @@ public final class CombatEnchantRules {
     /**
      * Lo que le cuesta a la pala <b>disparar el orbe</b>, en puntos de durabilidad.
      *
-     * <p><b>El playtest lo pidio porque el especial era gratis, y gratis era la palabra correcta.</b>
-     * Un golpe comun gasta un punto -- es la regla de vanilla generalizada, ver
-     * {@code CombatEngine}'s {@code hurtAndBreak(1, ...)} -- asi que un orbe que pega catorce en un
-     * radio de cuatro y ademas tira de cinco bloques costando <b>cero</b> decia que las dos cosas
-     * valen lo mismo. No valen lo mismo.</p>
+     * <p><b>Treinta, y el camino hasta aca es la leccion entera.</b> El playtest lo pidio porque el
+     * especial era gratis -- y gratis era la palabra correcta: un golpe comun gasta <b>un</b> punto
+     * (la regla de vanilla generalizada, ver el {@code hurtAndBreak(1, ...)} de {@code CombatEngine}),
+     * asi que un orbe que pega catorce en un radio de cuatro y ademas tira de cinco bloques costando
+     * <b>cero</b> decia que las dos cosas valen lo mismo. No valen lo mismo.</p>
      *
-     * <p><b>Cinco y no uno, y no es un numero redondo elegido al azar:</b> un orbe es cinco veces lo
-     * que cuesta un golpe de la misma arma, que es la forma mas chica de decir "esto es otra
-     * categoria de ataque" sin volverlo un boton que no se puede apretar. La pala es el arma de
-     * herramienta del catalogo y su gracia es que dura; con cinco, una pala de cobre sigue tirando
-     * decenas de orbes y una de netherite cientos, asi que el precio se siente <b>en el uso
-     * repetido</b> y no en el primero.</p>
+     * <p>La primera correccion fue <b>cinco</b>, razonando que "cinco veces un golpe" es la forma
+     * mas chica de decir "esto es otra categoria". El playtest la midio y la llamo <b>muy poquito</b>
+     * -- y tenia razon, porque cinco sobre una pala de netherite son cuatrocientos orbes, que es
+     * exactamente lo que era antes: nada. <b>Un costo que no cambia ninguna decision no es un
+     * costo</b>, es un numero. Treinta es lo que se siente: la mitad de un stack de uso por un orbe,
+     * y una pala de cobre que aguanta unos pocos.</p>
      *
-     * <p>Y se cobra <b>al soltar con la carga llena</b>, no al apretar: una carga abandonada no
-     * llega a ser un orbe, y cobrarle a alguien que se arrepintio seria castigar la decision
-     * correcta.</p>
+     * <p><b>Y se cobra al soltar con la carga llena</b>, no al apretar: una carga abandonada no llega
+     * a ser un orbe, y cobrarle a alguien que se arrepintio seria castigar la decision correcta.</p>
      */
-    public static final int PALA_ANTIMATERIAL_DURABILITY_COST = 5;
+    public static final int PALA_ANTIMATERIAL_DURABILITY_COST = 30;
 
     /**
      * Lo que viaja el orbe: despacio, y por eso se ve.

@@ -64,6 +64,15 @@ class PalaYMoscasTest {
                 "**mas de un punto**, que es lo que cuesta un golpe de la misma arma. Con uno, el "
                         + "orbe seguiria diciendo que vale lo mismo que un golpe comun; el numero es "
                         + cost);
+        // **Y la regla que salio de la SEGUNDA ronda, no la del numero.** La primera correccion fue
+        // cinco, razonada como "cinco veces un golpe", y el playtest la midio y la llamo "muy
+        // poquito". Tenia razon por una cuenta que la primera version no hizo: **cinco sobre 2031 de
+        // una pala de netherite son cuatrocientos orbes** -- o sea, lo mismo que gratis. Un costo
+        // que no cambia ninguna decision no es un costo, es un numero.
+        assertTrue(cost >= 16.0D,
+                "el costo tiene que ser una fraccion que se sienta de una herramienta de verdad: con "
+                        + "cinco, una pala de netherite (2031 de durabilidad) tira cuatrocientos "
+                        + "orbes y el precio no cambia ninguna decision. Es " + cost);
     }
 
     @Test
