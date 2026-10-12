@@ -7,13 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 /**
- * El único número de la ronda del flash, y el motivo de que viva en una clase pura.
+ * La aritmética del flash. Pura, así que corre en una JVM pelada.
  *
- * <p>El mixin que lo usa <b>no se puede testear</b>: no arranca en una JVM pelada. Si el número
- * estuviera calculado adentro, esta ronda entera quedaría sin una sola aserción que la mire --
- * que es exactamente el modo de falla que este proyecto ya pagó varias veces.</p>
+ * <p>Los dos mixins que la usan <b>no arrancan sin el juego</b>, así que si los números vivieran
+ * adentro de ellos no habría una sola aserción mirando lo único que esta ronda cambia.</p>
  */
 class DamageFlashTest {
+
+    private static final int WHITE = 0xFFFFFF;
 
     private static int alpha(int abgr) {
         return (abgr >>> 24) & 0xFF;
@@ -32,72 +33,112 @@ class DamageFlashTest {
      * <b>El invariante de la ronda.</b>
      *
      * <p>El alpha es cuánto <em>sobrevive</em> el color de la entidad, así que un alpha más chico es
-     * más rojo. La aserción se escribe como la propiedad -- "es más rojo" -- y no como el número,
-     * porque el número es lo que se va a querer retunear después de un playtest y una aserción
-     * sobre él se rompería en cada retune sin que nada esté mal.</p>
+     * más rojo. Se escribe como la propiedad -- "es más rojo" -- y no como el número, porque el
+     * número es lo que se va a retunear después de un playtest.</p>
      */
     @Test
-    void theFlashIsActuallyStronger() {
-        int vanilla = alpha(DamageFlash.VANILLA_RED);
-        int stronger = alpha(DamageFlash.STRONGER_RED);
-        assertTrue(stronger < vanilla,
-                "alpha " + stronger + " no es menor que el de vanilla, " + vanilla
-                        + ": el flash quedaría igual o más débil, que es lo contrario del pedido");
+    void theBaseFlashIsStrongerThanVanilla() {
+        assertTrue(alpha(DamageFlash.BASE_ALPHA) < alpha(DamageFlash.VANILLA_RED),
+                "el flash de un mob entero quedaría igual o más débil que el de vanilla");
+    }
+
+    /** Y no tan fuerte que el mob deje de leerse: el piso que la ronda anterior ya defendía. */
+    @Test
+    void butTheBaseIsStillReadable() {
+        assertTrue(DamageFlash.BASE_ALPHA >= 0x40,
+                "con alpha " + DamageFlash.BASE_ALPHA + " el mob queda tapado por el flash");
     }
 
     /**
-     * Y no tan fuerte que el mob deje de leerse.
+     * <b>El gradiente, que es lo nuevo.</b>
      *
-     * <p>Por debajo de 0x40 el flash tapa la animación en vez de acompañarla, y el mob se vuelve una
-     * silueta. El techo no es un número redondo: es donde el diseño dice que el efecto se come lo
-     * que está mostrando.</p>
+     * <p>De la columna 0 a la 15 el rojo tiene que subir <em>siempre</em> -- nunca bajar ni
+     * quedarse. Un escalón sería un mob que al perder vida de pronto flashea <b>menos</b>, que es el
+     * jugador aprendiendo el código al revés.</p>
      */
     @Test
-    void butNotSoStrongThatTheMobDisappears() {
-        assertTrue(alpha(DamageFlash.STRONGER_RED) >= 0x40,
-                "con alpha " + alpha(DamageFlash.STRONGER_RED) + " el mob queda tapado por el flash");
-    }
-
-    /**
-     * Sólo cambia el alpha: el rojo sigue siendo rojo.
-     *
-     * <p>Si un retune tocara los canales por accidente, el flash dejaría de ser rojo y la aserción
-     * de arriba -- que sólo mira el alpha -- seguiría verde. Es la misma trampa del guard que
-     * descarta la parte que pregunta.</p>
-     */
-    @Test
-    void theColourItselfIsUntouched() {
-        for (int shift : new int[]{16, 8, 0}) {
-            assertEquals(channel(DamageFlash.VANILLA_RED, shift),
-                    channel(DamageFlash.STRONGER_RED, shift),
-                    "el canal " + shift + " cambió: el flash dejó de ser el mismo color");
+    void theRedOnlyGrowsAcrossTheColumns() {
+        int previous = DamageFlash.alphaForColumn(0);
+        for (int column = 1; column <= DamageFlash.LAST_COLUMN; column++) {
+            int alpha = DamageFlash.alphaForColumn(column);
+            assertTrue(alpha <= previous,
+                    "la columna " + column + " da alpha " + alpha + ", menos rojo que los "
+                            + previous + " de la anterior");
+            previous = alpha;
         }
+        assertTrue(DamageFlash.alphaForColumn(DamageFlash.LAST_COLUMN)
+                        < DamageFlash.alphaForColumn(0),
+                "el gradiente no cambia nada: las dos puntas del rojo son iguales");
+    }
+
+    /** Las columnas fuera de rango no explotan ni se salen: la textura tiene 16. */
+    @Test
+    void columnsOutsideTheTextureAreClamped() {
+        assertEquals(DamageFlash.alphaForColumn(0), DamageFlash.alphaForColumn(-5));
+        assertEquals(DamageFlash.alphaForColumn(DamageFlash.LAST_COLUMN),
+                DamageFlash.alphaForColumn(99));
     }
 
     /**
-     * Las filas blancas pasan intactas.
+     * Las filas blancas pasan intactas, y es la mitad que no se está arreglando.
      *
-     * <p>La textura del overlay tiene <b>dos</b> mitades y la de arriba es blanca, con un alpha que
-     * varía por columna. Ese gradiente entero es lo que hace funcionar el flash blanco -- el del
-     * creeper, y el de la muerte que viene -- así que tocarlo rompería algo que no se estaba
-     * arreglando.</p>
+     * <p>Su alpha varía por columna y es el gradiente entero lo que hace funcionar el flash blanco
+     * -- el del creeper y el de la muerte que esta ronda agrega. Tocarlo rompería algo que nadie
+     * pidió.</p>
      */
     @Test
     void theWhiteRowsPassThroughUntouched() {
-        int[] whites = {
-                (0xFF << 24) | 0xFFFFFF, // columna 0: sin overlay
-                (0x3F << 24) | 0xFFFFFF, // columna 15: blanco fuerte
-                (0x00 << 24) | 0xFFFFFF  // el extremo, por si el gradiente se estira
-        };
-        for (int white : whites) {
-            assertEquals(white, DamageFlash.strengthen(white),
-                    "una fila blanca fue modificada: el flash blanco dejaría de funcionar");
+        for (int column = 0; column <= DamageFlash.LAST_COLUMN; column++) {
+            for (int alpha = 0; alpha <= 255; alpha += 51) {
+                int white = (alpha << 24) | WHITE;
+                assertEquals(white, DamageFlash.texturePixel(column, white),
+                        "una fila blanca fue modificada en la columna " + column);
+            }
         }
     }
 
     /** Y el rojo no es el blanco: si fueran iguales, el test de arriba no probaría nada. */
     @Test
     void theTwoHalvesAreActuallyDifferent() {
-        assertNotEquals(DamageFlash.VANILLA_RED, (0xFF << 24) | 0xFFFFFF);
+        assertNotEquals(DamageFlash.VANILLA_RED, (0xFF << 24) | WHITE);
+    }
+
+    /** Sólo cambia el alpha: el rojo sigue siendo rojo. */
+    @Test
+    void theColourItselfIsUntouched() {
+        for (int column = 0; column <= DamageFlash.LAST_COLUMN; column++) {
+            int red = DamageFlash.texturePixel(column, DamageFlash.VANILLA_RED);
+            for (int shift : new int[]{16, 8, 0}) {
+                assertEquals(channel(DamageFlash.VANILLA_RED, shift), channel(red, shift),
+                        "el canal " + shift + " cambió en la columna " + column);
+            }
+        }
+    }
+
+    /**
+     * La vida elige la columna, y va <b>al revés</b>.
+     *
+     * <p>Vida llena da 0 -- el rojo suave -- y vida por agotarse da 1. La columna es "cuánto se está
+     * muriendo", no "cuánta vida le queda", y una inversión acá haría que un mob sano flasheara como
+     * uno agonizante y al revés.</p>
+     */
+    @Test
+    void healthPicksTheColumnInverted() {
+        assertEquals(0.0F, DamageFlash.uForHealth(20.0F, 20.0F), 1.0e-6F);
+        assertEquals(1.0F, DamageFlash.uForHealth(0.0F, 20.0F), 1.0e-6F);
+        assertEquals(0.5F, DamageFlash.uForHealth(10.0F, 20.0F), 1.0e-6F);
+        // Y con vida negativa o un máximo roto no se sale de rango.
+        assertEquals(1.0F, DamageFlash.uForHealth(-5.0F, 20.0F), 1.0e-6F);
+        assertEquals(0.0F, DamageFlash.uForHealth(5.0F, 0.0F), 1.0e-6F);
+    }
+
+    /** El blanco de la muerte entra de a poco a lo largo de la animación, que dura veinte ticks. */
+    @Test
+    void theDeathWhiteRampsUp() {
+        assertEquals(0.0F, DamageFlash.whiteForDeath(0, 20), 1.0e-6F);
+        assertEquals(0.5F, DamageFlash.whiteForDeath(10, 20), 1.0e-6F);
+        assertEquals(1.0F, DamageFlash.whiteForDeath(20, 20), 1.0e-6F);
+        // Y si el tick se pasa -- que pasa, porque el cuerpo sigue un tick más -- no se sale.
+        assertEquals(1.0F, DamageFlash.whiteForDeath(25, 20), 1.0e-6F);
     }
 }

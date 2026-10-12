@@ -700,7 +700,37 @@ public final class CombatEngine {
         boolean killed = healthBefore > 0.0F && living.getHealth() <= 0.0F;
         com.cortes.combat.net.ModNetworking.sendFeedback(server,
                 killed ? CombatFeedback.KILL : CombatFeedback.HIT);
+        // **Y el shake de la muerte, solo para el que la causo.**
+        //
+        // El crosshair ya dice "lo mataste" con su color mas vivo, pero eso pide estar mirandolo.
+        // Un golpe de camara se siente sin mirar nada, y matar es el unico momento del combate en
+        // el que el jugador merece una confirmacion que no tenga que ir a buscar.
+        //
+        // Va en la posicion del MUERTO y no en la del jugador: CameraShake mide su propia distancia
+        // y cae al cuadrado, asi que el mismo numero se siente distinto segun donde haya caido el
+        // cuerpo -- y un remate a diez bloques no tiene que sacudir como uno a un bloque.
+        if (killed) {
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(server,
+                    new com.cortes.combat.net.CameraShakePayload(
+                            living.getX(), living.getY(), living.getZ(),
+                            KILL_SHAKE_DEGREES, KILL_SHAKE_TICKS));
+        }
     }
+
+    /**
+     * El temblor de matar: medio grado, seis ticks.
+     *
+     * <p><b>Chico y corto, y las dos cosas son la decision.</b> El del orbe son 1,2 grados y catorce
+     * ticks porque es una explosion; un remate de espada que sacudiera igual convertiria cada muerte
+     * en un terremoto y el shake dejaria de distinguir nada. Medio grado se <em>siente</em> sin
+     * desviar la punteria.</p>
+     *
+     * <p>Y seis ticks porque es un golpe y no un temblor de fondo: {@code CameraShake} decae a cero
+     * a lo largo de la vida, asi que un impulso corto es un golpe seco y uno largo es un zumbido.</p>
+     */
+    private static final float KILL_SHAKE_DEGREES = 0.5F;
+
+    private static final int KILL_SHAKE_TICKS = 6;
 
     private static void onHit(Player player, Entity target, WeaponStats stats,
                               AttackResult result, float chargeRatio) {

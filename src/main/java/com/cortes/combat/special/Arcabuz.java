@@ -549,7 +549,33 @@ public final class Arcabuz {
         // un retroceso se siente como un teleport al siguiente paquete de posicion.
         player.push(-look.x * push, 0.0D, -look.z * push);
         player.hurtMarked = true;
+
+        // **Y el culatazo en la camara, que es la mitad que el empuje no puede dar.**
+        //
+        // El `push` mueve el cuerpo, y mover el cuerpo no se siente como un disparo: se siente como
+        // que alguien te empujo. Lo que dice "esto fue un arcabuz" es que la vista salte, y para eso
+        // esta CameraShake, que ya tiene el decaimiento y las dos frecuencias.
+        //
+        // **Se SUMA al empuje, no lo reemplaza** -- son dos lecturas distintas del mismo hecho, y
+        // el diseno pide las dos: el cuerpo retrocede y la mira salta.
+        //
+        // Mungus sacude el doble y no las cuatro veces del empuje: cuatro serian tres grados y pico,
+        // que es mas que el reventon del orbe. Un disparo pesado tiene que sentirse pesado, no
+        // tirarte la camara al piso.
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
+                new com.cortes.combat.net.CameraShakePayload(
+                        player.getX(), player.getY(), player.getZ(),
+                        RECOIL_SHAKE_DEGREES * (mungus > 0 ? MUNGUS_SHAKE_FACTOR : 1.0F),
+                        RECOIL_SHAKE_TICKS));
     }
+
+    /** El temblor del disparo: ocho decimas de grado, cinco ticks. Un golpe seco, no un zumbido. */
+    private static final float RECOIL_SHAKE_DEGREES = 0.8F;
+
+    /** Y Mungus el doble. Ver la nota del metodo: las cuatro del empuje serian demasiado aca. */
+    private static final float MUNGUS_SHAKE_FACTOR = 2.0F;
+
+    private static final int RECOIL_SHAKE_TICKS = 5;
 
     private static void fire(ServerPlayer player, ServerLevel level) {
         WeaponStats stats = WeaponStats.of(player.getMainHandItem());

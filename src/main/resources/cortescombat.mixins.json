@@ -17,7 +17,8 @@
     "SpecialRightClickMixin",
     "ArcabuzGuiIconMixin",
     "TrabazonSprintMixin",
-    "OverlayTextureMixin"
+    "OverlayTextureMixin",
+    "LivingEntityOverlayMixin"
   ],
   "injectors": {
     "defaultRequire": 1
