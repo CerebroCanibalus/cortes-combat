@@ -575,30 +575,31 @@ public final class Arcabuz {
                 CombatEnchantments.REY_DE_LAS_MOSCAS);
         if (flies > 0) {
             List<LivingEntity> seen = targetsInCone(player, level, stats.shotReach());
-            // **La traza va antes de decidir**, y no despues: si la rama no se alcanza nunca, el
-            // log no puede decir por que, y adivinar entre "el encantamiento no se lee", "el cono
-            // esta vacio" y "la entidad no se spawnea" cuesta tres vueltas. Un log que nombra la
-            // causa es mas barato que un debugger.
-            trace(player, player.getData(ModAttachments.ARCABUZ.get()),
-                    "rey de las moscas: nivel=" + flies + " objetivos=" + seen.size()
-                            + " munition=" + declaredAmmo(player, player.getMainHandItem()).itemId());
-            if (seen.isEmpty()) {
-                trace(player, player.getData(ModAttachments.ARCABUZ.get()),
-                        "rey de las moscas: sin objetivo, disparo perdido");
-                return;
-            }
-            LivingEntity landing = seen.get(0);
 
-            // **El estallido en la boca del arcabuz.** Un disparo que no deja nada en el aire es
-            // un sonido: el rayo de las moscas tiene que salir de algun lado y ese lado es el
-            // cannon. Humo porque un arcabuz quema polvora, y moscas porque esto no dispara
-            // plomo. Van juntos y en el mismo punto -- son el mismo evento.
+            // **El estallido en la boca del arcabuz, y sale SIEMPRE.** Un disparo que no deja nada
+            // en el aire es un sonido: el rayo de las moscas tiene que salir de algun lado y ese
+            // lado es el cañon. Humo porque un arcabuz quema polvora, y moscas porque esto no
+            // dispara plomo -- y van juntos porque son el mismo evento.
+            //
+            // **Y va antes de preguntar si hay objetivo.** La primera version lo puso despues del
+            // `if (seen.isEmpty()) return`, asi que dispararle al aire no dejaba nada -- que es
+            // justo el caso donde el jugador MAS necesita saber que el arma hizo algo, porque el
+            // unico feedback que le queda es el humo.
             Vec3 muzzle = player.getEyePosition()
                     .add(player.getLookAngle().normalize().scale(ArcabuzMuzzle.FORWARD));
             com.cortes.combat.particle.MoscaParticles.swarm(
                     level, muzzle.x, muzzle.y, muzzle.z, 20, 0.35D);
             level.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE,
                     muzzle.x, muzzle.y, muzzle.z, 14, 0.15, 0.15, 0.15, 0.02);
+
+            trace(player, player.getData(ModAttachments.ARCABUZ.get()),
+                    "rey de las moscas: nivel=" + flies + " objetivos=" + seen.size());
+            if (seen.isEmpty()) {
+                trace(player, player.getData(ModAttachments.ARCABUZ.get()),
+                        "rey de las moscas: sin objetivo, la nube no cae");
+                return;
+            }
+            LivingEntity landing = seen.get(0);
 
             com.cortes.combat.entity.MobCloud cloud = new com.cortes.combat.entity.MobCloud(
                     com.cortes.combat.registry.ModEntities.MOB_CLOUD.get(), level);

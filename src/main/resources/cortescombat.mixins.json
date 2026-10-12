@@ -4,7 +4,9 @@
   "package": "com.cortes.combat.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "FoodDataMixin",
     "GoldDurabilityMixin",
+    "ItemStackDrinkDurationMixin",
     "MobEffectInstanceAccessor",
     "RedStoneWireBlockMixin"
   ],

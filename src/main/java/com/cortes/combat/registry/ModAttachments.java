@@ -12,6 +12,7 @@ import com.cortes.combat.guard.GuardStamp;
 import com.cortes.combat.state.FallDeferral;
 import com.cortes.combat.state.ParryState;
 import com.cortes.combat.state.LungeState;
+import com.cortes.combat.survival.SurvivalState;
 import com.cortes.combat.state.PendingHit;
 import com.cortes.combat.state.StreakState;
 import com.cortes.combat.state.SyncState;
@@ -237,6 +238,23 @@ public final class ModAttachments {
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<CorteGemelo>> CORTE_GEMELO =
             ATTACHMENT_TYPES.register("corte_gemelo", () -> AttachmentType
                     .<CorteGemelo>builder(() -> CorteGemelo.READY)
+                    .build());
+
+    /**
+     * Supervivencia: los dos relojes de la comida y la curación. See {@link SurvivalState}.
+     *
+     * <p><b>Sin codec y sin {@code copyOnDeath}, y es la misma razón que las ventanas de
+     * arriba.</b> Son dos contadores de cuatro segundos como máximo: sobrevivir a un guardado
+     * sería progreso que el jugador no ganó, y el patrón de este paquete es que una cuenta que
+     * ninguna sesión debería retomar no se escribe en el NBT. Morir o reconectar los pone en cero
+     * y eso cuesta, en el peor caso, un tick de retraso que nadie ve.</p>
+     *
+     * <p>Vanilla guardaba su equivalente ({@code foodTickTimer}) en el NBT; no copiarlo es una
+     * decisión y no un olvido, y lo que la justifica es que su timer medía <em>un</em> ciclo
+     * compartido por ramas mutuamente excluyentes, mientras que estos dos corren a la vez.</p>
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<SurvivalState>> SURVIVAL =
+            ATTACHMENT_TYPES.register("survival", () -> AttachmentType.builder(() -> SurvivalState.NEW)
                     .build());
 
     /** La serie de la pala. El mismo record que la del martillo, con su propio reloj. */

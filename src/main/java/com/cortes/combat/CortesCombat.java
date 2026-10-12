@@ -2,6 +2,7 @@ package com.cortes.combat;
 
 import com.cortes.combat.attack.CombatTicker;
 import com.cortes.combat.command.CortesCommand;
+import com.cortes.combat.config.ServerConfig;
 import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.registry.ModArmor;
@@ -15,6 +16,7 @@ import com.cortes.combat.registry.ModTools;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import com.mojang.logging.LogUtils;
@@ -103,6 +105,11 @@ private static void reportOurRecipes(
 }
 
 public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
+        // Supervivencia, y va en el constructor común y no en el cliente porque es SERVER: decide
+        // cuánto vida se cura y a qué precio en comida, así que los dos lados tienen que leer lo
+        // mismo. NeoForge lo sincroniza a quien entra al mundo. `ClientConfig` vive del otro lado,
+        // en `CortesCombatClient`, porque sólo dibuja.
+        modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC);
         ModComponents.DATA_COMPONENT_TYPES.register(modEventBus);
         ModAttachments.ATTACHMENT_TYPES.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
