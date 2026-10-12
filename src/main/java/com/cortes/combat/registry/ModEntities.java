@@ -3,6 +3,7 @@ package com.cortes.combat.registry;
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.entity.AntimatterOrb;
 import com.cortes.combat.entity.MobCloud;
+import com.cortes.combat.entity.MungusShell;
 import com.cortes.combat.entity.SlashWave;
 
 import net.minecraft.world.entity.EntityType;
@@ -75,6 +76,21 @@ public final class ModEntities {
                     .clientTrackingRange(10)
                     .updateInterval(1)
                     .build("antimatter_orb"));
+
+    /**
+     * El Firestone enorme de Mungus.
+     *
+     * <p><b>Caja de uno, como la bola de fuego del ghast</b>, y el tipo existe para que el cliente
+     * simule la misma clase y no una bola recta: ver {@link MungusShell}, que tiene el porque
+     * escrito entero. Un proyectil lo tickean las dos mitades.</p>
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<MungusShell>> MUNGUS_SHELL =
+            ENTITY_TYPES.register("mungus_shell", () -> EntityType.Builder
+                    .<MungusShell>of(MungusShell::new, MobCategory.MISC)
+                    .sized(1.0F, 1.0F)
+                    .clientTrackingRange(8)
+                    .updateInterval(2)
+                    .build("mungus_shell"));
 
     private ModEntities() {
     }

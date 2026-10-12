@@ -518,10 +518,10 @@ class CombatEnchantRulesTest {
         assertTrue(CombatEnchantRules.CAPACITOR_FIRE_TICKS >= 60,
                 "y quema segundos, no ticks: la devolucion tiene que ser una advertencia");
 
-        // Mungus, que esta declarado pero todavia no se puede conseguir.
-        assertEquals(12, CombatEnchantRules.MUNGUS_POWER,
-                "**la potencia es doce y no veinte**: tres TNT, un crater que rompe piedra y tierra "
-                        + "pero no obsidiana, que es el material anti-explosion del juego");
+        // Mungus, que ya se consigue y ya se probo en cliente.
+        assertEquals(24, CombatEnchantRules.MUNGUS_POWER,
+                "**la potencia es veinticuatro**: seis TNT, el doble del doce que pidio el playtest, "
+                        + "y sigue sin romper obsidiana, que es el material anti-explosion del juego");
     }
 
     @Test

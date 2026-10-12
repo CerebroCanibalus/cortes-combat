@@ -1149,16 +1149,19 @@ public final class CombatEnchantRules {
     /**
      * Mungus: un Firestone enorme que revienta el terreno.
      *
-     * <p><b>La potencia es 12 y no 20</b>, y el numero se eligio balanceando: TNT es 4 en este juego,
-     * asi que doce son tres TNT juntas -- un crater de cinco o seis bloques que rompe piedra y tierra
-     * <b>pero no obsidiana</b>. Que no la rompa es la mitad del balance, porque la obsidiana es el
-     * material anti-explosion del juego y un encantamiento que la atraviesa no tiene respuesta.</p>
+     * <p><b>La potencia es 24 y no 12, y el 12 era el numero de la primera version.</b> TNT es 4 en
+     * este juego, asi que veinticuatro son seis TNT juntas: un crater que ya no es "abrir una pared"
+     * sino "borrar la esquina de una casa". El playtest pidio el doble sobre el 12, que es lo que
+     * hay aca -- y sigue <b>sin romper obsidiana</b>, porque la obsidiana es el material
+     * anti-explosion del juego y un encantamiento que la atraviesa no tiene respuesta.</p>
      *
      * <p>Y el costo es lo que lo mantiene siendo un tiro de asedio: diez Firestones, la carga al doble
-     * y un proyectil lento y con gravedad. El que lo usa renuncia a pelear durante dos segundos largos
-     * para abrir una pared, y esa renuncia es el precio.</p>
+     * y un proyectil que <b>cae en arco</b> -- ver {@code MungusShell}, porque esa gravedad estuvo
+     * prometida en este javadoc desde la primera version y el proyectil volaba recto. El que lo usa
+     * renuncia a pelear durante dos segundos largos para abrir una pared, y esa renuncia es el
+     * precio.</p>
      */
-    public static final int MUNGUS_POWER = 12;
+    public static final int MUNGUS_POWER = 24;
     public static final int MUNGUS_FIRESTONES = 10;
     public static final float MUNGUS_CHARGE_FACTOR = 2.0F;
 

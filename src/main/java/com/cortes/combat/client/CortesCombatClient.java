@@ -209,6 +209,13 @@ public class CortesCombatClient {
         // Y el orbe de antimateria, por lo mismo: su renderer dibuja nada y tiene que existir.
         event.registerEntityRenderer(com.cortes.combat.registry.ModEntities.ANTIMATTER_ORB.get(),
                 AntimatterOrbRenderer::new);
+        // **Y el Firestone de Mungus, con el renderer de items tirados.** Una Firestone entera
+        // dibujada por el mismo renderer que dibuja una papa volando: el proyectil es lo que la
+        // recamara escupe, y un renderer propio seria dibujar a mano un item que el juego ya sabe
+        // dibujar. La escala es tres porque la bola es de un bloque y el item solo es chico.
+        event.registerEntityRenderer(com.cortes.combat.registry.ModEntities.MUNGUS_SHELL.get(),
+                context -> new net.minecraft.client.renderer.entity.ThrownItemRenderer<>(
+                        context, 3.0F, true));
     }
 
     public static void onClientSetup(FMLClientSetupEvent event) {

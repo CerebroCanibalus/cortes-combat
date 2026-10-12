@@ -596,8 +596,11 @@ public final class Arcabuz {
         if (mungus > 0) {
             Vec3 aim = player.getEyePosition()
                     .add(player.getLookAngle().normalize().scale(ArcabuzMuzzle.FORWARD));
-            net.minecraft.world.entity.projectile.LargeFireball shell =
-                    new net.minecraft.world.entity.projectile.LargeFireball(
+            // **Nuestra entidad y no `LargeFireball`, y la diferencia es que esta cae.** Ver
+            // `MungusShell`: la bola de vanilla no tiene gravedad ninguna, y con tipo propio el
+            // cliente simula la misma clase en vez de una bola recta que se separa del arco.
+            com.cortes.combat.entity.MungusShell shell =
+                    new com.cortes.combat.entity.MungusShell(
                             level, player, player.getLookAngle().normalize(),
                             CombatEnchantRules.MUNGUS_POWER);
             shell.setPos(aim.x, aim.y - 0.3, aim.z);
