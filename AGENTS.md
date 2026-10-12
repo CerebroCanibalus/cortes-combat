@@ -582,9 +582,94 @@ dice y lo que el juego hace**, o entre lo que el test afirma y lo que el jugador
   build pasó **Y** que hay `Done (Xs)`, en ese orden.
 - **Las 2 líneas DEBUG de un mixin que se queja de su firma son el aviso, ⊘ el ruido.**
 
+### La ronda del arcabuz — el estado que vivía en el lugar equivocado (2026-10-12)
+
+**Cuatro rondas, un solo error.** Los tres síntomas se reportaron por separado y eran el mismo:
+recargar un arcabuz y cambiar a otro **heredaba** lo del primero. El segundo salía cargado, el segundo
+terminaba la recarga del primero, el segundo disparaba una mecha que arrancó en el primero.
+
+**La causa: estado del ARMA guardado en el JUGADOR.** Y las tres cosas que se intentaron antes del
+refactor fueron parches sobre esa causa, ⊘ sobre los síntomas:
+
+| intento | por qué falló |
+|---|---|
+| reconciliar en el `resolve` (el press) | el press corre en el **paquete**, el reset en el **tick**: el press puede llegar primero |
+| reconciliar en el `tick` | mismo problema al revés, y el reset pisaba la recarga en vuelo |
+| anotar contra qué arma iba (`ARCABUZ_GUN`, por identidad de `ItemStack`) | **empeoró las cosas**: la instancia del stack la reemplaza vanilla sola, así que el reset disparaba de más |
+
+**El refactor:** la recámara, la mecha y la recarga viven en **un componente del stack**; el jugador
+guarda **solo el botón**. Desaparecen la reconciliación, la comparación de identidad, el reset, el
+`shouldSnuff` y la máquina de estados `step()`. **Un arma fuera de la mano no se tickea, así que no hay
+nada que heredar** — la propiedad sale de la arquitectura, no de un chequeo.
+
+**Lo que hizo posible mover el estado al stack sin pagar el bob del modelo:** guardar el **tick absoluto
+de fin** (`fuseEndsAt`, `reloadEndsAt`) en vez de un contador. Un contador obliga a escribir el
+componente **cada tick**, y cada escritura reemplaza el `ItemStack` del cliente y dispara la animación
+de cambio de item — que mueve el arma 60 cm. Con un tick absoluto se escribe **4 veces por ciclo de
+disparo y nunca entre medio**, y decidir es comparar contra `level.getGameTime()`: una función pura.
+
+**Premio inesperado:** un arma guardada en un cofre **conserva su estado**, porque viaja con el item.
+
+#### Y las siete lecciones que quedan
+
+1. **Un valor cacheado que solo puede subir falla hacia adelante.** `withChamber` era asimétrico —
+   `if (!chamberOnStack) return this;` — así que un `loaded=true` viejo **no se podía limpiar nunca**.
+   No se equivocaba al azar: se equivocaba siempre en el mismo sentido. **Un espejo que se reescribe
+   antes de cada decisión no puede quedar viejo; uno que solo puede llenarse, sí.**
+
+2. **Una asimetría "a propósito" puede tener una justificación falsa, y el comentario la hace parecer
+   una decisión.** El de `withChamber` decía que releer `false` durante la combustión *"vaciaría un
+   arma a punto de disparar"* — **y `light()` ya devuelve la recámara vacía**, porque encender la mecha
+   **es** lo que la gasta. Durante la combustión los dos valores ya coinciden. **Un comentario que
+   explica *por qué* una rareza es correcta es exactamente donde hay que ir a mirar si la rareza lo es.**
+
+3. **Un guard puede fijar una equivocación con la misma firmeza con que fija un invariante.** Yo escribí
+   el guard que exigía la asimetría, con un mensaje que la justificaba (*"si alguien lo hace simétrico
+   para arreglarlo, vacía el arma..."*). **Era la razón por la que la dirección no se podía corregir**
+   sin borrarlo primero. ∴ cuando un guard falla tras un arreglo, la primera pregunta es si el guard
+   protegía un invariante o una decisión que resultó mala.
+
+4. **El estado de una cosa va en esa cosa, y los parches sobre el síntoma se cuentan.** Tres parches,
+   tres síntomas, un error. La señal de que estás parchando la causa equivocada no es que el arreglo
+   falle: es que **aparece un síntoma nuevo de la misma familia**.
+
+5. **Un `super()` puede pisar el tipo, y el paquete de spawn viaja el tipo, ⊘ la clase.** `MungusShell
+   extends LargeFireball` y el constructor que **dispara** hace `super(EntityType.FIREBALL, ...)` → el
+   `getType()` del arma era `FIREBALL`, así que **el cliente construía una bola de fuego vanilla** y
+   simulaba otra física, mientras el servidor simulaba la nuestra. Los tirones eran la distancia entre
+   las dos copias. Se arregla sobreescribiendo `getType()` (`Entity#getType` no es final). **El síntoma
+   de que falta es silencio: el tipo de vanilla existe, la entidad se crea, y lo único que se ve es una
+   bola que tiembla.**
+
+6. **Cuando un síntoma visual se repite y ya probaste dos anclas, el siguiente paso es instrumentar, ⊘
+   la tercera suposición.** El humo de la mecha se reportó dos veces como "sale de en medio de la
+   pantalla" y las dos anclas posibles (cámara fija / matriz del item) ya se habían probado y rechazado
+   una vez cada una. **Un solo número en el log cerró la pregunta:** `distOjo` (0,94 constante → está
+   sobre el arma, ⊘ en la lente) y la traslación de la matriz (**su Z saltaba entre −0,92 y +0,71, y una
+   distancia AL FRENTE no puede ser negativa** → la matriz está en un marco que rota con el jugador, ⊘
+   en el de la vista). Es la misma lección de `/cc hud`: **imprimir la geometría y mirarla.**
+
+7. **Un guard que descarta la parte que pregunta está verde.** `SoundPoolTest` comparaba los nombres de
+   `sounds.json` contra los archivos del disco **tirando la carpeta de los dos lados**
+   (`id.lastIndexOf('/')`), así que `sounds/combat_fx/arcabuz_mosca_loop.ogg` y
+   `sounds/weapons/arcabuz_mosca_loop` comparaban **el mismo nombre pelado** — y la carpeta era **lo
+   único roto**. Es la segunda vez: la primera fue `sweeping_edgeV2`, donde lo normalizado era una
+   mayúscula. **La pregunta es siempre la misma: ¿qué está tirando el guard antes de comparar?**
+
 ### Herramientas
 
 - ⊘ **`write`/`edit` corrompe texto insertado.** CJK y acentos. **Escaneo CJK antes de commitear.**
+- **Y leer un archivo con acentos por PowerShell los mangla en la *pantalla*, no en el disco.** Un
+  `Get-Content` sobre `AGENTS.md` devuelve `Estado tǸcnico` y `3�� persona` (display, ⊘ disco), y entonces
+  un `edit` con ese texto **no matchea** y parece que el archivo cambió. **La herramienta `read` da
+  UTF-8 correcto: usala para leer, siempre.** El síntoma es `Could not find oldString` sobre un archivo
+  que no tocaste.
+- **Borrar un attachment deja su clave en el `playerdata`, y el mundo lo dice en el log.**
+  `Encountered unknown or non-serializable data attachment cortescombat:arcabuz. Skipping.` Es benigno y
+  **se cura solo**: "Skipping" al cargar significa que el próximo guardado lo escribe sin él. **Y ⊘ se
+  arregla con código de compatibilidad** — en este caso el dato viejo *era* el bug (la recámara guardada
+  en el jugador), así que leerlo sería reintroducir la causa. Es la excepción honesta a "leé la forma
+  vieja": **cuando la forma vieja es el bug, se tira.**
 - **Reescribir un archivo entero para cambiar un párrafo es la operación más peligrosa que tengo.**
   Documentando el arcabuz reemplacé `.gitignore` completo y **me llevé las reglas de `refs/`,
   `build/`, `run/` y `tools/ffmpeg/`**; `git add -A` empezó a agregar repos embebidos y 600 MB de
@@ -697,7 +782,7 @@ tiene los números, y el hook vive donde el número se cobra.
 | `gripa` | daga (molde `dagger`) | stacks de **Moco**: 1 de daño por stack cada 20/15 ticks, máx 4/6, y **estornuda** cada 40 (partícula del panda) | `ModEffects.MOCO` + `MocoEffect` -- **sin arte nuevo** |
 | `corte_gemelo` | shotel (molde `sabre`) | el golpe normal da un **segundo corte al 50 %**; **L1 cada 4 s**, **L2 siempre** | `state/CorteGemelo` (el reloj) + `CombatEngine.lastRoundOnHit` |
 | `capacitor` | shotel (molde `sabre`) | el proyectil parriado vuelve como **rayo**: **3/4 + el daño base**, y **quema 4 s** | `ParryHandler` -- la rama de `ParrySource.cameThroughTheAir`, **que ya existía** |
-| `rey_de_las_moscas` | arcabuz (molde `arcabuz`) | el disparo deja una **nube de moscas** en el objetivo: **4 de daño cada 10 ticks, 4 s, radio 3**. El **dueño queda afuera** | `MobCloud` (entidad invisible) + `MobCloudRenderer` (**vacío, pero REGISTRADO**) + rama al tope de `Arcabuz.fire` -- **la munición sigue siendo Firestone, no carne podrida todavia** |
+| `rey_de_las_moscas` | arcabuz (molde `arcabuz`) | el disparo deja una **nube de moscas en CADA cuerpo del cono**: **4 de daño cada 10 ticks, 4 s, radio 3**. El **dueño queda afuera** | `MobCloud` (entidad invisible) + `MobCloudRenderer` (**vacío, pero REGISTRADO**) + rama al tope de `Arcabuz.fire` -- **la munición sigue siendo Firestone, no carne podrida todavia**. Una nube por cuerpo (el cono ya decidía a quién llega, y tomar solo el primero era devolver un golpe por un disparo), con **un solo zumbido** aunque haya ocho |
 | `retirada` | ropera (molde `ropera`) | **agachado**, el lunge sale **para atrás** y el golpe al frente (100 %) se cobra **en el press** | `SpecialHandler.retreat` + `LungeMotion` (el **signo** del impulso) — **el golpe va a `Lunge.prehit`**, al mismo conjunto que barre la marcha, para no cobrar dos veces |
 
 > **La linea "nada en `src/test` puede nombrar un tipo de Minecraft" es mas larga de lo que parece: la
@@ -783,20 +868,30 @@ tiene los números, y el hook vive donde el número se cobra.
 
 ## Estado técnico actual
 
-**960 tests unitarios verdes.** Todo lo testeable corre en JVM pelada; lo que necesita el juego queda
-en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardState`, `ConeSize`, `WeaponTooltip`
-y los `viewmodel/*` puros.
+**1110 tests unitarios verdes** (2026-10-12). Todo lo testeable corre en JVM pelada; lo que necesita el
+juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardState`, `ConeSize`,
+`WeaponTooltip`, `ArcabuzState`, `ArcabuzMuzzle` y los `viewmodel/*` puros.
 
-- **2 mixins**: `MinecraftAttackMixin` (ataque) c/ su seam `ItemInHandRendererMixin`, y
-  `PlayerModelMixin` (3ª persona, 2 inyecciones).
+> **Los conteos de abajo se desactualizan solos, y estaban viejos.** Verificados el 2026-10-12
+> contando los registros (`grep` de `register(` sobre cada archivo de `registry/`), ⊘ leyendo la lista
+> anterior. Si volvés a leer esto y hay dudas, contá.
+
+- **11 mixins**: `MinecraftAttackMixin` (ataque) c/ su seam `ItemInHandRendererMixin`, `PlayerModelMixin`
+  (3ª persona, 2 inyecciones), `SpecialRightClickMixin` (el click derecho después del mundo),
+  `ArcabuzGuiIconMixin` (el sprite por `ItemDisplayContext`), `TrabazonSprintMixin`, `GoldDurabilityMixin`,
+  `ItemStackDrinkDurationMixin`, `FoodDataMixin`, `RedStoneWireBlockMixin` y el `MobEffectInstanceAccessor`.
 - **Tooltips de stats, en TODAS las armas ⊘ vanilla.** `CombatTooltipHandler` (2 eventos) +
   `ConeSize` + `WeaponTooltip` + `TooltipLine`. Reemplaza los 2 renglones de vanilla
   (`GatherSkippedAttributeTooltipsEvent` por **id de modificador**, ⊘ por texto) c/ 7 renglones.
   Cero componente de Minecraft en la capa que decide.
-- **5 data components**: `weapon_profile` (14 perfiles), `reach_profile`, `charge_profile`, `special`,
-  `arcabuz_fuse`.
-- **13 attachments**: `charge`, `guard_stamina`, `guard_last_block`, `cooldown`, `hammer_streak`,
-  `parry`, `lunge`, `lunge_hits`, `frenzy`, `last_synced`, `arcabuz`, `fall_deferral`, `pending_hit`.
+- **11 data components**: `weapon_profile` (14 perfiles), `reach_profile`, `shot_reach`, `ammo_profile`,
+  `charge_profile`, `special`, `guard_profile`, `viewmodel_profile`, `knockback_profile`, `arcabuz_fuse`
+  y **`arcabuz`** — el **estado entero del arma** (recámara + mecha + recarga). Ver la lección de la
+  ronda del arcabuz.
+- **21 attachments**: `charge`, `guard_stamina`, `guard_last_block`, `cooldown`, `hammer_streak`,
+  `parry`, `contragolpe`, `lunge`, `lunge_hits`, `frenzy`, `last_synced`, **`arcabuz_button`**,
+  `fall_deferral`, `pending_hit`, `special_charge`, `second_window`, `guard_free`, `adrenalina`,
+  `corte_gemelo`, `survival`, `paliza_streak`.
 - **14 canales** de viewmodel: `WINDUP`, `STRIKE`, `CHOP`, `RECOVER`, `COOLDOWN`, `HOLD`, `GUARD`,
   `BREAK`, `PARRY`, `LUNGE`, `SWEEP`, `HELD`, `RELOAD`, `SHOOT`.
 - **9 perfiles** en `ViewModelDefaults`: espada, manos, ropera, daga, sable, alabarda, hacha,
@@ -852,17 +947,19 @@ y los `viewmodel/*` puros.
 
 ### Deuda conocida
 
+> **Estado al 2026-10-12: lo que falta es FX.** Palabras del usuario: *"solo faltarían FX y ya"*. Los
+> sistemas están; lo que queda es lo que el jugador **ve y oye**. La lista de abajo está ordenada por
+> eso.
+
 | Falta | Nota |
 |---|---|
-| **Rotar el worldmodel en la guardia** (3ª persona) | Pedido explícito: espada y sable deberían girar hacia el jugador como en 1ª. Exige un mixin nuevo sobre `ItemInHandLayer`; **⊘ se hizo a propósito** para no meter una segunda inyección sin verificar las cinco primeras |
-| **Arcabuz** | Receta **hecha** (grid vertical decided por el usuario). Queda: feedback por objetivo, y el flash a 1.7 m está derivado del dibujo **a ojo** — primer número a tocar si se ve mal. El click izquierdo ya tiene `STRIKE`+`RECOVER` |
+| **Retroalimentación del golpe cargado** | Es **uno**: `addParticle` no aparece en ninguna parte del código para esto, y `CombatFeedback` sólo tiene `HIT`/`KILL`/`GUARDED`. **El cargado cambia el número y ⊘ cambia nada en pantalla ni en el oído** — que es la mitad de la mecánica, porque el oído es el único canal que funciona **sin mirar** |
+| **Arcabuz** | Feedback **por objetivo** (el disparo pega a diez y la pantalla ⊘ dice a cuántos) y el flash a **1,7 m**, derivado **a ojo** — primer número a tocar si se ve mal. El click izquierdo ya tiene `STRIKE`+`RECOVER` |
+| **El arcabuz no tiene animación de cuerpo** (3ª persona) | Su perfil ⊘ lee `CHOP` ni `STRIKE`: su click izquierdo es una puñalada de bayoneta y nunca se le escribió |
+| **Rotar el worldmodel en la guardia** (3ª persona) | Pedido explícito: espada y sable deberían girar hacia el jugador como en 1ª. Exige un mixin sobre `ItemInHandLayer` |
+| **El zumbido de Rey de las Moscas** | Arreglado el 2026-10-12 (el `.ogg` estaba en `sounds/combat_fx/` y el JSON lo declaraba en `sounds/weapons/`, y el guard ⊘ lo veía porque los dos tiraban la carpeta). **Queda pendiente de playtest** |
 | `/cc weapons` desactualizado | Tiene 11 armas vanilla. Arcabuz y Firestone: `/cc weapon cortescombat:<id>` |
-| **Retroalimentación de "esto fue cargado"** | `CombatFeedback` sólo tiene `HIT`/`KILL`/`GUARDED`. Hace falta `CHARGED`: un HUD que reacciona a todo deja de significar nada, y el enum es una lista cerrada a propósito |
-| **FOV de carga** | Hecho: 3° → 0.6° c/ suavizado exponencial, por `ComputeFovModifierEvent`. **Resta, ⊘ reemplaza** |
-| Sonido de carga completa | El proyecto tiene **un solo sonido**: `SHIELD_BREAK`. Faltan 3 de los 4 eventos que el jugador tiene que reconocer s/ mirar |
-| Impacto de golpe cargado | `addParticle` ⊘ aparece en ninguna parte del código |
 | **Los 4 perfiles de pico/pala/maza/tridente** | **Por decisión, ⊘ deuda.** `ViewModelDefaults` los omite: son items de vanilla, y un movimiento dibujado a mano sobre una silueta que no dibujamos pelea c/ el modelo. Sin entrada = pose exacta de vanilla |
-| **El arcabuz no tiene animación de cuerpo** | Su perfil no lee `CHOP` ni `STRIKE`: su click izquierdo es una puñalada de bayoneta y nunca se le escribió |
 
 ### Texturas: DOS SIGUEN SIENDO DE `refs/`
 
@@ -917,26 +1014,41 @@ rechazan un press, 6 silenciosos a propósito. **Lee los campos, ⊘ recalcula n
 
 ## Próximos pasos
 
-0. **Weapon packs — lo único que falta (ya con cliente abierto):** **fase 6** = loader de poses
-   por YAML + integración al `PoseSolver` + sprite slash por YAML (los dos tocan sistemas
-   cerrados del cliente), y **modo `strict`** de la fase 8. El playtest de todo lo demás está
-   **cerrado** (2026-10-10).
-1. **Rotar el worldmodel en la guardia** (3ª persona) — mixin sobre `ItemInHandLayer`.
-2. **Arcabuz**: feedback por objetivo y el flash a 1.7 m (los dos siguen abiertos).
-3. **Paso 11 (supervivencia) — HECHO 2026-10-11.** Cerrado y documentado en `ARCHITECTURE.md` §13
+> **2026-10-12 — el usuario cerró la ronda diciendo: *"funciona bien todo ahora... solo faltarían FX y
+> ya"*.** Así que la lista está ordenada por eso: **primero lo que el jugador ve y oye**, después lo
+> demás.
+
+1. **FX — es lo que falta.** Los tres, y los tres son la misma pregunta (el juego ya cobra el efecto y
+   ⊘ lo muestra):
+   a. **El golpe cargado no tiene partícula.** `addParticle` no aparece en ninguna parte del código para
+      esto. El bonus se cobra y la pantalla no dice nada.
+   b. **La carga completa no tiene sonido**, y `CombatFeedback` no tiene `CHARGED`. **El oído es el
+      único canal que funciona sin mirar**, y es justo el que la mecánica más larga del juego (40 ticks)
+      ⊘ usa.
+   c. **El arcabuz**: feedback **por objetivo** (pega a diez y la pantalla ⊘ dice a cuántos) y el flash a
+      **1,7 m**, derivado a ojo.
+2. **Afinar a playtest lo que quedó sin cerrar de esta ronda:** el **zumbido de Rey de las Moscas**
+   (arreglado, ⊥ playtest), el **arco de Mungus** (el modelo de la flecha, ⊥ playtest), y los **números
+   del humo de la mecha** (`FUSE_FORWARD/RIGHT/UP`, que ahora son de la cámara y son los únicos tres
+   números del archivo elegidos a ojo).
+3. **Weapon packs — fase 6** = loader de poses por YAML + integración al `PoseSolver` + sprite slash por
+   YAML (los dos tocan sistemas cerrados del cliente), y **modo `strict`** de la fase 8. El playtest de
+   todo lo demás está **cerrado** (2026-10-10).
+4. **Rotar el worldmodel en la guardia** (3ª persona) — mixin sobre `ItemInHandLayer`.
+5. **El arcabuz no tiene animación de cuerpo** (3ª persona): su perfil ⊘ lee `CHOP` ni `STRIKE`.
+6. **Afinar a playtest**: la bayoneta del arcabuz (`STRIKE` −0.28/−14°), los números de los
+   tooltips, y los perfiles de las armas nuevas.
+7. **Paso 11 (supervivencia) — HECHO 2026-10-11.** Cerrado y documentado en `ARCHITECTURE.md` §13
    (arquitectura de 3 capas + contrato de portabilidad + el seam de arranque). Quedan **playtest de
    `foodRegenInterval`** —el número más importante del proyecto— y **el rebalanceo de pociones**, ya
    **planificado** en esa sección con `HealOrHarmMobEffect` verificado en fuentes. ⚠ Ojo: DESIGN §5
    dice *"poción de daño I: 4 → 6"* y **vanilla ya hace 6** (`6 << 0`), esa fila es un no-op.
-4. **Sonido de carga completa** y el valor `CHARGED` de `CombatFeedback`.
-5. **Afinar a playtest**: la bayoneta del arcabuz (`STRIKE` −0.28/−14°), los números de los
-   tooltips, y los perfiles de las armas nuevas.
-6. **Los 30 advancements dicen "Hecho a mano."** — el arcabuz ya tiene su propia línea. Una por
+8. **Los 30 advancements dicen "Hecho a mano."** — el arcabuz ya tiene su propia línea. Una por
    familia es el siguiente paso natural; ⊘ son 30 entradas que sólo cambian el nombre.
-7. **El `arcabuz.png` original se queda en `textures/models/`** (donde fue dibujado) **y los cinco
+9. **El `arcabuz.png` original se queda en `textures/models/`** (donde fue dibujado) **y los cinco
    frames en `textures/item/arcabuz_fuse/`** (que es lo que el atlas lee). Duplicado a propósito; el
    test lo afirma.
-8. **Rework de oro y cobre** — ver sección abajo.
+10. **Rework de oro y cobre** — ver sección abajo.
 
 ---
 

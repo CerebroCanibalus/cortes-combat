@@ -1219,3 +1219,128 @@ pone mi nombre a trabajo ajeno. La regla es **listar los archivos antes de commi
 
 **No se reescribio el historial**: el commit esta pusheado y rehacerlo seria un force-push.
 Queda anotado, y si se decide limpiarlo, se hace sabiendo que hay que forzar el remoto.
+
+## Ronda del arcabuz — cuatro rondas, un solo error (2026-10-12)
+
+**30 commits.** La ronda arrancó como "arreglemos el arcabuz" y terminó siendo el bug más caro del
+proyecto por una razón que tardó cuatro intentos en aparecer: **el estado del arma estaba guardado en el
+jugador.**
+
+### Los tres síntomas, y eran el mismo
+
+| lo que reportó el playtest | lo que era |
+|---|---|
+| *"si recargás un arcabuz y pasás a uno sin recargar, este podrá disparar como si fuera recargado"* | la **recámara** se heredaba |
+| *"al recargar y cambiar... si vuelvo una SEGUNDA VEZ al arma cargada, y luego a la descargada, este se carga"* | la **recarga** se heredaba |
+| *"cuando recargás el arma pero la cambiás y volvés... se ve como si estuviera descargado"* | la **mecha** se heredaba |
+
+Los tres son **"cambiar de arma hereda el estado del otro"**, porque el `ArcabuzState` era un
+attachment del **jugador** y el stack era "la verdad sobre la recámara" → **dos fuentes de verdad para
+la misma pregunta**, reconciliadas a mano en tres lugares.
+
+### Los tres parches, y por qué fallaron
+
+1. **Reconciliar en el `resolve`.** El press corre en el **paquete**, el reset en el **tick**: el press
+   puede llegar primero. Y `withChamber` solo podía **llenar**, así que un `loaded=true` viejo no se
+   bajaba nunca.
+2. **Reconciliar en el `tick`.** Mismo problema al revés, y el reset pisaba la recarga en vuelo.
+3. **Anotar contra qué arma iba** (`ARCABUZ_GUN`, por identidad de `ItemStack`). **Empeoró las cosas**:
+   la instancia del stack la reemplaza vanilla sola, así que el reset disparaba de más — el log lo
+   mostró (`estado reiniciado` 2 a 4 veces por segundo) y **la recarga se moría al cambiar de arma**.
+
+**La señal de que estaba parchando la causa equivocada no fue que los arreglos fallaran: fue que
+aparecía un síntoma nuevo de la misma familia cada vez.**
+
+### La asimetría que era el bug, y su justificación falsa
+
+`withChamber` era asimétrico a propósito, con un comentario que lo explicaba:
+
+```java
+if (!chamberOnStack) return this;   // "el stack solo puede decir que si"
+```
+
+La justificación escrita era: *durante la combustión la recámara ya se gastó del stack, así que releer
+`false` "vaciaría un arma a punto de disparar"*. **Es falso** — `light()` **ya devuelve la recámara
+vacía**, porque encender la mecha **es** lo que la gasta. Durante la combustión los dos valores ya
+coinciden, y la asimetría no protegía nada: **lo único que hacía era que un `true` viejo no se pudiera
+limpiar nunca.** Y un valor cacheado que solo puede subir **falla hacia adelante**: no se equivoca al
+azar, se equivoca siempre en el mismo sentido.
+
+**Y el guard que exigía la asimetría lo escribí yo**, con un mensaje que la justificaba (*"si alguien lo
+hace simétrico para arreglarlo, vacía el arma en cada tick de la mecha"*). Era la razón por la que la
+dirección no se podía corregir sin borrarlo. **Un guard puede fijar una equivocación con la misma
+firmeza con que fija un invariante.**
+
+### El refactor: el estado se muda al arma
+
+**Un componente `ARCABUZ` en el stack** con las tres cosas: recámara, mecha y recarga. El jugador
+guarda **solo el botón**. Desaparecen: la reconciliación, la comparación de identidad, el reset, el
+`shouldSnuff` y la máquina de estados `step()`.
+
+**Un arma fuera de la mano no se tickea, así que no hay nada que heredar** — la propiedad sale de la
+arquitectura y ⊘ de un chequeo.
+
+**Y lo que lo hizo posible sin pagar el bob del modelo: el tick ABSOLUTO de fin.** Un contador obliga a
+escribir el componente **cada tick**, y cada escritura reemplaza el `ItemStack` del cliente y dispara
+la animación de cambio de item, que mueve el arma **60 cm**. El proyecto ya lo había pagado con la
+animación de la mecha. Con `fuseEndsAt`/`reloadEndsAt` el componente se escribe **4 veces por ciclo de
+disparo y nunca entre medio**, y decidir es `now >= fuseEndsAt` contra `level.getGameTime()`: una
+función pura.
+
+**Premio inesperado:** un arma guardada en un cofre **conserva su estado**, porque viaja con el item.
+
+**Lo que se pierde, y está documentado:** una mecha cuyo tick ya pasó **dispara al primer tick que el
+arma vuelve a la mano** (una demora, ⊘ una ganancia: la Firestone se gastó al encender), y una recarga
+con el botón suelto se cancela sola al levantar el arma.
+
+### Dos bugs que ⊘ eran de estado
+
+**Mungus y el tipo que un `super()` pisa.** El playtest: *"se siente mejor pero aún da tirones raros, es
+como un problema de sincronización, la física se siente correcta"*. La física **era** correcta — lo que
+estaba mal era que **el cliente simulaba otra clase**. `LargeFireball(Level, LivingEntity, Vec3, int)`,
+el constructor que **dispara**, hace `super(EntityType.FIREBALL, ...)`: heredar el disparo significa
+heredar el tipo de vanilla. Y **el paquete de spawn lleva `getType()`, ⊘ la clase** → el cliente
+construía una bola de fuego vanilla (sin gravedad, `accelerationPower` 0,1, inercia 0,95) mientras el
+servidor simulaba `MungusShell`. Los tirones eran la distancia entre las dos copias. Se arregla
+sobreescribiendo `getType()` (`Entity#getType` no es final; los dos únicos lugares de vanilla que leen
+el campo crudo — dimensiones y un tag de *fall damage* — dan igual acá).
+
+Y antes de eso: **la bola de fuego vanilla no vuela, se auto-acelera.** `AbstractHurtingProjectile#tick`
+hace `v = (v + v̂·0.1)·0.95` arrancando de **0,1** → la velocidad se multiplica por **19** a lo largo del
+vuelo, y como la gravedad dobla la dirección la auto-aceleración empuja **siempre hacia donde la curva
+ya va**. **Una flecha no hace eso**: `AbstractArrow` es `v·0,99` + gravedad. Se le puso el modelo de la
+flecha (`accelerationPower = 0`, inercia 0,99, velocidad de salida real), y el `accelerationPower` va en
+**los dos constructores** porque el cliente entra por `(EntityType, Level)` y ese campo **no viaja en el
+paquete de spawn**.
+
+**El humo de la mecha, y el número que cerró la pregunta.** Se reportó **dos veces** como *"sale de en
+medio de la pantalla"*, y las dos anclas posibles (cámara fija / matriz del item) ya habían sido
+probadas y rechazadas una vez cada una. **Un solo número en el log la cerró:** `distOjo` daba **0,94
+constante** (→ está sobre el arma, ⊘ en la lente), y la traslación de la matriz tenía **magnitud
+constante 1,08** (= `|ITEM_POS|` 1,05, → la matriz **sí** es la del arma) pero **su Z saltaba entre
+−0,92 y +0,71** — y una distancia **al frente** no puede ser negativa. La matriz está en un marco que
+**rota con el jugador**, ⊘ en el de la vista, y pasarla por `inViewSpace` aplicaba esa rotación **dos
+veces**. Vuelve al marco de la cámara del fogonazo, que lleva dos rondas sin una queja.
+
+### Y la ronda de encantamientos que había antes en el mismo día
+
+- **El orbe de la pala salía en el PRESS y ⊘ al soltar**: el `resolve` todavía llamaba a
+  `launchAntimatter`, así que el click disparaba en el mismo tick y la carga nunca contaba.
+- **Durabilidad del orbe: 5 → 30.** El playtest la llamó *"muy poquito"* y tenía razón por una cuenta
+  que la primera versión no hizo: **cinco sobre 2031 de una pala de netherite son cuatrocientos orbes**
+  — o sea, lo mismo que gratis. **Un costo que no cambia ninguna decisión no es un costo, es un
+  número.**
+- **Rey de las Moscas infestaba uno.** Tomaba `seen.get(0)`: el cono ya decide a quién llega, y dejar
+  afuera a los otros siete que el mismo cono eligió es cobrar un disparo por lo que devuelve un golpe.
+  Ahora una nube por cuerpo, con **un solo zumbido** aunque haya ocho (ocho copias del mismo archivo
+  en el mismo tick ⊘ son ocho enjambres, son uno al doble de volumen).
+- **El zumbido de Rey de las Moscas no sonaba NUNCA**: el `.ogg` estaba en `sounds/combat_fx/` y el
+  JSON lo declaraba en `sounds/weapons/`. **Y el guard ⊘ lo veía** porque `pools()` y `filesOnDisk()`
+  **tiraban la carpeta de los dos lados** (`id.lastIndexOf('/')`) y comparaban el nombre pelado, que es
+  idéntico — y **la carpeta era lo único roto**. Es la segunda vez: la primera fue `sweeping_edgeV2`,
+  donde lo normalizado era una mayúscula. **La pregunta es siempre la misma: ¿qué está tirando el guard
+  antes de comparar?**
+- **El culatazo**: el disparo empuja hacia atrás por el suelo (0,25 → ~60 cm medidos: un jugador frena a
+  0,6/tick), y **Mungus ×4** (~2,5 bloques). Va **antes** de las dos ramas que hacen `return`, o no
+  correría justo en los dos tiros que más lo necesitan.
+- **Creativo ⊘ paga munición**, y solo creativo. El modo no abarata el **tiempo** de la recarga.
