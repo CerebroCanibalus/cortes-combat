@@ -186,6 +186,32 @@ public final class ModSounds {
      */
     public static final String ARCABUZ_MOSCA_LOOP = "cortescombat:arcabuz_mosca_loop";
 
+    /** El disparo del orbe de antimateria de la pala. */
+    public static final String SHOVEL_ORB_SHOT = "cortescombat:shovel_orb_shot";
+
+    /** El reventon del orbe, que es el momento en que el tiron ya hizo su trabajo. */
+    public static final String SHOVEL_ORB_EXPLOSION = "cortescombat:shovel_orb_explosion";
+
+    /**
+     * La onda de filo que sale del tajo cargado de la espada con Sweeping Edge.
+     *
+     * <p>El archivo es {@code sweeping_edgeV2.ogg} y el evento se llama sin el {@code V2}: la
+     * version vive en el nombre del archivo, que es lo que se reemplaza cuando hay una V3, y no en
+     * el id, que es lo que el codigo nombra. Un id con la version adentro obliga a tocar Java cada
+     * vez que el usuario redibuja un sonido.</p>
+     */
+    public static final String SWEEPING_EDGE = "cortescombat:sweeping_edge";
+
+    /**
+     * El pitch del disparo de Mungus, y es <b>el mas bajo del proyecto</b>.
+     *
+     * <p>Un cuarto del normal. El arcabuz normal ya dispara a 0,55 -- grave a proposito, porque es
+     * polvora negra y no un rifle -- y Mungus es la misma arma disparando algo que pesa tres TNT.
+     * Un pitch bajo es lo que hace que el oido lea "grande" antes de que el ojo vea el crater: el
+     * arma suena a que le cuesta, y eso es el precio que el encantamiento cobra en tiempo.</p>
+     */
+    public static final float MUNGUS_SHOT_PITCH = 0.25F;
+
     /**
      * How far down the blaze's shot is played for the arcabuz.
      *

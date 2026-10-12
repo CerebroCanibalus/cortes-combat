@@ -608,6 +608,12 @@ public final class Arcabuz {
                     aim.x, aim.y, aim.z, 20, 0.2, 0.2, 0.2, 0.03);
             level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLAME,
                     aim.x, aim.y, aim.z, 16, 0.15, 0.15, 0.15, 0.05);
+            // **El disparo, y con el pitch mas bajo del proyecto.** La rama no sonaba nada -- ni el
+            // disparo normal, que vive mas abajo y esta rama saltea con su `return`. El oido lee
+            // "grande" antes de que el ojo vea el crater, y ese es el aviso que el encantamiento
+            // debe: si el sonido fuera el de siempre, el tiro mas caro del juego sonaria a tiro.
+            level.playSound(null, player, CombatSounds.event(ModSounds.ARCABUZ_SHOT),
+                    net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, ModSounds.MUNGUS_SHOT_PITCH);
             LOG.info("[arcabuz] DISPARO mungus={} potencia={} municion={}",
                     mungus, CombatEnchantRules.MUNGUS_POWER,
                     declaredAmmo(player, player.getMainHandItem()).itemId());

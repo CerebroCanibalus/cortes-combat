@@ -88,6 +88,15 @@
   "arcabuz_mosca_loop": {
     "sounds": [ { "name": "cortescombat:weapons/arcabuz_mosca_loop" } ]
   },
+  "shovel_orb_shot": {
+    "sounds": [ { "name": "cortescombat:weapons/shovel_orb_shot" } ]
+  },
+  "shovel_orb_explosion": {
+    "sounds": [ { "name": "cortescombat:weapons/shovel_orb_explosion" } ]
+  },
+  "sweeping_edge": {
+    "sounds": [ { "name": "cortescombat:weapons/sweeping_edgeV2" } ]
+  },
   "arcabuz_reload": { "sounds": [ { "name": "cortescombat:weapons/arcabuz_reload" } ] },
   "arcabuz_loaded": { "sounds": [ { "name": "cortescombat:weapons/arcabuz_loaded" } ] }
   ,

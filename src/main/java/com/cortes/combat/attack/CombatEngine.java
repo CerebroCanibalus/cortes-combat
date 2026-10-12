@@ -1180,6 +1180,13 @@ public final class CombatEngine {
         float waveDamage = charged * com.cortes.combat.weapon.SweepingEdge.share(enchant);
         com.cortes.combat.entity.SlashWave.fire(level, player, player.getEyePosition(),
                 player.getLookAngle(), enchant, waveDamage, aimedId);
+        // **La onda se oye.** El archivo es del usuario y no lo nombraba ningun evento, asi que la
+        // onda salia muda: se veia el filo cruzar el aire y no habia nada que dijera que ademas
+        // estaba cobrando. Suena sobre el jugador y no sobre la onda porque la onda nace ahi, y el
+        // sonido de un arma lo hace el que la empuna.
+        level.playSound(null, player, com.cortes.combat.sound.CombatSounds.event(
+                        com.cortes.combat.sound.ModSounds.SWEEPING_EDGE),
+                net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
         debug(player, "onda de filo nivel " + enchant + " dano=" + waveDamage);
     }
 

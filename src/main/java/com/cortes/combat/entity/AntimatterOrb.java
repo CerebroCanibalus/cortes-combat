@@ -163,8 +163,9 @@ public class AntimatterOrb extends Entity {
         server.sendParticles(ParticleTypes.REVERSE_PORTAL,
                 this.getX(), this.getY() + 0.3, this.getZ(), 60, 1.2, 0.8, 1.2, 0.15);
         server.playSound(null, this.getX(), this.getY(), this.getZ(),
-                net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,
-                net.minecraft.sounds.SoundSource.PLAYERS, 1.4F, 0.6F);
+                com.cortes.combat.sound.CombatSounds.event(
+                        com.cortes.combat.sound.ModSounds.SHOVEL_ORB_EXPLOSION),
+                net.minecraft.sounds.SoundSource.PLAYERS, 1.4F, 1.0F);
         this.discard();
     }
 

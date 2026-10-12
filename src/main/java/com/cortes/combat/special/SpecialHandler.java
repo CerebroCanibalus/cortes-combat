@@ -428,7 +428,10 @@ public final class SpecialHandler {
         // con dibujo, y un hitscan no se esquiva.
         orb.launch(look.scale(1.2));
         level.addFreshEntity(orb);
-        CombatSounds.play(level, player, WeaponProfile.SHOVEL, ModSounds.Kind.LUNGE);
+        // El sonido del orbe, que es del usuario y no lo nombraba ningun evento. Reemplaza al
+        // `LUNGE` que estaba de prestado: un orbe de antimateria no suena a estocada.
+        level.playSound(null, player, CombatSounds.event(ModSounds.SHOVEL_ORB_SHOT),
+                net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
     }
 
     private static List<LivingEntity> targetsInCone(ServerPlayer player, ReachProfile reach) {
