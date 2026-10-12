@@ -530,9 +530,25 @@ class CombatEnchantRulesTest {
                 "y quema segundos, no ticks: la devolucion tiene que ser una advertencia");
 
         // Mungus, que ya se consigue y ya se probo en cliente.
-        assertEquals(24, CombatEnchantRules.MUNGUS_POWER,
-                "**la potencia es veinticuatro**: seis TNT, el doble del doce que pidio el playtest, "
-                        + "y sigue sin romper obsidiana, que es el material anti-explosion del juego");
+        //
+        // **Y la asercion no es el numero, es la regla, y eso es un cambio deliberado.**
+        //
+        // Aca decia `assertEquals(24, ...)` con la prosa del primer playtest que lo habia pedido. El
+        // segundo playtest pidio un treinta por ciento menos, y el guard murio **afirmando una
+        // decision que ya nadie habia tomado**: un numero justificado con un pedido cambia cuando el
+        // pedido cambia, y la memoria se reescribe. Lo que NO cambia es para que sirve el
+        // encantamiento -- **tiene que ser un tiro de asedio** -- y eso es lo que se afirma. El
+        // treinta por ciento concreto vive en `MungusShellTest`, que es donde esta su razon.
+        assertTrue(CombatEnchantRules.MUNGUS_POWER > 16,
+                "**tiene que seguir siendo un tiro de asedio.** TNT es 4 en este juego, asi que "
+                        + "cuatro TNT son 16: por debajo de eso el crater deja de abrir paredes y el "
+                        + "encantamiento pierde su unica razon de ser. Es potencia "
+                        + CombatEnchantRules.MUNGUS_POWER);
+        assertTrue(CombatEnchantRules.MUNGUS_POWER <= 32,
+                "y no puede ser un borrador de terreno. Por arriba del doble del doce que pedia el "
+                        + "diseno original el crater deja de ser 'abrir una pared' y pasa a ser "
+                        + "'borrar la esquina de una casa'. Es potencia "
+                        + CombatEnchantRules.MUNGUS_POWER);
     }
 
     @Test

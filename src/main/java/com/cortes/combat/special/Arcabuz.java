@@ -669,28 +669,47 @@ public final class Arcabuz {
                         "rey de las moscas: sin objetivo, la nube no cae");
                 return;
             }
-            LivingEntity landing = seen.get(0);
-
-            com.cortes.combat.entity.MobCloud cloud = new com.cortes.combat.entity.MobCloud(
-                    com.cortes.combat.registry.ModEntities.MOB_CLOUD.get(), level);
-            // A la altura de la caja y no a los pies, que es la regla que ya pagan el fogonazo y
-            // la sangre: `getY` es el suelo y una nube en el piso es polvo en los tobillos.
-            var box = landing.getBoundingBox();
-            cloud.setPos((box.minX + box.maxX) * 0.5,
-                    (box.minY + box.maxY) * 0.5 - 0.5, (box.minZ + box.maxZ) * 0.5);
-            cloud.setOwner(player);
-            // **Y se va con el cuerpo.** Sin esto la nube nace donde el enemigo ESTABA y un zombi
-            // que da un paso queda fuera: el encantamiento estaria castigando al que se mueve,
-            // que es lo contrario de lo que hace un enjambre.
-            cloud.setTarget(landing);
-            level.addFreshEntity(cloud);
-            // El zumbido del enjambre, que el usuario dejo en `arcabuz_mosca_loop.ogg` y que
-            // ningun evento nombraba. Suena en el cuerpo donde cae la nube y no en la boca del
-            // arcabuz: el disparo ya tiene el suyo, y esto es el enjambre, que vive en el objetivo.
-            level.playSound(null, landing, CombatSounds.event(ModSounds.ARCABUZ_MOSCA_LOOP),
+            // **TODOS los del cono, y el playtest lo reporto como bug: solo se infestaba uno.**
+            //
+            // La primera version tomaba `seen.get(0)` -- el cuerpo mejor apuntado -- con el
+            // razonamiento de que "un disparo infesta a alguien". Eso convierte un arma de area en
+            // un arma de un solo objetivo con mucho ruido: el cono de escopeta ya decide a quien
+            // llega, y dejar afuera a los otros siete que el mismo cono acaba de elegir es cobrar un
+            // disparo por lo que devuelve un golpe.
+            //
+            // Y es coherente con el disparo normal, que pega sobre todos los del cono hasta el tope.
+            // La nube es la version lenta de eso: en vez de cobrar el dano de una, lo reparte cuatro
+            // segundos. Uno por cuerpo, con el cuerpo adentro.
+            int infested = 0;
+            for (LivingEntity landing : seen) {
+                com.cortes.combat.entity.MobCloud cloud = new com.cortes.combat.entity.MobCloud(
+                        com.cortes.combat.registry.ModEntities.MOB_CLOUD.get(), level);
+                // A la altura de la caja y no a los pies, que es la regla que ya pagan el fogonazo y
+                // la sangre: `getY` es el suelo y una nube en el piso es polvo en los tobillos.
+                var box = landing.getBoundingBox();
+                cloud.setPos((box.minX + box.maxX) * 0.5,
+                        (box.minY + box.maxY) * 0.5 - 0.5, (box.minZ + box.maxZ) * 0.5);
+                cloud.setOwner(player);
+                // **Y se va con el cuerpo.** Sin esto la nube nace donde el enemigo ESTABA y un
+                // zombi que da un paso queda fuera: el encantamiento estaria castigando al que se
+                // mueve, que es lo contrario de lo que hace un enjambre.
+                cloud.setTarget(landing);
+                level.addFreshEntity(cloud);
+                infested++;
+            }
+            // **El zumbido, UNA vez y no una por cuerpo.** El usuario lo dejo en
+            // `arcabuz_mosca_loop.ogg` y ningun evento lo nombraba. Suena en el cuerpo donde cae la
+            // primera nube y no en la boca del arcabuz -- el disparo ya tiene el suyo, y esto es el
+            // enjambre. **Una sola vez aunque haya ocho**: ocho copias del mismo archivo en el mismo
+            // tick no son ocho enjambres, son un enjambre mal alto, y el motor tiene un tope de
+            // handles de sonido que ya costo una ronda de este proyecto.
+            LivingEntity first = seen.get(0);
+            level.playSound(null, first, CombatSounds.event(ModSounds.ARCABUZ_MOSCA_LOOP),
                     net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
+            trace(player, player.getData(ModAttachments.ARCABUZ.get()),
+                    "rey de las moscas: infestados=" + infested);
             ModNetworking.sendFeedback(player, CombatFeedback.HIT);
-            CombatSounds.play(level, landing, WeaponProfile.ARCABUZ, ModSounds.Kind.HIT);
+            CombatSounds.play(level, first, WeaponProfile.ARCABUZ, ModSounds.Kind.HIT);
             return;
         }
 

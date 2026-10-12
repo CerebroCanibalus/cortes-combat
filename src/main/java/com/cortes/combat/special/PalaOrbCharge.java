@@ -49,5 +49,18 @@ public final class PalaOrbCharge implements SpecialCharge {
     @Override
     public void release(ServerPlayer player, ServerLevel level) {
         SpecialHandler.launchAntimatter(player, level);
+        // **El precio en durabilidad, y va DESPUES del efecto.**
+        //
+        // Es el orden que usa el flujo de ataque del proyecto: `CombatEngine` cobra el punto de
+        // durabilidad despues de que el golpe aterrizo, no antes de intentarlo. Y la razon de fondo
+        // es que el orbe salio -- el pago es por lo que paso, no por lo que se pidio. Si ademas el
+        // stack se rompe con este cobro, el ultimo orbe del arma ya esta en el aire, que es la forma
+        // en que se rompe cualquier herramienta.
+        //
+        // **`hurtAndBreak` y no un `setDamageValue` a mano**, por lo mismo que el resto del mod: el
+        // metodo de vanilla es el que dispara `onBroken`, el sonido y las estadisticas.
+        player.getMainHandItem().hurtAndBreak(
+                com.cortes.combat.enchant.CombatEnchantRules.PALA_ANTIMATERIAL_DURABILITY_COST,
+                player, net.minecraft.world.entity.EquipmentSlot.MAINHAND);
     }
 }

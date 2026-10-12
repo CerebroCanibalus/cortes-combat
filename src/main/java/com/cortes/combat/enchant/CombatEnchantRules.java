@@ -1153,6 +1153,28 @@ public final class CombatEnchantRules {
     public static final float PALA_ANTIMATERIAL_DAMAGE = 14.0F;
 
     /**
+     * Lo que le cuesta a la pala <b>disparar el orbe</b>, en puntos de durabilidad.
+     *
+     * <p><b>El playtest lo pidio porque el especial era gratis, y gratis era la palabra correcta.</b>
+     * Un golpe comun gasta un punto -- es la regla de vanilla generalizada, ver
+     * {@code CombatEngine}'s {@code hurtAndBreak(1, ...)} -- asi que un orbe que pega catorce en un
+     * radio de cuatro y ademas tira de cinco bloques costando <b>cero</b> decia que las dos cosas
+     * valen lo mismo. No valen lo mismo.</p>
+     *
+     * <p><b>Cinco y no uno, y no es un numero redondo elegido al azar:</b> un orbe es cinco veces lo
+     * que cuesta un golpe de la misma arma, que es la forma mas chica de decir "esto es otra
+     * categoria de ataque" sin volverlo un boton que no se puede apretar. La pala es el arma de
+     * herramienta del catalogo y su gracia es que dura; con cinco, una pala de cobre sigue tirando
+     * decenas de orbes y una de netherite cientos, asi que el precio se siente <b>en el uso
+     * repetido</b> y no en el primero.</p>
+     *
+     * <p>Y se cobra <b>al soltar con la carga llena</b>, no al apretar: una carga abandonada no
+     * llega a ser un orbe, y cobrarle a alguien que se arrepintio seria castigar la decision
+     * correcta.</p>
+     */
+    public static final int PALA_ANTIMATERIAL_DURABILITY_COST = 5;
+
+    /**
      * Lo que viaja el orbe: despacio, y por eso se ve.
      *
      * <p><b>0,35 y no 1,2, que era el numero de la primera version.</b> El playtest pidio que la
@@ -1226,19 +1248,21 @@ public final class CombatEnchantRules {
     /**
      * Mungus: un Firestone enorme que revienta el terreno.
      *
-     * <p><b>La potencia es 24 y no 12, y el 12 era el numero de la primera version.</b> TNT es 4 en
-     * este juego, asi que veinticuatro son seis TNT juntas: un crater que ya no es "abrir una pared"
-     * sino "borrar la esquina de una casa". El playtest pidio el doble sobre el 12, que es lo que
-     * hay aca -- y sigue <b>sin romper obsidiana</b>, porque la obsidiana es el material
-     * anti-explosion del juego y un encantamiento que la atraviesa no tiene respuesta.</p>
+     * <p><b>La potencia es 17 ahora, y el camino de numeros importa.</b> La primera version era 12; el
+     * playtest pidio el doble y quedo en <b>24</b>, que son <b>seis TNT</b> juntas (TNT es 4 en este
+     * juego) -- un crater que ya no es "abrir una pared" sino "borrar la esquina de una casa". El
+     * segundo playtest pidio <b>un treinta por ciento menos</b>: 24 por 0,7 es 16,8, o sea
+     * <b>17</b>. Sigue rompiendo lo que rompia y sigue <b>sin romper obsidiana</b>, porque la
+     * obsidiana es el material anti-explosion del juego y un encantamiento que la atraviesa no tiene
+     * respuesta.</p>
      *
      * <p>Y el costo es lo que lo mantiene siendo un tiro de asedio: diez Firestones, la carga al doble
-     * y un proyectil que <b>cae en arco</b> -- ver {@code MungusShell}, porque esa gravedad estuvo
-     * prometida en este javadoc desde la primera version y el proyectil volaba recto. El que lo usa
-     * renuncia a pelear durante dos segundos largos para abrir una pared, y esa renuncia es el
+     * y un proyectil que <b>vuela como una flecha</b> -- ver {@code MungusShell}, porque esa gravedad
+     * estuvo prometida en este javadoc desde la primera version y el proyectil volaba recto. El que lo
+     * usa renuncia a pelear durante dos segundos largos para abrir una pared, y esa renuncia es el
      * precio.</p>
      */
-    public static final int MUNGUS_POWER = 24;
+    public static final int MUNGUS_POWER = 17;
     public static final int MUNGUS_FIRESTONES = 10;
     public static final float MUNGUS_CHARGE_FACTOR = 2.0F;
 
