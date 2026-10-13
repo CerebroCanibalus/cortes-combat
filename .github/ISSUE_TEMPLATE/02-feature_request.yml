@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest a change, a new weapon, an enchantment, or a compatibility fix.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve
+      description: Describe the situation in the game, not the implementation. "The halberd has no answer to a shield wall" beats "add a field to the weapon table".
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you'd like to see
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you've already tried
+      description: A weapon pack entry, a config change, an existing mod that does it. All useful.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this isn't already requested.
+          required: true

@@ -1,0 +1,75 @@
+name: Bug report
+description: Something is broken, or behaves differently than the README says it should.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A log is worth more than a description. Reproduce it with `logs/latest.log` open, then paste the moment it breaks.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: And what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      placeholder: |
+        1. Hold a diamond ropera
+        2. Swing at a zombie from two blocks away
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: mod-version
+    attributes:
+      label: Mod version
+      description: The release you're on, or the commit hash if you built it yourself.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: side
+    attributes:
+      label: Where does it happen
+      options:
+        - Single-player
+        - A server, and a client connected to it
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Minecraft and NeoForge versions
+      placeholder: "1.21.1 / NeoForge 21.1.250"
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Paste `logs/latest.log`, or the crash report. Trim it to the moment it breaks — the whole session is fine too.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods and resource packs
+      description: If the bug needs a specific mod or pack, say which one. "Cortés Combat on its own" is a perfectly good answer.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this isn't a duplicate.
+          required: true
+        - label: This is not a security problem (those go through SECURITY.md).
+          required: true

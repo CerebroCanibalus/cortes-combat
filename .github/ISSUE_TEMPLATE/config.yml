@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or setup help
+    url: https://github.com/CerebroCanibalus/cortes-combat/discussions
+    about: Ask here instead of opening an issue. Issues are for bugs and feature requests.
+  - name: Security report
+    url: https://github.com/CerebroCanibalus/cortes-combat/security/advisories/new
+    about: Report a vulnerability privately. Please do not open a public issue for it.
