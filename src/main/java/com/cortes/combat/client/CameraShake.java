@@ -54,6 +54,9 @@ public final class CameraShake {
     /** Los impulsos vivos. Inmutable no: entran por paquete y salen al vencer. */
     private static final List<Impulse> ACTIVE = new ArrayList<>();
 
+    /** Sólo para la instrumentación: el último tick que ya se imprimió. Se va con el debug. */
+    private static float lastLogged = Float.NaN;
+
     private CameraShake() {
     }
 
@@ -93,6 +96,9 @@ public final class CameraShake {
             return;
         }
         float now = minecraft.level.getGameTime();
+        org.slf4j.LoggerFactory.getLogger("cortescombat").info(
+                "[shake] paquete recibido grados={} ticks={} en ({}, {}, {})",
+                payload.degrees(), payload.ticks(), payload.x(), payload.y(), payload.z());
         ACTIVE.add(new Impulse(minecraft.level.dimension(), payload.x(), payload.y(), payload.z(),
                 payload.degrees(), now, now + payload.ticks(), 1.0F));
     }
@@ -135,6 +141,13 @@ public final class CameraShake {
             float amplitude = amplitudeAt(distance, impulse.degrees());
             if (amplitude <= 0.0F) {
                 continue;
+            }
+            if (time != lastLogged) {
+                lastLogged = time;
+                org.slf4j.LoggerFactory.getLogger("cortescombat").info(
+                        "[shake/cam] dist={} amp={} grados={} activos={} cam={}",
+                        String.format("%.2f", distance), String.format("%.3f", amplitude),
+                        impulse.degrees(), ACTIVE.size(), camera);
             }
             float life = (impulse.diesTick() - time) / (impulse.diesTick() - impulse.bornTick());
             float energy = amplitude * Math.max(0.0F, life);

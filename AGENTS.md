@@ -134,6 +134,27 @@ seguro de si la clase ya se cargo, la respuesta segura es reiniciar.
   receptor ⊕ sus tres argumentos), y **se le pueden pedir sólo los del contenedor que se usan**
   (`LivingEntity`): Mixin acepta un prefijo, ⊘ hace falta declarar los seis. **Regla: si el reemplazo
   necesita un dato del método que contiene, es `@Redirect`.**
+- **La Y de un vértice de modelo está en coordenadas MUNDO, ⊘ locales — y `docs/fx.md` §2.3 decía
+  lo contrario.** `EntityRenderDispatcher` hace `translate` **antes** de llamar a `render`
+  (verificado: offsets 59 y 75 de su bytecode), así que el `PoseStack` que llega a
+  `renderToBuffer` ya está en la posición del mundo: la Y de un vértice vale **altura en el mundo ⊕
+  altura local**. Un umbral local de 0..32 contra una entidad a Y=70 **no corta nunca** — eso fue
+  *"no baja por vida"*, y la premisa falsa venía del doc, que se asumió sin verificar. Se corrige
+  sumando la Y base, **interpolada con `yOld`** (el dispatcher también lo está).
+- **`deathTime` ⊘ se sincroniza; `hurtTime` sí.** Verificado: en `LivingEntity.defineSynchedData`
+  está `DATA_HEALTH_ID` y **⊘ está `deathTime`**, así que **en el cliente vale cero siempre** — el
+  cliente nunca sabe que la entidad murió, sólo la remueven. El blanco de la muerte estaba escrito
+  contra ese reloj: **no se dibujó ni una vez**. `hurtTime` **sí** llega, por
+  `ClientboundHurtAnimationPacket` (`animateHurt`), y la muerte se pregunta con
+  `getHealth() <= 0` (que viaja en `DATA_HEALTH_ID`). **Corolario del negro al morir:** el golpe
+  mortal pone `hurtTime = 10` → fila 5, el frame de impacto → y como el mob muere, el negro es **lo
+  último que queda**.
+- **Los handlers de payload `playToClient` corren en el HILO DE RED, ⊘ en el del cliente.**
+  `handleCameraShake` tocaba `Minecraft.getInstance().level` y una `ArrayList` que el render
+  recorre cada frame, y el shake **no se veía en absoluto**; la amplitud ya se había triplicado sin
+  efecto, así que el número nunca fue la causa. **`context.enqueueWork(...)`** es el patrón — el
+  proyecto ya lo tenía en `CortesCombatClient` y faltaba acá. ⚠ Los otros `playToClient` están sin
+  revisar.
 - **Las fuentes de vanilla SÍ están disponibles:** `build/moddev/artifacts/neoforge-21.1.250-sources.jar`
   (o `~/.gradle/caches/neoformruntime/intermediate_results/sourcesAndCompiledWithNeoForge_*.jar`,
   6.294 `.java`). `javap` p/ *confirmar* una firma; `jar xf` + **leer el método** cuando lo que

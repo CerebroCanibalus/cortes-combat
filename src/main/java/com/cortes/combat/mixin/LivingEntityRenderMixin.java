@@ -118,6 +118,12 @@ public class LivingEntityRenderMixin {
                 // nunca: eso era "no baja por vida". Interpolada, porque el dispatcher tambien lo
                 // esta y si no la linea tiembla al caminar.
                 float baseY = (float) Mth.lerp((double) partialTicks, living.yOld, living.getY());
+                if (living.hurtTime == DamageFlash.FLASH_TICKS) {
+                    com.cortes.combat.CortesCombat.LOGGER.info(
+                            "[flash/bar] vida={}/{} alto={} umbral={} baseY={} corte={}",
+                            living.getHealth(), living.getMaxHealth(), living.getBbHeight(),
+                            threshold, baseY, baseY + threshold);
+                }
                 toDraw = new HealthFlashBuffer(vertexConsumer, baseY + threshold,
                         OverlayTexture.NO_OVERLAY);
             }

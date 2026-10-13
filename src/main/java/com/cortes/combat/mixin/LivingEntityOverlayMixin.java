@@ -50,6 +50,11 @@ public class LivingEntityOverlayMixin {
         if (entity.hurtTime <= 0) {
             return;
         }
+        if (entity.hurtTime == DamageFlash.FLASH_TICKS) {
+            com.cortes.combat.CortesCombat.LOGGER.info(
+                    "[flash] {} hurt={} vida={}/{} fila={}", entity.getType(), entity.hurtTime,
+                    entity.getHealth(), entity.getMaxHealth(), DamageFlash.rowFor(entity.hurtTime));
+        }
         // **El blanco de la muerte se decide con `getHealth()` y NO con `deathTime`.** Verificado con
         // javap: `deathTime` no esta en `defineSynchedData`, asi que el cliente vale cero siempre y el
         // blanco no se dibujo nunca. `hurtTime` si llega, por `ClientboundHurtAnimationPacket`.
