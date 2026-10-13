@@ -810,6 +810,31 @@ en orden, con el valor que consulta y una línea `VEREDICTO`.
    test lo afirma.
 10. **Rework de oro y cobre** — ver sección abajo.
 
+## Antes de publicar el repo (2026-10-13)
+
+**El repo sigue PRIVADO, por decisión del dueño.** El paquete de `README`/`LICENSE`/`.github` ya está
+puesto y se lee bien **como repo privado**; esto es lo que hoy no importa y **el día que se haga
+público sí**, en orden de gravedad:
+
+1. **Las dos texturas de terceros.** `textures/gui/sprites/hud/damage_overlay.png` es **All Rights
+   Reserved** (de `neoforge-damageoverlay`) y `crosshair_shield_indicator_{full,disabled}.png` es
+   **LGPL-2.1** (de `combatify`). **Repartir bajo GPL-3.0 un asset ARR no se sostiene**, y es el único
+   bloqueante de esta lista que no se arregla con un comando. Reemplazarlas con la misma ruta y el
+   mismo tamaño en píxeles: **no cambia una línea de render.**
+2. **Confirmar la licencia.** `gradle.properties` dice `GPL-3.0-only` desde el 2026-10-13 y el mod
+   declaraba `All Rights Reserved`. **El salto está sin confirmar por el dueño** — es una línea para
+   volver atrás, pero hay que decidirla antes de repartir nada.
+3. **El `AGENTS.md` se publica con el repo.** Las *reglas* están bien y son la mitad del valor del
+   proyecto; lo que hay que limpiar son los **datos**: rutas locales, `refs/`, y nombres de terceros.
+4. **Secret scanning y private vulnerability reporting dieron 422 y 404 en privado.** Se habilitan el
+   día que sea público (`gh repo edit --enable-secret-scanning
+   --enable-secret-scanning-push-protection` y `gh api -X PUT repos/.../private-vulnerability-reporting`)
+   — y con eso el `SECURITY.md` deja de tener una salvedad y pasa a decir la verdad sin condiciones.
+5. **El icono y el GIF.** El TOML no tiene `logoFile` y el visual del README son las seis texturas del
+   mod: se defiende, pero no muestra el combate. La *social preview* es **sólo por web UI**, no hay API
+   ni flag de CLI.
+6. **El nombre**, a chequear a mano en Modrinth y CurseForge. Una búsqueda web no es fuente para eso.
+
 ---
 
 ## Rework de ORO y COBRE — diseño cerrado, pendiente de implementación
