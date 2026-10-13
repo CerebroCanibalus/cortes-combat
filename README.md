@@ -41,23 +41,9 @@ This is an intuitive and noob-friendly Minecraft combat full rework focused on f
 
 **The Nether Reactor.** Load it, push it past its ceiling and turn it into the heart of your base! Push it further and reach the absolute power!! 
 
-**YOUR weapons can join the fight!** You can add YOUR OWN through `config/cortescombat/weapons/` and you can also configurate every weapon of the mod. You can set its reach, its charge, its knockback and much more. 
+**YOUR weapons can join the fight!** If none of the added ones fit you, you can add YOUR OWN through `config/cortescombat/weapons/` and a resourcepack, you can also configurate every weapon of the mod. You can set its reach, its charge, its knockback and much more. 
 
-**Revitalized combat effects.**
-
-## Pick something else if
-
-This mod replaces how melee works. That isn't what everyone wants, so here's the honest map:
-
-| You want | Try |
-| --- | --- |
-| Minecraft Dungeons-style combos, dual wielding and fluid attack animations | [Better Combat](https://modrinth.com/mod/better-combat) |
-| A souls-like overhaul with skills, dodging and its own animation set | [Epic Fight](https://modrinth.com/mod/epic-fight) |
-| Vanilla's combat rules, with the old Combat Test numbers restored | [Combatify](https://www.curseforge.com/minecraft/mc-mods/combatify) (Fabric) |
-| Combat that is exactly vanilla, plus cosmetics | Something else entirely |
-| To play on **Fabric or Quilt** | Not this — Cortés Combat is NeoForge only |
-
-And two things worth knowing before you install: this mod is **required on both client and server** (the server resolves every hit; the client only draws it), and it **refuses to load alongside a combat mod it can't coexist with**, printing the name of the mod in the log instead of crashing with a stack trace. That list is short and it exists because a silent conflict is worse than a loud refusal.
+**Revitalized combat effects.** All kind of wacky and cool effects have been added to damage, low health, mob attacks and more, with a new easy to understand life indicator that won't cannibalize the game's visuals.
 
 ## Install
 
@@ -74,17 +60,6 @@ cd cortes-combat
 ```
 
 The jar lands in `build/libs/`. Add it to `mods/` like any other. For a development environment, `./gradlew runClient` and `./gradlew runServer` boot the game with the mod already loaded.
-
-## Playing it
-
-| Action | What happens |
-| --- | --- |
-| **Hold left click** | Charges the swing and fires it when you release — one button does both |
-| **Right click** | The weapon's own move: a lunge, a sweep, a parry, or nothing at all |
-| **Right click holding a shield or a sword** | Raises the guard |
-| **Left click holding food** | Eats; the guard can be up at the same time |
-
-Two readouts sit on your screen while you hold: the bar **under the crosshair** is the charge, and the bar **wrapping it** is the cooldown. The brackets close when the weapon is ready to swing. When you carry something that blocks, three faint pips appear above the crosshair — that's your guard stamina, and they are worth watching.
 
 ## Weapons from other mods
 
