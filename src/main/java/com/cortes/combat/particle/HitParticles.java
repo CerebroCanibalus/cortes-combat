@@ -51,6 +51,21 @@ public final class HitParticles {
     }
 
     /**
+     * Un impacto que <b>no es un golpe</b>: todo el daño entró, de un solo color.
+     *
+     * <p>Es la puerta del daño de efecto -- veneno, fuego, caída -- donde el split es trivial porque
+     * no hay armadura que lo pare. Ver {@code OnAnyDamage} para por qué el split y el tipo son dos
+     * preguntas distintas y cada una tiene su puerta.</p>
+     */
+    public static void impact(ServerLevel level, LivingEntity target, float amount, int rgb) {
+        int total = DamageParticles.countFor(amount);
+        if (total <= 0) {
+            return;
+        }
+        spawn(level, target, new int[]{total}, new int[]{rgb}, false);
+    }
+
+    /**
      * Un impacto, con su reparto de colores.
      *
      * @param heavy el golpe cargado: cambia la textura, no el color ni la cantidad
@@ -60,9 +75,11 @@ public final class HitParticles {
         if (total <= 0) {
             return;
         }
-        int[] counts = HitReadout.distribute(split.amounts(), total);
-        int[] colours = split.colours();
+        spawn(level, target, HitReadout.distribute(split.amounts(), total), split.colours(), heavy);
+    }
 
+    private static void spawn(ServerLevel level, LivingEntity target, int[] counts, int[] colours,
+                              boolean heavy) {
         AABB box = target.getBoundingBox();
         double centreX = (box.minX + box.maxX) * 0.5D;
         double centreY = box.minY + Math.max(0.2D, box.maxY - box.minY) * 0.5D;

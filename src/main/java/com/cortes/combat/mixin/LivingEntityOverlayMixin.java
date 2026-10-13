@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Hace que la muerte sea <b>blanca</b>.
+ * Elige <b>la fila</b> del flash: el impacto negro, después el rojo, y blanco al morir.
  *
  * <h2>El seam, y por qué es una sola línea</h2>
  *
@@ -20,16 +20,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  *     return OverlayTexture.pack(OverlayTexture.u(u), OverlayTexture.v(e.hurtTime &gt; 0 || e.deathTime &gt; 0));
  * }</pre>
  *
- * <p><b>Y ahí está la sorpresa: {@code deathTime > 0} YA dispara el rojo.</b> Un cuerpo que se muere
- * ya flashea en vanilla -- lo que faltaba era que fuera <b>blanco</b>, y el segundo argumento
- * {@code u}, que elige la intensidad del blanco, ya viaja por acá.</p>
+ * <p>El entero que devuelve lleva una columna y una fila, y {@code pack(int, int)} acepta cualquier
+ * fila -- no sólo las dos que {@code v(boolean)} sabe nombrar. <b>Eso es lo que permite tener una
+ * paleta propia sin tocar nada de vanilla.</b></p>
  *
- * <h2>Y lo que este mixin YA NO hace</h2>
+ * <h2>La columna es cero, y a propósito</h2>
  *
- * <p>La ronda anterior también usaba esta columna para escalar el rojo según la vida que le queda al
- * cuerpo. <b>El playtest lo desmintió</b>: los mobs salían negros. La historia completa está en
- * {@link DamageFlash} -- lo que queda acá es sólo la muerte, que usa la <b>fila blanca</b> y por eso
- * no toca nada de lo que se rompió.</p>
+ * <p>Todos los valores de acá usan la <b>columna 0</b>, que es la que el playtest aprobó. La columna
+ * es el eje que rompió el efecto cuando se la usó para escalar la intensidad, así que se queda
+ * quieta: <b>el efecto entero se controla por fila.</b></p>
  *
  * <h2>La muerte gana sobre el herido</h2>
  *
@@ -46,11 +45,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class LivingEntityOverlayMixin {
 
     @Inject(method = "getOverlayCoords", at = @At("HEAD"), cancellable = true)
-    private static void cortescombat$whiteOnDeath(LivingEntity entity, float vanillaU,
-                                                  CallbackInfoReturnable<Integer> cir) {
+    private static void cortescombat$ourFlash(LivingEntity entity, float vanillaU,
+                                              CallbackInfoReturnable<Integer> cir) {
         if (entity.deathTime > 0) {
             float white = DamageFlash.whiteForDeath(entity.deathTime);
             cir.setReturnValue(OverlayTexture.pack(OverlayTexture.u(white), false));
+            return;
+        }
+        if (entity.hurtTime > 0) {
+            // La fila decide el color y el tiempo; la columna queda en cero. Ver el javadoc.
+            cir.setReturnValue(OverlayTexture.pack(0, DamageFlash.rowFor(entity.hurtTime)));
         }
     }
 }

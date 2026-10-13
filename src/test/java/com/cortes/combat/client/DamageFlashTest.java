@@ -7,14 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 /**
- * La aritmética del flash. Pura, así que corre en una JVM pelada.
+ * La paleta del flash y su curva. Puras, así que corren en una JVM pelada.
  *
- * <p>El mixin que la usa <b>no arranca sin el juego</b>, así que si los números vivieran adentro no
- * habría una sola aserción mirándolos.</p>
- *
- * <p><b>Y este archivo tiene una versión anterior que ya no existe:</b> probaba un gradiente por
- * columna que hacía que el rojo dijera la vida restante. El playtest lo desmintió -- los mobs salían
- * negros -- y los tests del gradiente se fueron con él. Ver {@link DamageFlash}.</p>
+ * <p>Los dos mixins que las usan <b>no arrancan sin el juego</b>, así que si los números vivieran
+ * adentro no habría una sola aserción mirándolos -- y este efecto ya se equivocó una vez con el
+ * playtest como único test.</p>
  */
 class DamageFlashTest {
 
@@ -26,66 +23,93 @@ class DamageFlashTest {
         return (abgr >>> shift) & 0xFF;
     }
 
-    @Test
-    void theVanillaRedBecomesTheStrongerOne() {
-        assertEquals(DamageFlash.STRONGER_RED, DamageFlash.strengthen(DamageFlash.VANILLA_RED));
-    }
-
     /**
-     * <b>El invariante.</b>
+     * <b>La curva, y es lo que hace que esto sea un golpe y no un tinte.</b>
      *
-     * <p>El alpha es cuánto <em>sobrevive</em> el color de la entidad, así que un alpha más chico es
-     * más rojo. Se escribe como la propiedad -- "es más rojo" -- y no como el número, porque el
-     * número es lo que se va a querer retunear después de un playtest.</p>
+     * <p>{@code hurtTime} cuenta para abajo: el primer tick es el número más alto. El impacto tiene
+     * que estar <b>al principio</b>, y una inversión pondría el frame negro al final -- cuando el
+     * golpe ya se fue, que es el momento en que menos significa.</p>
      */
     @Test
-    void theFlashIsStrongerThanVanilla() {
-        assertTrue(alpha(DamageFlash.STRONGER_RED) < alpha(DamageFlash.VANILLA_RED),
-                "el flash quedaría igual o más débil que el de vanilla");
+    void theImpactComesFirst() {
+        assertEquals(DamageFlash.IMPACT_ROW, DamageFlash.rowFor(DamageFlash.FLASH_TICKS));
+        assertEquals(DamageFlash.IMPACT_ROW, DamageFlash.rowFor(DamageFlash.FLASH_TICKS - 1));
+        assertEquals(DamageFlash.RED_ROW, DamageFlash.rowFor(DamageFlash.FLASH_TICKS - 2));
+        assertEquals(DamageFlash.RED_ROW, DamageFlash.rowFor(1));
     }
 
-    /**
-     * Y no tan fuerte que el mob deje de leerse.
-     *
-     * <p>Por debajo de 0x40 el flash tapa la animación en vez de acompañarla, y el mob se vuelve una
-     * silueta. <b>Este piso es el que el gradiente violaba en su punta</b> -- el playtest lo
-     * encontró antes que el test, y por eso el gradiente se fue.</p>
-     */
+    /** Y la curva nunca vuelve al impacto: un solo frame negro por golpe, no dos. */
     @Test
-    void butNotSoStrongThatTheMobDisappears() {
-        assertTrue(DamageFlash.FLASH_ALPHA >= 0x40,
-                "con alpha " + DamageFlash.FLASH_ALPHA + " el mob queda tapado por el flash");
-    }
-
-    /**
-     * Las filas blancas pasan intactas, y es la mitad que no se está arreglando.
-     *
-     * <p>Su alpha varía por columna y es el gradiente entero lo que hace funcionar el flash blanco
-     * -- el del creeper y el de la muerte. Tocarlo rompería algo que nadie pidió, y además es la
-     * fila que el flash de la muerte usa.</p>
-     */
-    @Test
-    void theWhiteRowsPassThroughUntouched() {
-        for (int alpha = 0; alpha <= 255; alpha += 51) {
-            int white = (alpha << 24) | 0xFFFFFF;
-            assertEquals(white, DamageFlash.strengthen(white),
-                    "una fila blanca fue modificada con alpha " + alpha);
+    void theImpactHappensExactlyOnce() {
+        int impacts = 0;
+        for (int hurtTime = DamageFlash.FLASH_TICKS; hurtTime >= 1; hurtTime--) {
+            if (DamageFlash.rowFor(hurtTime) == DamageFlash.IMPACT_ROW) {
+                impacts++;
+            }
         }
+        assertEquals(DamageFlash.IMPACT_TICKS, impacts,
+                "el frame de impacto dura lo que dice durar, ni un tick mas");
     }
 
-    /** Y el rojo no es el blanco: si fueran iguales, el test de arriba no probaría nada. */
+    /** Las dos filas de la paleta son distintas: si fueran la misma, la curva no haría nada. */
     @Test
-    void theTwoHalvesAreActuallyDifferent() {
-        assertNotEquals(DamageFlash.VANILLA_RED, (0xFF << 24) | 0xFFFFFF);
+    void theTwoRowsAreActuallyDifferent() {
+        assertNotEquals(DamageFlash.IMPACT_ROW, DamageFlash.RED_ROW);
+    }
+
+    /** La fila del impacto escribe el negro con el alpha que el playtest produjo. */
+    @Test
+    void theImpactRowIsTheBlackFrame() {
+        assertEquals(DamageFlash.IMPACT_BLACK, DamageFlash.texturePixel(DamageFlash.IMPACT_ROW,
+                DamageFlash.VANILLA_RED));
+        assertEquals(DamageFlash.IMPACT_ALPHA, alpha(DamageFlash.IMPACT_BLACK));
+    }
+
+    /** Y la del rojo, el rojo al 50 % -- más fuerte que el 30 % de vanilla. */
+    @Test
+    void theRedRowIsStrongerThanVanilla() {
+        assertEquals(DamageFlash.STRONGER_RED, DamageFlash.texturePixel(DamageFlash.RED_ROW,
+                DamageFlash.VANILLA_RED));
+        assertTrue(alpha(DamageFlash.STRONGER_RED) < alpha(DamageFlash.VANILLA_RED),
+                "el rojo quedaría igual o más débil que el de vanilla");
+        assertTrue(DamageFlash.RED_ALPHA >= 0x40,
+                "con alpha " + DamageFlash.RED_ALPHA + " el mob queda tapado por el flash");
     }
 
     /** Sólo cambia el alpha: el rojo sigue siendo rojo, en los tres canales. */
     @Test
     void theColourItselfIsUntouched() {
-        for (int shift : new int[]{16, 8, 0}) {
-            assertEquals(channel(DamageFlash.VANILLA_RED, shift),
-                    channel(DamageFlash.STRONGER_RED, shift),
-                    "el canal " + shift + " cambió: el flash dejó de ser el mismo color");
+        for (int row : new int[]{DamageFlash.RED_ROW, DamageFlash.IMPACT_ROW}) {
+            int written = DamageFlash.texturePixel(row, DamageFlash.VANILLA_RED);
+            for (int shift : new int[]{16, 8, 0}) {
+                assertEquals(channel(DamageFlash.VANILLA_RED, shift), channel(written, shift),
+                        "el canal " + shift + " cambió en la fila " + row);
+            }
+        }
+    }
+
+    /**
+     * Las filas blancas pasan intactas, y las rojas que no son nuestras también.
+     *
+     * <p>Las blancas porque su alpha varía por columna y es el gradiente entero lo que hace
+     * funcionar el flash de la muerte. Y las rojas ajenas porque <b>no se reescribe lo que no se va
+     * a usar</b>: cada fila reescrita es una que alguien puede estar consultando sin que lo
+     * sepamos.</p>
+     */
+    @Test
+    void everythingElsePassesThroughUntouched() {
+        for (int alpha = 0; alpha <= 255; alpha += 51) {
+            int white = (alpha << 24) | 0xFFFFFF;
+            assertEquals(white, DamageFlash.texturePixel(DamageFlash.RED_ROW, white),
+                    "una fila blanca fue modificada");
+        }
+        for (int row = 0; row <= 15; row++) {
+            if (row == DamageFlash.RED_ROW || row == DamageFlash.IMPACT_ROW) {
+                continue;
+            }
+            assertEquals(DamageFlash.VANILLA_RED,
+                    DamageFlash.texturePixel(row, DamageFlash.VANILLA_RED),
+                    "la fila " + row + " es de vanilla y fue reescrita");
         }
     }
 
@@ -95,9 +119,7 @@ class DamageFlashTest {
         assertEquals(0.0F, DamageFlash.whiteForDeath(0), 1.0e-6F);
         assertEquals(0.5F, DamageFlash.whiteForDeath(10), 1.0e-6F);
         assertEquals(1.0F, DamageFlash.whiteForDeath(20), 1.0e-6F);
-        // Y si el tick se pasa -- que pasa, porque el cuerpo sigue un tick más -- no se sale.
         assertEquals(1.0F, DamageFlash.whiteForDeath(25), 1.0e-6F);
-        // Y un tick negativo -- que no debería existir -- tampoco.
         assertEquals(0.0F, DamageFlash.whiteForDeath(-3), 1.0e-6F);
     }
 }
