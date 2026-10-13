@@ -631,6 +631,21 @@ dice y lo que el juego hace**, o entre lo que el test afirma y lo que el jugador
   `server-out.log` sin errores pero el build había fallado y ⊘ arrancó servidor. Hay que mirar que el
   build pasó **Y** que hay `Done (Xs)`, en ese orden.
 - **Las 2 líneas DEBUG de un mixin que se queja de su firma son el aviso, ⊘ el ruido.**
+- **Un comentario que explica *por qué* una rareza es correcta es exactamente donde hay que ir a
+  mirar si la rareza lo es.** La espada tenía `TEMPO.put(WeaponProfile.SWORD, 0.85F)` c/ una nota que
+  decía *"0.85 puts it at 10"* -- y `scaleFor` **multiplica la velocidad**, así que 0.85 **frena**:
+  quince ticks contra los doce de vanilla. El mismo 0.85 está en el hacha, donde la nota dice
+  *"slowed to twenty four"* y **acierta**, así que la tabla era coherente y **la única fila que
+  discordaba c/ su propia nota era la que nadie afirmaba**. `IframesTest` recorría la tabla y listaba
+  a la espada como el caso veloz; el hacha tenía su test y la espada no. Pasó un round entero más
+  lenta que vanilla c/ el comentario diciendo que era más rápida.
+- **Y el número real tampoco era el de la nota:** `20.0 / 1.6` da 12,4999… en punto flotante, así que
+  la espada de vanilla son **doce** ticks y ⊘ el *"12-13"* que la nota al lado sugería. **Un rango en
+  una nota ⊘ es un número contra el que medir**, y ése fue el número que hizo falta para ver el bug.
+- **Un guard que lee prosa encuentra su propia explicación, tercera vez.** El comentario que cuenta
+  este bug **cita la fila vieja** para poder contarlo, así que el guard de `SwordTempoTest` **tira los
+  comentarios antes de preguntar** -- igual que el de `ReactorPhaseTwoWiringTest`. Es la forma barata
+  de escribirlo bien y la única que deja que un comentario explique el bug que documenta.
 
 ### La ronda del arcabuz — el estado que vivía en el lugar equivocado (2026-10-12)
 
@@ -890,7 +905,7 @@ cuyo nombre dice una cosa y cuyo valor dice otra.**
 
 ## Estado técnico actual
 
-**1161 tests unitarios verdes** (2026-10-13). Todo lo testeable corre en JVM pelada; lo que necesita el
+**1165 tests unitarios verdes** (2026-10-13). Todo lo testeable corre en JVM pelada; lo que necesita el
 juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardState`, `ConeSize`,
 `WeaponTooltip`, `ArcabuzState`, `ArcabuzMuzzle`, `DamageFlash`, `ShakePhase`, `ShakeKind` y los
 `viewmodel/*` puros.
@@ -922,6 +937,12 @@ juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardStat
   `fx/ExplosionShake` no la ve), `fx/ExplosionShake` (`ExplosionEvent.Detonate`, sin dueño) y
   `fx/HurtShake` (`LivingDamageEvent.Post`, gate `getEntity() != null` para no temblar con cada tick de
   veneno o fuego). El arcabuz y el orbe traen su número a mano y usan `ShakeKind.COMMON_REACH`.
+- **El cráter de la nuke evapora el agua y deja ceniza.** `ReactorBlast` labra la esfera por tick y
+  **el fluido va a aire explícito**: `Level.removeBlock` repone `fluidstate.createLegacyBlock()` -- o
+  sea *"saca el bloque y deja el agua"* --, así que sobre agua era un no-op que igual consumía
+  presupuesto y contaba la posición como destruida, y un cráter bajo el mar se rellenaba solo con el
+  build verde. La **ceniza** (`ParticleTypes.ASH`) sale con el **frente** de la onda -- sólo el frente
+  sabe el área que ya arrancó -- más una columna propia en el reventón.
 - **Tooltips de stats, en TODAS las armas ⊘ vanilla.** `CombatTooltipHandler` (2 eventos) +
   `ConeSize` + `WeaponTooltip` + `TooltipLine`. Reemplaza los 2 renglones de vanilla
   (`GatherSkippedAttributeTooltipsEvent` por **id de modificador**, ⊘ por texto) c/ 7 renglones.
@@ -1004,6 +1025,9 @@ juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardStat
 | **Playtest del flash** | El rojo pasó a **87,5 %** (era 50 % y el playtest lo llamó *"muy poco intenso"*), el impacto negro dura **3 ticks** (uno se leía como un bug) y el **cadáver ahora sale blanco** durante toda la animación de muerte (antes quedaba rojo: vanilla le pone la fila roja por `deathTime > 0` y nosotros le pasábamos el valor sin tocarlo) |
 | **Playtest de los ocho temblores** | Estaba muerto por la tabla de senos (`Mth.sin` satura con el reloj alto) — ver la lección de los FX. Arreglado con `ShakePhase`, y son **ocho fuentes** en `fx/ShakeKind`. La **nuke del reactor** entró después, con alcance propio: 8,0° a **160 bloques** contra los 40 de una TNT. Lo que hay que ver: que **no maren** jugando seguido y si el alcance de la nuke es el correcto |
 | **El roll del reactor** | **Arreglado y CONFIRMADO a ojo por el dueño** (2026-10-13): su `1,9` saturaba con el reloj > 108.362 y el de prueba estaba en 285.340, así que sólo sobrevivía el pitch. Ahora tiembla en los dos ejes y el dueño lo llamó *"perfecto"* — **es la intención y no se toca** |
+| **Playtest del agua y la ceniza del cráter** | El fluido ya no pasa por `removeBlock` (que lo reponía) y la ceniza sale con el frente. Lo que hay que ver: que un reactor **bajo el agua** deje el cráter seco, y que la nube se lea como ceniza y no como humo. **⊥ verificar si el agua vuelve a entrar** de a poco desde el borde del cráter — si molesta, el corte honesto es evaporar en un radio mayor, no tocar el barrido |
+| **`[curar]` a la espera del playtest** | `CurarOnHeal` ya escucha `LivingHealEvent`, que es el seam por el que pasa **cualquier** cura (poción, manzana, regen de vanilla, robo de vida, otros mods). La instrumentación está puesta para que el próximo playtest diga **cuál de las dos vías no llega**, en vez de adivinarlo |
+| **`SurvivalTicker` le pasa `isHurt()` a `SurvivalRules.step`** | El parámetro se documenta como *"the player is below maximum health"* y `isHurt()` es `hurtTime > 0` — **otra cosa**. Como el `else` resetea el reloj, un golpe suelto de 10 ticks no alcanza los 20 del intervalo: la regen de comida sólo puede llenarse mientras te están pegando seguido. `SurvivalRulesTest` documenta el `isHurt()` actual, así que hay que decidir cuál de los dos es el diseño **antes** de tocarlo |
 | **Retroalimentación del golpe cargado** | Es **uno**: `addParticle` no aparece en ninguna parte del código para esto, y `CombatFeedback` sólo tiene `HIT`/`KILL`/`GUARDED`. **El cargado cambia el número y ⊘ cambia nada en pantalla ni en el oído** — que es la mitad de la mecánica, porque el oído es el único canal que funciona **sin mirar** |
 | **Arcabuz** | Feedback **por objetivo** (el disparo pega a diez y la pantalla ⊘ dice a cuántos) y el flash a **1,7 m**, derivado **a ojo** — primer número a tocar si se ve mal. El click izquierdo ya tiene `STRIKE`+`RECOVER` |
 | **El arcabuz no tiene animación de cuerpo** (3ª persona) | Su perfil ⊘ lee `CHOP` ni `STRIKE`: su click izquierdo es una puñalada de bayoneta y nunca se le escribió |

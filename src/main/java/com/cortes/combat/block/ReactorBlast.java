@@ -3,6 +3,7 @@ package com.cortes.combat.block;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
@@ -192,7 +193,24 @@ public final class ReactorBlast {
                     if (state.isAir() || state.getBlock().defaultDestroyTime() < 0.0F) {
                         continue;
                     }
-                    level.removeBlock(new BlockPos(x, y, z), false);
+                    // **El agua se evapora, y `removeBlock` no la evapora.**
+                    //
+                    // `Level.removeBlock(pos, false)` escribe `fluidstate.createLegacyBlock()` en la
+                    // posicion -- o sea "saca el bloque pero deja el fluido que habia adentro", que es
+                    // exactamente lo que hace falta para romper una escalera inundada y exactamente lo
+                    // contrario de lo que hace una nuke. Sobre agua es un no-op: la lee, la escribe de
+                    // vuelta y la cuenta como destruida, consumiendo presupuesto. Un crater bajo el mar
+                    // se labraba y se volvia a llenar solo, sin un solo error en el log.
+                    //
+                    // Una nuke vaporiza: la fuente y el flujo, los dos. `setBlock` con aire lo hace en
+                    // una escritura y ademas borra el bloque mojado entero, que es lo que el crater
+                    // pide.
+                    BlockPos target = new BlockPos(x, y, z);
+                    if (state.getFluidState().isEmpty()) {
+                        level.removeBlock(target, false);
+                    } else {
+                        level.setBlock(target, Blocks.AIR.defaultBlockState(), 3);
+                    }
                     destroyed++;
                     budget.removals--;
                 }
@@ -216,6 +234,14 @@ public final class ReactorBlast {
             double cz = center.getZ() + 0.5;
             level.sendParticles(ParticleTypes.CLOUD, cx, cy, cz, 30,
                     wave * 0.6, wave * 0.6, wave * 0.6, 0.01);
+            // **Y la ceniza, que es lo que queda cuando el humo se va.**
+            //
+            // El humo es blanco y sube; la ceniza es gris y cae despacio, asi que dos emisiones en el
+            // mismo lugar leen como dos cosas distintas: la onda que pasa y lo que deja detras. Y sale
+            // con el FRENTE y no del centro -- el frente es lo unico que sabe el area que ya arranco,
+            // asi que la nube cubre el crater a medida que crece en vez de quedarse en el medio.
+            level.sendParticles(ParticleTypes.ASH, cx, cy, cz, 24,
+                    wave * 0.75, wave * 0.45, wave * 0.75, 0.02);
             if ((level.getGameTime() & 3L) == 0L) {
                 level.sendParticles(ParticleTypes.EXPLOSION, cx, cy, cz, 2,
                         wave * 0.5, wave * 0.5, wave * 0.5, 0.0);

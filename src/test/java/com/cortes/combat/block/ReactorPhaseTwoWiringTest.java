@@ -72,6 +72,44 @@ class ReactorPhaseTwoWiringTest {
         return source.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("//[^\\n]*", "");
     }
 
+    /**
+     * <b>Y el agua se evapora, que es justo lo que {@code removeBlock} no hace.</b>
+     *
+     * <p>{@code Level.removeBlock(pos, false)} escribe el bloque del FLUIDO que habia en la posicion
+     * -- "saca el bloque y deja el agua" --, asi que sobre agua es un no-op que ademas consume
+     * presupuesto y cuenta la posicion como destruida. Un crater bajo el mar se labraba y se volvia a
+     * llenar solo, con el build verde y nada en el log: es el modo de falla exacto de esta clase.</p>
+     */
+    @Test
+    @DisplayName("the crater evaporates the water instead of leaving removeBlock to refill it")
+    void theWaterEvaporates() {
+        String blast = read(BLAST);
+        assertTrue(blast.contains("getFluidState().isEmpty()"),
+                "**un fluido tiene que reconocerse ANTES de sacar el bloque**, o el barrido corre "
+                        + "`removeBlock` sobre agua y lo que queda es agua");
+        assertTrue(blast.contains("Blocks.AIR.defaultBlockState()"),
+                "**el agua va a aire, explicito.** `removeBlock` repone el bloque del fluido que "
+                        + "habia, asi que un crater bajo el mar se rellena solo tick a tick con el "
+                        + "build verde y sin una linea en el log");
+        assertTrue(blast.contains("import net.minecraft.world.level.block.Blocks"),
+                "y el aire necesita el import, o el arreglo es un error de compilacion que alguien "
+                        + "va a 'resolver' volviendo a poner `removeBlock`");
+    }
+
+    /** Y el crater deja ceniza, que es lo que el playtest pidio que quedara detras de la onda. */
+    @Test
+    @DisplayName("the crater leaves an ash cloud over the whole area, emitted by the wave")
+    void theCraterLeavesAsh() {
+        String blast = read(BLAST);
+        assertTrue(blast.contains("ParticleTypes.ASH"),
+                "**la ceniza sale con el FRENTE.** El frente es lo unico que sabe el area que ya "
+                        + "arranco, asi que la nube cubre el crater a medida que crece; desde el "
+                        + "centro se quedaria en el medio y el pedido era 'por todo el area'");
+        assertTrue(read(BE).contains("ParticleTypes.ASH"),
+                "y el reventon levanta su propia columna en el instante en que se va, que es la que "
+                        + "se ve desde lejos");
+    }
+
     @Test
     @DisplayName("the star crater is a staged sphere, budgeted, and never a single explode")
     void theStarCraterIsStaged() {

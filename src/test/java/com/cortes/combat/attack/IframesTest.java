@@ -113,12 +113,16 @@ class IframesTest {
                         + "fallback twelve, which no player ever swings at");
     }
 
-    /** And the tempo multiplier cannot push anything into the window either. */
+    /** And the tempo multiplier cannot push anything into the window either, in either direction. */
     @Test
-    @DisplayName("a tempo that speeds a weapon up still leaves it outside the window")
+    @DisplayName("a tempo, speeding a weapon up or slowing it down, still leaves it outside the window")
     void tempoCannotCrossIt() {
-        // The two profiles the catalogue does give a tempo to, at their fastest.
-        float[][] tempos = {{1.6F, 0.85F}, {4.0F, 1.25F}};
+        // The two profiles the catalogue DOES give a tempo to, plus the sword at the 1.0 its row now
+        // resolves to. The axe was missing here for a round and the sword was listed as the fast one
+        // when its 0.85 was slowing it down -- see `WeaponStats`, where that row is deleted and the
+        // direction is spelled out. Both directions are walked now, because "a tempo" is a number
+        // someone will retune and the window is what it would silently break.
+        float[][] tempos = {{1.6F, 1.0F}, {4.0F, 1.25F}, {1.0F, 0.85F}};
         for (float[] entry : tempos) {
             double speed = entry[0] * entry[1];
             int ticks = AttackTiming.ticksFor(speed);

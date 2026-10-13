@@ -734,6 +734,10 @@ public class NetherReactorBlockEntity extends BlockEntity {
         play(server, ReactorSounds.NUCLEAR_EXPLOSION, ReactorOverload.NUCLEAR_VOLUME, 0.8F);
         server.sendParticles(ParticleTypes.EXPLOSION_EMITTER, cx, cy, cz, 4, 2.0, 2.0, 2.0, 0.0);
         server.sendParticles(ParticleTypes.FLASH, cx, cy, cz, 1, 0.0, 0.0, 0.0, 0.0);
+        // **La ceniza del reventon, y la del crater no es esta.** Esta es la columna que levanta la
+        // nuke en el instante en que se va; la que cubre el area entera la emite `ReactorBlast` con
+        // cada frente de la onda, porque solo el frente sabe lo que ya arranco.
+        server.sendParticles(ParticleTypes.ASH, cx, cy, cz, 140, 5.0, 3.0, 5.0, 0.06);
         // **Y el golpe de camara, que es lo unico que le dice al cuerpo "fue una nuke".**
         //
         // Va aca y no en `ReactorShake`: ese es el zumbido CONTINUO del reactor, que dura lo que dura

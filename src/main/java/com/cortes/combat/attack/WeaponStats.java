@@ -356,9 +356,14 @@ public final class WeaponStats {
      * interval and the only one that used to be unreachable from outside.
      *
      * <p>Exposed because a tooltip that printed vanilla's untouched attribute would be printing
-     * a number this table then changes: the sword's real tempo is 0.85 and its real interval is
-     * not the one its item declares. A readout that skips this step is a readout of a weapon that
+     * a number this table then changes: the axe's real tempo is 0.85 and its real interval is not
+     * the one its item declares. A readout that skips this step is a readout of a weapon that
      * does not exist.</p>
+     *
+     * <p><b>Pero un multiplicador por debajo de uno FRENA, y el nombre dice lo contrario.</b>
+     * Multiplica la velocidad de ataque y no los ticks, asi que el 0.85 del hacha son veinticuatro
+     * ticks contra los veinte de vanilla. Es exactamente como la espada paso un round entera siendo
+     * frenada por una fila cuyo comentario la llamaba mas rapida.</p>
      */
     public static float tempoFor(WeaponProfile profile) {
         return TEMPO.getOrDefault(profile, 1.0F);
@@ -374,9 +379,28 @@ public final class WeaponStats {
     private static final Map<WeaponProfile, Float> TEMPO = new HashMap<>();
 
     static {
-        // Vanilla's sword is 12-13 ticks. 0.85 puts it at 10, which is what a sword should feel
-        // like when it is the weapon in your hand and the thing in front of you needs two hits.
-        TEMPO.put(WeaponProfile.SWORD, 0.85F);
+        // **La espada ya no esta en esta tabla, y la fila que estaba es la razon de este parrafo.**
+        //
+        // Decia `TEMPO.put(WeaponProfile.SWORD, 0.85F)` con un comentario que afirmaba *"0.85 puts
+        // it at 10"* -- y ese 0.85 hacia exactamente lo contrario. `scaleFor` MULTIPLICA la
+        // velocidad de ataque por el tempo, asi que un valor por debajo de uno FRENA: 1.6 * 0.85 es
+        // 1.36, que es `ticksFor(1.36)` = quince ticks, dos MAS que los trece de vanilla. El mismo
+        // numero esta en el hacha unas lineas mas abajo, donde el comentario dice *"slowed to twenty
+        // four"* y tiene razon -- o sea que la tabla era coherente y **el unico renglon que
+        // discordaba con su propia nota era el de la espada.**
+        //
+        // La leccion no es el signo: es que un comentario que explica POR QUE una rareza es correcta
+        // es exactamente donde hay que ir a mirar si la rareza lo es. La espada estuvo un round
+        // entero mas lenta que vanilla, con el comentario diciendo que era mas rapida.
+        //
+        // El playtest pidio que bajara un quince por ciento, y quince por ciento de quince ticks es
+        // 12.75, que no es un entero. Asi que la fila se **borra** en vez de retunearse, y la espada
+        // cae en el tempo de su propio item: DOCE ticks -- `20.0 / 1.6` da 12,4999... en punto
+        // flotante, que es el numero real de vanilla y no el trece que la nota de al lado sugeria.
+        // Son un veinte por ciento menos que los quince que venia corriendo, o sea un poco mas de lo
+        // que el pedido decia, y es el numero honesto: el otro candidato es trece, que sigue siendo
+        // mas lento que vanilla y que habria que escribir con un tempo de 0.98 -- "cuatro por ciento
+        // mas lenta" para conseguir "un poco mas rapida", que es la misma mentira al reves.
         // The dagger is NOT in this table. It was, at 0.7, and the entry was dead: there was no
         // dagger item for it to apply to, so nothing had ever been measured against it. The
         // moment the item existed, the entry started doing the opposite of what it looked like:

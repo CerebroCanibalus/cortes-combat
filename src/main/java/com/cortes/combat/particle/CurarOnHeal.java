@@ -51,6 +51,13 @@ public final class CurarOnHeal {
         if (!(player.level() instanceof ServerLevel server)) {
             return;
         }
+        // **La instrumentacion, porque este handler cubre TODAS las vias y eso es justo lo que hay
+        // que poder ver.** El diseno dice que una pocion y la comida se tienen que ver igual -- es el
+        // motivo entero de elegir el evento --, asi que si el playtest ve una y no la otra, la
+        // pregunta no es "cual falta" sino "cual no esta llegando", y esta linea la contesta sola:
+        // imprime el monto y la vida en el momento exacto en que el juego decide que hubo una cura.
+        CortesCombat.LOGGER.info("[curar] amount={} vida={}/{}", event.getAmount(),
+                player.getHealth(), player.getMaxHealth());
         CurarParticles.puff(server, player, event.getAmount());
     }
 }
