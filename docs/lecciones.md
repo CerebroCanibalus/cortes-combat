@@ -212,6 +212,13 @@ dice y lo que el juego hace**, o entre lo que el test afirma y lo que el jugador
   el jar del último build — **suerte pura**: si no hubiera rebuild justo antes, estaba perdido.
 - ⊘ **Un commit no es un commit. Es una red.** El costo de no commitear ⊘ es olvidarse: es que una
   operación reversible deje de serlo.
+- **Y la red ⊘ está completa hasta que se EMPUJA.** Una sesión entera —54 commits, la ronda de FX, el
+  arreglo del reactor y todo el paquete de documentación— quedó viviendo sólo en el disco local: cada
+  `git status` decía "limpio" y cada `git log` mostraba el trabajo, porque **los dos miran el HEAD
+  local**. La única pregunta que lo ve es `git log origin/main..HEAD`. Y el síntoma desde afuera es
+  peor que un error: **GitHub mostraba una versión vieja del proyecto como si fuera la actual**, y el
+  README "no aparecía" —ni el archivo, ni renderizado abajo— porque su commit nunca había salido de
+  la máquina. **Un `git status` limpio ⊘ significa que el trabajo esté en más de un lado.**
 - **La salida de los comandos es información, ⊘ decoración.** Los tres accidents de arriba se evitaron
   o se recuperaron por mirarla, ⊘ por tener cuidado.
 
