@@ -38,8 +38,15 @@ public final class ArrowWhizz {
     /** Hasta dónde se buscan proyectiles. Más lejos del radio de zumbido, para no perder el borde. */
     public static final double SCAN_REACH = 6.0D;
 
-    /** Chico: un aviso, no un golpe. */
-    public static final float DEGREES = 0.3F;
+    /**
+     * El aviso. Un grado.
+     *
+     * <p><b>Subió de 0,3, que era invisible.</b> La caída cuadrática por distancia ya lo baja a poco
+     * más de la mitad a un bloque, así que el número de partida tiene que ser lo bastante grande
+     * para sobrevivirla -- y una flecha que pasa al lado tiene que <em>sobresaltar</em>, no
+     * insinuarse.</p>
+     */
+    public static final float DEGREES = 1.0F;
 
     /** Corto, porque una flecha que pasa es un instante. */
     public static final int TICKS = 4;

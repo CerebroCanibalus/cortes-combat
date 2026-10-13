@@ -718,28 +718,32 @@ public final class CombatEngine {
     }
 
     /**
-     * El temblor de matar: medio grado, seis ticks.
+     * El temblor de matar: grado y medio, seis ticks.
      *
-     * <p><b>Chico y corto, y las dos cosas son la decision.</b> El del orbe son 1,2 grados y catorce
-     * ticks porque es una explosion; un remate de espada que sacudiera igual convertiria cada muerte
-     * en un terremoto y el shake dejaria de distinguir nada. Medio grado se <em>siente</em> sin
-     * desviar la punteria.</p>
+     * <p><b>Y el número subió porque el playtest no vio NADA.</b> Arrancó en 0,5 grados y el dueño
+     * reportó que el shake no se veía en absoluto -- con razón: {@code CameraShake.amplitudeAt} cae
+     * al <b>cuadrado</b>, así que a dos bloques del cuerpo el 0,5 se convierte en 0,45, y medio
+     * grado de pitch no se distingue de la respiración de la cámara. Comparar con el orbe, que usa
+     * 1,8 y sí se siente.</p>
      *
-     * <p>Y seis ticks porque es un golpe y no un temblor de fondo: {@code CameraShake} decae a cero
-     * a lo largo de la vida, asi que un impulso corto es un golpe seco y uno largo es un zumbido.</p>
+     * <p>Sigue siendo un golpe corto y no un terremoto: {@code CameraShake} decae a cero a lo largo
+     * de la vida, así que un impulso de seis ticks es un golpe seco y uno largo sería un zumbido.</p>
      */
-    private static final float KILL_SHAKE_DEGREES = 0.5F;
+    private static final float KILL_SHAKE_DEGREES = 1.5F;
 
     private static final int KILL_SHAKE_TICKS = 6;
 
     private static void onHit(Player player, Entity target, WeaponStats stats,
                               AttackResult result, float chargeRatio) {
-        // **Vanilla's damage indicator, which the replaced attack flow dropped.** It lives here
-        // and not in `spawnSlash` because this is the once-per-target call -- the slash is per
-        // swing and the number is per body that took the hit.
-        if (player.level() instanceof net.minecraft.server.level.ServerLevel level) {
-            com.cortes.combat.particle.SlashParticles.damageIndicator(level, target, result.damage());
-        }
+        // **La partícula de daño de vanilla, BORRADA de acá.**
+        //
+        // Estaba desde que el flujo de ataque reemplazado la perdió, y el playtest la mandó a sacar:
+        // los puntos de color la reemplazan entera, y las dos juntas son el mismo mensaje dicho dos
+        // veces.
+        //
+        // **Y no se borra el método, se borra la llamada** -- `SlashParticles.damageIndicator` queda
+        // sin llamadores, que es un canal muerto que el próximo lector va a encontrar. Se deja
+        // anotado acá en vez de dejarlo suelto.
         if (stats.profile() == WeaponProfile.WARHAMMER) {
             // **Ritmo de Hierro decide la ventana con la que la cadena sigue, y se lee acá y no en
             // cada tick.** El nivel sale del arma que golpeó, así que la cadena vale lo que el arma

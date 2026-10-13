@@ -569,8 +569,15 @@ public final class Arcabuz {
                         RECOIL_SHAKE_TICKS));
     }
 
-    /** El temblor del disparo: ocho decimas de grado, cinco ticks. Un golpe seco, no un zumbido. */
-    private static final float RECOIL_SHAKE_DEGREES = 0.8F;
+    /**
+     * El temblor del disparo: dos grados, cinco ticks.
+     *
+     * <p><b>Subió de 0,8 porque el playtest no lo vio.</b> Acá el impulso nace en la posición del
+     * jugador, así que la caída por distancia no lo toca -- pero 0,8 grados en cinco ticks sigue
+     * siendo menos que la mitad de lo que se siente. Un arcabuz es un arma que te sacude; dos grados
+     * lo dicen y no descolocan la puntería.</p>
+     */
+    private static final float RECOIL_SHAKE_DEGREES = 2.0F;
 
     /** Y Mungus el doble. Ver la nota del metodo: las cuatro del empuje serian demasiado aca. */
     private static final float MUNGUS_SHAKE_FACTOR = 2.0F;

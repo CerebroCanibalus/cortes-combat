@@ -47,9 +47,10 @@ public final class ClientConfig {
                 .defineInRange("startingFov", 90, 30, 110);
 
         CAMERA_SHAKE = BUILDER
-                .comment("Whether explosions may rock the camera (the nether star's overload and",
-                        "the pala's antimatter orb). Turn it off for motion sickness; the sound",
-                        "and the particles are unaffected.")
+                .comment("Whether the camera may be rocked: a kill, the arcabuz firing, an arrow",
+                        "passing close, the nether star's overload and the pala's antimatter orb.",
+                        "Turn it off for motion sickness; the sound and the particles are unaffected,",
+                        "and so is the crosshair's own feedback.")
                 .define("cameraShake", true);
 
         SPEC = BUILDER.build();

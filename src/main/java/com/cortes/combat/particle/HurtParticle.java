@@ -58,8 +58,29 @@ public class HurtParticle extends TextureSheetParticle {
      */
     public static final float GRAVITY = 0.45F;
 
-    /** Frena rápido para que el salpicón se vuelva un punto quieto en dos o tres ticks. */
-    public static final float FRICTION = 0.88F;
+    /**
+     * La velocidad con la que nace hacia arriba.
+     *
+     * <p><b>El pedido del playtest: <em>"deberían flotar un poquito pero caer después"</em>.</b> Un
+     * punto que sólo cae se hunde de entrada; uno que sólo flota se va. El arco -- sube y después
+     * baja -- es lo que hace que el ojo lo siga <b>y</b> que termine en el cuerpo, que es donde el
+     * jugador está mirando.</p>
+     *
+     * <p>El número sale de la fórmula, no del gusto: {@code yd} pierde {@code 0.04 * gravity} por
+     * tick, o sea 0,018 con la gravedad de arriba, así que arrancando en 0,11 el punto sube durante
+     * <b>unos seis ticks</b> y los seis que le quedan de vida los usa para caer. Con 12 de vida eso
+     * es la mitad del recorrido para cada lado.</p>
+     */
+    public static final double POP_SPEED = 0.11D;
+
+    /**
+     * Frena poco, al revés que la gota.
+     *
+     * <p>La sangre usa 0,88 para que el salpicón se vuelva una mancha en dos ticks. Acá el punto
+     * <b>tiene que recorrer un arco</b>, y un freno fuerte se lo come: el ascenso se apagaría antes
+     * de que el ojo lo vea y quedaría un temblor en el lugar.</p>
+     */
+    public static final float FRICTION = 0.96F;
 
     /** Los últimos ticks se apagan. Lineal, por la misma razón que en la sangre. */
     public static final int FADE_TICKS = 5;
@@ -80,6 +101,11 @@ public class HurtParticle extends TextureSheetParticle {
                         HurtParticleOptions options) {
         super(level, x, y, z, dx, dy, dz);
         this.sprites = sprites;
+        // **El arco: nace hacia arriba y la gravedad hace el resto.** La `dy` que llega del paquete
+        // se descarta en el eje vertical -- el paquete de `sendParticles` no puede elegir una
+        // direccion, solo reparte `gaussian()` por eje -- pero se deja en los otros dos, que es lo
+        // que dispersa los puntos alrededor del cuerpo.
+        this.yd = POP_SPEED;
         // **SpriteSet no tiene get(indice), y el proyecto ya lo tenia escrito.** Sus dos accesos
         // son get(age, lifetime), que es list.get(age * (size-1) / lifetime), y get(RandomSource),
         // que es una moneda al aire. El primero recorre la lista como una animacion -- con dos
