@@ -70,6 +70,57 @@ public final class SangreParticles {
     }
 
     /**
+     * Las gotas de un <b>reventón de muerte</b>: veinticinco, disparadas en todas direcciones.
+     *
+     * <h2>La diferencia con {@link #drip} no es la cantidad, es el papel</h2>
+     *
+     * <p>Un goteo dice <em>"este cuerpo está perdiendo vida"</em> y por eso es chico y sostenido: cinco
+     * gotas por tick durante diez ticks, pegadas a la herida. Un reventón dice <em>"este cuerpo se
+     * terminó"</em> y es <b>un solo instante</b>, así que tiene que ser mucho más grande y salir para
+     * todos lados. El diseño lo pide así (<code>docs/fx.md</code> §5.2): <em>"una muerte = un
+     * reventón: ~20–30 gotas con velocidad hacia afuera"</em>.</p>
+     *
+     * <h2>Isotrópico ⊘ es una limitación acá, es la forma</h2>
+     *
+     * <p>{@code sendParticles} no deja elegir la dirección (ver el javadoc de la clase), y para un
+     * reventón <b>eso está bien</b>: un reventón <em>es</em> isotrópico. Lo que sí importa es que la
+     * gravedad de {@link SangreParticle} tiene el mismo valor que en el goteo, así que las gotas
+     * salen y <b>caen</b>, y el charco se forma solo.</p>
+     */
+    public static final int BURST_COUNT = 25;
+
+    /** Sigma de posición del reventón: más ancho que el goteo, porque cubre el cuerpo entero. */
+    private static final double BURST_SPREAD = 0.3D;
+
+    /**
+     * Sigma de velocidad del reventón, en bloques por tick.
+     *
+     * <p>El doble que el del goteo (0,15). <b>Acá sí conviene subirlo</b> y en el goteo no, y la
+     * razón es la misma de siempre: lo que el jugador tiene que leer es distinto. Un goteo que saliera
+     * lejos dejaría de leerse como "viene del cuerpo"; un reventón que saliera poco se leería como un
+     * goteo más grande, ⊘ como una muerte.</p>
+     */
+    private static final double BURST_SPEED = 0.32D;
+
+    /**
+     * El reventón de una muerte.
+     *
+     * <p>Nace en el <b>centro del cuerpo</b> y no en los pies, por la misma razón que el goteo: sangre
+     * en el suelo es polvo en los tobillos.</p>
+     */
+    public static void burst(ServerLevel level, LivingEntity target) {
+        AABB box = target.getBoundingBox();
+        double centreX = (box.minX + box.maxX) * 0.5;
+        double centreZ = (box.minZ + box.maxZ) * 0.5;
+        double height = Math.max(0.2D, box.maxY - box.minY);
+
+        level.sendParticles(
+                ModParticleTypes.SANGRE.get(),
+                centreX, box.minY + height * 0.5D, centreZ,
+                BURST_COUNT, BURST_SPREAD, height * 0.3D, BURST_SPREAD, BURST_SPEED);
+    }
+
+    /**
      * Un goteo sobre el cuerpo que esta sangrando.
      *
      * <p><b>A la altura de la caja y no a los pies.</b> {@code Entity#getY} es el suelo, y sangre

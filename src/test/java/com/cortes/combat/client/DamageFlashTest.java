@@ -33,8 +33,7 @@ class DamageFlashTest {
     @Test
     void theImpactComesFirst() {
         assertEquals(DamageFlash.IMPACT_ROW, DamageFlash.rowFor(DamageFlash.FLASH_TICKS));
-        assertEquals(DamageFlash.IMPACT_ROW, DamageFlash.rowFor(DamageFlash.FLASH_TICKS - 1));
-        assertEquals(DamageFlash.RED_ROW, DamageFlash.rowFor(DamageFlash.FLASH_TICKS - 2));
+        assertEquals(DamageFlash.RED_ROW, DamageFlash.rowFor(DamageFlash.FLASH_TICKS - 1));
         assertEquals(DamageFlash.RED_ROW, DamageFlash.rowFor(1));
     }
 
@@ -113,42 +112,58 @@ class DamageFlashTest {
         }
     }
 
-    /** El blanco de la muerte entra de a poco a lo largo de la animación, que dura veinte ticks. */
+    /**
+     * El blanco de la muerte entra <b>al final</b>, y su reloj es el del golpe.
+     *
+     * <p><b>Tomaba {@code deathTime} y ese campo no llega al cliente</b> -- verificado: no está en
+     * {@code defineSynchedData}. O sea que el blanco estaba escrito contra un reloj que nunca
+     * arranca, y <b>no se dibujó ni una vez</b>. El test viejo no podía verlo porque le pasaba
+     * números a mano.</p>
+     */
     @Test
-    void theDeathWhiteRampsUp() {
+    void theDeathWhiteEntersAtTheEnd() {
+        // Mientras el rojo sigue, no hay blanco: los dos usan el mismo contador.
+        assertEquals(0.0F, DamageFlash.whiteForDeath(DamageFlash.FLASH_TICKS), 1.0e-6F);
+        assertEquals(0.0F, DamageFlash.whiteForDeath(DamageFlash.DEATH_WHITE_TICKS + 1), 1.0e-6F);
+        // Y en los ultimos ticks crece hasta el blanco mas fuerte.
+        assertTrue(DamageFlash.whiteForDeath(DamageFlash.DEATH_WHITE_TICKS) > 0.0F,
+                "el blanco no llega a entrar en su propia ventana");
+        assertEquals(1.0F, DamageFlash.whiteForDeath(1), 1.0e-6F);
+        // Un cuerpo sin herida no tiene blanco, y un contador absurdo tampoco.
         assertEquals(0.0F, DamageFlash.whiteForDeath(0), 1.0e-6F);
-        assertEquals(0.5F, DamageFlash.whiteForDeath(10), 1.0e-6F);
-        assertEquals(1.0F, DamageFlash.whiteForDeath(20), 1.0e-6F);
-        assertEquals(1.0F, DamageFlash.whiteForDeath(25), 1.0e-6F);
         assertEquals(0.0F, DamageFlash.whiteForDeath(-3), 1.0e-6F);
     }
 
     /**
-     * <b>La barra de vida, que es el efecto entero.</b>
+     * <b>La herida trepa, y eso es el efecto entero.</b>
      *
-     * <p>El rojo es la vida que <em>queda</em>: a vida llena la línea está en los pies y el cuerpo
-     * entero flashea, y a medida que el mob se vacía la línea <b>desciende</b>. Es lo que se pidió
-     * -- <em>"que el flash vaya bajando conforme a la vida del mob como si fuera una barra"</em> --
-     * y una inversión acá haría que un mob sano flasheara casi nada y uno agonizante entero, que es
-     * la barra al revés.</p>
+     * <p>El rojo es lo que le <em>falta</em> al mob: a vida llena no flashea nada, a media vida la
+     * mitad de abajo, y a un 10 % el 90 %. Es lo que el diseño pide (<code>docs/fx.md</code> §2.3:
+     * <em>"crece hacia arriba mientras baja la vida -- la herida trepa --. A 10 %, el 90 %"</em>).</p>
+     *
+     * <p><b>Estuvo al revés</b>, con un javadoc entero defendiendo la dirección contraria. La
+     * fórmula no cambió: cambió <b>qué lado se borra</b>, en el envoltorio.</p>
      */
     @Test
-    void theBarDrainsDownwards() {
+    void theWoundClimbsUpwards() {
         float height = 32.0F;
+        // Vida llena: nada herido, nada flashea.
         assertEquals(0.0F, DamageFlash.barThreshold(20.0F, 20.0F, height), 1.0e-6F);
+        // Media vida: la mitad de abajo.
         assertEquals(height / 2.0F, DamageFlash.barThreshold(10.0F, 20.0F, height), 1.0e-6F);
+        // Muerto: el cuerpo entero -- que es justo lo que hace que el blanco final cubra todo.
         assertEquals(height, DamageFlash.barThreshold(0.0F, 20.0F, height), 1.0e-6F);
     }
 
-    /** Y la línea sólo baja: nunca sube al perder vida. */
+    /** Y la línea sólo sube al perder vida: la cobertura crece, nunca se retira. */
     @Test
-    void theLineOnlyEverDescends() {
+    void theLineOnlyEverRises() {
         float previous = -1.0F;
         for (float health = 20.0F; health >= 0.0F; health -= 0.5F) {
             float threshold = DamageFlash.barThreshold(health, 20.0F, 32.0F);
             assertTrue(threshold >= previous,
-                    "con " + health + " de vida la linea subio a " + threshold
-                            + " desde " + previous + ": la barra se vaciaria al reves");
+                    "con " + health + " de vida el umbral bajo a " + threshold
+                            + " desde " + previous + ": la herida se retiraria en vez de trepar");
             previous = threshold;
         }
     }

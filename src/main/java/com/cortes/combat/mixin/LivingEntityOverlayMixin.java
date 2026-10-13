@@ -47,14 +47,22 @@ public class LivingEntityOverlayMixin {
     @Inject(method = "getOverlayCoords", at = @At("HEAD"), cancellable = true)
     private static void cortescombat$ourFlash(LivingEntity entity, float vanillaU,
                                               CallbackInfoReturnable<Integer> cir) {
-        if (entity.deathTime > 0) {
-            float white = DamageFlash.whiteForDeath(entity.deathTime);
+        if (entity.hurtTime <= 0) {
+            return;
+        }
+        // **El blanco de la muerte se decide con `getHealth()` y NO con `deathTime`.** Verificado con
+        // javap: `deathTime` no esta en `defineSynchedData`, asi que el cliente vale cero siempre y el
+        // blanco no se dibujo nunca. `hurtTime` si llega, por `ClientboundHurtAnimationPacket`.
+        //
+        // **Y entra al final, despues del rojo**: el golpe mortal es negro (un tick), despues rojo, y
+        // el blanco es lo ultimo. Es el orden que se pidio. Compararlo contra DEATH_WHITE_TICKS y no
+        // contra un reloj aparte es lo que hace que los dos usen el mismo contador.
+        if (entity.getHealth() <= 0.0F && entity.hurtTime <= DamageFlash.DEATH_WHITE_TICKS) {
+            float white = DamageFlash.whiteForDeath(entity.hurtTime);
             cir.setReturnValue(OverlayTexture.pack(OverlayTexture.u(white), false));
             return;
         }
-        if (entity.hurtTime > 0) {
-            // La fila decide el color y el tiempo; la columna queda en cero. Ver el javadoc.
-            cir.setReturnValue(OverlayTexture.pack(0, DamageFlash.rowFor(entity.hurtTime)));
-        }
+        // La fila decide el color y el tiempo; la columna queda en cero. Ver el javadoc.
+        cir.setReturnValue(OverlayTexture.pack(0, DamageFlash.rowFor(entity.hurtTime)));
     }
 }

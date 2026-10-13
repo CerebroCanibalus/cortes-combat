@@ -69,7 +69,11 @@ public final class HealthFlashBuffer implements VertexConsumer {
 
     @Override
     public VertexConsumer setUv1(int u, int v) {
-        if (this.lastY < this.thresholdY) {
+        // **Arriba de la linea no flashea; abajo si.** La herida TREPA: el rojo es lo que le falta al
+        // mob, asi que crece desde los pies. Ver DamageFlash#barThreshold, donde tambien esta por que
+        // la Y que llega aca no es la del vertice sino la de la entidad -- y por que eso costo un
+        // playtest entero.
+        if (this.lastY > this.thresholdY) {
             this.delegate.setUv1(this.hiddenOverlay & 0xFFFF, this.hiddenOverlay >> 16);
         } else {
             this.delegate.setUv1(u, v);

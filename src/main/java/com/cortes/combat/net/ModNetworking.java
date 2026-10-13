@@ -192,7 +192,16 @@ public final class ModNetworking {
      * cliente lo gasta. Ver {@code CameraShake}.</p>
      */
     private static void handleCameraShake(CameraShakePayload payload, IPayloadContext context) {
-        com.cortes.combat.client.CameraShake.accept(payload);
+        // **enqueueWork, y sin esto el temblor NO SE VE.** Verificado en el playtest: el shake no
+        // aparecia "en absoluto" y la causa no era la amplitud (que ya se habia triplicado). Es que
+        // este handler corria en el HILO DE RED y `CameraShake.accept` toca dos cosas que solo
+        // existen en el hilo del cliente: `Minecraft.getInstance().level`, que ahi puede estar a
+        // medio actualizar, y `ACTIVE`, una ArrayList que el render recorre cada frame. Un impulso
+        // que se agrega desde otro hilo es un impulso que o no se agrega o desaparece.
+        //
+        // El proyecto ya tenia el patron correcto en otro lado (CortesCombatClient usa enqueueWork
+        // para el registro del modelo del arcabuz). Faltaba aca.
+        context.enqueueWork(() -> com.cortes.combat.client.CameraShake.accept(payload));
     }
 
     /**

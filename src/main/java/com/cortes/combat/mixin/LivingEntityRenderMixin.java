@@ -8,6 +8,7 @@ import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -99,15 +100,26 @@ public class LivingEntityRenderMixin {
                     target = "Lnet/minecraft/client/model/EntityModel;renderToBuffer(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V"))
     private void cortescombat$healthBar(EntityModel<?> model, PoseStack poseStack,
                                         VertexConsumer vertexConsumer, int packedLight,
-                                        int packedOverlay, int colour, LivingEntity living) {
-        boolean wholeBody = living.deathTime > 0
-                || living.hurtTime > DamageFlash.FLASH_TICKS - DamageFlash.IMPACT_TICKS;
+                                        int packedOverlay, int colour, LivingEntity living,
+                                        float entityYaw, float partialTicks) {
         VertexConsumer toDraw = vertexConsumer;
-        if (!wholeBody) {
+        // **El frame del impacto va entero, y por eso se saltea.** A vida llena el umbral vale cero
+        // -- o sea que no hay nada que borrar -- asi que envolver no cambiaria nada salvo perder el
+        // negro del impacto. Un tick de cuerpo completo es el golpe llegando.
+        boolean wholeBody = living.hurtTime > DamageFlash.FLASH_TICKS - DamageFlash.IMPACT_TICKS;
+        if (living.hurtTime > 0 && !wholeBody) {
             float threshold = DamageFlash.barThreshold(living.getHealth(), living.getMaxHealth(),
                     living.getBbHeight() * DamageFlash.MODEL_UNITS_PER_BLOCK);
             if (threshold > 0.0F) {
-                toDraw = new HealthFlashBuffer(vertexConsumer, threshold, OverlayTexture.NO_OVERLAY);
+                // **La Y base, y sin esto el efecto no existe.** El poseStack que llega al modelo ya
+                // esta trasladado a la posicion del MUNDO de la entidad (EntityRenderDispatcher hace
+                // translate antes de llamar a render), asi que la Y de un vertice vale `altura en el
+                // mundo + altura local`. El umbral es local, y hay que sumarle la base o no corta
+                // nunca: eso era "no baja por vida". Interpolada, porque el dispatcher tambien lo
+                // esta y si no la linea tiembla al caminar.
+                float baseY = (float) Mth.lerp((double) partialTicks, living.yOld, living.getY());
+                toDraw = new HealthFlashBuffer(vertexConsumer, baseY + threshold,
+                        OverlayTexture.NO_OVERLAY);
             }
         }
         model.renderToBuffer(poseStack, toDraw, packedLight, packedOverlay, colour);

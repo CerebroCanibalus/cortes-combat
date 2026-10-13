@@ -63,8 +63,24 @@ public final class DamageFlash {
      */
     public static final int IMPACT_ALPHA = 0x20;
 
-    /** Cuántos ticks dura el frame negro. Dos: se ve y no se queda. */
-    public static final int IMPACT_TICKS = 2;
+    /**
+     * Cuántos ticks dura el frame negro. <b>Uno.</b>
+     *
+     * <p>Eran dos, y el playtest los mandó a bajar: se pidió un flash negro <em>"muy rápido"</em> y un
+     * rojo <em>"más lento"</em>, y las dos cosas se consiguen moviendo este número, porque la
+     * duración total es la de {@code hurtTime} y ⊘ se puede estirar. Un tick de negro y siete de rojo
+     * le dan al rojo la parte larga del mismo presupuesto.</p>
+     */
+    public static final int IMPACT_TICKS = 1;
+
+    /**
+     * Los ticks que dura el BLANCO de la muerte.
+     *
+     * <p>Dos, y va al final: el golpe mortal es negro, después rojo, y el blanco entra cuando el rojo
+     * se está yendo. Es el orden que se pidió -- <em>"negro muy rápido, rojo más lento, blanco rápido
+     * pero suave al morir"</em> -- y sale de comparar contra este número, ⊘ de un reloj aparte.</p>
+     */
+    public static final int DEATH_WHITE_TICKS = 2;
 
     /**
      * Cuántos ticks dura el flash entero.
@@ -132,28 +148,31 @@ public final class DamageFlash {
     public static final float MODEL_UNITS_PER_BLOCK = 16.0F;
 
     /**
-     * Dónde está la línea del flash, en unidades de modelo.
+     * Dónde está la línea del flash, <b>medida desde los pies del modelo</b>.
      *
-     * <h2>Es una barra de vida, y por eso baja</h2>
+     * <h2>La herida trepa: a menos vida, más rojo</h2>
      *
-     * <p><b>El rojo es la vida que QUEDA.</b> A vida llena la línea está en los pies y el cuerpo
-     * entero flashea; y a medida que el mob se vacía la línea <b>desciende</b>, así que el rojo se
-     * retira hacia abajo y lo último que queda pintado es la cabeza. Al morir no queda nada, y ahí
-     * entra el blanco.</p>
+     * <p><b>El rojo es lo que le FALTA al mob, y por eso crece.</b> A vida llena no flashea nada; a
+     * media vida flashea la mitad de abajo; y a un 10 % de vida flashea el 90 %, que es lo que el
+     * diseño pide (<code>docs/fx.md</code> §2.3: <em>"crece hacia arriba mientras baja la vida -- la
+     * herida trepa --. A 10 %, el 90 %"</em>).</p>
      *
-     * <p>Eso es lo que se pidió: <em>"que el flash vaya bajando conforme a la vida del mob como si
-     * fuera una barra de vida"</em>, y a media vida flashea la mitad del modelo.</p>
+     * <p><b>Esto estuvo al revés en la primera versión</b>, y se escribió un javadoc entero
+     * defendiendo la dirección contraria (el rojo como "la vida que queda", retirándose hacia
+     * abajo). El doc decía lo opuesto desde el principio: <b>la herida trepa</b>. Un comentario que
+     * explica por qué una rareza es correcta es exactamente donde hay que ir a mirar si lo es.</p>
      *
-     * <h2>La dirección es una decisión, y está en una línea</h2>
+     * <h2>La Y que devuelve NO es la del vértice, y esa fue la segunda trampa</h2>
      *
-     * <p>La otra lectura posible es la inversa -- el rojo como "cuánto le falta", creciendo desde
-     * los pies. <b>Se eligió la que vacía</b> porque es la que se lee como una barra: el rojo
-     * representa lo que al mob le queda, igual que los corazones del HUD representan lo que le queda
-     * al jugador. <b>Y si el playtest la prefiere al revés, es cambiar {@code 1 - fraction} por
-     * {@code fraction}</b> y el test dice cuál se cambió.</p>
+     * <p>Devuelve una altura <b>relativa a los pies</b>, y el llamador le suma la Y base de la
+     * entidad. Es obligatorio: el {@code PoseStack} que llega al modelo <b>ya está trasladado a la
+     * posición del mundo</b> (verificado con {@code javap}: {@code EntityRenderDispatcher} hace
+     * {@code translate} en el offset 59 y llama a {@code render} en el 75), así que la Y de un
+     * vértice vale la altura del mob en el mundo <b>más</b> su altura local. Comparar contra un
+     * umbral local de 0..32 con la entidad a Y=70 no corta nunca: <b>eso era "no baja por vida"</b>.</p>
      *
      * @param modelHeight la altura del modelo en unidades de modelo, no en bloques
-     * @return la altura por debajo de la cual el cuerpo no flashea
+     * @return la altura, <b>desde los pies</b>, por <b>encima</b> de la cual el cuerpo no flashea
      */
     public static float barThreshold(float health, float maxHealth, float modelHeight) {
         if (!(maxHealth > 0.0F) || !(modelHeight > 0.0F)) {
@@ -166,18 +185,26 @@ public final class DamageFlash {
     /**
      * Cuánto blanco tiene el flash de la muerte, de 0 a 1.
      *
-     * <p>La animación dura veinte ticks, y el blanco entra a lo largo de ella: arranca en nada y
-     * termina en el blanco más fuerte que la textura tiene -- el 75 %, que es la columna 15 de las
-     * filas blancas.</p>
+     * <h2>Toma {@code hurtTime}, ⊘ {@code deathTime}, y esa fue la tercera trampa</h2>
      *
-     * <p><b>Y el rojo se apaga solo</b>, sin una regla que lo diga: cuando esto pasa de cero, el
-     * llamador deja de usar la fila roja. El cuerpo deja de estar herido y pasa a estar muriéndose,
-     * que son dos cosas distintas.</p>
+     * <p><b>{@code deathTime} no se sincroniza.</b> Verificado con {@code javap}: en
+     * {@code LivingEntity.defineSynchedData} está {@code DATA_HEALTH_ID} y <b>no</b> está
+     * {@code deathTime} -- y el cliente ⊘ tickea el contador de una entidad que no sabe que murió,
+     * así que <b>vale cero siempre</b>. El blanco de la muerte estaba escrito contra un reloj que en
+     * el cliente nunca arranca: <b>no se dibujó ni una vez</b>.</p>
+     *
+     * <p>{@code hurtTime} <b>sí</b> llega al cliente, por {@code ClientboundHurtAnimationPacket}
+     * ({@code animateHurt}), que es lo que hace que el rojo de vanilla funcione. Así que el reloj de
+     * la muerte es el mismo del golpe, y lo único que hay que agregar para saber que murió es
+     * {@code getHealth() <= 0}, que <b>sí</b> viaja en {@code DATA_HEALTH_ID}.</p>
+     *
+     * @param hurtTime los ticks que le quedan al cuerpo; ⊘ {@code deathTime}
+     * @return 0 mientras el rojo sigue, y crece hasta 1 en los últimos {@link #DEATH_WHITE_TICKS}
      */
-    public static float whiteForDeath(int deathTime) {
-        if (deathTime <= 0) {
+    public static float whiteForDeath(int hurtTime) {
+        if (hurtTime <= 0 || hurtTime > DEATH_WHITE_TICKS) {
             return 0.0F;
         }
-        return Math.min(deathTime / 20.0F, 1.0F);
+        return (DEATH_WHITE_TICKS + 1 - hurtTime) / (float) DEATH_WHITE_TICKS;
     }
 }
