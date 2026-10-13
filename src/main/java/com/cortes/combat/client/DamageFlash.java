@@ -122,6 +122,48 @@ public final class DamageFlash {
     }
 
     /**
+     * Cuántos unidades de modelo hay en un bloque.
+     *
+     * <p>Dieciséis, que es la escala de Blockbench y la que usa todo modelo de vanilla. La altura
+     * del modelo sale de la <b>caja de colisión</b> de la entidad multiplicada por esto, y no de una
+     * tabla por tipo: un mob nuevo, o el de otro mod, queda con su altura correcta sin que nadie
+     * agregue una fila.</p>
+     */
+    public static final float MODEL_UNITS_PER_BLOCK = 16.0F;
+
+    /**
+     * Dónde está la línea del flash, en unidades de modelo.
+     *
+     * <h2>Es una barra de vida, y por eso baja</h2>
+     *
+     * <p><b>El rojo es la vida que QUEDA.</b> A vida llena la línea está en los pies y el cuerpo
+     * entero flashea; y a medida que el mob se vacía la línea <b>desciende</b>, así que el rojo se
+     * retira hacia abajo y lo último que queda pintado es la cabeza. Al morir no queda nada, y ahí
+     * entra el blanco.</p>
+     *
+     * <p>Eso es lo que se pidió: <em>"que el flash vaya bajando conforme a la vida del mob como si
+     * fuera una barra de vida"</em>, y a media vida flashea la mitad del modelo.</p>
+     *
+     * <h2>La dirección es una decisión, y está en una línea</h2>
+     *
+     * <p>La otra lectura posible es la inversa -- el rojo como "cuánto le falta", creciendo desde
+     * los pies. <b>Se eligió la que vacía</b> porque es la que se lee como una barra: el rojo
+     * representa lo que al mob le queda, igual que los corazones del HUD representan lo que le queda
+     * al jugador. <b>Y si el playtest la prefiere al revés, es cambiar {@code 1 - fraction} por
+     * {@code fraction}</b> y el test dice cuál se cambió.</p>
+     *
+     * @param modelHeight la altura del modelo en unidades de modelo, no en bloques
+     * @return la altura por debajo de la cual el cuerpo no flashea
+     */
+    public static float barThreshold(float health, float maxHealth, float modelHeight) {
+        if (!(maxHealth > 0.0F) || !(modelHeight > 0.0F)) {
+            return 0.0F;
+        }
+        float fraction = Math.max(0.0F, Math.min(health / maxHealth, 1.0F));
+        return modelHeight * (1.0F - fraction);
+    }
+
+    /**
      * Cuánto blanco tiene el flash de la muerte, de 0 a 1.
      *
      * <p>La animación dura veinte ticks, y el blanco entra a lo largo de ella: arranca en nada y

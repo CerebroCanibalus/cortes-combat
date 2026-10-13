@@ -18,7 +18,8 @@
     "ArcabuzGuiIconMixin",
     "TrabazonSprintMixin",
     "OverlayTextureMixin",
-    "LivingEntityOverlayMixin"
+    "LivingEntityOverlayMixin",
+    "LivingEntityRenderMixin"
   ],
   "injectors": {
     "defaultRequire": 1

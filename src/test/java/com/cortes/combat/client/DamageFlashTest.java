@@ -122,4 +122,50 @@ class DamageFlashTest {
         assertEquals(1.0F, DamageFlash.whiteForDeath(25), 1.0e-6F);
         assertEquals(0.0F, DamageFlash.whiteForDeath(-3), 1.0e-6F);
     }
+
+    /**
+     * <b>La barra de vida, que es el efecto entero.</b>
+     *
+     * <p>El rojo es la vida que <em>queda</em>: a vida llena la línea está en los pies y el cuerpo
+     * entero flashea, y a medida que el mob se vacía la línea <b>desciende</b>. Es lo que se pidió
+     * -- <em>"que el flash vaya bajando conforme a la vida del mob como si fuera una barra"</em> --
+     * y una inversión acá haría que un mob sano flasheara casi nada y uno agonizante entero, que es
+     * la barra al revés.</p>
+     */
+    @Test
+    void theBarDrainsDownwards() {
+        float height = 32.0F;
+        assertEquals(0.0F, DamageFlash.barThreshold(20.0F, 20.0F, height), 1.0e-6F);
+        assertEquals(height / 2.0F, DamageFlash.barThreshold(10.0F, 20.0F, height), 1.0e-6F);
+        assertEquals(height, DamageFlash.barThreshold(0.0F, 20.0F, height), 1.0e-6F);
+    }
+
+    /** Y la línea sólo baja: nunca sube al perder vida. */
+    @Test
+    void theLineOnlyEverDescends() {
+        float previous = -1.0F;
+        for (float health = 20.0F; health >= 0.0F; health -= 0.5F) {
+            float threshold = DamageFlash.barThreshold(health, 20.0F, 32.0F);
+            assertTrue(threshold >= previous,
+                    "con " + health + " de vida la linea subio a " + threshold
+                            + " desde " + previous + ": la barra se vaciaria al reves");
+            previous = threshold;
+        }
+    }
+
+    /** Un cuerpo raro no rompe nada: sin vida maxima o sin altura, la linea queda en los pies. */
+    @Test
+    void aBrokenBodyDoesNotCarveAnything() {
+        assertEquals(0.0F, DamageFlash.barThreshold(5.0F, 0.0F, 32.0F), 1.0e-6F);
+        assertEquals(0.0F, DamageFlash.barThreshold(5.0F, 20.0F, 0.0F), 1.0e-6F);
+        assertEquals(0.0F, DamageFlash.barThreshold(5.0F, 20.0F, -3.0F), 1.0e-6F);
+    }
+
+    /** Y la vida fuera de rango no se sale del modelo: ni por arriba ni por abajo. */
+    @Test
+    void healthOutsideTheBarIsClamped() {
+        float height = 32.0F;
+        assertEquals(0.0F, DamageFlash.barThreshold(999.0F, 20.0F, height), 1.0e-6F);
+        assertEquals(height, DamageFlash.barThreshold(-999.0F, 20.0F, height), 1.0e-6F);
+    }
 }
