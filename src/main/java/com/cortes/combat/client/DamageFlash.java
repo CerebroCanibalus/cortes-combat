@@ -51,8 +51,21 @@ public final class DamageFlash {
     /** La fila del frame negro. <b>Sin usar por vanilla</b>, escrita de rojo, consultada por nadie. */
     public static final int IMPACT_ROW = 5;
 
-    /** El alpha del rojo: 0x80 = 50 % de rojo contra el 30 % de vanilla. El que el playtest aprobó. */
-    public static final int RED_ALPHA = 0x80;
+    /**
+     * El alpha del rojo: <b>0x20 = 87,5 % de rojo</b>, el mismo que el del impacto.
+     *
+     * <p><b>Y el número subió dos veces por la misma razón: no se veía.</b> El original era 0x80 --
+     * 50 % de rojo, ya por encima del 30 % de vanilla -- y el playtest lo llamó <em>"muy poco
+     * intenso"</em>. Ahora usa el mismo alpha que {@link #IMPACT_BLACK}, así que los dos frames del
+     * flash tienen la <b>misma fuerza</b> y lo único que los distingue es el color: el impacto apaga
+     * y el rojo inunda. Un solo número para la intensidad y dos colores es más fácil de razonar que
+     * dos intensidades distintas sin motivo.</p>
+     *
+     * <p>⚠ Es el <b>techo práctico</b>: el shader hace {@code mix(overlayColor.rgb, color.rgb, a)},
+     * así que el rojo es puro a alpha cero, pero con cero el mob desaparece y deja de leerse como un
+     * cuerpo golpeado. 0x20 deja pasar un octavo de la textura, que es lo que mantiene la silueta.</p>
+     */
+    public static final int RED_ALPHA = 0x20;
 
     /**
      * El alpha del frame negro.
@@ -98,7 +111,17 @@ public final class DamageFlash {
      */
     public static final int FLASH_TICKS = 10;
 
-    /** El rojo al 50 %, que es lo que se escribe en {@link #RED_ROW}. */
+    /**
+     * La columna del blanco mientras el cuerpo se está muriendo.
+     *
+     * <p>Quince es el blanco más fuerte que la fila blanca de vanilla sabe dar: su alpha es
+     * {@code (1 − j/15 × 0,75) × 255}, así que la columna 15 da 63 de alpha y el shader mezcla un
+     * <b>75 %</b> de blanco. Es el techo de esa fila -- para pasar de ahí habría que escribir una
+     * fila blanca propia, como se hizo con el negro del impacto.</p>
+     */
+    public static final int DEATH_WHITE_COLUMN = 15;
+
+    /** El rojo del golpe, con el alpha de {@link #RED_ALPHA}. */
     public static final int STRONGER_RED = (RED_ALPHA << 24) | 0x0000FF;
 
     /**

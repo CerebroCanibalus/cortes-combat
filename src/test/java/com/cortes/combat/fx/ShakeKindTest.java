@@ -35,15 +35,15 @@ class ShakeKindTest {
     /**
      * Y el techo <b>tiene una razón</b>: hay combinaciones reales que lo pasan.
      *
-     * <p>Un reventón mientras te rompen la guardia son dos impulsos en el mismo tick, y sin techo
-     * serían siete grados que nadie eligió. Si esta suma no pasara el techo, el techo sería
+     * <p>Una nuke con una explosión común encima son dos impulsos en el mismo tick, y sin techo
+     * serían trece grados que nadie eligió. Si esta suma no pasara el techo, el techo sería
      * decorativo y valdría borrarlo.</p>
      */
     @Test
     void theCapHasAReason() {
-        float pile = ShakeKind.EXPLOSION.degrees() + ShakeKind.GUARD_BREAK.degrees();
+        float pile = ShakeKind.NUCLEAR.degrees() + ShakeKind.EXPLOSION.degrees();
         assertTrue(pile > ShakePhase.MAX_TOTAL_DEGREES,
-                "una explosion con la guardia rota da " + pile
+                "una nuke con una explosion encima da " + pile
                         + " grados, que no pasa el techo: el techo no hace nada");
     }
 
@@ -65,18 +65,54 @@ class ShakeKindTest {
         }
     }
 
-    /** Y el reventón es el más grande: es el evento más violento del juego. */
+    /** Y la nuke es la más grande, con la TNT de explosión común justo detrás. */
     @Test
-    void explosionIsTheLargest() {
+    void nuclearIsTheLargest() {
         for (ShakeKind kind : ShakeKind.values()) {
-            if (kind == ShakeKind.EXPLOSION) {
+            if (kind == ShakeKind.NUCLEAR) {
                 continue;
             }
-            assertTrue(kind.degrees() < ShakeKind.EXPLOSION.degrees(),
-                    kind + " es mas grande que una explosion");
+            assertTrue(kind.degrees() < ShakeKind.NUCLEAR.degrees(),
+                    kind + " es mas grande que un reventon nuclear");
         }
-        assertEquals(ShakeKind.EXPLOSION.degrees(), ShakeKind.largestDegrees(), 1.0e-6F,
+        assertEquals(ShakeKind.NUCLEAR.degrees(), ShakeKind.largestDegrees(), 1.0e-6F,
                 "largestDegrees no devuelve el mas grande");
+        // Y una TNT común no le llega: la nuke tiene que ser MÁS que ella, que fue el pedido.
+        assertTrue(ShakeKind.EXPLOSION.degrees() < ShakeKind.NUCLEAR.degrees(),
+                "una TNT sacude tanto como una nuke");
+    }
+
+    /**
+     * <b>Y el alcance es lo que separa una nuke de una TNT, no sólo la amplitud.</b>
+     *
+     * <p>Es la mitad que faltaba del pedido: el cliente tenía el alcance escrito en una constante de
+     * cuarenta bloques, así que ningún número llegaba lejos -- pasado el alcance el temblor no era
+     * chico, era <b>cero</b>. "Mucho rango a la distancia" no se consigue con grados.</p>
+     *
+     * <p>Y el test fija las dos mitades: que la nuke llegue <b>mucho</b> más lejos, y que <b>nadie
+     * más</b> tenga un alcance distinto sin motivo. Un dial suelto por impulso es exactamente la
+     * forma en que "¿cuánto sacude esto?" deja de tener respuesta.</p>
+     */
+    @Test
+    void theReachIsWhatSeparatesThem() {
+        for (ShakeKind kind : ShakeKind.values()) {
+            assertTrue(kind.reach() > 0.0F, kind + " no tiene alcance, asi que no se siente nunca");
+        }
+        assertTrue(ShakeKind.NUCLEAR.reach() > ShakeKind.EXPLOSION.reach() * 2.0F,
+                "el alcance de la nuke (" + ShakeKind.NUCLEAR.reach()
+                        + ") no es mucho mas que el de una TNT (" + ShakeKind.EXPLOSION.reach() + ")");
+        for (ShakeKind kind : ShakeKind.values()) {
+            if (kind == ShakeKind.NUCLEAR) {
+                continue;
+            }
+            assertEquals(ShakeKind.EXPLOSION.reach(), kind.reach(), 1.0e-6F,
+                    kind + " tiene un alcance distinto del comun sin razon");
+        }
+        // Y el alcance comun que usan los que traen su numero a mano es el mismo de la tabla: los
+        // valores del enum no pueden referenciar una constante estatica, asi que el numero esta dos
+        // veces y este es el guard que lo ata.
+        assertEquals(ShakeKind.COMMON_REACH, ShakeKind.EXPLOSION.reach(), 1.0e-6F,
+                "el alcance comun y el de la tabla se separaron");
     }
 
     /**

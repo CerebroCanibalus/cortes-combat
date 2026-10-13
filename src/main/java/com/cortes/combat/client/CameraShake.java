@@ -36,8 +36,15 @@ import net.neoforged.neoforge.client.event.ViewportEvent;
  */
 public final class CameraShake {
 
-    /** Hasta donde se siente un reventon, en bloques. Mas alla no mueve un pixel. */
-    private static final double REACH = 40.0;
+    /**
+     * El alcance de un impulso que nace en el CLIENTE, en bloques.
+     *
+     * <p>Los que vienen por paquete <b>traen el suyo</b> -- ver {@code ShakeKind#reach} --, y este es
+     * el de los locales, que no tienen tabla: el zumbido de una flecha que pasa al lado. Cuarenta es
+     * el alcance de un reventon comun y para una flecha es generoso; el filtro de verdad de ese caso
+     * es la distancia a la trayectoria, que ya la mide {@code ArrowWhizz}.</p>
+     */
+    private static final double DEFAULT_REACH = 40.0;
 
     /**
      * Frecuencias del sacudon, en radianes por tick.
@@ -57,9 +64,9 @@ public final class CameraShake {
     private CameraShake() {
     }
 
-    /** Un temblor en curso: donde, cuanto, y entre que ticks del mundo vive. */
+    /** Un temblor en curso: donde, cuanto, hasta donde, y entre que ticks del mundo vive. */
     private record Impulse(ResourceKey<Level> dimension, double x, double y, double z, float degrees,
-                           float bornTick, float diesTick, float rollSign) {
+                           float bornTick, float diesTick, float rollSign, double reach) {
     }
 
     /**
@@ -83,7 +90,7 @@ public final class CameraShake {
         }
         float now = minecraft.level.getGameTime();
         ACTIVE.add(new Impulse(minecraft.level.dimension(), x, y, z, degrees,
-                now, now + ticks, rollSign));
+                now, now + ticks, rollSign, DEFAULT_REACH));
     }
 
     /** Llego un aviso del servidor. El reloj es el del mundo, para que todos los frames coincidan. */
@@ -94,10 +101,11 @@ public final class CameraShake {
         }
         float now = minecraft.level.getGameTime();
         org.slf4j.LoggerFactory.getLogger("cortescombat").info(
-                "[shake] paquete recibido grados={} ticks={} reloj={} en ({}, {}, {})",
-                payload.degrees(), payload.ticks(), now, payload.x(), payload.y(), payload.z());
+                "[shake] paquete recibido grados={} ticks={} alcance={} reloj={} en ({}, {}, {})",
+                payload.degrees(), payload.ticks(), payload.reach(), now,
+                payload.x(), payload.y(), payload.z());
         ACTIVE.add(new Impulse(minecraft.level.dimension(), payload.x(), payload.y(), payload.z(),
-                payload.degrees(), now, now + payload.ticks(), 1.0F));
+                payload.degrees(), now, now + payload.ticks(), 1.0F, payload.reach()));
     }
 
     /** Un cambio de mundo: nada del viejo deberia sobrevivir. Misma forma que {@code ReactorShake}. */
@@ -135,7 +143,7 @@ public final class CameraShake {
         float roll = 0.0F;
         for (Impulse impulse : ACTIVE) {
             double distance = Math.sqrt(camera.distanceToSqr(impulse.x(), impulse.y(), impulse.z()));
-            float amplitude = amplitudeAt(distance, impulse.degrees());
+            float amplitude = amplitudeAt(distance, impulse.degrees(), impulse.reach());
             if (amplitude <= 0.0F) {
                 continue;
             }
@@ -162,17 +170,22 @@ public final class CameraShake {
     }
 
     /**
-     * La amplitud a una distancia, con caida <b>cuadratica</b>.
+     * La amplitud a una distancia, con caida <b>cuadratica</b> y el alcance del impulso.
      *
      * <p>Cuadratica y no lineal por la misma razon que la del reactor: lineal deja el borde del
      * alcance a media fuerza, y ahi un reventon lejano se siente como uno cercano. Al cuadrado, a
      * mitad del alcance ya es un cuarto, y el borde es un susurro.</p>
+     *
+     * <p><b>Y el alcance entra por parametro.</b> Estaba en una constante de cuarenta bloques, y eso
+     * hacia que ningun numero pudiera llegar mas lejos: pasado el alcance el temblor no era chico,
+     * era <b>cero</b>. Un reactor tiene que sentirse a cien bloques y una flecha a dos, y esa no es
+     * una diferencia de amplitud. Ver {@code ShakeKind#reach}.</p>
      */
-    private static float amplitudeAt(double distance, float max) {
-        if (distance >= REACH) {
+    private static float amplitudeAt(double distance, float max, double reach) {
+        if (distance >= reach || reach <= 0.0) {
             return 0.0F;
         }
-        float t = (float) (1.0 - distance / REACH);
+        float t = (float) (1.0 - distance / reach);
         return max * t * t;
     }
 }

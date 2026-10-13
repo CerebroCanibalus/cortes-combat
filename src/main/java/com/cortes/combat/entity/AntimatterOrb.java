@@ -365,10 +365,8 @@ public class AntimatterOrb extends Entity {
      * numero fijo.</p>
      */
     private void shake(ServerLevel server) {
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayersNear(
-                server, null, this.getX(), this.getY(), this.getZ(), SHAKE_REACH,
-                new com.cortes.combat.net.CameraShakePayload(
-                        this.getX(), this.getY(), this.getZ(), SHAKE_DEGREES, SHAKE_TICKS));
+        com.cortes.combat.fx.Shake.around(server, this.getX(), this.getY(), this.getZ(),
+                SHAKE_REACH, SHAKE_DEGREES, SHAKE_TICKS);
     }
 
     /** El dano sale como ataque del dueno si sigue existiendo, y como magia si no. */

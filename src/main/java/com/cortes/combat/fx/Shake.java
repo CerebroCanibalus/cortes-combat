@@ -47,13 +47,40 @@ public final class Shake {
         to(player, origin.getX(), origin.getY(), origin.getZ(), kind);
     }
 
-    /** Un impulso que lo sienten todos los que estén dentro del radio. Para lo que no tiene dueño. */
-    public static void around(ServerLevel level, double x, double y, double z, double radius,
-                              ShakeKind kind) {
-        PacketDistributor.sendToPlayersNear(level, null, x, y, z, radius, payload(x, y, z, kind));
+    /**
+     * Un impulso con el tamaño puesto a mano, para lo que <b>no</b> es una fila de la tabla.
+     *
+     * <p>Existe por dos casos que ya tenían su número antes de que hubiera tabla: el culatazo del
+     * arcabuz, cuya amplitud <b>varía</b> según lo que tenga cargado, y el reventón del orbe. Los dos
+     * llevan el alcance común, porque los dos pasan a quemarropa del que los siente.</p>
+     */
+    public static void to(ServerPlayer player, double x, double y, double z, float degrees,
+                          int ticks) {
+        PacketDistributor.sendToPlayer(player,
+                new CameraShakePayload(x, y, z, degrees, ticks, ShakeKind.COMMON_REACH));
+    }
+
+    /** Un impulso que lo sienten todos los que estén dentro del alcance del impulso. Sin dueño. */
+    public static void around(ServerLevel level, double x, double y, double z, ShakeKind kind) {
+        PacketDistributor.sendToPlayersNear(level, null, x, y, z, kind.reach(),
+                payload(x, y, z, kind));
+    }
+
+    /**
+     * Un impulso sin dueño con el tamaño y el alcance puestos a mano.
+     *
+     * <p>Existe por el orbe, que trae sus propios números desde antes de que hubiera tabla.
+     * <b>Y su alcance ahora funciona</b>: antes el cliente lo tenía escrito en cuarenta bloques, así
+     * que su {@code SHAKE_REACH} no podía llegar más lejos por grande que fuera -- pasado el tope el
+     * temblor era cero. Ver {@code ShakeKind#reach}.</p>
+     */
+    public static void around(ServerLevel level, double x, double y, double z, double reach,
+                              float degrees, int ticks) {
+        PacketDistributor.sendToPlayersNear(level, null, x, y, z, reach,
+                new CameraShakePayload(x, y, z, degrees, ticks, (float) reach));
     }
 
     private static CameraShakePayload payload(double x, double y, double z, ShakeKind kind) {
-        return new CameraShakePayload(x, y, z, kind.degrees(), kind.ticks());
+        return new CameraShakePayload(x, y, z, kind.degrees(), kind.ticks(), kind.reach());
     }
 }

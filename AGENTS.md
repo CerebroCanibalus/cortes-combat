@@ -875,6 +875,14 @@ pregunta al modelo sus dos extremos reales; `renderToBuffer` es delegación pura
 (verificado sobre los **18** modelos de vanilla que lo sobreescriben), así que el pase doble no deja
 estado.
 
+**Y un guard de fuente que lee prosa volvió a morder, ahora desde el otro lado.** El de
+`ReactorPhaseTwoWiringTest` busca `ReactorShake` con un `indexOf` **sobre el texto crudo**, y el
+comentario que escribí en `detonateStar` dice *"va acá y no en `ReactorShake`"*: **el guard encontró su
+propia explicación** y se cayó con el código intacto. Es la tercera vez que este proyecto paga lo mismo
+(`ModifyExpressionValue` nombrado en un javadoc, `SoundPoolTest` tirando la carpeta), así que ese guard
+ahora **lee el archivo sin comentarios** -- que es la forma barata de escribirlo bien, y la única que
+hace que un comentario pueda explicar el bug que documenta.
+
 **La regla que queda:** cuando un efecto no se ve y el código "está bien", el siguiente paso ⊘ es
 retunear ni cambiar el canal — es **medir la geometría, leer el dato del mundo y mirar el número**. Y
 antes de eso: **contar las líneas del log en vez de leer el final**, y **desconfiar de una constante
@@ -882,7 +890,7 @@ cuyo nombre dice una cosa y cuyo valor dice otra.**
 
 ## Estado técnico actual
 
-**1160 tests unitarios verdes** (2026-10-13). Todo lo testeable corre en JVM pelada; lo que necesita el
+**1161 tests unitarios verdes** (2026-10-13). Todo lo testeable corre en JVM pelada; lo que necesita el
 juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardState`, `ConeSize`,
 `WeaponTooltip`, `ArcabuzState`, `ArcabuzMuzzle`, `DamageFlash`, `ShakePhase`, `ShakeKind` y los
 `viewmodel/*` puros.
@@ -898,16 +906,22 @@ juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardStat
   Los del flash del mob son **tres**: `OverlayTextureMixin` (escribe la paleta por fila), `LivingEntityOverlayMixin`
   (elige la fila y la columna del blanco) y `LivingEntityRenderMixin` (mide el rango del modelo y envuelve
   el `VertexConsumer` para que el rojo sea **una barra que se vacía**).
-- **7 temblores de cámara, en una sola tabla.** `fx/ShakeKind` es el enum con el tamaño y la duración
-  de cada uno -- matar 2,4°, explosión 5,0°, guardia rota 2,0°, parry 1,8°, golpe cargado 1,6°,
-  bloqueo 1,2°, recibir daño 0,8° -- y `fx/Shake` los manda. **La razón de que sea una tabla y no un
-  número por llamador** es que el riesgo de este efecto no es que falte sino que **sobre**: con siete
-  fuentes repartidas, *"¿cuánto sacude este juego?"* deja de tener respuesta. `ShakePhase.clampTotal`
-  recorta la **suma** (6,0°) porque los impulsos se acumulan, y un test afirma que **ningún impulso
-  solo llega al techo** (si llegara, se recortaría a sí mismo y el número sería mentira). Las fuentes:
-  `CombatEngine` (matar + cargado), `GuardHandler` (bloqueo + guardia rota), `ParryHandler` (parry),
-  `fx/ExplosionShake` (`ExplosionEvent.Detonate`, sin dueño) y `fx/HurtShake` (`LivingDamageEvent.Post`,
-  gate `getEntity() != null` para no temblar con cada tick de veneno o fuego).
+- **8 temblores de cámara, en una sola tabla.** `fx/ShakeKind` es el enum con el **tamaño, la duración
+  y el alcance** de cada uno -- nuke del reactor 8,0° a 160 bloques, TNT 5,0° a 40, matar 2,4°, guardia
+  rota 2,0°, parry 1,8°, golpe cargado 1,6°, bloqueo 1,2°, recibir daño 0,8° -- y `fx/Shake` los manda.
+  **La razón de que sea una tabla y no un número por llamador** es que el riesgo de este efecto no es
+  que falte sino que **sobre**: con ocho fuentes repartidas, *"¿cuánto sacude este juego?"* deja de
+  tener respuesta. Dos cosas la mantienen honesta: `ShakePhase.clampTotal` recorta la **suma** (10,0°)
+  porque los impulsos se acumulan, y un test afirma que **ningún impulso solo llega al techo** (si
+  llegara, se recortaría a sí mismo y el número sería mentira).
+- **Y el alcance es un dial aparte, que es lo que la nuke necesitó.** Estaba fijo en 40 bloques **en el
+  cliente**, así que ningún número podía llegar más lejos: pasado el alcance el temblor no era chico,
+  era **cero**. Ahora viaja en el payload (`CameraShakePayload.reach`) y `amplitudeAt` lo recibe. Las
+  fuentes: `CombatEngine` (matar + cargado), `GuardHandler` (bloqueo + guardia rota), `ParryHandler`,
+  `NetherReactorBlockEntity.detonateStar` (la nuke -- **no** pasa por `explode`, así que
+  `fx/ExplosionShake` no la ve), `fx/ExplosionShake` (`ExplosionEvent.Detonate`, sin dueño) y
+  `fx/HurtShake` (`LivingDamageEvent.Post`, gate `getEntity() != null` para no temblar con cada tick de
+  veneno o fuego). El arcabuz y el orbe traen su número a mano y usan `ShakeKind.COMMON_REACH`.
 - **Tooltips de stats, en TODAS las armas ⊘ vanilla.** `CombatTooltipHandler` (2 eventos) +
   `ConeSize` + `WeaponTooltip` + `TooltipLine`. Reemplaza los 2 renglones de vanilla
   (`GatherSkippedAttributeTooltipsEvent` por **id de modificador**, ⊘ por texto) c/ 7 renglones.
@@ -975,20 +989,21 @@ juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardStat
 
 ### Deuda conocida
 
-> **Estado al 2026-10-12: lo que falta es FX.** Palabras del usuario: *"solo faltarían FX y ya"*. Los
+> **Estado al 2026-10-13: lo que falta es FX.** Palabras del usuario: *"solo faltarían FX y ya"*. Los
 > sistemas están; lo que queda es lo que el jugador **ve y oye**. La lista de abajo está ordenada por
 > eso.
 >
-> **Y la ronda del flash + shake cerró dos** (2026-10-12): la barra de vida del mob medía su corte en
-> **unidades equivocadas** (bloques contra dieciseisavos → nunca cortaba) y el shake tenía la amplitud
-> 2,7× corta. Los dos quedan **⊥ playtest** con la instrumentación puesta (`[flash]`, `[flash/bar]`,
-> `[shake]`) — ver la lección de la ronda de los FX.
+> **La ronda del flash y del shake** (2026-10-12/13) cerró: la barra de vida medía su corte en
+> **unidades equivocadas** (bloques contra dieciseisavos → nunca cortaba), el shake **no existía** (la
+> tabla de senos de `Mth` saturaba con el reloj del mundo alto), el impacto "negro" era **rojo** y el
+> blanco de la muerte se muestreaba **fuera de la textura**. Todo eso está ⊥ playtest, con la
+> instrumentación puesta (`[flash]`, `[flash/bar]`, `[shake]`) — ver la lección de la ronda de los FX.
 
 | Falta | Nota |
 |---|---|
-| **Playtest de la barra de vida del mob** | Ahora es una **barra que se vacía** (vida llena = todo, 0 = nada), el corte sale del **rango medido** del modelo (`VertexBounds`), el impacto es **negro de verdad** (era rojo al 87 %) y dura **3 ticks** (uno se leía como un bug). Lo que hay que ver: que la barra se retire hacia abajo, que el impacto apague el mob y que al morir salga el blanco. `[flash/bar]` imprime `Y=[min,max] corte=` en el primer tick de la barra |
-| **Playtest de los siete temblores** | Estaba muerto por la tabla de senos (`Mth.sin` satura con el reloj alto) — ver la lección de los FX. Arreglado con `ShakePhase`, y ahora son **siete fuentes** en `fx/ShakeKind`: matar (2,4), explosión (5,0), guardia rota, parry, golpe cargado, bloqueo y recibir daño (0,8). Lo que hay que ver: que **no mareen** jugando seguido, y si alguno sobra o falta. La escala entera está en una tabla y un test la audita |
-| **El roll del reactor estaba muerto** | **Encontrado y ARREGLADO** (2026-10-13): su `1,9` saturaba con el reloj > 108.362 y el de prueba estaba en 285.340. Sólo sobrevivía su pitch (0,7). Ahora los dos pasan por `ShakePhase.angle`. **Falta confirmarlo a ojo** — el reactor debería temblar en los dos ejes |
+| **Playtest del flash** | El rojo pasó a **87,5 %** (era 50 % y el playtest lo llamó *"muy poco intenso"*), el impacto negro dura **3 ticks** (uno se leía como un bug) y el **cadáver ahora sale blanco** durante toda la animación de muerte (antes quedaba rojo: vanilla le pone la fila roja por `deathTime > 0` y nosotros le pasábamos el valor sin tocarlo) |
+| **Playtest de los ocho temblores** | Estaba muerto por la tabla de senos (`Mth.sin` satura con el reloj alto) — ver la lección de los FX. Arreglado con `ShakePhase`, y son **ocho fuentes** en `fx/ShakeKind`. La **nuke del reactor** entró después, con alcance propio: 8,0° a **160 bloques** contra los 40 de una TNT. Lo que hay que ver: que **no maren** jugando seguido y si el alcance de la nuke es el correcto |
+| **El roll del reactor** | **Arreglado y CONFIRMADO a ojo por el dueño** (2026-10-13): su `1,9` saturaba con el reloj > 108.362 y el de prueba estaba en 285.340, así que sólo sobrevivía el pitch. Ahora tiembla en los dos ejes y el dueño lo llamó *"perfecto"* — **es la intención y no se toca** |
 | **Retroalimentación del golpe cargado** | Es **uno**: `addParticle` no aparece en ninguna parte del código para esto, y `CombatFeedback` sólo tiene `HIT`/`KILL`/`GUARDED`. **El cargado cambia el número y ⊘ cambia nada en pantalla ni en el oído** — que es la mitad de la mecánica, porque el oído es el único canal que funciona **sin mirar** |
 | **Arcabuz** | Feedback **por objetivo** (el disparo pega a diez y la pantalla ⊘ dice a cuántos) y el flash a **1,7 m**, derivado **a ojo** — primer número a tocar si se ve mal. El click izquierdo ya tiene `STRIKE`+`RECOVER` |
 | **El arcabuz no tiene animación de cuerpo** (3ª persona) | Su perfil ⊘ lee `CHOP` ni `STRIKE`: su click izquierdo es una puñalada de bayoneta y nunca se le escribió |

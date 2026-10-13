@@ -734,6 +734,15 @@ public class NetherReactorBlockEntity extends BlockEntity {
         play(server, ReactorSounds.NUCLEAR_EXPLOSION, ReactorOverload.NUCLEAR_VOLUME, 0.8F);
         server.sendParticles(ParticleTypes.EXPLOSION_EMITTER, cx, cy, cz, 4, 2.0, 2.0, 2.0, 0.0);
         server.sendParticles(ParticleTypes.FLASH, cx, cy, cz, 1, 0.0, 0.0, 0.0, 0.0);
+        // **Y el golpe de camara, que es lo unico que le dice al cuerpo "fue una nuke".**
+        //
+        // Va aca y no en `ReactorShake`: ese es el zumbido CONTINUO del reactor, que dura lo que dura
+        // la sobrecarga y viaja por el block entity. Esto es el reventon, es un hecho puntual que no
+        // tiene block entity detras -- el bloque se acaba de ir --, y ademas tiene que llegar
+        // **mucho mas lejos** que una TNT: `ShakeKind.NUCLEAR` lleva 160 bloques de alcance contra los
+        // 40 de una explosion comun, y el doble de amplitud. Ver `Shake`.
+        com.cortes.combat.fx.Shake.around(server, cx, cy, cz,
+                com.cortes.combat.fx.ShakeKind.NUCLEAR);
         damageAround(server, pos);
         ReactorBlast.request(server, pos, ReactorOverload.STAR_DESTRUCTION_RADIUS);
     }

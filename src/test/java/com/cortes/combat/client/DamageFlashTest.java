@@ -98,15 +98,29 @@ class DamageFlashTest {
         }
     }
 
-    /** Y la del rojo, el rojo al 50 % -- más fuerte que el 30 % de vanilla. */
+    /**
+     * Y la del rojo, <b>mucho más fuerte que el 30 % de vanilla</b>.
+     *
+     * <p>El alpha subió dos veces por la misma razón: no se veía. El original era 0x80 -- 50 %, ya por
+     * encima del 30 % de vanilla -- y el playtest lo llamó <em>"muy poco intenso"</em>. Ahora usa el
+     * mismo que el impacto, así que los dos frames del flash tienen la <b>misma fuerza</b> y lo único
+     * que los distingue es el color.</p>
+     *
+     * <p>⚠ El guard que vivía acá pedía {@code RED_ALPHA >= 0x40}, o sea <em>"que el mob no quede
+     * tapado"</em> -- y ése era el pedido contrario. Se cambió <b>con</b> el número y no en contra de
+     * él: un guard que fija una decisión que resultó mala es lo que impide corregirla.</p>
+     */
     @Test
     void theRedRowIsStrongerThanVanilla() {
         assertEquals(DamageFlash.STRONGER_RED, DamageFlash.texturePixel(DamageFlash.RED_ROW,
                 DamageFlash.VANILLA_RED));
-        assertTrue(alpha(DamageFlash.STRONGER_RED) < alpha(DamageFlash.VANILLA_RED),
-                "el rojo quedaría igual o más débil que el de vanilla");
-        assertTrue(DamageFlash.RED_ALPHA >= 0x40,
-                "con alpha " + DamageFlash.RED_ALPHA + " el mob queda tapado por el flash");
+        // Un cuarto del alpha de vanilla es cuatro veces mas rojo: el mob queda tapado a proposito.
+        assertTrue(DamageFlash.RED_ALPHA * 4 <= alpha(DamageFlash.VANILLA_RED),
+                "el rojo (" + DamageFlash.RED_ALPHA + ") no es bastante mas fuerte que el de vanilla ("
+                        + alpha(DamageFlash.VANILLA_RED) + ")");
+        // Y los dos frames del flash comparten la intensidad: solo cambia el color.
+        assertEquals(DamageFlash.IMPACT_ALPHA, DamageFlash.RED_ALPHA,
+                "el impacto y el rojo tienen fuerzas distintas sin razon");
     }
 
     /**
@@ -270,5 +284,11 @@ class DamageFlashTest {
         assertTrue(DamageFlash.whiteColumn(1) > DamageFlash.whiteColumn(DamageFlash.DEATH_WHITE_TICKS),
                 "el blanco no crece hacia el final de la ventana");
         assertEquals(15, DamageFlash.whiteColumn(1));
+
+        // Y la columna del cadaver tambien esta dentro, y es la mas fuerte que la fila blanca sabe dar.
+        assertTrue(DamageFlash.DEATH_WHITE_COLUMN >= 0 && DamageFlash.DEATH_WHITE_COLUMN <= 15,
+                "la columna del cadaver sale de la textura");
+        assertEquals(15, DamageFlash.DEATH_WHITE_COLUMN,
+                "la muerte tiene que ser el blanco mas fuerte que la fila sabe dar");
     }
 }

@@ -44,6 +44,7 @@ class AntimatterOrbTest {
     private static final String SHAKE = "src/main/java/com/cortes/combat/client/CameraShake.java";
     private static final String REACTOR_SHAKE = "src/main/java/com/cortes/combat/client/ReactorShake.java";
     private static final String CONFIG = "src/main/java/com/cortes/combat/config/ClientConfig.java";
+    private static final String SHAKE_HELPER = "src/main/java/com/cortes/combat/fx/Shake.java";
 
     @Test
     @DisplayName("el orbe NO se detona por tocar un cuerpo: el `pull` lo empujaba adentro de su propia caja")
@@ -108,8 +109,15 @@ class AntimatterOrbTest {
     @Test
     @DisplayName("el temblor de camara esta cableado de punta a punta, y las dos explosiones lo comparten")
     void theShakeIsWiredEndToEnd() {
-        assertTrue(read(ORB).contains("CameraShakePayload("),
-                "el reventon no avisa a ninguna camara");
+        // **Las dos mitades del cable, y por eso dos archivos.** El orbe dejo de construir el payload
+        // a mano cuando todos los temblores se mudaron a `fx.Shake`: ahora lo que hay que afirmar es
+        // que el reventon lo **pide** y que el que lo manda lo **construye**. Pedirlo a alguien que
+        // no lo construye es la forma nueva del listener huerfano -- el build verde y la camara
+        // quieta.
+        assertTrue(code().contains("Shake.around("),
+                "el reventon no pide ningun temblor: la camara no se entera");
+        assertTrue(stripComments(read(SHAKE_HELPER)).contains("CameraShakePayload("),
+                "**el que manda los temblores no construye el payload**, asi que pedirlo no hace nada");
         assertTrue(read(NET).contains("CameraShakePayload.TYPE, CameraShakePayload.STREAM_CODEC"),
                 "**el payload existe y nadie lo registra**: el cliente lo recibiria sin saber que "
                         + "hacer con el, que es el silencio exacto de un listener huerfano");

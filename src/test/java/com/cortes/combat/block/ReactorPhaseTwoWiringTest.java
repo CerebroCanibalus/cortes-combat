@@ -59,6 +59,19 @@ class ReactorPhaseTwoWiringTest {
         return hits;
     }
 
+    /**
+     * El archivo <b>sin comentarios</b>, y acá es obligatorio.
+     *
+     * <p>Porque los comentarios de este proyecto <b>nombran las cosas para explicarlas</b>: el de
+     * {@code detonateStar} dice <em>"va acá y no en {@code ReactorShake}"</em>, y un guard que busque
+     * el nombre a ras encuentra esa frase y se cae con el código intacto. Es la lección que este
+     * proyecto ya pagó dos veces -- un guard que lee prosa encuentra su propia explicación --, y la
+     * forma barata de escribirla bien es ésta: <b>preguntarle al código</b>.</p>
+     */
+    private static String stripComments(String source) {
+        return source.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("//[^\\n]*", "");
+    }
+
     @Test
     @DisplayName("the star crater is a staged sphere, budgeted, and never a single explode")
     void theStarCraterIsStaged() {
@@ -119,7 +132,7 @@ class ReactorPhaseTwoWiringTest {
     @Test
     @DisplayName("no client class is referenced from a method a server invokes")
     void theClientReferenceIsBehindAClientOnlyMethod() {
-        String be = read(BE);
+        String be = stripComments(read(BE));
         int publish = be.indexOf("private void publishShake()");
         int firstUse = be.indexOf("ReactorShake");
         assertTrue(publish >= 0 && firstUse > publish,

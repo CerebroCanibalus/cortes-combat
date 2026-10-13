@@ -54,6 +54,23 @@ public class LivingEntityOverlayMixin {
     private static void cortescombat$ourFlash(LivingEntity entity, float vanillaU,
                                               CallbackInfoReturnable<Integer> cir) {
         if (entity.hurtTime <= 0) {
+            // **El cadaver, y el rojo que nadie pidio.**
+            //
+            // Con `hurtTime` en cero la version anterior dejaba pasar el valor de vanilla -- y el de
+            // vanilla es ROJO, porque `v(hurtTime > 0 || deathTime > 0)` mira tambien `deathTime`.
+            // Y `deathTime` SI avanza en el cliente: el reloj lo arranca `isDeadOrDying()`, que lee
+            // `getHealth()`, y la vida si viaja. O sea que el cadaver se quedaba con la fila roja los
+            // veinte ticks de la animacion de muerte -- y el playtest lo reporto exactamente asi:
+            // *"al morir se ve full rojo"*.
+            //
+            // **El blanco es lo que el diseno pide para la muerte, y ahora cubre la animacion entera.**
+            // Antes solo entraba en los ultimos dos ticks de `hurtTime` (la curva de `whiteForDeath`,
+            // que mide lo que le queda al GOLPE); aca el golpe ya se fue y lo que queda es el cuerpo
+            // cayendose, asi que va con la columna fija.
+            if (entity.getHealth() <= 0.0F) {
+                cir.setReturnValue(OverlayTexture.pack(DamageFlash.DEATH_WHITE_COLUMN,
+                        OverlayTexture.WHITE_OVERLAY_V));
+            }
             return;
         }
         if (entity.hurtTime == DamageFlash.FLASH_TICKS) {

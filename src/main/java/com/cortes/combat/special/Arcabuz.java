@@ -562,11 +562,9 @@ public final class Arcabuz {
         // Mungus sacude el doble y no las cuatro veces del empuje: cuatro serian tres grados y pico,
         // que es mas que el reventon del orbe. Un disparo pesado tiene que sentirse pesado, no
         // tirarte la camara al piso.
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
-                new com.cortes.combat.net.CameraShakePayload(
-                        player.getX(), player.getY(), player.getZ(),
-                        RECOIL_SHAKE_DEGREES * (mungus > 0 ? MUNGUS_SHAKE_FACTOR : 1.0F),
-                        RECOIL_SHAKE_TICKS));
+        com.cortes.combat.fx.Shake.to(player, player.getX(), player.getY(), player.getZ(),
+                RECOIL_SHAKE_DEGREES * (mungus > 0 ? MUNGUS_SHAKE_FACTOR : 1.0F),
+                RECOIL_SHAKE_TICKS);
     }
 
     /**

@@ -19,24 +19,18 @@ import net.neoforged.neoforge.event.level.ExplosionEvent;
  * {@code Detonate} es el hecho -- hubo una explosión, acá -- y el cliente decide si le llega según
  * su distancia.</p>
  *
- * <h2>El radio es del aviso, no del efecto</h2>
+ * <h2>El radio es el del impulso, no el de la explosión</h2>
  *
- * <p>{@code CameraShake} ya cae al cuadrado hasta su propio alcance, así que a 20 bloques el 5,0 de
- * la tabla llega a 1,25 y a 38 bloques es un susurro. Este radio sólo decide <b>a quién le llega el
- * paquete</b>, y por eso es generoso: mandarlo de más cuesta unos bytes y el cliente lo descarta solo
- * cuando la distancia da cero.</p>
+ * <p>{@code CameraShake} cae al cuadrado hasta el alcance que trae el impulso, así que a 20 bloques
+ * el 5,0 de la tabla llega a 1,25 y a 38 es un susurro. El paquete va a los que están dentro de ese
+ * mismo alcance -- mandarlo de más cuesta unos bytes y el cliente lo descarta solo.</p>
  *
- * <h2>Y va sin dueño</h2>
- *
- * <p>No hay "el jugador de la explosión": la sintieron todos los que estaban cerca, y cada uno mide
- * lo suyo. Es la misma forma que el temblor del orbe, y la razón por la que {@link Shake#around}
- * existe.</p>
+ * <p><b>Y por eso el reactor no pasa por acá.</b> Su reventón no llama a {@code explode} (vaporiza
+ * sin encadenar, ver {@code ReactorBlast}) y además tiene que llegar <b>mucho más lejos</b> que una
+ * TNT: su temblor lo dispara {@code NetherReactorBlockEntity} con {@code ShakeKind.NUCLEAR}.</p>
  */
 @EventBusSubscriber(modid = CortesCombat.MODID)
 public final class ExplosionShake {
-
-    /** Hasta dónde viaja el aviso, en bloques. Generoso a propósito: ver el javadoc. */
-    public static final double RADIUS = 48.0;
 
     private ExplosionShake() {
     }
@@ -47,6 +41,6 @@ public final class ExplosionShake {
             return;
         }
         Vec3 center = event.getExplosion().center();
-        Shake.around(server, center.x, center.y, center.z, RADIUS, ShakeKind.EXPLOSION);
+        Shake.around(server, center.x, center.y, center.z, ShakeKind.EXPLOSION);
     }
 }

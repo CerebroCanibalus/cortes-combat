@@ -231,11 +231,12 @@ ronda**, porque es lo único de toda esta lista que pide tocar el pipeline de re
 
 ## 4 · El shake — los tres disparadores que faltaban
 
-> **Estado al 2026-10-13: implementado, y son SIETE.** El diseño de abajo es el original de esta
+> **Estado al 2026-10-13: implementado, y son OCHO.** El diseño de abajo es el original de esta
 > ronda y quedó corto en dos cosas. **La tabla de amplitudes vive en `fx/ShakeKind`** y no en cada
-> llamador: matar 2,4°, explosión 5,0°, guardia rota 2,0°, parry 1,8°, golpe cargado 1,6°, bloqueo
-> 1,2°, recibir daño 0,8°. Las siete fuentes están en `CombatEngine` (matar + cargado), `GuardHandler`
-> (bloqueo + guardia rota), `ParryHandler`, `fx/ExplosionShake` y `fx/HurtShake`.
+> llamador: nuke del reactor 8,0° **a 160 bloques**, TNT 5,0° a 40, matar 2,4°, guardia rota 2,0°,
+> parry 1,8°, golpe cargado 1,6°, bloqueo 1,2°, recibir daño 0,8°. Las fuentes están en
+> `CombatEngine` (matar + cargado), `GuardHandler` (bloqueo + guardia rota), `ParryHandler`,
+> `NetherReactorBlockEntity.detonateStar` (la nuke), `fx/ExplosionShake` y `fx/HurtShake`.
 >
 > **1 · Y `CameraShake` no funcionaba.** `Mth.sin` es una tabla y su índice **satura** con ángulos
 > grandes, y el ángulo era el **reloj del mundo** por la frecuencia: con el reloj del mundo real
@@ -243,11 +244,16 @@ ronda**, porque es lo único de toda esta lista que pide tocar el pipeline de re
 > (su `1,9`), que ya está arreglado. La nota de abajo sobre `PITCH_HZ` queda sin efecto: la fase sale
 > de la **edad del impulso**, así que un impulso de 5 ticks no hereda la frecuencia de uno de 14.
 >
-> **2 · El riesgo era que sobre, no que faltara.** Con siete fuentes repartidas, *"¿cuánto sacude
+> **2 · El alcance es un dial aparte, y estaba fijo en el cliente.** Cuarenta bloques, el de un
+> reventón común -- así que **ningún número podía llegar más lejos**: pasado el alcance el temblor no
+> era chico, era **cero**. Ahora viaja en el payload y `amplitudeAt` lo recibe, que es lo que permite
+> que una nuke se sienta a 160 bloques y una flecha a dos.
+>
+> **3 · El riesgo era que sobre, no que faltara.** Con ocho fuentes repartidas, *"¿cuánto sacude
 > esto?"* dejó de tener respuesta, así que la tabla es la respuesta y un test la audita.
-> `ShakePhase.clampTotal` recorta la **suma** a 6,0° -- los impulsos se acumulan, así que cinco mobs
+> `ShakePhase.clampTotal` recorta la **suma** a 10,0° -- los impulsos se acumulan, así que cinco mobs
 > pegando en el mismo tick son cinco impulsos -- y el techo está **por encima del más grande** para
-> que una explosión sola no se recorte a sí misma.
+> que un solo impulso no se recorte a sí mismo.
 
 `CameraShake` ya tiene decaimiento, dos frecuencias que no son múltiplo, caída cuadrática, filtro por
 dimensión y un `ClientConfig.CAMERA_SHAKE` para apagarlo. **Hoy lo usa una sola cosa: el orbe.** Los

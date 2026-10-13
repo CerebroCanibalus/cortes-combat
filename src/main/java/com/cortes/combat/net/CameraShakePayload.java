@@ -25,13 +25,21 @@ import net.minecraft.resources.ResourceLocation;
  * manda el origen y cada cliente mide lo suyo, que es la misma division que usa el resto del mod --
  * el servidor decide que paso, el cliente decide como se ve.</p>
  *
+ * <h2>Y viaja el alcance, porque el alcance es del hecho y no del efecto</h2>
+ *
+ * <p>El cliente tenia el alcance en una constante de cuarenta bloques -- el de un reventon comun --
+ * y eso hacia que <b>ningun numero pudiera llegar mas lejos</b>: pasando los cuarenta el temblor no
+ * era chico, era <b>cero</b>. Un reactor tiene que sentirse a cien bloques y una flecha que pasa al
+ * lado a dos, y esa no es una diferencia de amplitud. Ver {@code ShakeKind#reach}.</p>
+ *
  * @param x       el origen del reventon
  * @param y       el origen del reventon
  * @param z       el origen del reventon
  * @param degrees la amplitud en grados <b>a quemarropa</b>; cae con el cuadrado de la distancia
  * @param ticks   cuanto dura. Terminado el plazo el cliente lo olvida solo.
+ * @param reach   hasta donde se siente, en bloques. Mas alla el cliente lo descarta solo.
  */
-public record CameraShakePayload(double x, double y, double z, float degrees, int ticks)
+public record CameraShakePayload(double x, double y, double z, float degrees, int ticks, float reach)
         implements CustomPacketPayload {
 
     public static final Type<CameraShakePayload> TYPE = new Type<>(
@@ -44,6 +52,7 @@ public record CameraShakePayload(double x, double y, double z, float degrees, in
                     ByteBufCodecs.DOUBLE, CameraShakePayload::z,
                     ByteBufCodecs.FLOAT, CameraShakePayload::degrees,
                     ByteBufCodecs.VAR_INT, CameraShakePayload::ticks,
+                    ByteBufCodecs.FLOAT, CameraShakePayload::reach,
                     CameraShakePayload::new);
 
     @Override

@@ -95,11 +95,15 @@ public final class ShakePhase {
      * cuatro grados que nadie eligió.</p>
      *
      * <p>∴ el techo es de la suma y no de las partes, y <b>está por encima del impulso más grande</b>
-     * ({@code ShakeKind.largestDegrees()}): si estuviera por debajo, una explosión sola se recortaría
-     * a sí misma y el número de la tabla sería mentira. Un test lo afirma cruzando las dos
-     * constantes.</p>
+     * ({@code ShakeKind.largestDegrees()}, que es el reventón nuclear): si estuviera por debajo, un
+     * reactor solo se recortaría a sí mismo y el número de la tabla sería mentira. Un test lo afirma
+     * cruzando las dos constantes.</p>
+     *
+     * <p>Subió de 6,0 a 10,0 cuando entró la nuke, y la protección no se perdió: lo que el techo
+     * defiende es la <b>suma de muchos chicos</b> -- cinco mobs pegando en el mismo tick --, y eso
+     * sigue muy por debajo. Un solo impulso grande es un hecho, no una acumulación.</p>
      */
-    public static final float MAX_TOTAL_DEGREES = 6.0F;
+    public static final float MAX_TOTAL_DEGREES = 10.0F;
 
     private ShakePhase() {
     }

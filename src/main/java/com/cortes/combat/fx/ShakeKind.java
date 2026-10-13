@@ -40,32 +40,62 @@ import java.util.Locale;
 public enum ShakeKind {
 
     /** Un reventón. El más grande de todos, y el único que se permite pasar de 3°. */
-    EXPLOSION(5.0F, 14),
+    EXPLOSION(5.0F, 14, 40.0F),
+
+    /**
+     * El reventón del reactor. <b>Más fuerte y mucho más lejos que una TNT, porque lo es.</b>
+     *
+     * <p>Su alcance de 160 bloques no es un adorno: la caída es cuadrática, así que a 80 bloques
+     * todavía llega a un cuarto (2,0°) y a 120 a un dieciseisavo (0,5°). Una TNT se siente en la
+     * cuadra; esto se siente en el mapa.</p>
+     *
+     * <p><b>Y es el único impulso por encima del techo de 6,0°</b> -- por eso el techo tuvo que
+     * subir: si un reventón nuclear se recortara a sí mismo, su número sería mentira. Sigue estando
+     * por debajo de {@code MAX_TOTAL_DEGREES} para no mentir, y sigue siendo uno solo: la suma de
+     * muchos chicos es lo que el techo protege, no la magnitud de uno.</p>
+     */
+    NUCLEAR(8.0F, 20, 160.0F),
 
     /** Matar. La referencia de la escala: 4,0° recortado un 40 % porque el dueño lo pidió. */
-    KILL(2.4F, 6),
+    KILL(2.4F, 6, 40.0F),
 
     /** Te rompieron la guardia. Es un golpe grande: la postura se cae y quedás quieto dos segundos. */
-    GUARD_BREAK(2.0F, 8),
+    GUARD_BREAK(2.0F, 8, 40.0F),
 
     /** El parry del sable devolvió el golpe. Un momento corto y premiado, del orden de la guardia. */
-    PARRY(1.8F, 6),
+    PARRY(1.8F, 6, 40.0F),
 
     /** Un golpe a carga completa aterrizando. Cargar cuesta 40 ticks: que se sienta al llegar. */
-    CHARGED_HIT(1.6F, 7),
+    CHARGED_HIT(1.6F, 7, 40.0F),
 
     /** Bloqueaste. El golpe murió en el escudo, y el hombro lo cobra sin que la vida lo diga. */
-    GUARDED(1.2F, 5),
+    GUARDED(1.2F, 5, 40.0F),
 
     /** Te pegaron. El más chico de todos, y a propósito: es el que más se repite. */
-    HURT(0.8F, 5);
+    HURT(0.8F, 5, 40.0F);
+
+    /**
+     * El alcance de todo lo que no sea la nuke.
+     *
+     * <p><b>Está acá abajo y no arriba por una razón del lenguaje:</b> las constantes de un enum se
+     * declaran primero y no pueden referenciar un campo estático -- es una referencia hacia adelante
+     * ilegal --, así que los cuarenta bloques están escritos dos veces: en las filas de arriba y acá.
+     * Un test los ata ({@code theReachIsWhatSeparatesThem}), que es lo único que evita que se separen
+     * en silencio.</p>
+     *
+     * <p>Lo usan los dos que traen su número a mano en vez de una fila: el culatazo del arcabuz y el
+     * reventón del orbe. Ver {@code Shake}.</p>
+     */
+    public static final float COMMON_REACH = 40.0F;
 
     private final float degrees;
     private final int ticks;
+    private final float reach;
 
-    ShakeKind(float degrees, int ticks) {
+    ShakeKind(float degrees, int ticks, float reach) {
         this.degrees = degrees;
         this.ticks = ticks;
+        this.reach = reach;
     }
 
     /** La amplitud en grados <b>a quemarropa</b>; el cliente la baja con el cuadrado de la distancia. */
@@ -76,6 +106,19 @@ public enum ShakeKind {
     /** Cuánto dura el impulso, en ticks. */
     public int ticks() {
         return this.ticks;
+    }
+
+    /**
+     * Hasta dónde se siente, en bloques, con la caída cuadrática ya aplicada.
+     *
+     * <p><b>Va por impulso y no fija, y esa es la mitad que faltaba.</b> El cliente tenía el alcance
+     * escrito en una constante -- 40 bloques, el de un reventón común --, así que ningún número podía
+     * llegar más lejos por grande que fuera: pasando los 40 el temblor era <b>cero</b>, no chico. Un
+     * reactor tiene que sentirse a cien bloques y una flecha que pasa al lado a dos, y eso no es una
+     * diferencia de amplitud sino de <b>alcance</b>.</p>
+     */
+    public float reach() {
+        return this.reach;
     }
 
     /** El impulso más grande de la tabla. Ver el techo de la suma en el javadoc de la clase. */
