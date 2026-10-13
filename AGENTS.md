@@ -113,6 +113,27 @@ seguro de si la clase ya se cargo, la respuesta segura es reiniciar.
   pila. Buscar la clase en el cache primero es más lento y no encuentra nada.
 - **`javap -c` recupera código, ⊘ sólo firmas.** Los `ldc` en orden dan el número exacto de cada
   argumento. Sirvió para reconstruir un archivo perdido desde el `.class` del jar.
+- **`javap -s` da el descriptor del método, y ahí aparece el BRIDGE — que es la trampa que costó un
+  arranque de cliente.** `LivingEntityRenderer` declara **dos** `render`:
+  `(Lnet/minecraft/world/entity/LivingEntity;FF…)V` y `(Lnet/minecraft/world/entity/Entity;FF…)V`. El
+  segundo lo **genera `javac`**: `EntityRenderer<T extends Entity>` declara `render(T,…)` y la
+  subclase lo sobrescribe con un bound **más estrecho** (`LivingEntity`), así que el compilador emite
+  un puente con el descriptor del padre que **sólo castea y delega**. Un puente **⊘ tiene el cuerpo**,
+  así que apuntarle un `@At(INVOKE)` da **`Scanned 0 target(s)`** — un error que se lee como "el `@At`
+  está mal" cuando el `@At` estaba bien. **La regla: el descriptor del target de un método genérico es
+  el del BOUND declarado (`LivingEntity`), ⊘ el de la clase padre** — y el handler tiene que declarar
+  el mismo, que de paso borra el cast. El `method` de un `@ModifyArg` que tomaba `Entity` fue
+  exactamente el bug.
+- **Y `@ModifyArg` ⊘ acepta los argumentos del contenedor; `@Redirect` sí.** El segundo error de la
+  misma ronda: con `@ModifyArg` el cliente murió con *"targets a method with an invalid signature
+  `(PoseStack;VertexConsumer;III)`, expected `(VertexConsumer;LivingEntity;FF…;I)`"*. Esa segunda
+  firma es **el handler entero** — un argumento del invoke ⊕ los seis del contenedor — así que el
+  problema ⊘ era el descriptor ni la captura: **`@ModifyArg` valida el handler contra la firma del
+  método invocado** y con argumentos de contexto no cierra. `@Redirect` es el injector que el
+  proyecto **ya tenía probado** para esto (`OverlayTextureMixin` redirige `setPixelRGBA` y recibe el
+  receptor ⊕ sus tres argumentos), y **se le pueden pedir sólo los del contenedor que se usan**
+  (`LivingEntity`): Mixin acepta un prefijo, ⊘ hace falta declarar los seis. **Regla: si el reemplazo
+  necesita un dato del método que contiene, es `@Redirect`.**
 - **Las fuentes de vanilla SÍ están disponibles:** `build/moddev/artifacts/neoforge-21.1.250-sources.jar`
   (o `~/.gradle/caches/neoformruntime/intermediate_results/sourcesAndCompiledWithNeoForge_*.jar`,
   6.294 `.java`). `javap` p/ *confirmar* una firma; `jar xf` + **leer el método** cuando lo que
@@ -798,10 +819,13 @@ juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardStat
 > contando los registros (`grep` de `register(` sobre cada archivo de `registry/`), ⊘ leyendo la lista
 > anterior. Si volvés a leer esto y hay dudas, contá.
 
-- **11 mixins**: `MinecraftAttackMixin` (ataque) c/ su seam `ItemInHandRendererMixin`, `PlayerModelMixin`
+- **12 mixins**: `MinecraftAttackMixin` (ataque) c/ su seam `ItemInHandRendererMixin`, `PlayerModelMixin`
   (3ª persona, 2 inyecciones), `SpecialRightClickMixin` (el click derecho después del mundo),
   `ArcabuzGuiIconMixin` (el sprite por `ItemDisplayContext`), `TrabazonSprintMixin`, `GoldDurabilityMixin`,
   `ItemStackDrinkDurationMixin`, `FoodDataMixin`, `RedStoneWireBlockMixin` y el `MobEffectInstanceAccessor`.
+  Los del flash del mob son **tres**: `OverlayTextureMixin` (escribe la paleta por fila), `LivingEntityOverlayMixin`
+  (elige la fila) y `LivingEntityRenderMixin` (envuelve el `VertexConsumer` para que el rojo **se retire
+  hacia abajo** como una barra de vida).
 - **Tooltips de stats, en TODAS las armas ⊘ vanilla.** `CombatTooltipHandler` (2 eventos) +
   `ConeSize` + `WeaponTooltip` + `TooltipLine`. Reemplaza los 2 renglones de vanilla
   (`GatherSkippedAttributeTooltipsEvent` por **id de modificador**, ⊘ por texto) c/ 7 renglones.

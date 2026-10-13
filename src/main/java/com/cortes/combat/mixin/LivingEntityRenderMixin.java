@@ -4,14 +4,14 @@ import com.cortes.combat.client.DamageFlash;
 import com.cortes.combat.client.HealthFlashBuffer;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
  * Convierte el flash en <b>una barra de vida</b>: envuelve el buffer del modelo para que el rojo se
@@ -35,6 +35,46 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
  * Es <b>{@code EntityModel}</b> y no {@code Model}, que es la clase que lo <i>declara</i> -- y esa
  * diferencia es la que decide si el mixin aplica o falla en silencio.</p>
  *
+ * <h2>Y el metodo del target tiene DOS descriptores, uno de ellos un bridge vacio</h2>
+ *
+ * <p><b>Esto costo el primer arranque del cliente</b>, con {@code Scanned 0 target(s)} -- que se
+ * lee como "el {@code @At} esta mal" y no lo estaba. La causa es que
+ * {@code LivingEntityRenderer} <b>declara dos</b> metodos llamados {@code render}:</p>
+ *
+ * <pre>public void render(T, ...)                                  descriptor (Lnet/minecraft/world/entity/LivingEntity;FF...)V
+ * public void render(net.minecraft.world.entity.Entity, ...)  descriptor (Lnet/minecraft/world/entity/Entity;FF...)V</pre>
+ *
+ * <p>El segundo es un <b>bridge method</b> que genera {@code javac}: {@code EntityRenderer<T extends
+ * Entity>} declara {@code render(T, ...)} y esta clase lo sobrescribe con un bound <b>mas
+ * estrecho</b> ({@code LivingEntity}), asi que el compilador emite un puente con el descriptor del
+ * padre que <b>solo castea y delega</b>. Un puente no tiene el cuerpo: <b>no tiene el
+ * {@code invokevirtual} adentro</b>, asi que apuntarle da cero puntos de inyeccion.</p>
+ *
+ * <p><b>La regla, que vale para cualquier {@code @Inject} sobre un metodo generico:</b> el
+ * descriptor del <i>target</i> es el <b>del bound declarado</b> -- {@code LivingEntity} -- y
+ * <b>no</b> el de la clase padre.</p>
+ *
+ * <h2>Por que {@code @Redirect} y no {@code @ModifyArg}</h2>
+ *
+ * <p><b>Segundo error de la misma ronda, y el que eligio el injector.</b> Con {@code @ModifyArg} el
+ * cliente murio con:</p>
+ *
+ * <pre>@ModifyArg ... targets a method with an invalid signature
+ * (Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;III),
+ * expected (Lcom/mojang/blaze3d/vertex/VertexConsumer;Lnet/minecraft/world/entity/LivingEntity;FF...;I)</pre>
+ *
+ * <p>La segunda firma es <b>el handler entero</b> -- un argumento del invoke mas los seis del
+ * contenedor -- asi que el problema no era el descriptor ni la captura: <b>{@code @ModifyArg}
+ * valida el handler contra la firma del metodo invocado</b> y con argumentos de contexto no cierra.
+ * {@code @Redirect} es el injector que el proyecto <b>ya tiene probado</b> para esto
+ * ({@code OverlayTextureMixin} redirige {@code setPixelRGBA} y recibe el receptor mas sus tres
+ * argumentos), y es el correcto acá porque el reemplazo necesita <b>la entidad del contenedor</b>
+ * para saber cuánta vida le queda.</p>
+ *
+ * <p><b>Y se toma s\u00f3lo el primer argumento del contenedor</b> ({@code LivingEntity}): Mixin
+ * permite declarar un prefijo de los argumentos del target, y pedir los seis sería declarar cinco
+ * que nadie usa.</p>
+ *
  * <h2>Cuándo NO se envuelve</h2>
  *
  * <p>Dos casos, y los dos son <b>el cuerpo entero</b>:</p>
@@ -46,37 +86,30 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
  * </ul>
  *
  * <p>Y en los dos el umbral es cero, o sea que <b>no habría nada que borrar</b>: envolver sería
- * pagar un objeto y seis delegaciones por vértice para no cambiar nada. Se devuelve el buffer
+ * pagar un objeto y seis delegaciones por vértice para no cambiar nada. Se deja pasar el buffer
  * original y el costo es cero.</p>
  */
 @Mixin(LivingEntityRenderer.class)
 public class LivingEntityRenderMixin {
 
-    @ModifyArg(
-            method = "render(Lnet/minecraft/world/entity/Entity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
+    @Redirect(
+            method = "render(Lnet/minecraft/world/entity/LivingEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/model/EntityModel;renderToBuffer(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V"),
-            index = 1)
-    private VertexConsumer cortescombat$healthBar(VertexConsumer original, Entity entity,
-                                                  float entityYaw, float partialTicks,
-                                                  PoseStack poseStack, MultiBufferSource buffer,
-                                                  int packedLight) {
-        // El tipo erasa a `Entity` porque el renderer es generico, pero `LivingEntityRenderer` solo
-        // existe para `T extends LivingEntity`, asi que el cast no puede fallar.
-        if (!(entity instanceof LivingEntity living)) {
-            return original;
-        }
+                    target = "Lnet/minecraft/client/model/EntityModel;renderToBuffer(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V"))
+    private void cortescombat$healthBar(EntityModel<?> model, PoseStack poseStack,
+                                        VertexConsumer vertexConsumer, int packedLight,
+                                        int packedOverlay, int colour, LivingEntity living) {
         boolean wholeBody = living.deathTime > 0
                 || living.hurtTime > DamageFlash.FLASH_TICKS - DamageFlash.IMPACT_TICKS;
-        if (wholeBody) {
-            return original;
+        VertexConsumer toDraw = vertexConsumer;
+        if (!wholeBody) {
+            float threshold = DamageFlash.barThreshold(living.getHealth(), living.getMaxHealth(),
+                    living.getBbHeight() * DamageFlash.MODEL_UNITS_PER_BLOCK);
+            if (threshold > 0.0F) {
+                toDraw = new HealthFlashBuffer(vertexConsumer, threshold, OverlayTexture.NO_OVERLAY);
+            }
         }
-        float threshold = DamageFlash.barThreshold(living.getHealth(), living.getMaxHealth(),
-                living.getBbHeight() * DamageFlash.MODEL_UNITS_PER_BLOCK);
-        if (threshold <= 0.0F) {
-            return original;
-        }
-        return new HealthFlashBuffer(original, threshold, OverlayTexture.NO_OVERLAY);
+        model.renderToBuffer(poseStack, toDraw, packedLight, packedOverlay, colour);
     }
 }
