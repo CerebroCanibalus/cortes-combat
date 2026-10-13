@@ -45,6 +45,17 @@ public final class ReactorShake {
     /** Active star overloads, by position, with the dimension they are in. */
     private static final Map<BlockPos, ResourceKey<Level>> SHAKING = new HashMap<>();
 
+    /**
+     * Las dos frecuencias del temblor, en radianes por tick: un balanceo lento y un traqueteo.
+     *
+     * <p>Son las de siempre -- estaban escritas en la línea que las usaba -- y ahora tienen nombre
+     * porque hay un test que las mira: son las dos que el mundo de prueba dejó vivas y muertas
+     * respectivamente, así que el arreglo de la saturación se verifica contra estos dos números.</p>
+     */
+    private static final float HEAVE_HZ = 0.7F;
+
+    private static final float RATTLE_HZ = 1.9F;
+
     private ReactorShake() {
     }
 
@@ -98,8 +109,14 @@ public final class ReactorShake {
             }
             // Two frequencies so it does not read as one clean sine: a slow heave and a faster
             // rattle, both seeded by the world clock so every frame of one tick agrees.
-            pitch += amplitude * Mth.sin(time * 0.7F);
-            roll += amplitude * Mth.cos(time * 1.9F);
+            //
+            // **Y las dos van envueltas, y sin eso el roll NO EXISTIA.** `Mth.sin` es una tabla cuyo
+            // indice satura con angulos grandes, y el angulo es `reloj x frecuencia`: con el reloj
+            // del mundo por encima de 108.362 el `1,9` daba CERO, asi que el reactor temblaba en un
+            // solo eje y nadie lo noto porque el pitch alcanzaba. Ver ShakePhase, donde estan las
+            // cuentas y el reloj medido.
+            pitch += amplitude * Mth.sin(ShakePhase.angle(time, HEAVE_HZ));
+            roll += amplitude * Mth.cos(ShakePhase.angle(time, RATTLE_HZ));
         }
         if (pitch != 0.0F || roll != 0.0F) {
             event.setPitch(event.getPitch() + pitch);

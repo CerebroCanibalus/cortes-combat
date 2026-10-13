@@ -83,21 +83,59 @@ public final class ShakePhase {
      */
     public static final float MAX_SAFE_ANGLE = 205887.0F;
 
+    /**
+     * El techo de la <b>suma</b> de todos los impulsos vivos, en grados.
+     *
+     * <h2>Por qué hay un techo, y por qué no es el de un impulso</h2>
+     *
+     * <p>Los impulsos se suman: {@code CameraShake} recorre su lista y acumula el pitch y el roll.
+     * Eso es lo correcto -- un reventón al lado de un reactor sacude más que cualquiera de los dos --
+     * pero significa que <b>el tamaño de un temblor no acota el de la cámara</b>. Cinco mobs pegando
+     * en el mismo tick son cinco impulsos, y con el {@code HURT} más chico de la tabla eso ya son
+     * cuatro grados que nadie eligió.</p>
+     *
+     * <p>∴ el techo es de la suma y no de las partes, y <b>está por encima del impulso más grande</b>
+     * ({@code ShakeKind.largestDegrees()}): si estuviera por debajo, una explosión sola se recortaría
+     * a sí misma y el número de la tabla sería mentira. Un test lo afirma cruzando las dos
+     * constantes.</p>
+     */
+    public static final float MAX_TOTAL_DEGREES = 6.0F;
+
     private ShakePhase() {
     }
 
     /**
      * La fase de un temblor, envuelta a una vuelta.
      *
-     * <p>El llamador hace {@code Mth.sin(ShakePhase.angle(age, frequency))} y ya no puede saturar: el
+     * <p>El llamador hace {@code Mth.sin(ShakePhase.angle(t, frequency))} y ya no puede saturar: el
      * resultado está en {@code [0, 2π)}, que multiplicado por {@code SIN_SCALE} da {@code 65.536} --
      * tres mil veces por debajo de {@code 2^31}.</p>
      *
-     * @param age ticks desde que nació el impulso; chico, y por eso exacto
+     * @param time <b>de dónde sale el tiempo lo decide el llamador</b>: un impulso puntual pasa su
+     *     <b>edad</b> (0..6 ticks, exacta y con la fase empezando en cero), y un temblor continuo
+     *     como el del reactor pasa el <b>reloj del mundo</b>. Los dos son válidos porque lo único
+     *     que la tabla necesita es un ángulo envuelto; la edad además gana precisión, que es lo que
+     *     importa cuando el reloj ya lleva millones de ticks
      * @param frequency radianes por tick
-     * @return el mismo ángulo que {@code age * frequency}, dentro de una vuelta
+     * @return el mismo ángulo que {@code time * frequency}, dentro de una vuelta
      */
-    public static float angle(float age, float frequency) {
-        return (age * frequency) % TURN;
+    public static float angle(float time, float frequency) {
+        return (time * frequency) % TURN;
+    }
+
+    /**
+     * Recorta la suma de los impulsos al techo, conservando el signo.
+     *
+     * <p>El signo importa: el roll de un impulso lateral es negativo, y recortarlo contra cero lo
+     * apagaría en vez de limitarlo.</p>
+     */
+    public static float clampTotal(float degrees) {
+        if (degrees > MAX_TOTAL_DEGREES) {
+            return MAX_TOTAL_DEGREES;
+        }
+        if (degrees < -MAX_TOTAL_DEGREES) {
+            return -MAX_TOTAL_DEGREES;
+        }
+        return degrees;
     }
 }

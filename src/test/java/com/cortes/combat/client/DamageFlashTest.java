@@ -29,11 +29,22 @@ class DamageFlashTest {
      * <p>{@code hurtTime} cuenta para abajo: el primer tick es el número más alto. El impacto tiene
      * que estar <b>al principio</b>, y una inversión pondría el frame negro al final -- cuando el
      * golpe ya se fue, que es el momento en que menos significa.</p>
+     *
+     * <p><b>Y el borde se pregunta con {@code IMPACT_TICKS}, no con un menos uno.</b> Este test
+     * tenía escrito {@code rowFor(FLASH_TICKS - 1)} esperando el rojo, que es lo mismo que decir "el
+     * impacto dura un tick" -- y dejó de ser cierto cuando el playtest pidió que durara tres. Un
+     * test que codifica la duración en vez de preguntarla es un test que hay que arreglar cada vez
+     * que el número se mueve, y encima avisa con un fallo que parece del código.</p>
      */
     @Test
     void theImpactComesFirst() {
         assertEquals(DamageFlash.IMPACT_ROW, DamageFlash.rowFor(DamageFlash.FLASH_TICKS));
-        assertEquals(DamageFlash.RED_ROW, DamageFlash.rowFor(DamageFlash.FLASH_TICKS - 1));
+        // El último tick del impacto sigue siendo impacto...
+        assertEquals(DamageFlash.IMPACT_ROW,
+                DamageFlash.rowFor(DamageFlash.FLASH_TICKS - DamageFlash.IMPACT_TICKS + 1));
+        // ...y el siguiente ya es rojo.
+        assertEquals(DamageFlash.RED_ROW,
+                DamageFlash.rowFor(DamageFlash.FLASH_TICKS - DamageFlash.IMPACT_TICKS));
         assertEquals(DamageFlash.RED_ROW, DamageFlash.rowFor(1));
     }
 
@@ -48,6 +59,21 @@ class DamageFlashTest {
         }
         assertEquals(DamageFlash.IMPACT_TICKS, impacts,
                 "el frame de impacto dura lo que dice durar, ni un tick mas");
+    }
+
+    /**
+     * <b>Y dura lo suficiente para leerse como una decisión.</b>
+     *
+     * <p>El número tiene dos mitades y las dos están acá. La primera es la razón, que el playtest
+     * encontró mirando: <b>un tick se lee como un bug</b> -- un parpadeo de 50 ms no parece el golpe
+     * llegando, parece que el mob se saltó un frame. La segunda es el número acordado, fijado para
+     * que moverlo sea un acto deliberado y no un retune.</p>
+     */
+    @Test
+    void theImpactIsLongEnoughToRead() {
+        assertTrue(DamageFlash.IMPACT_TICKS >= 2,
+                "con " + DamageFlash.IMPACT_TICKS + " tick el negro se lee como un bug");
+        assertEquals(3, DamageFlash.IMPACT_TICKS);
     }
 
     /** Las dos filas de la paleta son distintas: si fueran la misma, la curva no haría nada. */

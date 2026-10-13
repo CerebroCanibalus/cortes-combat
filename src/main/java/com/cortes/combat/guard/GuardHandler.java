@@ -295,8 +295,14 @@ public final class GuardHandler {
         // A block is the one event that gets no crosshair growth. The player did not throw
         // anything, so making their crosshair jump would claim credit for a swing they never
         // took; the colour carries it on its own.
+        //
+        // **Y el hombro lo cobra.** Un bloqueo perfecto deja la vida intacta, asi que sin esto el
+        // unico testimonio de que el escudo trabajo es un color en el crosshair que pide estar
+        // mirandolo. El temblor va en la posicion del que bloquea y no en la del atacante: el que lo
+        // siente es el que sostuvo el escudo.
         if (player instanceof ServerPlayer server) {
             com.cortes.combat.net.ModNetworking.sendFeedback(server, CombatFeedback.GUARDED);
+            com.cortes.combat.fx.Shake.to(server, player, com.cortes.combat.fx.ShakeKind.GUARDED);
         }
 
         if (after.isExhausted()) {
@@ -392,6 +398,15 @@ public final class GuardHandler {
         player.setData(ModAttachments.GUARD_STAMINA.get(),
                 state.breakGuard(guard.profile().regenTicks()));
         stagger(player, guard, guard.profile().stunTicks());
+
+        // **Y la camara lo dice, que es lo que hacia falta.** La guardia rota ya tiene su sonido y su
+        // cooldown dibujado, pero los dos son del item: el jugador se entera de que se quedo sin
+        // guardia mirando la barra. Un golpe de camara avisa sin mirar, y esto es un golpe grande
+        // -- de los segundos en que no podes cubrirte.
+        if (player instanceof ServerPlayer server) {
+            com.cortes.combat.fx.Shake.to(server, player,
+                    com.cortes.combat.fx.ShakeKind.GUARD_BREAK);
+        }
 
         // **Segundo Aliento: la guardia rota abre una ventana.**
         //

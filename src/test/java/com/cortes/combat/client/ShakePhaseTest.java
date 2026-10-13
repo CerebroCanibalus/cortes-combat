@@ -95,4 +95,22 @@ class ShakePhaseTest {
                             + Math.abs(after - before) + " al envolver");
         }
     }
+
+    /**
+     * Y el techo de la suma recorta de verdad, <b>conservando el signo</b>.
+     *
+     * <p>El signo es la mitad que importa y la que un recorte ingenuo rompe: el roll de un impulso
+     * lateral es negativo, así que un {@code Math.min(degrees, techo)} -- que es lo primero que sale
+     * escribir -- apagaría todos los impulsos hacia un lado en vez de limitarlos. Y son la mitad de
+     * los que hay: el zumbido de una flecha trae su lado justamente para eso.</p>
+     */
+    @Test
+    void theTotalIsClamped() {
+        assertEquals(ShakePhase.MAX_TOTAL_DEGREES, ShakePhase.clampTotal(99.0F), 1.0e-6F);
+        assertEquals(-ShakePhase.MAX_TOTAL_DEGREES, ShakePhase.clampTotal(-99.0F), 1.0e-6F);
+        // Y por debajo del techo no toca nada.
+        assertEquals(1.5F, ShakePhase.clampTotal(1.5F), 1.0e-6F);
+        assertEquals(-1.5F, ShakePhase.clampTotal(-1.5F), 1.0e-6F);
+        assertEquals(0.0F, ShakePhase.clampTotal(0.0F), 1.0e-6F);
+    }
 }

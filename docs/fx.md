@@ -231,6 +231,24 @@ ronda**, porque es lo único de toda esta lista que pide tocar el pipeline de re
 
 ## 4 · El shake — los tres disparadores que faltaban
 
+> **Estado al 2026-10-13: implementado, y son SIETE.** El diseño de abajo es el original de esta
+> ronda y quedó corto en dos cosas. **La tabla de amplitudes vive en `fx/ShakeKind`** y no en cada
+> llamador: matar 2,4°, explosión 5,0°, guardia rota 2,0°, parry 1,8°, golpe cargado 1,6°, bloqueo
+> 1,2°, recibir daño 0,8°. Las siete fuentes están en `CombatEngine` (matar + cargado), `GuardHandler`
+> (bloqueo + guardia rota), `ParryHandler`, `fx/ExplosionShake` y `fx/HurtShake`.
+>
+> **1 · Y `CameraShake` no funcionaba.** `Mth.sin` es una tabla y su índice **satura** con ángulos
+> grandes, y el ángulo era el **reloj del mundo** por la frecuencia: con el reloj del mundo real
+> (`Time = 285340`) el `3,1` daba **cero**. Ver `ShakePhase`. Eso también mataba el roll del reactor
+> (su `1,9`), que ya está arreglado. La nota de abajo sobre `PITCH_HZ` queda sin efecto: la fase sale
+> de la **edad del impulso**, así que un impulso de 5 ticks no hereda la frecuencia de uno de 14.
+>
+> **2 · El riesgo era que sobre, no que faltara.** Con siete fuentes repartidas, *"¿cuánto sacude
+> esto?"* dejó de tener respuesta, así que la tabla es la respuesta y un test la audita.
+> `ShakePhase.clampTotal` recorta la **suma** a 6,0° -- los impulsos se acumulan, así que cinco mobs
+> pegando en el mismo tick son cinco impulsos -- y el techo está **por encima del más grande** para
+> que una explosión sola no se recorte a sí misma.
+
 `CameraShake` ya tiene decaimiento, dos frecuencias que no son múltiplo, caída cuadrática, filtro por
 dimensión y un `ClientConfig.CAMERA_SHAKE` para apagarlo. **Hoy lo usa una sola cosa: el orbe.** Los
 tres que pediste, con lo que cada uno necesita:

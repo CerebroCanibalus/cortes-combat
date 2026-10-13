@@ -476,7 +476,7 @@ public final class CombatEngine {
             }
         }
         if (anyLanded) {
-            notifyHit(player, target, healthBefore);
+            notifyHit(player, target, healthBefore, chargeRatio);
 
             // **The maza's landing, and it runs BEFORE the post-attack effects on purpose.**
             // Vanilla runs it in that order too: `MaceItem#hurtEnemy` is called inside `hurt`
@@ -692,7 +692,8 @@ public final class CombatEngine {
      * distance. The check is on health dropping to zero rather than on a death event, so a mob
      * that dies to something else in the same tick is not credited to this swing.</p>
      */
-    private static void notifyHit(Player player, Entity target, float healthBefore) {
+    private static void notifyHit(Player player, Entity target, float healthBefore,
+                                  float chargeRatio) {
         if (!(player instanceof net.minecraft.server.level.ServerPlayer server)
                 || !(target instanceof LivingEntity living)) {
             return;
@@ -700,25 +701,31 @@ public final class CombatEngine {
         boolean killed = healthBefore > 0.0F && living.getHealth() <= 0.0F;
         com.cortes.combat.net.ModNetworking.sendFeedback(server,
                 killed ? CombatFeedback.KILL : CombatFeedback.HIT);
-        // **Y el shake de la muerte, solo para el que la causo.**
+        // **Y los dos temblores que este golpe merece: el remate y la carga.**
         //
-        // El crosshair ya dice "lo mataste" con su color mas vivo, pero eso pide estar mirandolo.
-        // Un golpe de camara se siente sin mirar nada, y matar es el unico momento del combate en
-        // el que el jugador merece una confirmacion que no tenga que ir a buscar.
+        // Los dos van aca y no en `onHit` por la misma razon: `onHit` corre UNA VEZ POR OBJETIVO y
+        // esto es del golpe. Un barrido de alabarda que toca cuatro mobs daria cuatro temblores por
+        // el mismo swing -- el mismo mensaje cuatro veces, y el ojo lo lee como un terremoto.
         //
-        // Va en la posicion del MUERTO y no en la del jugador: CameraShake mide su propia distancia
-        // y cae al cuadrado, asi que el mismo numero se siente distinto segun donde haya caido el
-        // cuerpo -- y un remate a diez bloques no tiene que sacudir como uno a un bloque.
+        // El del remate va en la posicion del MUERTO y no en la del jugador: CameraShake mide su
+        // propia distancia y cae al cuadrado, asi que el mismo numero se siente distinto segun
+        // donde haya caido el cuerpo -- y un remate a diez bloques no tiene que sacudir como uno a
+        // un bloque. El crosshair ya dice "lo mataste" con su color mas vivo, pero eso pide estar
+        // mirandolo; un golpe de camara se siente sin mirar nada.
         if (killed) {
-            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(server,
-                    new com.cortes.combat.net.CameraShakePayload(
-                            living.getX(), living.getY(), living.getZ(),
-                            KILL_SHAKE_DEGREES, KILL_SHAKE_TICKS));
+            com.cortes.combat.fx.Shake.to(server, living, com.cortes.combat.fx.ShakeKind.KILL);
+        }
+        // Y el de la carga: cargar cuesta hasta 40 ticks, asi que llegar con la carga llena merece
+        // sentirse. No reemplaza al del remate -- matar y matar cargado son dos hechos distintos, y
+        // el temblor grande se lo lleva el remate.
+        if (chargeRatio >= DamageResolver.FULL_CHARGE) {
+            com.cortes.combat.fx.Shake.to(server, living,
+                    com.cortes.combat.fx.ShakeKind.CHARGED_HIT);
         }
     }
 
     /**
-     * El temblor de matar: <b>cuatro grados</b>, seis ticks.
+     * La historia del temblor de matar, que hoy vive en {@code ShakeKind.KILL}.
      *
      * <p><b>El número tiene historia y la instrumentación la cerró.</b> Arrancó en 0,5; el playtest
      * reportó que no se veía, y se triplicó a 1,5 -- y siguió sin verse. Los logs del último playtest
@@ -733,9 +740,9 @@ public final class CombatEngine {
      * <p>Sigue siendo un golpe corto y no un terremoto: {@code CameraShake} decae a cero a lo largo de
      * la vida, así que un impulso de seis ticks es un golpe seco y uno largo sería un zumbido.</p>
      */
-    private static final float KILL_SHAKE_DEGREES = 4.0F;
+    // El numero final es 2,4: los 4,0 que este javadoc describe, menos el 40 % que pidio el playtest.
 
-    private static final int KILL_SHAKE_TICKS = 6;
+    // Y la duracion se mudo con el: ShakeKind.KILL son seis ticks.
 
     private static void onHit(Player player, Entity target, WeaponStats stats,
                               AttackResult result, float chargeRatio) {

@@ -171,6 +171,15 @@ public final class ParryHandler {
         CombatSounds.play(level, attacker, WeaponProfile.SABRE, ModSounds.Kind.PARRY);
         ModNetworking.sendFeedback(player, CombatFeedback.GUARDED);
 
+        // **Y el hombro del que desvio.** El parry es el boton mas caro del sable -- cinco segundos
+        // de cooldown, una ventana de medio segundo que no se puede sostener -- y hasta ahora su
+        // unico aviso era un color en el crosshair y un sonido puesto en el atacante. O sea que el
+        // momento que el arma entera paga no se sentia.
+        //
+        // Va en la posicion del ATACANTE, igual que el sonido: lo que acaba de pasar paso alla, y la
+        // distancia lo dice. Desviar una flecha a treinta bloques no sacude como desviar un hacha.
+        com.cortes.combat.fx.Shake.to(player, attacker, com.cortes.combat.fx.ShakeKind.PARRY);
+
         // **Desvio Vampirico: el parry roba vida maxima, y CADA parry suma un corazon.**
         //
         // Dos efectos y no uno: ver DrainedEffect -- un solo efecto no puede sumarle al que desvia y

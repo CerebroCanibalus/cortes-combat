@@ -64,14 +64,22 @@ public final class DamageFlash {
     public static final int IMPACT_ALPHA = 0x20;
 
     /**
-     * Cuántos ticks dura el frame negro. <b>Uno.</b>
+     * Cuántos ticks dura el frame negro. <b>Tres.</b>
      *
-     * <p>Eran dos, y el playtest los mandó a bajar: se pidió un flash negro <em>"muy rápido"</em> y un
-     * rojo <em>"más lento"</em>, y las dos cosas se consiguen moviendo este número, porque la
-     * duración total es la de {@code hurtTime} y ⊘ se puede estirar. Un tick de negro y siete de rojo
-     * le dan al rojo la parte larga del mismo presupuesto.</p>
+     * <p><b>La historia de este número son tres playtests, y cada uno dijo algo distinto.</b> Arrancó
+     * en dos; el playtest pidió un negro <em>"muy rápido"</em> y bajó a uno; y el siguiente lo
+     * mandó a subir otra vez, con la razón más útil de las tres: <b>un tick no se lee como una
+     * decisión, se lee como un bug</b>. Un parpadeo de 50 ms no parece el golpe llegando -- parece
+     * que el mob se saltó un frame.</p>
+     *
+     * <p>Tres ticks son 150 ms: suficiente para que el ojo lo registre como <em>algo que pasó</em> y
+     * no como un defecto, y todavía lo bastante corto para que el rojo se quede con la parte larga
+     * del presupuesto de {@code hurtTime} -- siete ticks.</p>
+     *
+     * <p>Y el negro va primero por una razón de física y no de gusto: es el golpe <b>llegando</b>. El
+     * rojo, que dura más, es el golpe <b>habiendo llegado</b> y lo que le queda al cuerpo.</p>
      */
-    public static final int IMPACT_TICKS = 1;
+    public static final int IMPACT_TICKS = 3;
 
     /**
      * Los ticks que dura el BLANCO de la muerte.

@@ -152,8 +152,12 @@ public final class CameraShake {
             roll += energy * impulse.rollSign() * Mth.cos(ShakePhase.angle(age, ROLL_HZ));
         }
         if (pitch != 0.0F || roll != 0.0F) {
-            event.setPitch(event.getPitch() + pitch);
-            event.setRoll(event.getRoll() + roll);
+            // **El techo es de la SUMA y no de cada impulso.** Los impulsos se acumulan -- eso es lo
+            // que hace que un reventon al lado de un reactor sacuda mas --, pero significa que el
+            // tamano de uno no acota el de la camara: cinco mobs pegando en el mismo tick son cinco
+            // impulsos. Ver ShakePhase.MAX_TOTAL_DEGREES.
+            event.setPitch(event.getPitch() + ShakePhase.clampTotal(pitch));
+            event.setRoll(event.getRoll() + ShakePhase.clampTotal(roll));
         }
     }
 
