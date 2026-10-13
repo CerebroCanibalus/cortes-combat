@@ -24,11 +24,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * fila -- no sólo las dos que {@code v(boolean)} sabe nombrar. <b>Eso es lo que permite tener una
  * paleta propia sin tocar nada de vanilla.</b></p>
  *
- * <h2>La columna es cero, y a propósito</h2>
+ * <h2>La columna es cero en el rojo, y la elige la curva en el blanco</h2>
  *
- * <p>Todos los valores de acá usan la <b>columna 0</b>, que es la que el playtest aprobó. La columna
- * es el eje que rompió el efecto cuando se la usó para escalar la intensidad, así que se queda
- * quieta: <b>el efecto entero se controla por fila.</b></p>
+ * <p>El rojo y el impacto usan la <b>columna 0</b>, que es la que el playtest aprobó. La columna es
+ * el eje que rompió el efecto cuando se la usó para escalar la intensidad, así que ahí se queda
+ * quieta: <b>esos dos se controlan por fila.</b></p>
+ *
+ * <p>El blanco de la muerte es la excepción y por necesidad: su <b>fila</b> es la de vanilla
+ * ({@code WHITE_OVERLAY_V}, la 10) y lo que cambia es <b>cuánto</b>, que en esa fila se lee por
+ * columna. La columna sale de {@link DamageFlash#whiteColumn}, pura y en 0..15 -- y ese rango es
+ * justamente lo que faltaba: ver el javadoc de allá, donde está el {@code pack} que aplicaba
+ * {@code u()} dos veces y mandaba el muestreo a 225 en una textura de 16.</p>
  *
  * <h2>La muerte gana sobre el herido</h2>
  *
@@ -63,8 +69,8 @@ public class LivingEntityOverlayMixin {
         // el blanco es lo ultimo. Es el orden que se pidio. Compararlo contra DEATH_WHITE_TICKS y no
         // contra un reloj aparte es lo que hace que los dos usen el mismo contador.
         if (entity.getHealth() <= 0.0F && entity.hurtTime <= DamageFlash.DEATH_WHITE_TICKS) {
-            float white = DamageFlash.whiteForDeath(entity.hurtTime);
-            cir.setReturnValue(OverlayTexture.pack(OverlayTexture.u(white), false));
+            cir.setReturnValue(OverlayTexture.pack(DamageFlash.whiteColumn(entity.hurtTime),
+                    OverlayTexture.WHITE_OVERLAY_V));
             return;
         }
         // La fila decide el color y el tiempo; la columna queda en cero. Ver el javadoc.

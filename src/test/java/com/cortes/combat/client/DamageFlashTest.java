@@ -56,12 +56,20 @@ class DamageFlashTest {
         assertNotEquals(DamageFlash.IMPACT_ROW, DamageFlash.RED_ROW);
     }
 
-    /** La fila del impacto escribe el negro con el alpha que el playtest produjo. */
+    /** La fila del impacto escribe el negro, con el alpha que el playtest produjo. */
     @Test
     void theImpactRowIsTheBlackFrame() {
         assertEquals(DamageFlash.IMPACT_BLACK, DamageFlash.texturePixel(DamageFlash.IMPACT_ROW,
                 DamageFlash.VANILLA_RED));
         assertEquals(DamageFlash.IMPACT_ALPHA, alpha(DamageFlash.IMPACT_BLACK));
+        // **Y los canales en cero, que es lo que lo hace negro.** Estaban en rojo: el valor era
+        // `(0x20 << 24) | 0x0000FF`, o sea el mismo rojo del otro renglón con menos alpha, así que el
+        // shader hacía `mix(rojo, textura, 0.125)` = 87,5 % de rojo. **"El flash negro" no existía**,
+        // y el nombre de la constante ya decía cuál era la intención.
+        for (int shift : new int[]{16, 8, 0}) {
+            assertEquals(0, channel(DamageFlash.IMPACT_BLACK, shift),
+                    "el canal " + shift + " del frame de impacto no es negro");
+        }
     }
 
     /** Y la del rojo, el rojo al 50 % -- más fuerte que el 30 % de vanilla. */
@@ -75,15 +83,17 @@ class DamageFlashTest {
                 "con alpha " + DamageFlash.RED_ALPHA + " el mob queda tapado por el flash");
     }
 
-    /** Sólo cambia el alpha: el rojo sigue siendo rojo, en los tres canales. */
+    /**
+     * El renglón rojo sólo cambia el alpha: sigue siendo rojo, en los tres canales.
+     *
+     * <p>El del impacto <b>no</b>: ése pasa a negro. Ver {@link #theImpactRowIsTheBlackFrame}.</p>
+     */
     @Test
-    void theColourItselfIsUntouched() {
-        for (int row : new int[]{DamageFlash.RED_ROW, DamageFlash.IMPACT_ROW}) {
-            int written = DamageFlash.texturePixel(row, DamageFlash.VANILLA_RED);
-            for (int shift : new int[]{16, 8, 0}) {
-                assertEquals(channel(DamageFlash.VANILLA_RED, shift), channel(written, shift),
-                        "el canal " + shift + " cambió en la fila " + row);
-            }
+    void theRedStaysRed() {
+        int written = DamageFlash.texturePixel(DamageFlash.RED_ROW, DamageFlash.VANILLA_RED);
+        for (int shift : new int[]{16, 8, 0}) {
+            assertEquals(channel(DamageFlash.VANILLA_RED, shift), channel(written, shift),
+                    "el canal " + shift + " del rojo cambió");
         }
     }
 
@@ -144,14 +154,26 @@ class DamageFlashTest {
      * <p><b>Estuvo al revés</b>, con un javadoc entero defendiendo la dirección contraria. La
      * fórmula no cambió: cambió <b>qué lado se borra</b>, en el envoltorio.</p>
      */
+    /**
+     * <b>Es una barra de vida: empieza llena y se vacía.</b>
+     *
+     * <p>A vida llena flashea todo, a media vida la mitad de abajo, y a cero no flashea nada. Es la
+     * lectura que el dueño pidió explícitamente -- <em>"comienza completa y se va bajando hasta
+     * vaciarse"</em> -- después de ver la contraria en el playtest.</p>
+     *
+     * <p><b>La versión anterior hacía lo opuesto</b> ("la herida trepa": a vida llena nada, y el rojo
+     * creciendo desde los pies), y venía de <code>docs/fx.md</code> §2.3, escrito sobre una premisa
+     * que después resultó falsa. La fórmula no cambió de forma: cambió <b>de qué lado está la
+     * fracción</b>.</p>
+     */
     @Test
-    void theWoundClimbsUpwards() {
-        // Vida llena: nada herido, nada flashea -- el corte cae en los pies.
-        assertEquals(0.0F, DamageFlash.barCut(0.0F, 32.0F, 20.0F, 20.0F), 1.0e-6F);
+    void theBarDrains() {
+        // Vida llena: el corte en la cabeza -- nada escondido, el cuerpo entero flashea.
+        assertEquals(32.0F, DamageFlash.barCut(0.0F, 32.0F, 20.0F, 20.0F), 1.0e-6F);
         // Media vida: la mitad de abajo.
         assertEquals(16.0F, DamageFlash.barCut(0.0F, 32.0F, 10.0F, 20.0F), 1.0e-6F);
-        // Muerto: el cuerpo entero -- que es justo lo que hace que el blanco final cubra todo.
-        assertEquals(32.0F, DamageFlash.barCut(0.0F, 32.0F, 0.0F, 20.0F), 1.0e-6F);
+        // Muerto: nada -- el corte en los pies.
+        assertEquals(0.0F, DamageFlash.barCut(0.0F, 32.0F, 0.0F, 20.0F), 1.0e-6F);
     }
 
     /**
@@ -165,21 +187,19 @@ class DamageFlashTest {
     @Test
     void theCutFollowsTheBodyUp() {
         assertEquals(80.0F, DamageFlash.barCut(64.0F, 96.0F, 10.0F, 20.0F), 1.0e-6F);
-        assertEquals(64.0F, DamageFlash.barCut(64.0F, 96.0F, 20.0F, 20.0F), 1.0e-6F);
-        // Y el corte nunca se sale del rango: la fracción está clampeada.
-        assertEquals(64.0F, DamageFlash.barCut(64.0F, 96.0F, 999.0F, 20.0F), 1.0e-6F);
-        assertEquals(96.0F, DamageFlash.barCut(64.0F, 96.0F, -999.0F, 20.0F), 1.0e-6F);
+        assertEquals(96.0F, DamageFlash.barCut(64.0F, 96.0F, 20.0F, 20.0F), 1.0e-6F);
+        assertEquals(64.0F, DamageFlash.barCut(64.0F, 96.0F, 0.0F, 20.0F), 1.0e-6F);
     }
 
-    /** Y la línea sólo sube al perder vida: la cobertura crece, nunca se retira. */
+    /** Y la línea sólo baja al perder vida: la cobertura se retira, nunca crece. */
     @Test
-    void theLineOnlyEverRises() {
-        float previous = -1.0F;
+    void theLineOnlyEverFalls() {
+        float previous = Float.MAX_VALUE;
         for (float health = 20.0F; health >= 0.0F; health -= 0.5F) {
             float cut = DamageFlash.barCut(0.0F, 32.0F, health, 20.0F);
-            assertTrue(cut >= previous,
-                    "con " + health + " de vida el corte bajo a " + cut
-                            + " desde " + previous + ": la herida se retiraria en vez de trepar");
+            assertTrue(cut <= previous,
+                    "con " + health + " de vida el corte subió a " + cut
+                            + " desde " + previous + ": la barra se llenaría en vez de vaciarse");
             previous = cut;
         }
     }
@@ -187,17 +207,42 @@ class DamageFlashTest {
     /** Un cuerpo raro no rompe nada: el corte queda en los pies, que el llamador lee como "no envolver". */
     @Test
     void aBrokenBodyDoesNotCarveAnything() {
-        // Sin vida maxima no hay barra que dibujar.
+        // Sin vida maxima no hay barra que dibujar: la fraccion es cero y el corte cae en los pies.
         assertEquals(0.0F, DamageFlash.barCut(0.0F, 32.0F, 5.0F, 0.0F), 1.0e-6F);
         // Y un rango vacio o invertido tampoco.
         assertEquals(0.0F, DamageFlash.barCut(0.0F, 0.0F, 5.0F, 20.0F), 1.0e-6F);
         assertEquals(0.0F, DamageFlash.barCut(0.0F, -3.0F, 5.0F, 20.0F), 1.0e-6F);
     }
 
-    /** Y la vida fuera de rango no se sale del modelo: ni por arriba ni por abajo. */
+    /** Y la vida fuera de rango no se sale del cuerpo: ni por arriba ni por abajo. */
     @Test
     void healthOutsideTheBarIsClamped() {
-        assertEquals(0.0F, DamageFlash.barCut(0.0F, 32.0F, 999.0F, 20.0F), 1.0e-6F);
-        assertEquals(32.0F, DamageFlash.barCut(0.0F, 32.0F, -999.0F, 20.0F), 1.0e-6F);
+        assertEquals(32.0F, DamageFlash.barCut(0.0F, 32.0F, 999.0F, 20.0F), 1.0e-6F);
+        assertEquals(0.0F, DamageFlash.barCut(0.0F, 32.0F, -999.0F, 20.0F), 1.0e-6F);
+    }
+
+    /**
+     * <b>La columna del blanco está DENTRO de la textura, y esa es la mitad que faltaba.</b>
+     *
+     * <p>El mixin empaquetaba con {@code OverlayTexture.pack(OverlayTexture.u(white), false)}. Con un
+     * {@code int} y un {@code boolean} la sobrecarga que resuelve es {@code pack(float, boolean)}, que
+     * <b>vuelve a aplicar {@code u()}</b> -- así que la columna salía {@code u(u(white))}, hasta
+     * <b>225</b> en una textura de 16. Un {@code texelFetch} fuera de rango es indefinido, y el
+     * playtest lo vio: el mob se ponía <b>negro</b> al morir en vez de blanco, que es exactamente lo
+     * que devuelve muestrear un texel transparente.</p>
+     */
+    @Test
+    void theWhiteColumnStaysInsideTheTexture() {
+        for (int hurtTime = 0; hurtTime <= DamageFlash.FLASH_TICKS; hurtTime++) {
+            int column = DamageFlash.whiteColumn(hurtTime);
+            assertTrue(column >= 0 && column <= 15,
+                    "con hurtTime " + hurtTime + " la columna del blanco salio " + column
+                            + ", fuera de la textura de 16");
+        }
+        // Y crece con la muerte: el ultimo tick es el blanco mas fuerte, y mientras el rojo sigue no hay blanco.
+        assertEquals(0, DamageFlash.whiteColumn(DamageFlash.FLASH_TICKS));
+        assertTrue(DamageFlash.whiteColumn(1) > DamageFlash.whiteColumn(DamageFlash.DEATH_WHITE_TICKS),
+                "el blanco no crece hacia el final de la ventana");
+        assertEquals(15, DamageFlash.whiteColumn(1));
     }
 }

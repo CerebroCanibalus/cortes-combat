@@ -166,13 +166,24 @@ fuerte cuanto menos vida"*, uniforme sobre el cuerpo.
 Un **wrapper de `VertexConsumer`** que, vértice por vértice, elige entre `pack(0, true)` y `NO_OVERLAY`
 según la **Y del vértice**. `VertexConsumer.addVertex(x, y, z)` **da la posición**, así que el wrapper
 puede decidir sin tocar el modelo.
-- **El umbral sale de la vida**: a 50 % de vida flashea el 50 % del cuerpo, y **crece hacia arriba**
-  mientras baja la vida (la herida trepa). A 10 %, el 90 %.
+- **El umbral sale de la vida, y la barra se VACÍA**: a vida llena flashea todo, a 50 % la mitad de
+  abajo, y a cero no flashea nada.
+
+  > **Corregido el 2026-10-12, contra el playtest.** Acá decía lo contrario -- *"a 50 % de vida flashea
+  > el 50 % del cuerpo, y crece hacia arriba mientras baja la vida (la herida trepa). A 10 %, el 90 %"*
+  > -- y el dueño reconoció la barra que se vacía como la correcta: *"comienza completa y se va bajando
+  > hasta vaciarse"*. La versión que trepaba **se implementó, se jugó y se descartó**.
+
 - ✅ Es exactamente lo que describiste, y ⊘ necesita shader ni textura nueva.
 - ⚠ **Cuesta un mixin en el punto donde el modelo se dibuja** (`LivingEntityRenderer#render` o
   `Model#renderToBuffer`) y un wrapper. **Es la opción que recomiendo.**
-- ⚠ Y **la Y del modelo es local** (un jugador mide ~32 unidades antes de la matriz), así que el
-  umbral se normaliza contra la altura del modelo, ⊘ contra un número en bloques.
+- ⚠ **Y el umbral se MIDE, ⊘ se deduce.** Acá decía *"la Y del modelo es local (un jugador mide ~32
+  unidades antes de la matriz), así que el umbral se normaliza contra la altura del modelo"*, y la
+  premisa era falsa en las dos mitades: la Y de un vértice llega en **bloques** (el modelo divide por
+  16 antes de transformar) y **relativa a la cámara** (el dispatcher ya trasladó), así que el modelo
+  mide ~2 bloques y no 32 unidades. Deducir el rango de la caja de colisión falló **dos veces**;
+  lo que funciona es un pase con un `VertexConsumer` que no dibuja y sólo mide. Ver
+  `DamageFlash#barCut`.
 
 ### 2.4 El flash blanco al morir ya tiene seam
 

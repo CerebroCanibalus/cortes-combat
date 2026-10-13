@@ -830,42 +830,61 @@ tiene los números, y el hook vive donde el número se cobra.
   falla de un canal que nadie llama es que **el build queda verde**. El guard afirma la **suma**
   (`enchanted + perTargetBonus(`), ⊘ la existencia de la función.
 
-### La ronda de los FX — dos números que mentían, y el instrumento que mintió primero
+### La ronda de los FX — cuatro bugs, un instrumento que mintió, y la geometría que se mide
 
-**Tres síntomas reportados como "no se ve nada", tres causas distintas, y ninguna era el canal.**
+**El reporte fue "no se ve nada, y lo que se ve está al revés". Eran cuatro cosas distintas, y ninguna
+era el canal.**
 
-1. **El flash del mob: la Y del vértice llega en BLOQUES y el umbral venía en unidades de modelo.**
-   `ModelPart.Cube.compile` hace `pos.y() / 16` **antes** de transformar (leído en las fuentes de
-   21.1.250, ⊘ deducido), así que la Y que recibe el envoltorio es la del mundo **en bloques**; el
-   corte se armaba con `getBbHeight() * 16`. **Dieciséis veces más arriba de lo que debía** → nunca
-   cortaba. Y encima, entre la entidad y el modelo hay un `translate(0, -1.501, 0)` que nadie declaró,
-   así que **ni con las unidades bien** la Y del vértice es `pies + altura local`. Las dos rondas
-   anteriores calcularon el corte desde la caja de colisión y las dos fallaron por lo mismo: **la
-   geometría que se dibuja no se deduce, se mide.** Ahora un pase con `VertexBounds` da los dos
-   extremos reales y `barCut` sólo reparte la fracción. El pase doble es seguro porque
-   `renderToBuffer` es delegación pura a `ModelPart.render` — verificado sobre los **18** modelos que
-   lo sobreescriben, todos empujan y sacan el `PoseStack` simétricamente.
-2. **El shake: la amplitud.** `[shake/cam]` imprimía `amp=1.39` a bloque y medio **por frame**: el
-   paquete llegaba, el evento corría y el número se calculaba. **El temblor siempre funcionó; 1,39°
-   no se lee.** El orbe usa 1,8 y *"sí se siente"*, pero engaña: explota **lejos**, donde la caída
-   cuadrática ya lo bajó. A bloque y medio el 1,5 llega **entero** y no alcanza → 4,0.
-3. **Y el instrumento mintió primero, que es lo que costó la ronda.** El log del `[flash/bar]` estaba
-   **dentro** de `if (!wholeBody)` (`hurtTime <= 9`) y al mismo tiempo pedía `hurtTime == 10`: una
-   contradicción, así que **no se imprimió jamás**. El `0` que devolvía se leyó como "el envoltorio no
-   se construye" cuando era "el log es imposible" — la misma forma de `SoundPoolTest` tirando la
-   carpeta: **un guard que descarta la parte que pregunta está verde.** Y el `[flash]` **sí** salió
-   **45 veces**, todas `fila=5`: eso probaba que el mixin del overlay corría, y **el tail del log me
-   lo había comido** (leí las últimas 350 líneas de 1609 y di por cierto "salió una vez").
+1. **El shake no hacía NADA, y era la tabla de senos.** `Mth.sin` no calcula: consulta
+   `SIN[(int)(value * 10430.378F) & 65535]`, y **convertir a `int` un float grande satura en
+   `Integer.MAX_VALUE`** → índice `65535` → `SIN[65535] ≈ −0,0001` = **cero**. El ángulo es
+   `reloj × frecuencia`, así que hay un reloj máximo: **66.415 ticks para nuestro 3,1 y 43.806 para el
+   4,7**. Y el mundo de prueba tenía **`Time = 285340`** (leído del `level.dat`, no supuesto) → **los dos
+   términos muertos**. El reactor usa 0,7 y aguanta hasta 294.125 → **vivo por poco**, y por eso *"el
+   reactor sí funciona"*: **la asimetría que el dueño señaló ERA el bug.** Su roll (1,9) ya está muerto
+   también. Arreglado con `ShakePhase`: la fase sale de la **edad del impulso** (0..6, exacta) y se
+   envuelve **mod 2π** — ⊘ mod 65536, que es el tamaño de la tabla y no su período, y deja un escalón
+   de 2,376 rad.
+2. **"El flash negro" era rojo.** `IMPACT_BLACK` valía `(0x20 << 24) | 0x0000FF` -- el mismo rojo del
+   otro renglón con menos alpha. El shader es `mix(overlayColor.rgb, color.rgb, overlayColor.a)`
+   (leído del `.fsh`), así que eso daba **87,5 % de rojo**: lo contrario de un frame negro. **El nombre
+   de la constante ya decía cuál era la intención** y el valor decía otra.
+3. **El blanco de la muerte se muestreaba fuera de la textura.** El mixin llamaba
+   `OverlayTexture.pack(OverlayTexture.u(white), false)`, y con un `int` y un `boolean` la sobrecarga
+   que resuelve es **`pack(float, boolean)`, que vuelve a aplicar `u()`** → columna `u(u(white))`, hasta
+   **225** en una textura de 16. Un `texelFetch` fuera de rango es indefinido, y el playtest lo vio: el
+   mob se ponía **negro al morir** en vez de blanco — que es justo lo que devuelve muestrear un texel
+   transparente. Ahora la columna la calcula `DamageFlash.whiteColumn`, pura y en 0..15.
+4. **La barra iba al revés, y la culpa es del doc.** `docs/fx.md` §2.3 decía *"la herida trepa: a 10 %,
+   el 90 %"* y así se implementó; el dueño reconoció la contraria -- *"comienza completa y se va bajando
+   hasta vaciarse"*. **El doc se corrige, ⊘ el código.**
+
+**Y el instrumento mintió primero, que es lo que costó una ronda entera.** El log del `[flash/bar]`
+estaba **dentro** de `if (!wholeBody)` (`hurtTime <= 9`) y al mismo tiempo pedía `hurtTime == 10`: una
+contradicción, así que **no se imprimió jamás**, y el `0` que devolvía se leyó como "el envoltorio no se
+construye". Y el `[flash]` **sí** salió **45 veces** (todas `fila=5`): yo había dicho "una vez" porque
+**leí el tail del log** y me comí el resto. Es la misma forma de `SoundPoolTest` tirando la carpeta:
+**un guard que descarta la parte que pregunta está verde.**
+
+**Y la geometría del modelo se MIDE, ⊘ se deduce.** Las dos rondas anteriores sacaron el rango vertical
+de `getBbHeight()`: la primera por unidades (el vértice llega en **bloques** -- `ModelPart.Cube.compile`
+hace `pos.y() / 16` antes de transformar -- y el umbral venía en **dieciseisavos**) y la segunda por el
+`translate(0, -1.501, 0)` que el renderer mete y nadie declaró. Ahora un pase con `VertexBounds` le
+pregunta al modelo sus dos extremos reales; `renderToBuffer` es delegación pura a `ModelPart.render`
+(verificado sobre los **18** modelos de vanilla que lo sobreescriben), así que el pase doble no deja
+estado.
 
 **La regla que queda:** cuando un efecto no se ve y el código "está bien", el siguiente paso ⊘ es
-retunear ni cambiar el canal — es **medir la geometría y mirar el número**, y antes de eso,
-**contar las líneas del log en vez de leer el final.**
+retunear ni cambiar el canal — es **medir la geometría, leer el dato del mundo y mirar el número**. Y
+antes de eso: **contar las líneas del log en vez de leer el final**, y **desconfiar de una constante
+cuyo nombre dice una cosa y cuyo valor dice otra.**
 
 ## Estado técnico actual
 
-**1147 tests unitarios verdes** (2026-10-12). Todo lo testeable corre en JVM pelada; lo que necesita el
+**1152 tests unitarios verdes** (2026-10-12). Todo lo testeable corre en JVM pelada; lo que necesita el
 juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardState`, `ConeSize`,
-`WeaponTooltip`, `ArcabuzState`, `ArcabuzMuzzle` y los `viewmodel/*` puros.
+`WeaponTooltip`, `ArcabuzState`, `ArcabuzMuzzle`, `DamageFlash`, `ShakePhase` y los `viewmodel/*`
+puros.
 
 > **Los conteos de abajo se desactualizan solos, y estaban viejos.** Verificados el 2026-10-12
 > contando los registros (`grep` de `register(` sobre cada archivo de `registry/`), ⊘ leyendo la lista
@@ -956,8 +975,9 @@ juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardStat
 
 | Falta | Nota |
 |---|---|
-| **Playtest de la barra de vida del mob** | El corte ahora sale del **rango medido** del modelo (`VertexBounds`). Lo que hay que ver: que el rojo **trepe** con la vida baja, ⊘ que cubra el cuerpo entero. El `[flash/bar]` imprime `Y=[min,max] corte=` en el primer tick de la barra |
-| **Playtest del shake de matar** | 1,5 → **4,0** grados. Si sigue corto, el número está en `CombatEngine.KILL_SHAKE_DEGREES` y es el único a tocar |
+| **Playtest de la barra de vida del mob** | Ahora es una **barra que se vacía** (vida llena = todo, 0 = nada), el corte sale del **rango medido** del modelo (`VertexBounds`) y el impacto es **negro de verdad** (era rojo al 87 %). Lo que hay que ver: que la barra **se retire hacia abajo** con la vida, que el impacto **apague** el mob un tick y que al morir salga el **blanco**. `[flash/bar]` imprime `Y=[min,max] corte=` en el primer tick de la barra |
+| **Playtest del shake de matar** | Estaba **muerto por la tabla de senos** (`Mth.sin` satura con el reloj alto) — ver la lección de los FX. Arreglado con `ShakePhase`. El `[shake]` ahora imprime `reloj=` para confirmar. Si con el arreglo sigue corto, el número está en `CombatEngine.KILL_SHAKE_DEGREES` (4,0) |
+| **El roll del reactor está muerto** | **Encontrado, ⊘ arreglado**: su `1,9` satura con el reloj del mundo > 108.362 y el de prueba estaba en 285.340. Sólo sobrevive su pitch (0,7). **No se tocó a propósito** — el reactor funciona y no se rompe lo que funciona; el arreglo sería el mismo `ShakePhase` |
 | **Retroalimentación del golpe cargado** | Es **uno**: `addParticle` no aparece en ninguna parte del código para esto, y `CombatFeedback` sólo tiene `HIT`/`KILL`/`GUARDED`. **El cargado cambia el número y ⊘ cambia nada en pantalla ni en el oído** — que es la mitad de la mecánica, porque el oído es el único canal que funciona **sin mirar** |
 | **Arcabuz** | Feedback **por objetivo** (el disparo pega a diez y la pantalla ⊘ dice a cuántos) y el flash a **1,7 m**, derivado **a ojo** — primer número a tocar si se ve mal. El click izquierdo ya tiene `STRIKE`+`RECOVER` |
 | **El arcabuz no tiene animación de cuerpo** (3ª persona) | Su perfil ⊘ lee `CHOP` ni `STRIKE`: su click izquierdo es una puñalada de bayoneta y nunca se le escribió |

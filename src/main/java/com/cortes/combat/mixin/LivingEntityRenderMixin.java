@@ -15,8 +15,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
- * Convierte el flash en <b>una barra de vida</b>: envuelve el buffer del modelo para que el rojo se
- * retire hacia abajo a medida que el mob se vacía.
+ * Convierte el flash en <b>una barra de vida</b>: envuelve el buffer del modelo para que el rojo
+ * cubra sólo la parte del cuerpo que todavía tiene vida, y se retire hacia abajo a medida que el mob
+ * se vacía.
  *
  * <h2>El seam, y el dueño verificado con {@code javap}</h2>
  *
@@ -78,13 +79,12 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  *
  * <h2>Cuándo NO se envuelve</h2>
  *
- * <p>Tres casos, y ninguno paga el envoltorio:</p>
+ * <p>Dos casos, y los dos son <b>el cuerpo entero</b>:</p>
  *
  * <ul>
- *   <li><b>El frame del impacto.</b> El negro de los primeros ticks tiene que cubrir todo -- es el
- *       golpe llegando, no la vida que queda.</li>
+ *   <li><b>El frame del impacto.</b> El negro del primer tick tiene que cubrir todo -- es el golpe
+ *       llegando.</li>
  *   <li><b>La muerte.</b> El blanco es un hecho, no una barra.</li>
- *   <li><b>La vida llena.</b> El corte cae en los pies, o sea que no hay nada que borrar.</li>
  * </ul>
  *
  * <p>Y cuando sí se envuelve, el corte sale del <b>rango medido</b> del modelo, no de la caja de
@@ -103,12 +103,11 @@ public class LivingEntityRenderMixin {
                                         int packedOverlay, int colour, LivingEntity living,
                                         float entityYaw, float partialTicks) {
         VertexConsumer toDraw = vertexConsumer;
-        // **El frame del impacto va entero, y por eso se saltea.** A vida llena el umbral vale cero
-        // -- o sea que no hay nada que borrar -- asi que envolver no cambiaria nada salvo perder el
-        // negro del impacto. Un tick de cuerpo completo es el golpe llegando.
+        // **El frame del impacto va entero, y ahora eso encaja solo.** El impacto es el cuerpo
+        // completo porque un golpe que llega cubre todo; y con la barra, vida llena tambien es el
+        // cuerpo completo. El unico tick que se saltea es el del impacto, que ya lo pinta la fila.
         boolean wholeBody = living.hurtTime > DamageFlash.FLASH_TICKS - DamageFlash.IMPACT_TICKS;
-        if (living.hurtTime > 0 && !wholeBody
-                && DamageFlash.healthFraction(living.getHealth(), living.getMaxHealth()) < 1.0F) {
+        if (living.hurtTime > 0 && !wholeBody) {
             // **El rango vertical se MIDE, no se deduce.** Ver DamageFlash#barCut: las dos versiones
             // anteriores lo calcularon desde `getBbHeight()` y las dos fallaron -- una por unidades
             // (el vertice llega en bloques y el umbral venia en dieciseisavos) y la otra por el
@@ -116,14 +115,15 @@ public class LivingEntityRenderMixin {
             // reales, en el mismo espacio en que se dibuja.
             VertexBounds bounds = new VertexBounds();
             model.renderToBuffer(poseStack, bounds, packedLight, packedOverlay, colour);
-            float cut = DamageFlash.barCut(bounds.minY(), bounds.maxY(),
-                    living.getHealth(), living.getMaxHealth());
-            if (living.hurtTime == DamageFlash.FLASH_TICKS - DamageFlash.IMPACT_TICKS) {
-                com.cortes.combat.CortesCombat.LOGGER.info(
-                        "[flash/bar] vida={}/{} Y=[{},{}] corte={}",
-                        living.getHealth(), living.getMaxHealth(), bounds.minY(), bounds.maxY(), cut);
-            }
-            if (cut > bounds.minY()) {
+            if (bounds.maxY() > bounds.minY()) {
+                float cut = DamageFlash.barCut(bounds.minY(), bounds.maxY(),
+                        living.getHealth(), living.getMaxHealth());
+                if (living.hurtTime == DamageFlash.FLASH_TICKS - DamageFlash.IMPACT_TICKS) {
+                    com.cortes.combat.CortesCombat.LOGGER.info(
+                            "[flash/bar] vida={}/{} Y=[{},{}] corte={}",
+                            living.getHealth(), living.getMaxHealth(), bounds.minY(), bounds.maxY(),
+                            cut);
+                }
                 toDraw = new HealthFlashBuffer(vertexConsumer, cut, OverlayTexture.NO_OVERLAY);
             }
         }

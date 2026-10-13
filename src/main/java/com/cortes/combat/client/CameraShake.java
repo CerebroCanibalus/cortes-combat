@@ -94,8 +94,8 @@ public final class CameraShake {
         }
         float now = minecraft.level.getGameTime();
         org.slf4j.LoggerFactory.getLogger("cortescombat").info(
-                "[shake] paquete recibido grados={} ticks={} en ({}, {}, {})",
-                payload.degrees(), payload.ticks(), payload.x(), payload.y(), payload.z());
+                "[shake] paquete recibido grados={} ticks={} reloj={} en ({}, {}, {})",
+                payload.degrees(), payload.ticks(), now, payload.x(), payload.y(), payload.z());
         ACTIVE.add(new Impulse(minecraft.level.dimension(), payload.x(), payload.y(), payload.z(),
                 payload.degrees(), now, now + payload.ticks(), 1.0F));
     }
@@ -139,12 +139,17 @@ public final class CameraShake {
             if (amplitude <= 0.0F) {
                 continue;
             }
+            float age = time - impulse.bornTick();
             float life = (impulse.diesTick() - time) / (impulse.diesTick() - impulse.bornTick());
             float energy = amplitude * Math.max(0.0F, life);
-            pitch += energy * Mth.sin(time * PITCH_HZ);
+            // **La fase sale de la EDAD y va envuelta, y sin las dos cosas el temblor no existia.**
+            // `Mth.sin` es una tabla cuyo indice satura con angulos grandes, y el angulo era el reloj
+            // del mundo por la frecuencia: con este mundo en 285.340 ticks, `sin` devolvia CERO. Ver
+            // ShakePhase, que tiene tambien por que la edad y no el reloj.
+            pitch += energy * Mth.sin(ShakePhase.angle(age, PITCH_HZ));
             // El signo va aca y no en la amplitud: ver `localImpulse`. Un impulso de red siempre
             // trae 1, asi que su roll no cambia.
-            roll += energy * impulse.rollSign() * Mth.cos(time * ROLL_HZ);
+            roll += energy * impulse.rollSign() * Mth.cos(ShakePhase.angle(age, ROLL_HZ));
         }
         if (pitch != 0.0F || roll != 0.0F) {
             event.setPitch(event.getPitch() + pitch);

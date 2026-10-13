@@ -93,8 +93,18 @@ public final class DamageFlash {
     /** El rojo al 50 %, que es lo que se escribe en {@link #RED_ROW}. */
     public static final int STRONGER_RED = (RED_ALPHA << 24) | 0x0000FF;
 
-    /** El frame negro, con el alpha que el playtest produjo. */
-    public static final int IMPACT_BLACK = (IMPACT_ALPHA << 24) | 0x0000FF;
+    /**
+     * El frame negro: <b>canales en cero</b>, con el alpha que el playtest produjo.
+     *
+     * <p><b>Estuvo en rojo, y por eso "el flash negro" no existía.</b> El valor era
+     * {@code (0x20 << 24) | 0x0000FF} -- el mismo rojo de {@link #STRONGER_RED} con menos alpha --,
+     * así que el shader hacía {@code mix(rojo, textura, 0.125)} = <b>87,5 % de rojo</b>: un rojo
+     * saturado, lo contrario de un frame negro. Y el nombre ya decía cuál era la intención.</p>
+     *
+     * <p>Con los canales en cero el mismo alpha hace {@code mix(negro, textura, 0.125)} =
+     * <b>12,5 % de brillo</b>: el mob se apaga. Eso es el impacto.</p>
+     */
+    public static final int IMPACT_BLACK = (IMPACT_ALPHA << 24) | 0x000000;
 
     private DamageFlash() {
     }
@@ -153,17 +163,18 @@ public final class DamageFlash {
     /**
      * Dónde está la línea del flash, <b>en la Y del MUNDO</b>.
      *
-     * <h2>La herida trepa: a menos vida, más rojo</h2>
+     * <h2>Es una barra de vida: empieza llena y se vacía</h2>
      *
-     * <p><b>El rojo es lo que le FALTA al mob, y por eso crece.</b> A vida llena no flashea nada; a
-     * media vida flashea la mitad de abajo; y a un 10 % de vida flashea el 90 %, que es lo que el
-     * diseño pide (<code>docs/fx.md</code> §2.3: <em>"crece hacia arriba mientras baja la vida -- la
-     * herida trepa --. A 10 %, el 90 %"</em>).</p>
+     * <p>El rojo cubre <b>la parte del cuerpo que todavía tiene vida</b>: a vida llena flashea todo,
+     * a media vida la mitad de abajo, y a cero no flashea nada. Es la lectura de una barra de vida,
+     * que es la que el dueño pidió explícitamente -- <em>"comienza completa y se va bajando hasta
+     * vaciarse"</em>.</p>
      *
-     * <p><b>Esto estuvo al revés en la primera versión</b>, y se escribió un javadoc entero
-     * defendiendo la dirección contraria (el rojo como "la vida que queda", retirándose hacia
-     * abajo). El doc decía lo opuesto desde el principio: <b>la herida trepa</b>. Un comentario que
-     * explica por qué una rareza es correcta es exactamente donde hay que ir a mirar si lo es.</p>
+     * <p><b>Antes era al revés, y la vuelta tiene historia.</b> La versión anterior hacía cubrir
+     * <code>1 - fracción</code> -- "la herida trepa": a vida llena no flasheaba nada y el rojo
+     * crecía desde los pies. Venía de <code>docs/fx.md</code> §2.3, y el doc se escribió desde una
+     * premisa que después resultó falsa. La barra que se vacía es la que el playtest reconoció como
+     * la correcta, así que el doc se corrige, no el código.</p>
      *
      * <h2>Por qué toma el rango medido y no la altura de la caja de colisión</h2>
      *
@@ -186,15 +197,39 @@ public final class DamageFlash {
      * espacio en que se dibuja. El llamador lo mide y pasa sus dos extremos; acá sólo queda la
      * fracción, que es pura y tiene test.</p>
      *
-     * @param minY la Y más baja que el modelo escribe, en el mundo
-     * @param maxY la Y más alta que el modelo escribe, en el mundo
+     * @param minY la Y más baja que el modelo escribe, en el mundo (los pies)
+     * @param maxY la Y más alta que el modelo escribe, en el mundo (la cabeza)
      * @return la Y del mundo por <b>encima</b> de la cual el cuerpo no flashea
      */
     public static float barCut(float minY, float maxY, float health, float maxHealth) {
-        if (!(maxY > minY) || !(maxHealth > 0.0F)) {
+        if (!(maxY > minY)) {
             return minY;
         }
-        return minY + (maxY - minY) * (1.0F - healthFraction(health, maxHealth));
+        return minY + (maxY - minY) * healthFraction(health, maxHealth);
+    }
+
+    /**
+     * La columna del blanco de la muerte, dentro de la textura del overlay.
+     *
+     * <h2>Es 0..15, y la versión anterior llegaba a 225</h2>
+     *
+     * <p><b>El bug estaba en el empaquetado, no en la curva.</b> El mixin llamaba
+     * {@code OverlayTexture.pack(OverlayTexture.u(white), false)}, y {@code pack} tiene dos
+     * sobrecargas: {@code pack(int, int)} y {@code pack(float, boolean)}. Con un {@code int} y un
+     * {@code boolean} la que resuelve es <b>la de float</b>, que <b>vuelve a aplicar {@code u()}</b>
+     * -- así que la columna salía {@code u(u(white))}, hasta 225 en una textura de 16. Un
+     * {@code texelFetch} fuera de rango es <b>indefinido</b>, y el playtest lo vio: el mob se ponía
+     * <b>negro</b> al morir en vez de blanco, que es exactamente lo que devuelve muestrear un texel
+     * transparente.</p>
+     *
+     * <p>∴ la columna se calcula acá, pura y en 0..15, y el mixin la empaqueta con la sobrecarga
+     * de enteros y la fila explícita. Un test afirma el rango, que es lo que faltaba.</p>
+     *
+     * @param hurtTime los ticks que le quedan al cuerpo
+     * @return la columna, de 0 (sin blanco) a 15 (blanco máximo)
+     */
+    public static int whiteColumn(int hurtTime) {
+        return (int) (whiteForDeath(hurtTime) * 15.0F);
     }
 
     /**
