@@ -146,13 +146,29 @@ class DamageFlashTest {
      */
     @Test
     void theWoundClimbsUpwards() {
-        float height = 32.0F;
-        // Vida llena: nada herido, nada flashea.
-        assertEquals(0.0F, DamageFlash.barThreshold(20.0F, 20.0F, height), 1.0e-6F);
+        // Vida llena: nada herido, nada flashea -- el corte cae en los pies.
+        assertEquals(0.0F, DamageFlash.barCut(0.0F, 32.0F, 20.0F, 20.0F), 1.0e-6F);
         // Media vida: la mitad de abajo.
-        assertEquals(height / 2.0F, DamageFlash.barThreshold(10.0F, 20.0F, height), 1.0e-6F);
+        assertEquals(16.0F, DamageFlash.barCut(0.0F, 32.0F, 10.0F, 20.0F), 1.0e-6F);
         // Muerto: el cuerpo entero -- que es justo lo que hace que el blanco final cubra todo.
-        assertEquals(height, DamageFlash.barThreshold(0.0F, 20.0F, height), 1.0e-6F);
+        assertEquals(32.0F, DamageFlash.barCut(0.0F, 32.0F, 0.0F, 20.0F), 1.0e-6F);
+    }
+
+    /**
+     * <b>Y el corte respeta dónde está el cuerpo en el mundo.</b>
+     *
+     * <p>Es la mitad que se rompió dos veces. El rango entra <b>medido</b>, así que subir el cuerpo
+     * sube el corte exactamente igual: un mob a Y=64 no puede cortarse contra un número que empieza
+     * en cero, que es lo que pasaba cuando el umbral salía de la caja de colisión y el vértice
+     * llegaba en coordenadas del mundo.</p>
+     */
+    @Test
+    void theCutFollowsTheBodyUp() {
+        assertEquals(80.0F, DamageFlash.barCut(64.0F, 96.0F, 10.0F, 20.0F), 1.0e-6F);
+        assertEquals(64.0F, DamageFlash.barCut(64.0F, 96.0F, 20.0F, 20.0F), 1.0e-6F);
+        // Y el corte nunca se sale del rango: la fracción está clampeada.
+        assertEquals(64.0F, DamageFlash.barCut(64.0F, 96.0F, 999.0F, 20.0F), 1.0e-6F);
+        assertEquals(96.0F, DamageFlash.barCut(64.0F, 96.0F, -999.0F, 20.0F), 1.0e-6F);
     }
 
     /** Y la línea sólo sube al perder vida: la cobertura crece, nunca se retira. */
@@ -160,27 +176,28 @@ class DamageFlashTest {
     void theLineOnlyEverRises() {
         float previous = -1.0F;
         for (float health = 20.0F; health >= 0.0F; health -= 0.5F) {
-            float threshold = DamageFlash.barThreshold(health, 20.0F, 32.0F);
-            assertTrue(threshold >= previous,
-                    "con " + health + " de vida el umbral bajo a " + threshold
+            float cut = DamageFlash.barCut(0.0F, 32.0F, health, 20.0F);
+            assertTrue(cut >= previous,
+                    "con " + health + " de vida el corte bajo a " + cut
                             + " desde " + previous + ": la herida se retiraria en vez de trepar");
-            previous = threshold;
+            previous = cut;
         }
     }
 
-    /** Un cuerpo raro no rompe nada: sin vida maxima o sin altura, la linea queda en los pies. */
+    /** Un cuerpo raro no rompe nada: el corte queda en los pies, que el llamador lee como "no envolver". */
     @Test
     void aBrokenBodyDoesNotCarveAnything() {
-        assertEquals(0.0F, DamageFlash.barThreshold(5.0F, 0.0F, 32.0F), 1.0e-6F);
-        assertEquals(0.0F, DamageFlash.barThreshold(5.0F, 20.0F, 0.0F), 1.0e-6F);
-        assertEquals(0.0F, DamageFlash.barThreshold(5.0F, 20.0F, -3.0F), 1.0e-6F);
+        // Sin vida maxima no hay barra que dibujar.
+        assertEquals(0.0F, DamageFlash.barCut(0.0F, 32.0F, 5.0F, 0.0F), 1.0e-6F);
+        // Y un rango vacio o invertido tampoco.
+        assertEquals(0.0F, DamageFlash.barCut(0.0F, 0.0F, 5.0F, 20.0F), 1.0e-6F);
+        assertEquals(0.0F, DamageFlash.barCut(0.0F, -3.0F, 5.0F, 20.0F), 1.0e-6F);
     }
 
     /** Y la vida fuera de rango no se sale del modelo: ni por arriba ni por abajo. */
     @Test
     void healthOutsideTheBarIsClamped() {
-        float height = 32.0F;
-        assertEquals(0.0F, DamageFlash.barThreshold(999.0F, 20.0F, height), 1.0e-6F);
-        assertEquals(height, DamageFlash.barThreshold(-999.0F, 20.0F, height), 1.0e-6F);
+        assertEquals(0.0F, DamageFlash.barCut(0.0F, 32.0F, 999.0F, 20.0F), 1.0e-6F);
+        assertEquals(32.0F, DamageFlash.barCut(0.0F, 32.0F, -999.0F, 20.0F), 1.0e-6F);
     }
 }

@@ -830,9 +830,40 @@ tiene los números, y el hook vive donde el número se cobra.
   falla de un canal que nadie llama es que **el build queda verde**. El guard afirma la **suma**
   (`enchanted + perTargetBonus(`), ⊘ la existencia de la función.
 
+### La ronda de los FX — dos números que mentían, y el instrumento que mintió primero
+
+**Tres síntomas reportados como "no se ve nada", tres causas distintas, y ninguna era el canal.**
+
+1. **El flash del mob: la Y del vértice llega en BLOQUES y el umbral venía en unidades de modelo.**
+   `ModelPart.Cube.compile` hace `pos.y() / 16` **antes** de transformar (leído en las fuentes de
+   21.1.250, ⊘ deducido), así que la Y que recibe el envoltorio es la del mundo **en bloques**; el
+   corte se armaba con `getBbHeight() * 16`. **Dieciséis veces más arriba de lo que debía** → nunca
+   cortaba. Y encima, entre la entidad y el modelo hay un `translate(0, -1.501, 0)` que nadie declaró,
+   así que **ni con las unidades bien** la Y del vértice es `pies + altura local`. Las dos rondas
+   anteriores calcularon el corte desde la caja de colisión y las dos fallaron por lo mismo: **la
+   geometría que se dibuja no se deduce, se mide.** Ahora un pase con `VertexBounds` da los dos
+   extremos reales y `barCut` sólo reparte la fracción. El pase doble es seguro porque
+   `renderToBuffer` es delegación pura a `ModelPart.render` — verificado sobre los **18** modelos que
+   lo sobreescriben, todos empujan y sacan el `PoseStack` simétricamente.
+2. **El shake: la amplitud.** `[shake/cam]` imprimía `amp=1.39` a bloque y medio **por frame**: el
+   paquete llegaba, el evento corría y el número se calculaba. **El temblor siempre funcionó; 1,39°
+   no se lee.** El orbe usa 1,8 y *"sí se siente"*, pero engaña: explota **lejos**, donde la caída
+   cuadrática ya lo bajó. A bloque y medio el 1,5 llega **entero** y no alcanza → 4,0.
+3. **Y el instrumento mintió primero, que es lo que costó la ronda.** El log del `[flash/bar]` estaba
+   **dentro** de `if (!wholeBody)` (`hurtTime <= 9`) y al mismo tiempo pedía `hurtTime == 10`: una
+   contradicción, así que **no se imprimió jamás**. El `0` que devolvía se leyó como "el envoltorio no
+   se construye" cuando era "el log es imposible" — la misma forma de `SoundPoolTest` tirando la
+   carpeta: **un guard que descarta la parte que pregunta está verde.** Y el `[flash]` **sí** salió
+   **45 veces**, todas `fila=5`: eso probaba que el mixin del overlay corría, y **el tail del log me
+   lo había comido** (leí las últimas 350 líneas de 1609 y di por cierto "salió una vez").
+
+**La regla que queda:** cuando un efecto no se ve y el código "está bien", el siguiente paso ⊘ es
+retunear ni cambiar el canal — es **medir la geometría y mirar el número**, y antes de eso,
+**contar las líneas del log en vez de leer el final.**
+
 ## Estado técnico actual
 
-**1110 tests unitarios verdes** (2026-10-12). Todo lo testeable corre en JVM pelada; lo que necesita el
+**1147 tests unitarios verdes** (2026-10-12). Todo lo testeable corre en JVM pelada; lo que necesita el
 juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardState`, `ConeSize`,
 `WeaponTooltip`, `ArcabuzState`, `ArcabuzMuzzle` y los `viewmodel/*` puros.
 
@@ -845,8 +876,8 @@ juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardStat
   `ArcabuzGuiIconMixin` (el sprite por `ItemDisplayContext`), `TrabazonSprintMixin`, `GoldDurabilityMixin`,
   `ItemStackDrinkDurationMixin`, `FoodDataMixin`, `RedStoneWireBlockMixin` y el `MobEffectInstanceAccessor`.
   Los del flash del mob son **tres**: `OverlayTextureMixin` (escribe la paleta por fila), `LivingEntityOverlayMixin`
-  (elige la fila) y `LivingEntityRenderMixin` (envuelve el `VertexConsumer` para que el rojo **se retire
-  hacia abajo** como una barra de vida).
+  (elige la fila) y `LivingEntityRenderMixin` (mide el rango del modelo y envuelve el `VertexConsumer`
+  para que **la herida trepe** como una barra de vida).
 - **Tooltips de stats, en TODAS las armas ⊘ vanilla.** `CombatTooltipHandler` (2 eventos) +
   `ConeSize` + `WeaponTooltip` + `TooltipLine`. Reemplaza los 2 renglones de vanilla
   (`GatherSkippedAttributeTooltipsEvent` por **id de modificador**, ⊘ por texto) c/ 7 renglones.
@@ -917,9 +948,16 @@ juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardStat
 > **Estado al 2026-10-12: lo que falta es FX.** Palabras del usuario: *"solo faltarían FX y ya"*. Los
 > sistemas están; lo que queda es lo que el jugador **ve y oye**. La lista de abajo está ordenada por
 > eso.
+>
+> **Y la ronda del flash + shake cerró dos** (2026-10-12): la barra de vida del mob medía su corte en
+> **unidades equivocadas** (bloques contra dieciseisavos → nunca cortaba) y el shake tenía la amplitud
+> 2,7× corta. Los dos quedan **⊥ playtest** con la instrumentación puesta (`[flash]`, `[flash/bar]`,
+> `[shake]`) — ver la lección de la ronda de los FX.
 
 | Falta | Nota |
 |---|---|
+| **Playtest de la barra de vida del mob** | El corte ahora sale del **rango medido** del modelo (`VertexBounds`). Lo que hay que ver: que el rojo **trepe** con la vida baja, ⊘ que cubra el cuerpo entero. El `[flash/bar]` imprime `Y=[min,max] corte=` en el primer tick de la barra |
+| **Playtest del shake de matar** | 1,5 → **4,0** grados. Si sigue corto, el número está en `CombatEngine.KILL_SHAKE_DEGREES` y es el único a tocar |
 | **Retroalimentación del golpe cargado** | Es **uno**: `addParticle` no aparece en ninguna parte del código para esto, y `CombatFeedback` sólo tiene `HIT`/`KILL`/`GUARDED`. **El cargado cambia el número y ⊘ cambia nada en pantalla ni en el oído** — que es la mitad de la mecánica, porque el oído es el único canal que funciona **sin mirar** |
 | **Arcabuz** | Feedback **por objetivo** (el disparo pega a diez y la pantalla ⊘ dice a cuántos) y el flash a **1,7 m**, derivado **a ojo** — primer número a tocar si se ve mal. El click izquierdo ya tiene `STRIKE`+`RECOVER` |
 | **El arcabuz no tiene animación de cuerpo** (3ª persona) | Su perfil ⊘ lee `CHOP` ni `STRIKE`: su click izquierdo es una puñalada de bayoneta y nunca se le escribió |
@@ -968,10 +1006,12 @@ en orden, con el valor que consulta y una línea `VEREDICTO`.
       ⊘ usa.
    c. **El arcabuz**: feedback **por objetivo** (pega a diez y la pantalla ⊘ dice a cuántos) y el flash a
       **1,7 m**, derivado a ojo.
-2. **Afinar a playtest lo que quedó sin cerrar de esta ronda:** el **zumbido de Rey de las Moscas**
-   (arreglado, ⊥ playtest), el **arco de Mungus** (el modelo de la flecha, ⊥ playtest), y los **números
-   del humo de la mecha** (`FUSE_FORWARD/RIGHT/UP`, que ahora son de la cámara y son los únicos tres
-   números del archivo elegidos a ojo).
+2. **Afinar a playtest lo que quedó sin cerrar de esta ronda:** la **barra de vida del mob** (el corte
+   pasó a salir del rango medido — ver la lección de los FX) y el **shake de matar** (1,5 → 4,0 grados),
+   los dos con la instrumentación puesta; el **zumbido de Rey de las Moscas** (arreglado, ⊥ playtest),
+   el **arco de Mungus** (el modelo de la flecha, ⊥ playtest), y los **números del humo de la mecha**
+   (`FUSE_FORWARD/RIGHT/UP`, que ahora son de la cámara y son los únicos tres números del archivo
+   elegidos a ojo).
 3. **Weapon packs — fase 6** = loader de poses por YAML + integración al `PoseSolver` + sprite slash por
    YAML (los dos tocan sistemas cerrados del cliente), y **modo `strict`** de la fase 8. El playtest de
    todo lo demás está **cerrado** (2026-10-10).

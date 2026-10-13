@@ -24,8 +24,8 @@ package com.cortes.combat.client;
  * <p>El efecto queda entonces con dos tiempos, que es lo que lo hace un golpe y no un tinte:</p>
  *
  * <ol>
- *   <li><b>El impacto</b> -- dos ticks de negro. Es el golpe <em>llegando</em>.</li>
- *   <li><b>El rojo</b> -- los ocho ticks que quedan, el rojo al 50 % que el playtest aprobó. Es el
+ *   <li><b>El impacto</b> -- un tick de negro. Es el golpe <em>llegando</em>.</li>
+ *   <li><b>El rojo</b> -- los nueve ticks que quedan, el rojo al 50 % que el playtest aprobó. Es el
  *       golpe <em>habiendo llegado</em>.</li>
  * </ol>
  *
@@ -138,17 +138,20 @@ public final class DamageFlash {
     }
 
     /**
-     * Cuántos unidades de modelo hay en un bloque.
+     * Qué parte de la vida le queda al cuerpo, de 0 a 1.
      *
-     * <p>Dieciséis, que es la escala de Blockbench y la que usa todo modelo de vanilla. La altura
-     * del modelo sale de la <b>caja de colisión</b> de la entidad multiplicada por esto, y no de una
-     * tabla por tipo: un mob nuevo, o el de otro mod, queda con su altura correcta sin que nadie
-     * agregue una fila.</p>
+     * <p>Cero si el máximo no es un número positivo -- un cuerpo sin vida máxima no tiene barra que
+     * dibujar, y devolver 1 (vida llena) sería dibujarle un flash que nadie pidió.</p>
      */
-    public static final float MODEL_UNITS_PER_BLOCK = 16.0F;
+    public static float healthFraction(float health, float maxHealth) {
+        if (!(maxHealth > 0.0F)) {
+            return 0.0F;
+        }
+        return Math.max(0.0F, Math.min(health / maxHealth, 1.0F));
+    }
 
     /**
-     * Dónde está la línea del flash, <b>medida desde los pies del modelo</b>.
+     * Dónde está la línea del flash, <b>en la Y del MUNDO</b>.
      *
      * <h2>La herida trepa: a menos vida, más rojo</h2>
      *
@@ -162,24 +165,36 @@ public final class DamageFlash {
      * abajo). El doc decía lo opuesto desde el principio: <b>la herida trepa</b>. Un comentario que
      * explica por qué una rareza es correcta es exactamente donde hay que ir a mirar si lo es.</p>
      *
-     * <h2>La Y que devuelve NO es la del vértice, y esa fue la segunda trampa</h2>
+     * <h2>Por qué toma el rango medido y no la altura de la caja de colisión</h2>
      *
-     * <p>Devuelve una altura <b>relativa a los pies</b>, y el llamador le suma la Y base de la
-     * entidad. Es obligatorio: el {@code PoseStack} que llega al modelo <b>ya está trasladado a la
-     * posición del mundo</b> (verificado con {@code javap}: {@code EntityRenderDispatcher} hace
-     * {@code translate} en el offset 59 y llama a {@code render} en el 75), así que la Y de un
-     * vértice vale la altura del mob en el mundo <b>más</b> su altura local. Comparar contra un
-     * umbral local de 0..32 con la entidad a Y=70 no corta nunca: <b>eso era "no baja por vida"</b>.</p>
+     * <p>Las dos versiones anteriores calcularon la línea a partir de datos que <b>no son la
+     * geometría que se dibuja</b>, y las dos fallaron por lo mismo:</p>
      *
-     * @param modelHeight la altura del modelo en unidades de modelo, no en bloques
-     * @return la altura, <b>desde los pies</b>, por <b>encima</b> de la cual el cuerpo no flashea
+     * <ol>
+     *   <li><b>Unidades mezcladas.</b> La Y de un vértice llega en <b>bloques</b>:
+     *       {@code ModelPart.Cube.compile} hace {@code pos.y() / 16} <em>antes</em> de transformar
+     *       (leído en las fuentes de 21.1.250). El umbral se armaba con {@code getBbHeight() * 16}
+     *       -- <b>unidades de modelo</b> --, así que comparaba bloques contra dieciseisavos y el
+     *       corte caía 16 veces más arriba de lo que debía: <b>nunca cortaba nada</b>.</li>
+     *   <li><b>Un offset que nadie declaró.</b> Entre la posición de la entidad y el modelo hay un
+     *       {@code translate(0, -1.501, 0)} y una convención de ejes (el modelo cuenta su Y hacia
+     *       abajo), así que ni siquiera con las unidades bien la Y del vértice es
+     *       {@code pies + altura local}. El desplazamiento depende del modelo y de su escala.</li>
+     * </ol>
+     *
+     * <p>∴ la única fuente honesta del rango vertical <b>es el modelo</b>, medido en el mismo
+     * espacio en que se dibuja. El llamador lo mide y pasa sus dos extremos; acá sólo queda la
+     * fracción, que es pura y tiene test.</p>
+     *
+     * @param minY la Y más baja que el modelo escribe, en el mundo
+     * @param maxY la Y más alta que el modelo escribe, en el mundo
+     * @return la Y del mundo por <b>encima</b> de la cual el cuerpo no flashea
      */
-    public static float barThreshold(float health, float maxHealth, float modelHeight) {
-        if (!(maxHealth > 0.0F) || !(modelHeight > 0.0F)) {
-            return 0.0F;
+    public static float barCut(float minY, float maxY, float health, float maxHealth) {
+        if (!(maxY > minY) || !(maxHealth > 0.0F)) {
+            return minY;
         }
-        float fraction = Math.max(0.0F, Math.min(health / maxHealth, 1.0F));
-        return modelHeight * (1.0F - fraction);
+        return minY + (maxY - minY) * (1.0F - healthFraction(health, maxHealth));
     }
 
     /**

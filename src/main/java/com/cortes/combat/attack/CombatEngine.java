@@ -718,18 +718,22 @@ public final class CombatEngine {
     }
 
     /**
-     * El temblor de matar: grado y medio, seis ticks.
+     * El temblor de matar: <b>cuatro grados</b>, seis ticks.
      *
-     * <p><b>Y el número subió porque el playtest no vio NADA.</b> Arrancó en 0,5 grados y el dueño
-     * reportó que el shake no se veía en absoluto -- con razón: {@code CameraShake.amplitudeAt} cae
-     * al <b>cuadrado</b>, así que a dos bloques del cuerpo el 0,5 se convierte en 0,45, y medio
-     * grado de pitch no se distingue de la respiración de la cámara. Comparar con el orbe, que usa
-     * 1,8 y sí se siente.</p>
+     * <p><b>El número tiene historia y la instrumentación la cerró.</b> Arrancó en 0,5; el playtest
+     * reportó que no se veía, y se triplicó a 1,5 -- y siguió sin verse. Los logs del último playtest
+     * mostraron la amplitud real calculada, {@code amp=1.39} a 1,5 bloques, o sea que <b>el temblor
+     * SÍ se aplicaba</b> y el problema nunca fue que no llegara: <b>1,39° no se lee</b>.</p>
      *
-     * <p>Sigue siendo un golpe corto y no un terremoto: {@code CameraShake} decae a cero a lo largo
-     * de la vida, así que un impulso de seis ticks es un golpe seco y uno largo sería un zumbido.</p>
+     * <p>El orbe usa 1,8 y "sí se siente", pero eso engaña: el orbe explota <b>lejos</b>, donde la
+     * caída cuadrática ya lo bajó, así que su número grande llega chico. Acá el cuerpo muere a un
+     * bloque y medio, donde {@code amplitudeAt} casi no descuenta -- el 1,5 llega <b>entero</b> y no
+     * alcanza igual.</p>
+     *
+     * <p>Sigue siendo un golpe corto y no un terremoto: {@code CameraShake} decae a cero a lo largo de
+     * la vida, así que un impulso de seis ticks es un golpe seco y uno largo sería un zumbido.</p>
      */
-    private static final float KILL_SHAKE_DEGREES = 1.5F;
+    private static final float KILL_SHAKE_DEGREES = 4.0F;
 
     private static final int KILL_SHAKE_TICKS = 6;
 

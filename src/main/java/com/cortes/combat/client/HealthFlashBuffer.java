@@ -37,7 +37,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
  * <h2>Por qué no puede testearse</h2>
  *
  * <p>Implementa una interfaz de Minecraft, así que <b>no arranca en una JVM pelada</b>. La
- * aritmética -- dónde está la línea -- vive en {@link DamageFlash#barThreshold}, que es pura y sí
+ * aritmética -- dónde está la línea -- vive en {@link DamageFlash#barCut}, que es pura y sí
  * tiene test. Es la misma línea que el proyecto ya trazó con {@code HitParticles} y
  * {@code HitReadout}.</p>
  */
@@ -45,7 +45,7 @@ public final class HealthFlashBuffer implements VertexConsumer {
 
     private final VertexConsumer delegate;
 
-    /** La altura, en unidades de modelo, por debajo de la cual el cuerpo ya no flashea. */
+    /** La Y del MUNDO por encima de la cual el cuerpo ya no flashea. Sale del rango medido. */
     private final float thresholdY;
 
     /** El overlay que se usa abajo de la línea: {@code NO_OVERLAY}, o sea "sin flash". */
@@ -70,9 +70,9 @@ public final class HealthFlashBuffer implements VertexConsumer {
     @Override
     public VertexConsumer setUv1(int u, int v) {
         // **Arriba de la linea no flashea; abajo si.** La herida TREPA: el rojo es lo que le falta al
-        // mob, asi que crece desde los pies. Ver DamageFlash#barThreshold, donde tambien esta por que
-        // la Y que llega aca no es la del vertice sino la de la entidad -- y por que eso costo un
-        // playtest entero.
+        // mob, asi que crece desde los pies. La Y que llega aca es la del MUNDO, igual que el umbral:
+        // los dos salen del mismo pase medido. Ver DamageFlash#barCut, donde tambien esta por que
+        // deducir el rango de la caja de colision costo dos playtests.
         if (this.lastY > this.thresholdY) {
             this.delegate.setUv1(this.hiddenOverlay & 0xFFFF, this.hiddenOverlay >> 16);
         } else {

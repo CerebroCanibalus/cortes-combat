@@ -2,13 +2,13 @@ package com.cortes.combat.mixin;
 
 import com.cortes.combat.client.DamageFlash;
 import com.cortes.combat.client.HealthFlashBuffer;
+import com.cortes.combat.client.VertexBounds;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -78,17 +78,17 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  *
  * <h2>Cuándo NO se envuelve</h2>
  *
- * <p>Dos casos, y los dos son <b>el cuerpo entero</b>:</p>
+ * <p>Tres casos, y ninguno paga el envoltorio:</p>
  *
  * <ul>
  *   <li><b>El frame del impacto.</b> El negro de los primeros ticks tiene que cubrir todo -- es el
  *       golpe llegando, no la vida que queda.</li>
  *   <li><b>La muerte.</b> El blanco es un hecho, no una barra.</li>
+ *   <li><b>La vida llena.</b> El corte cae en los pies, o sea que no hay nada que borrar.</li>
  * </ul>
  *
- * <p>Y en los dos el umbral es cero, o sea que <b>no habría nada que borrar</b>: envolver sería
- * pagar un objeto y seis delegaciones por vértice para no cambiar nada. Se deja pasar el buffer
- * original y el costo es cero.</p>
+ * <p>Y cuando sí se envuelve, el corte sale del <b>rango medido</b> del modelo, no de la caja de
+ * colisión: ver {@link DamageFlash#barCut} para las dos rondas que costó deducirlo.</p>
  */
 @Mixin(LivingEntityRenderer.class)
 public class LivingEntityRenderMixin {
@@ -107,25 +107,24 @@ public class LivingEntityRenderMixin {
         // -- o sea que no hay nada que borrar -- asi que envolver no cambiaria nada salvo perder el
         // negro del impacto. Un tick de cuerpo completo es el golpe llegando.
         boolean wholeBody = living.hurtTime > DamageFlash.FLASH_TICKS - DamageFlash.IMPACT_TICKS;
-        if (living.hurtTime > 0 && !wholeBody) {
-            float threshold = DamageFlash.barThreshold(living.getHealth(), living.getMaxHealth(),
-                    living.getBbHeight() * DamageFlash.MODEL_UNITS_PER_BLOCK);
-            if (threshold > 0.0F) {
-                // **La Y base, y sin esto el efecto no existe.** El poseStack que llega al modelo ya
-                // esta trasladado a la posicion del MUNDO de la entidad (EntityRenderDispatcher hace
-                // translate antes de llamar a render), asi que la Y de un vertice vale `altura en el
-                // mundo + altura local`. El umbral es local, y hay que sumarle la base o no corta
-                // nunca: eso era "no baja por vida". Interpolada, porque el dispatcher tambien lo
-                // esta y si no la linea tiembla al caminar.
-                float baseY = (float) Mth.lerp((double) partialTicks, living.yOld, living.getY());
-                if (living.hurtTime == DamageFlash.FLASH_TICKS) {
-                    com.cortes.combat.CortesCombat.LOGGER.info(
-                            "[flash/bar] vida={}/{} alto={} umbral={} baseY={} corte={}",
-                            living.getHealth(), living.getMaxHealth(), living.getBbHeight(),
-                            threshold, baseY, baseY + threshold);
-                }
-                toDraw = new HealthFlashBuffer(vertexConsumer, baseY + threshold,
-                        OverlayTexture.NO_OVERLAY);
+        if (living.hurtTime > 0 && !wholeBody
+                && DamageFlash.healthFraction(living.getHealth(), living.getMaxHealth()) < 1.0F) {
+            // **El rango vertical se MIDE, no se deduce.** Ver DamageFlash#barCut: las dos versiones
+            // anteriores lo calcularon desde `getBbHeight()` y las dos fallaron -- una por unidades
+            // (el vertice llega en bloques y el umbral venia en dieciseisavos) y la otra por el
+            // `translate(0, -1.501, 0)` del renderer. Un pase con `VertexBounds` da los dos extremos
+            // reales, en el mismo espacio en que se dibuja.
+            VertexBounds bounds = new VertexBounds();
+            model.renderToBuffer(poseStack, bounds, packedLight, packedOverlay, colour);
+            float cut = DamageFlash.barCut(bounds.minY(), bounds.maxY(),
+                    living.getHealth(), living.getMaxHealth());
+            if (living.hurtTime == DamageFlash.FLASH_TICKS - DamageFlash.IMPACT_TICKS) {
+                com.cortes.combat.CortesCombat.LOGGER.info(
+                        "[flash/bar] vida={}/{} Y=[{},{}] corte={}",
+                        living.getHealth(), living.getMaxHealth(), bounds.minY(), bounds.maxY(), cut);
+            }
+            if (cut > bounds.minY()) {
+                toDraw = new HealthFlashBuffer(vertexConsumer, cut, OverlayTexture.NO_OVERLAY);
             }
         }
         model.renderToBuffer(poseStack, toDraw, packedLight, packedOverlay, colour);
