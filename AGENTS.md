@@ -828,8 +828,14 @@ en orden, con el valor que consulta y una línea `VEREDICTO`.
 ## Antes de publicar el repo (2026-10-13)
 
 **El repo sigue PRIVADO, por decisión del dueño.** El paquete de `README`/`LICENSE`/`.github` ya está
-puesto y se lee bien **como repo privado**; esto es lo que hoy no importa y **el día que se haga
-público sí**, en orden de gravedad:
+puesto y se lee bien **como repo privado**, y la metadata de GitHub también: **9 topics elegidos por
+cantidad de repos** —el número dice si un topic está muerto o saturado, y la cuenta que salvó la
+elección fue que `minecraft-combat` tiene **3** repos, `combat-overhaul` **0**, `minecraft-framework`
+**9** y `framework` a secas **20.127**: inventar un topic es un callejón, y los que describen un
+framework son `data-driven` (643) y `modding-framework` (86)— y una descripción **sin "melee" y sin la
+versión de Minecraft**, que son las dos cosas que envejecen (el mod hace más que cuerpo a cuerpo —
+tiene el arcabuz, el reactor, el hambre— y no se va a quedar en 1.21.1). Esto es lo que hoy no importa
+y **el día que se haga público sí**, en orden de gravedad:
 
 1. **Las dos texturas de terceros.** `textures/gui/sprites/hud/damage_overlay.png` es **All Rights
    Reserved** (de `neoforge-damageoverlay`) y `crosshair_shield_indicator_{full,disabled}.png` es
