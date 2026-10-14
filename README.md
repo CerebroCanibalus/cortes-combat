@@ -16,45 +16,34 @@
   <img src="src/main/resources/assets/cortescombat/textures/item/arcabuz_icon.png" width="64" alt="Arcabuz">
 </p>
 
-Melee combat where the weapon in your hand decides three separate things — how far you reach, how fast you swing, and what the charge buys you. Vanilla treats a rapier, an axe and a halberd as one object with different damage numbers. This mod doesn't.
+This is an intuitive and noob-friendly Minecraft combat full rework focused on fixing combat skill curve, readability, lack of gameplay options and unintuitive mechanics. Those were the days you had to hit pixel perfect exactly timed hits to kill a baby zombie.. Each weapon now has a radius, cooldown and reach.
 
-## What it changes
+## What it overhauls
 
-**Reach is a cone, not a sphere.** Every weapon carries its own distance, its own horizontal arc and its own vertical arc, and a swing only lands inside them. The rapier has the narrowest cone in the game and the sabre the widest, and the vertical angle is what decides whether you connect with something standing over you or under your feet.
+**Every weapon carries its own distance.** And its own horizontal arc and its own vertical arc, a swing only lands inside them. This solves the years long issue of requiring to hit pixel perfect attacks and missing most of them due to the horrible Minecraft's camera or enemies being too small or fast.
 
-**Attack speed is a hard wall.** You cannot attack halfway through a cooldown, and there's no damage multiplier for timing a swing well. The rhythm belongs to the weapon, so a fast hit that deals flat damage is a real choice instead of a mistake. Bare hands are the fastest thing in the game and reach the shortest.
+**Attack speed is a hard wall.** You cannot attack halfway through a cooldown like in Vanilla, and there's no damage multiplier for timing a swing well. The rhythm belongs to the weapon, so a fast hit that deals flat damage is a real choice instead of a mistake. Bare hands are the fastest thing in the game but reach the shortest as obvious. This solves both the intuitiveness problem of vanilla cooldown and the ambiguosity in weapons DPS. 
 
-**A charge is a bonus that never takes anything away.** Hold the button and the hit builds on top of its base — it does not subtract when you release early. A charge bonus is also always a worse deal than simply hitting twice, so holding is a decision about reach and armour, not a DPS trick.
+*Charge replaces crits.** Hold attack in order to release a devastating hit, this is a better way of keeping timing skills and also adding a new depth layer to combat. A charged bonus is always a worse deal to constant attacks, but is also a way to comeback during fights through a risky attack, a constant choice you need to balance during confrontation.
 
-**The right button does something the left one can't.** Every right-click is a movement or a piece of crowd control, never just more damage: the rapier lunges, the halberd sweeps everything in its arc, the shotel parries and returns the blow it caught. Some weapons can't charge and some have no right-click at all, and that is written on the weapon rather than guessed by the game.
+**Special attacks.** Some weapons have right-click abilities which not only add to the weapon's identity, but also make every weapon set unique in their playstyle, fulfilling a certain role or gameplay type for each player. Adding a ton of possible combinations to actual combat. 
 
-**A guard with a real cost.** A shield and a sword both block, both stop 100% of a blocked hit except explosions, and both spend stamina — three blocked hits and the guard breaks, leaving you staggered and open. It only works in the arc in front of you. An axe breaks a guard in a single hit, which is the entire reason to carry one.
+**A guard with a real cost.** In vanilla blocking with shields often has no risk, and making them not block all damage feels badly, apart from the fact that it just makes not having a shield a better option most of the time. So instead you now have Guard points, which will drain as you block damage, this way it serves as a small pacing for you to heal or reorganize before counterattacking. 
 
-**Hunger stops being stamina.** Running, mining and swinging cost nothing. Food is a healing resource with a closed loop: it pays for your regeneration and it grows back on its own clock. Eat while something is hitting you and the hit interrupts you, unless your guard is up.
+**Hunger stops being stamina.** Running, mining and swinging cost nothing mow. Food is ONLY a healing resource with a closed loop: it pays for your regeneration and it grows back on its own clock. Eat while something is hitting you and the hit interrupts you, unless your guard up, you can eat while using shields or swords.
 
-**Thirty weapons, and none of them is a reskinned sword.** Five are brand new — a rapier, a halberd, a war hammer, a dagger and a shotel — and each one is a different answer to a fight. The vanilla sword, axe, shovel, mace and trident join the system and were rebalanced for it. The pickaxe sits it out, on purpose. There is also an **arcabuz**: a black-powder gun that pays for one enormous shot with a reload, and has no business being in a sword fight.
+**6 completely new weapons, and none of them is a reskinned sword.** The ropera, the alabarda, the war hammer, the dagger and the shotel, each one is a different answer to a fight. There is also the **Arcabuz**: a gunpowder gun that shoots demolishing short-ranged blasts, it has no business being brought to a sword fight!
 
-**Thirty-four enchantments**, all built for the mechanics above rather than for vanilla's — lifesteal, guarding, counters, and a few that are only worth having if you understand the charge.
 
-**The Nether Reactor.** Load it, push it past its ceiling, and it pays out. Push it further and it lights a fuse, tears a crater forty-eight blocks across, boils the water out of the ground and shakes the camera for anything within a hundred and sixty blocks.
+**Vanilla weapons fully reworked!**The vanilla sword, hoe, axe, shovel, mace and trident join the system and were fully reworked for it. The pickaxe stays a tool on purpose though, each vanilla weapon has been reoriented and given a new fresh identity. 
 
-**Other mods' weapons join the fight.** A YAML file under `config/cortescombat/weapons/` teaches the system about a weapon from another mod — its reach, its charge, its knockback — and a datapack tag does the same thing from a pack. Neither needs a line of Java. There's a [guide](docs/armas-custom.md) for it (in Spanish).
+**34 NEW enchantments and reworked vanilla ones.**, A pletora of new and reworked enchantments that go from spectral swords, flying pigs (Not really), killer flies, and many, many more.
 
-**Eight languages.** English plus seven varieties of Spanish, because the weapon names are Spanish on purpose — a rapier is a *ropera* here and a halberd is an *alabarda*, and renaming them per language would mean two different sets of weapons.
+**The Nether Reactor.** Load it, push it past its ceiling and turn it into the heart of your base! Push it further and reach the absolute power!! 
 
-## Pick something else if
+**YOUR weapons can join the fight!** If none of the added ones fit you, you can add YOUR OWN through `config/cortescombat/weapons/` and a resourcepack, you can also configurate every weapon of the mod. You can set its reach, its charge, its knockback and much more. 
 
-This mod replaces how melee works. That isn't what everyone wants, so here's the honest map:
-
-| You want | Try |
-| --- | --- |
-| Minecraft Dungeons-style combos, dual wielding and fluid attack animations | [Better Combat](https://modrinth.com/mod/better-combat) |
-| A souls-like overhaul with skills, dodging and its own animation set | [Epic Fight](https://modrinth.com/mod/epic-fight) |
-| Vanilla's combat rules, with the old Combat Test numbers restored | [Combatify](https://www.curseforge.com/minecraft/mc-mods/combatify) (Fabric) |
-| Combat that is exactly vanilla, plus cosmetics | Something else entirely |
-| To play on **Fabric or Quilt** | Not this — Cortés Combat is NeoForge only |
-
-And two things worth knowing before you install: this mod is **required on both client and server** (the server resolves every hit; the client only draws it), and it **refuses to load alongside a combat mod it can't coexist with**, printing the name of the mod in the log instead of crashing with a stack trace. That list is short and it exists because a silent conflict is worse than a loud refusal.
+**Revitalized combat effects.** All kind of wacky and cool effects have been added to damage, low health, mob attacks and more, with a new easy to understand life indicator that won't cannibalize the game's visuals.
 
 ## Install
 
@@ -71,17 +60,6 @@ cd cortes-combat
 ```
 
 The jar lands in `build/libs/`. Add it to `mods/` like any other. For a development environment, `./gradlew runClient` and `./gradlew runServer` boot the game with the mod already loaded.
-
-## Playing it
-
-| Action | What happens |
-| --- | --- |
-| **Hold left click** | Charges the swing and fires it when you release — one button does both |
-| **Right click** | The weapon's own move: a lunge, a sweep, a parry, or nothing at all |
-| **Right click holding a shield or a sword** | Raises the guard |
-| **Left click holding food** | Eats; the guard can be up at the same time |
-
-Two readouts sit on your screen while you hold: the bar **under the crosshair** is the charge, and the bar **wrapping it** is the cooldown. The brackets close when the weapon is ready to swing. When you carry something that blocks, three faint pips appear above the crosshair — that's your guard stamina, and they are worth watching.
 
 ## Weapons from other mods
 
