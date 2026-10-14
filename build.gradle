@@ -253,6 +253,11 @@ tasks.named('test', Test).configure {
 // mano. `.cache` se va porque es contabilidad de build; `LICENSE` entra porque es un aviso legal.
 tasks.named('jar', Jar).configure {
     exclude '.cache/**'
+    // **Y los .md de desarrollo, que viajaban sin que nadie los leyera.** El juego no lee un README,
+    // y `PROTOTYPE-ASSETS.md` decia "DO NOT SHIP THESE" DENTRO de un jar que se repartia: una nota
+    // de provenance que se contradecia a si misma por estar en el lugar equivocado. Los archivos
+    // .md viven en el repo, que es donde alguien los va a leer.
+    exclude '**/*.md'
     from('LICENSE')
 }
 

@@ -760,19 +760,21 @@ juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardStat
 | `/cc weapons` desactualizado | Tiene 11 armas vanilla. Arcabuz y Firestone: `/cc weapon cortescombat:<id>` |
 | **Los 4 perfiles de pico/pala/maza/tridente** | **Por decisión, ⊘ deuda.** `ViewModelDefaults` los omite: son items de vanilla, y un movimiento dibujado a mano sobre una silueta que no dibujamos pelea c/ el modelo. Sin entrada = pose exacta de vanilla |
 
-### Texturas: DOS SIGUEN SIENDO DE `refs/`
+### Texturas: una sola sigue siendo de `refs/`
 
 Las de `assets/cortescombat/textures/gui/sprites/hud/` son **arte original del usuario**:
 `crosshair`, `crosshair_aim`, `crosshair_hit`, `cooldown_corchetes`, `charge_bar`,
-`charge_bar_emtpy`. `hotbar_attack_indicator_full.png` (icono de combatify) se borró.
+`charge_bar_emtpy`. `hotbar_attack_indicator_full.png` (icono de combatify) se borró. Y
+`damage_overlay.png` también es del usuario desde el **2026-10-14**, que es el día que se fue el
+único asset **All Rights Reserved** del repo.
 
 | Archivo | Origen | Licencia | Riesgo |
 |---|---|---|---|
-| `sprites/hud/crosshair_shield_indicator_{full,disabled}.png` | `combatify` | LGPL-2.1 | Medio: o se reemplazan, o el mod queda atado a LGPL |
-| `damage_overlay.png` | `neoforge-damageoverlay` | **All Rights Reserved** | **Alto.** No hay `LICENSE` y el autor no concedió permiso |
+| `sprites/hud/crosshair_shield_indicator_{full,disabled}.png` | `combatify` | LGPL-2.1 | Medio, y el último: o se reemplazan, o el mod queda atado a LGPL |
 
-Detalle en `textures/gui/PROTOTYPE-ASSETS.md`. Para reemplazar: **misma ruta y mismo tamaño en
-píxeles** → no cambia código de render.
+Detalle en `textures/gui/PROTOTYPE-ASSETS.md`. Para reemplazar: misma ruta, y **el tamaño en píxeles
+sólo importa en los sprites** (se dibujan a 9×9) — la viñeta se estira a la pantalla y su UV va de 0
+a 1, así que el tamaño del archivo es libre.
 
 > **`cooldown_corchetes.png`:** el usuario lo rediseñó a una línea fina con huecos. Su alpha máximo
 > bajó de **102 a 38**, así que `BRACKET_ALPHA` (0.30) se normaliza contra el pico del arte. Si se
@@ -837,11 +839,11 @@ versión de Minecraft**, que son las dos cosas que envejecen (el mod hace más q
 tiene el arcabuz, el reactor, el hambre— y no se va a quedar en 1.21.1). Esto es lo que hoy no importa
 y **el día que se haga público sí**, en orden de gravedad:
 
-1. **Las dos texturas de terceros.** `textures/gui/sprites/hud/damage_overlay.png` es **All Rights
-   Reserved** (de `neoforge-damageoverlay`) y `crosshair_shield_indicator_{full,disabled}.png` es
-   **LGPL-2.1** (de `combatify`). **Repartir bajo GPL-3.0 un asset ARR no se sostiene**, y es el único
-   bloqueante de esta lista que no se arregla con un comando. Reemplazarlas con la misma ruta y el
-   mismo tamaño en píxeles: **no cambia una línea de render.**
+1. **Los dos sprites de la guardia siguen siendo de `combatify`** (`LGPL-2.1`, copyleft: o se
+   reemplazan, o el mod queda atado a LGPL al repartirse). **La viñeta ya está resuelta** —el usuario
+   redibujó `damage_overlay.png` por completo el 2026-10-14, así que el asset **All Rights Reserved**
+   que era el bloqueante #1 ya no está— y este par es lo único que queda. **Es el bloqueante que no se
+   arregla con un comando**, y el único pendiente de la lista de texturas.
 2. **El `AGENTS.md` se publica con el repo.** Las *reglas* están bien y son la mitad del valor del
    proyecto; lo que hay que limpiar son los **datos**: rutas locales, `refs/`, y nombres de terceros.
 3. **Secret scanning y private vulnerability reporting dieron 422 y 404 en privado.** Se habilitan el

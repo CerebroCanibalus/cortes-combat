@@ -1,8 +1,9 @@
 # PROTOTYPE ASSETS — DO NOT SHIP THESE
 
 The textures in this directory were copied from the reference mods in `refs/` purely so the
-HUD could be prototyped and tested before the real art exists. They must all be replaced with
-original art before any public release.
+HUD could be prototyped and tested before the real art exists. **The vignette has since been
+redrawn by the author (2026-10-14); the two orb sprites below are the only borrowed art left,
+and they must be replaced before any public release.**
 
 ## What is actually used
 
@@ -14,7 +15,7 @@ accident.
 |---|---|---|---|---|
 | `sprites/hud/crosshair_shield_indicator_full.png` | 16x16 | 9x9 | `GuardOrbsLayer` — one guard point still available | **LGPL-2.1** (from `combatify`) |
 | `sprites/hud/crosshair_shield_indicator_disabled.png` | 16x16 | 9x9 | `GuardOrbsLayer` — a guard point already spent | **LGPL-2.1** (from `combatify`) |
-| `damage_overlay.png` | 256x128 | **stretched to the whole screen** | `DamageOverlayLayer` — low-health vignette and damage flash | **All Rights Reserved** (from `neoforge-damageoverlay`, no `LICENSE`, no grant). **Highest risk.** |
+| `damage_overlay.png` | 256x128 | **stretched to the whole screen** | `DamageOverlayLayer` — low-health vignette and damage flash | **RESUELTO el 2026-10-14**: el autor lo redibujó por completo. Ya no queda nada *All Rights Reserved* en el repo. |
 
 > **Corrección del 2026-10-13: esto decía "tiled" y es "stretched".** `DamageOverlayLayer` llama a
 > `graphics.blit(OVERLAY, 0, 0, w, h, 0, 0, w, h, w, h)` — y las dos últimas coordenadas son las
@@ -42,8 +43,9 @@ code around the crosshair rather than by a sprite.
 
 ## Replacing them
 
-Keep the same path and the same pixel size. Nothing in the rendering code has to change, and
-the sprite sheet does not need to be rebuilt.
+Keep the same path. **Pixel size:** the two orb sprites must stay 16x16 (they are drawn at 9x9, so
+anything smaller throws away detail the player would have seen); the vignette's size is free,
+because its UV goes 0 to 1 and the blit does not care how many pixels there are.
 
 Draw them at the pixel size listed above, not the size they are drawn at: the 9x9 orb is a
 downscale of a 16x16 sprite, so detail below 16x16 is thrown away before the player sees it.
