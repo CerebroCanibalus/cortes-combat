@@ -16,7 +16,7 @@
   <img src="src/main/resources/assets/cortescombat/textures/item/arcabuz_icon.png" width="64" alt="Arcabuz">
 </p>
 
-This is an intuitive and noob-friendly Minecraft combat full rework focused on fixing combat skill curve, readability, lack of gameplay options and unintuitive mechanics. Those were the days you had to hit pixel perfect exactly timed hits to kill a baby zombie.. Each weapon now has a radius, cooldown and reach.
+This is an intuitive and noob-friendly Minecraft combat full rework focused on fixing combat skill curve, readability, lack of gameplay options and unintuitive mechanics. Those were the days you had to hit pixel perfect exactly timed hits to kill a baby zombie. Each weapon now has a radius, cooldown and reach.
 
 ## What it overhauls
 
@@ -24,20 +24,19 @@ This is an intuitive and noob-friendly Minecraft combat full rework focused on f
 
 **Attack speed is a hard wall.** You cannot attack halfway through a cooldown like in Vanilla, and there's no damage multiplier for timing a swing well. The rhythm belongs to the weapon, so a fast hit that deals flat damage is a real choice instead of a mistake. Bare hands are the fastest thing in the game but reach the shortest as obvious. This solves both the intuitiveness problem of vanilla cooldown and the ambiguosity in weapons DPS. 
 
-*Charge replaces crits.** Hold attack in order to release a devastating hit, this is a better way of keeping timing skills and also adding a new depth layer to combat. A charged bonus is always a worse deal to constant attacks, but is also a way to comeback during fights through a risky attack, a constant choice you need to balance during confrontation.
+**Charge replaces crits.** Hold attack in order to release a devastating hit, this is a better way of keeping timing skills and also adding a new depth layer to combat. A charged bonus is always a worse deal to constant attacks, but is also a way to comeback during fights through a risky attack, a constant choice you need to balance during confrontation.
 
 **Special attacks.** Some weapons have right-click abilities which not only add to the weapon's identity, but also make every weapon set unique in their playstyle, fulfilling a certain role or gameplay type for each player. Adding a ton of possible combinations to actual combat. 
 
 **A guard with a real cost.** In vanilla blocking with shields often has no risk, and making them not block all damage feels badly, apart from the fact that it just makes not having a shield a better option most of the time. So instead you now have Guard points, which will drain as you block damage, this way it serves as a small pacing for you to heal or reorganize before counterattacking. 
 
-**Hunger stops being stamina.** Running, mining and swinging cost nothing mow. Food is ONLY a healing resource with a closed loop: it pays for your regeneration and it grows back on its own clock. Eat while something is hitting you and the hit interrupts you, unless your guard up, you can eat while using shields or swords.
+**Hunger stops being stamina.** Running, mining and swinging cost nothing now. Food is ONLY a healing resource with a closed loop: it pays for your regeneration and it grows back on its own clock. Eat while something is hitting you and the hit interrupts you, unless your guard up, you can eat while using shields or swords.
 
-**6 completely new weapons, and none of them is a reskinned sword.** The ropera, the alabarda, the war hammer, the dagger and the shotel, each one is a different answer to a fight. There is also the **Arcabuz**: a gunpowder gun that shoots demolishing short-ranged blasts, it has no business being brought to a sword fight!
+**5 completely new melee weapons, and none of them is a reskinned sword.** The ropera, the alabarda, the war hammer, the dagger and the shotel, each one is a different answer to a fight. There is also the **Arcabuz**: a gunpowder gun that shoots demolishing short-ranged blasts, it has no business being brought to a sword fight!
 
+**Vanilla weapons fully reworked!** The vanilla sword, hoe, axe, shovel, mace and trident join the system and were fully reworked for it. The pickaxe stays a tool on purpose though, each vanilla weapon has been reoriented and given a new fresh identity.
 
-**Vanilla weapons fully reworked!**The vanilla sword, hoe, axe, shovel, mace and trident join the system and were fully reworked for it. The pickaxe stays a tool on purpose though, each vanilla weapon has been reoriented and given a new fresh identity. 
-
-**34 NEW enchantments and reworked vanilla ones.**, A pletora of new and reworked enchantments that go from spectral swords, flying pigs (Not really), killer flies, and many, many more.
+**34 NEW enchantments and reworked vanilla ones.** A plethora of new and reworked enchantments that go from spectral swords, flying pigs (Not really), killer flies, and many, many more.
 
 **The Nether Reactor.** Load it, push it past its ceiling and turn it into the heart of your base! Push it further and reach the absolute power!! 
 
