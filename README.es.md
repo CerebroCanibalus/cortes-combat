@@ -16,51 +16,39 @@
   <img src="src/main/resources/assets/cortescombat/textures/item/arcabuz_icon.png" width="64" alt="Arcabuz">
 </p>
 
-El combate cuerpo a cuerpo donde el arma que llevás en la mano decide tres cosas distintas: hasta dónde llegás, cada cuánto podés pegar, y qué te compra la carga. Vanilla trata una ropera, un hacha y una alabarda como el mismo objeto con daño distinto. Acá no.
+**Cortés Combat** es un rework completo del combate de Minecraft, pensado para que sea intuitivo y se entienda sin manual: arregla la curva de habilidad, la lectura de la pelea, la falta de opciones y las mecánicas que no se explican solas. Ya fue la época en que había que pegarle al píxel exacto, en el tick exacto, para matar a un bebé zombi. Ahora cada arma tiene su radio, su cooldown y su alcance.
 
 ## Qué cambia
 
-**El alcance es un cono, no una esfera.** Cada arma trae su distancia, su ángulo horizontal y su ángulo vertical, y el golpe sólo entra ahí adentro. La ropera tiene el cono más angosto del juego y el sable el más ancho; el ángulo vertical es el que decide si le pegás a algo que te pasa por arriba o a algo que te muerde los tobillos.
+**Cada arma trae su propia distancia.** Y su propio arco horizontal y su propio arco vertical: el golpe sólo entra ahí adentro. Eso resuelve el problema de años de tener que pegarle al píxel exacto y errar la mayoría por la cámara de Minecraft (que no es ninguna maravilla) o por enemigos chicos y rápidos.
 
-**La velocidad de ataque es un muro.** No podés pegar a medio cooldown, y no hay multiplicador por acertar el momento. El ritmo lo pone el arma, así que golpear rápido y plano es una decisión y no un error. Las manos desnudas son lo más veloz del juego y lo que menos lejos llega.
+**La velocidad de ataque es un muro.** No podés pegar a medio cooldown como en vanilla, y no hay multiplicador de daño por acertar el momento. El ritmo lo pone el arma, así que golpear rápido y plano es una decisión y no un error. Las manos desnudas son lo más rápido del juego y lo que menos lejos llega, como es obvio. Y eso arregla dos cosas de una: la falta de claridad del cooldown de vanilla y la ambigüedad del DPS de cada arma.
 
-**La carga suma, nunca resta.** Mantenés el botón y el golpe crece sobre su base: si soltás temprano, no perdés nada. Y cargar siempre rinde menos que pegar dos veces, así que sostener es una decisión sobre distancia y armadura, no un truco de daño.
+**La carga reemplaza a los críticos.** Mantenés el ataque y soltás un golpe devastador: es una forma mejor de conservar la habilidad del timing y de agregarle una capa nueva al combate. Un golpe cargado siempre rinde menos que pegar seguido, pero también es la manera de dar vuelta una pelea con un ataque riesgoso. Una decisión constante que hay que balancear en el medio de la pelea.
 
-**El botón derecho hace algo que el izquierdo no puede.** Nunca es "más daño": la ropera se lanza, la alabarda barre todo lo que hay en su arco, el shotel para el golpe y lo devuelve. Hay armas que no cargan y armas sin click derecho, y eso lo declara el arma en vez de adivinarlo el juego.
+**Ataques especiales.** Algunas armas tienen una habilidad de click derecho que no sólo le suma identidad al arma: hace que cada set se juegue distinto, cumpliendo un rol o un tipo de juego para cada jugador. Y eso multiplica las combinaciones posibles en una pelea.
 
-**La guardia cuesta.** Escudo y espada cubren los dos, los dos frenan el 100% de un golpe bloqueado salvo las explosiones, y los dos gastan aguante: tres golpes y la guardia se rompe, y quedás abierto y aturdido. Sólo funciona en el arco de adelante. El hacha te la rompe de un solo golpe, que es la razón entera de llevar un hacha.
+**Una guardia que cuesta.** En vanilla bloquear con escudo suele no tener riesgo, y hacer que no bloqueen todo se siente mal, aparte de que termina dejando al escudo como la peor opción casi siempre. Así que ahora tenés puntos de guardia, que se van gastando a medida que bloqueás: sirve como una pequeña pausa para curarte o reordenarte antes de contraatacar.
 
-**La comida deja de ser energía.** Correr, picar y pegar no gastan nada. La comida es recurso de curación con ciclo cerrado: paga tu regeneración y vuelve sola con su propio reloj. Si comés mientras te están pegando, el golpe te interrumpe — salvo que tengas la guardia arriba. Y si la tenés arriba, primero te cubrís y después mordés: el orden no se elige, sale por construcción.
+**La comida deja de ser aguante.** Correr, picar y pegar ya no cuesta nada. La comida es **sólo** un recurso de curación con ciclo cerrado: paga tu regeneración y vuelve sola con su propio reloj. Si comés mientras te están pegando, el golpe te interrumpe, salvo que tengas la guardia arriba, porque se come con escudo o espada en mano.
 
-**Treinta armas, y ninguna es una espada disfrazada.** Cinco son nuevas — ropera, alabarda, martillo de guerra, daga y shotel — y cada una es una respuesta distinta a la pelea. La espada, el hacha, la pala, la maza y el tridente de vanilla entran al sistema y se rebalancearon para él. El pico se queda afuera, a propósito. Y está el **arcabuz**: un arma de pólvora que paga un disparo enorme con una recarga larga, y que no tiene nada que hacer en una pelea de espadas.
+**5 armas nuevas de cuerpo a cuerpo, y ninguna es una espada disfrazada.** La ropera, la alabarda, el martillo de guerra, la daga y el shotel: cada una es una respuesta distinta a la pelea. Y está el **Arcabuz**: un arma de pólvora que dispara ráfagas demoledoras de corto alcance, ¡y que no tiene nada que hacer en una pelea de espadas!
 
-**Treinta y cuatro encantamientos**, todos hechos para estas mecánicas y no para las de vanilla: robo de vida, guardia, contragolpes, y unos cuantos que sólo valen la pena si entendés la carga.
+**¡Las armas de vanilla, rehechas por completo!** La espada, la azada, el hacha, la pala, la maza y el tridente entran al sistema y se rehicieron para él. El pico se queda siendo herramienta, a propósito: cada arma de vanilla se reorientó y recibió una identidad nueva.
 
-**El reactor del Nether.** Cargalo, empujalo más allá de su techo y paga. Empujalo más todavía y enciende la mecha: abre un cráter de cuarenta y ocho bloques, se lleva el agua del terreno y sacude la cámara de cualquiera que esté a ciento sesenta bloques.
+**34 encantamientos nuevos, y los de vanilla retocados.** Una pletora de encantamientos nuevos y reworkeados que van de espadas espectrales a cerdos voladores (mentira), moscas asesinas, y muchas, muchas más.
 
-**Las armas de otros mods también pelean.** Un archivo YAML en `config/cortescombat/weapons/` le enseña al sistema cómo es un arma de otro mod — su alcance, su carga, su empuje — y un tag de datapack hace lo mismo desde un pack. Ninguna de las dos vías necesita una línea de Java. Hay [guía](docs/armas-custom.md).
+**El Reactor del Nether.** ¡Cargalo, empujalo más allá de su techo y convertilo en el corazón de tu base! Empujalo más todavía y alcanzá el poder absoluto.
 
-**Ocho idiomas.** Inglés y siete variedades de español, porque los nombres son españoles a propósito: acá una espada ropera es una ropera y una alabarda es una alabarda, y traducirlas por idioma daría dos juegos de armas distintos.
+**¡TUS armas también pueden pelear!** Si ninguna de las que vinieron te cierra, podés agregar las TUYAS por `config/cortescombat/weapons/` y un resourcepack, y también configurar cualquier arma del mod. Le ponés el alcance, la carga, el empuje y mucho más.
 
-## Si buscás otra cosa
-
-Este mod reemplaza cómo funciona el cuerpo a cuerpo. No es lo que todos quieren, así que acá va el mapa honesto:
-
-| Si querés | Andá a |
-| --- | --- |
-| Combos estilo Minecraft Dungeons, doble empuñadura y animaciones de ataque fluidas | [Better Combat](https://modrinth.com/mod/better-combat) |
-| Un souls-like con habilidades, esquiva y su propio set de animaciones | [Epic Fight](https://modrinth.com/mod/epic-fight) |
-| Las reglas de vanilla con los números del Combat Test viejo restaurados | [Combatify](https://www.curseforge.com/minecraft/mc-mods/combatify) (Fabric) |
-| Combate exactamente vanilla, más cosmética | Otra cosa |
-| Jugar en **Fabric o Quilt** | No acá — Cortés Combat es sólo NeoForge |
-
-Y dos cosas que conviene saber antes de instalarlo: el mod va **en el cliente y en el servidor** (el servidor resuelve cada golpe; el cliente sólo lo dibuja), y **se niega a cargar junto a un mod de combate con el que no puede convivir**, imprimiendo el nombre del mod en el log en vez de reventar con un stack trace. La lista es corta y existe porque un conflicto silencioso es peor que una negativa a gritos.
+**Efectos de combate revitalizados.** Se agregaron efectos de todo tipo, raros y lindos, al daño, a la vida baja, a los golpes de los mobs y más, con un indicador de vida nuevo y fácil de leer que no se come las visuales del juego.
 
 ## Instalación
 
 **Necesitás:** Minecraft **1.21.1**, NeoForge **21.1+**, **Java 21**.
 
-Tirás el jar en tu carpeta `mods/` — en el servidor y en cada cliente que se conecte.
+Tirás el jar en tu carpeta `mods/`, en el servidor y en cada cliente que se conecte.
 
 ¿Todavía no hay jar? Compilalo:
 
@@ -71,17 +59,6 @@ cd cortes-combat
 ```
 
 El jar queda en `build/libs/`. A `mods/` como cualquier otro. Para un entorno de desarrollo, `./gradlew runClient` y `./gradlew runServer` levantan el juego con el mod ya cargado.
-
-## Cómo se juega
-
-| Acción | Qué pasa |
-| --- | --- |
-| **Mantener click izquierdo** | Carga el golpe y lo dispara al soltar — un botón hace las dos |
-| **Click derecho** | El movimiento propio del arma: lanzarse, barrer, parar, o nada |
-| **Click derecho con escudo o espada** | Levanta la guardia |
-| **Click izquierdo con comida** | Come; la guardia puede estar arriba al mismo tiempo |
-
-Mientras sostenés hay dos marcas en pantalla: la barra **debajo de la mira** es la carga, y la que la **abraza** es el cooldown. Los corchetes se cierran cuando el arma está lista. Si llevás algo que bloquea, aparecen tres esferitas tenues arriba de la mira: ésa es tu aguante, y conviene mirarla.
 
 ## Armas de otros mods
 
