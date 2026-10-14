@@ -625,7 +625,11 @@ cuyo nombre dice una cosa y cuyo valor dice otra.**
 
 ## Estado técnico actual
 
-**1165 tests unitarios verdes** (2026-10-13). Todo lo testeable corre en JVM pelada; lo que necesita el
+**1165 tests unitarios verdes** (2026-10-13). **Versión `1.0.0`** desde el 2026-10-14: el primer
+build de **pre-release para playtest con gente ajena**, publicado como prerelease en GitHub
+(`cortescombat-1.0.0.jar`, con el `LICENSE` adentro del zip). Verificado con un **servidor dedicado
+de verdad** —`Done (6.218s)` en el log, `versions {1.0.0}`, cero `Caused by`, cero warning de mixin—
+y no sólo con el cliente, que es distinto: el server no tiene la mitad de las clases. Todo lo testeable corre en JVM pelada; lo que necesita el
 juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardState`, `ConeSize`,
 `WeaponTooltip`, `ArcabuzState`, `ArcabuzMuzzle`, `DamageFlash`, `ShakePhase`, `ShakeKind` y los
 `viewmodel/*` puros.

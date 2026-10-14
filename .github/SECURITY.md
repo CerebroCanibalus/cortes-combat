@@ -6,7 +6,7 @@ Security fixes land on the current release line.
 
 | Version | Supported |
 | --- | --- |
-| 0.1.x | :white_check_mark: |
+| 1.0.x | :white_check_mark: |
 | anything older | :x: |
 
 ## Reporting a vulnerability

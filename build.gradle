@@ -246,8 +246,14 @@ tasks.named('test', Test).configure {
 // rides into the jar. It is build bookkeeping, not mod content: the game never reads a .cache
 // directory at the jar root, so this costs nothing at runtime -- but a release jar handed to
 // someone else should carry only what the game actually loads.
+//
+// **Y la licencia es la excepción, por la razón contraria a la del .cache.** El proyecto es
+// GPL-3.0-only y la GPL pide que la licencia acompañe la obra que se distribuye: un jar suelto en
+// la carpeta de alguien tiene que llevar su licencia adentro, no depender de que tenga el repo a
+// mano. `.cache` se va porque es contabilidad de build; `LICENSE` entra porque es un aviso legal.
 tasks.named('jar', Jar).configure {
     exclude '.cache/**'
+    from('LICENSE')
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
