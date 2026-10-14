@@ -14,7 +14,25 @@ accident.
 |---|---|---|---|---|
 | `sprites/hud/crosshair_shield_indicator_full.png` | 16x16 | 9x9 | `GuardOrbsLayer` — one guard point still available | **LGPL-2.1** (from `combatify`) |
 | `sprites/hud/crosshair_shield_indicator_disabled.png` | 16x16 | 9x9 | `GuardOrbsLayer` — a guard point already spent | **LGPL-2.1** (from `combatify`) |
-| `damage_overlay.png` | 256x128 | tiled | `DamageOverlayLayer` — low-health vignette and damage flash | **All Rights Reserved** (from `neoforge-damageoverlay`, no `LICENSE`, no grant). **Highest risk.** |
+| `damage_overlay.png` | 256x128 | **stretched to the whole screen** | `DamageOverlayLayer` — low-health vignette and damage flash | **All Rights Reserved** (from `neoforge-damageoverlay`, no `LICENSE`, no grant). **Highest risk.** |
+
+> **Corrección del 2026-10-13: esto decía "tiled" y es "stretched".** `DamageOverlayLayer` llama a
+> `graphics.blit(OVERLAY, 0, 0, w, h, 0, 0, w, h, w, h)` — y las dos últimas coordenadas son las
+> dimensiones de la TEXTURA, así que pasarle `w, h` (el tamaño de la pantalla) le dice que la textura
+> *es* la pantalla: el UV va de 0 a 1 y **la imagen entera se estira sobre el viewport**. No se repite
+> en mosaico. La buena noticia es que una viñeta simétrica sobrevive el estirado; la mala es que si la
+> dibujás como un mosaico chico y repetido, en pantalla vas a ver un borrón.
+
+## Cómo se dibuja `damage_overlay.png` (leído del código, no supuesto)
+
+- **`setColor(1, 1, 1, alpha * 0.75)`** — el tinte es **blanco**, así que los colores de tu arte salen
+  tal cual: si la pintás roja, roja se ve. El `0.75` es el techo de opacidad del layer.
+- **El alpha del layer es la intensidad, y lo maneja el código**: sube cuando baja la vida (de 14 a 4
+  corazones, con *cosine easing*) y da un golpe de flash cuando recibís daño. Tu textura sólo aporta
+  **la forma** — el centro tiene que ser transparente y los bordes opacos, o vas a tapar la pantalla.
+- **No hay inversión de alpha en este camino.** La inversión (`alpha bajo = más overlay`) es del
+  `OverlayTexture` de vanilla, que es el flash del **mob**, no esta viñeta. Son dos sistemas distintos
+  y acá el alpha significa lo que parece que significa.
 
 Everything under `sprites/hud/` except those two orb sprites is now **original art** supplied by
 the project author: `crosshair`, `crosshair_aim`, `crosshair_hit`, `cooldown_corchetes`,
