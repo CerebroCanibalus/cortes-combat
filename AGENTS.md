@@ -625,7 +625,8 @@ cuyo nombre dice una cosa y cuyo valor dice otra.**
 
 ## Estado técnico actual
 
-**1165 tests unitarios verdes** (2026-10-13). **Versión `1.0.0`** desde el 2026-10-14: el primer
+**1167 tests unitarios verdes** (2026-10-16; eran 1165, +2 de la ronda de los dos reportes de
+playtest — ver `CHANGELOG.md`). **Versión `1.0.0`** desde el 2026-10-14: el primer
 build de **playtest con gente ajena**, y es un **JAR que se pasa por archivo, no un release** — el
 repo es privado, así que un prerelease suyo no lo puede bajar nadie de afuera y subirlo no agregaba
 nada. (El 2026-10-14 se creó uno y **se borró el mismo día, por decisión del dueño**: *"nunca te pedí

@@ -30,5 +30,24 @@ class DamageParticlesTest {
                         + "off-by-one: a hit that small does not need a burst");
         assertEquals(0, DamageParticles.countFor(0.0F));
         assertEquals(0, DamageParticles.countFor(-5.0F), "and a negative cannot spawn a count");
+        assertEquals(0, DamageParticles.countFor(Float.NaN),
+                "and a NaN is not a positive number either, so it cannot reach the cast");
+    }
+
+    @Test
+    @DisplayName("no damage, however large, can ask the client for an unbounded burst")
+    void hugeDamageIsCapped() {
+        // `/kill` is `hurt(genericKill, Float.MAX_VALUE)`, and actuallyHurt hands that number to
+        // LivingDamageEvent.Post without clamping it to health. A saturating cast would turn it
+        // into Integer.MAX_VALUE, and the client's particle loop would try to spawn two billion.
+        assertEquals(DamageParticles.MAX_COUNT, DamageParticles.countFor(Float.MAX_VALUE),
+                "the number /kill produces must not become Integer.MAX_VALUE particles");
+        assertEquals(DamageParticles.MAX_COUNT, DamageParticles.countFor(Float.POSITIVE_INFINITY),
+                "and an infinity is the same shape of number");
+        assertEquals(DamageParticles.MAX_COUNT, DamageParticles.countFor(1.0E9F),
+                "well past any real hit");
+        // The clamp must not touch the rule underneath it: a real hit still reads half its damage.
+        assertEquals(DamageParticles.MAX_COUNT - 1, DamageParticles.countFor(2.0F * (DamageParticles.MAX_COUNT - 1)),
+                "the last value below the lid is untouched");
     }
 }

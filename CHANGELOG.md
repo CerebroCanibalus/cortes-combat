@@ -1344,3 +1344,78 @@ veces**. Vuelve al marco de la cámara del fogonazo, que lleva dos rondas sin un
   0,6/tick), y **Mungus ×4** (~2,5 bloques). Va **antes** de las dos ramas que hacen `return`, o no
   correría justo en los dos tiros que más lo necesitan.
 - **Creativo ⊘ paga munición**, y solo creativo. El modo no abarata el **tiempo** de la recarga.
+
+## Ronda de los dos reportes de playtest: `/kill` y los marcos de ítem (2026-10-16)
+
+Dos bugs sin relación, los dos reportados por un playtester. El primero parecía el shader de golpe y
+no lo era; el segundo dejó **inutilizables todos los marcos de ítem del mod**.
+
+### 1. `/kill @e[type=..]` crashea el cliente — el número que satura
+
+**El reporte decía "el shader de golpe".** El shader (los tres mixins del flash, `OverlayTextureMixin`
+/ `LivingEntityOverlayMixin` / `LivingEntityRenderMixin`) está bien: se leyó entero buscando el crash
+y no participa. **El culpable es un conteo de partículas sin techo.**
+
+La cadena, verificada en las fuentes de 21.1.250:
+
+- `LivingEntity#kill()` es una línea: `hurt(damageSources().genericKill(), Float.MAX_VALUE)`.
+- `actuallyHurt` toma `float f1 = damageContainers.peek().getNewDamage()` **sin recortarlo contra la
+  vida** (L1793) y dispara `onLivingDamagePost` con ese valor. Hay incluso un guard
+  `f < 3.4028235E37F` para el stat de absorción — o sea que **saber que `Float.MAX_VALUE` llega hasta
+  acá ya estaba escrito en el motor**.
+- `OnAnyDamage.onDamage` (`LivingDamageEvent.Post`) ve `getNewDamage()` = `Float.MAX_VALUE`, no es
+  `IS_PLAYER_ATTACK`, y lo manda a `HitParticles.impact`.
+- `DamageParticles.countFor(Float.MAX_VALUE)` = `(int)(Float.MAX_VALUE * 0.5F)`, y un **cast
+  estrechante de Java satura en `Integer.MAX_VALUE`**.
+- Ese número viaja en `ClientboundLevelParticlesPacket` y `handleParticleEvent` lo convierte en
+  `for (i = 0; i < count; i++) addParticle(..)`: **~2.100 millones de partículas** = OOM y crash.
+
+**El fix es un techo en `countFor`**, no en cada llamador: es la única función que convierte daño en
+un conteo, y los tres que la usan (`HitParticles` ×2 y `SlashParticles.damageIndicator`) quedan
+cubiertos solos. `MAX_COUNT = 64`, deliberadamente muy por encima de cualquier golpe real (el arma más
+grande del catálogo pega un dígito), así que ⊘ toca un golpe de verdad; por encima de él el jugador
+que **cuenta** ya ⊘ puede leer el número exacto, que es el costo honesto de no crashear. El `!(x > 0)`
+que ya estaba también atrapa `NaN`, y quedó un test que lo fija.
+
+**La moraleja de la ronda:** un índice/reparto sin tope en un sistema de partículas ⊘ es un número
+grande, es una bomba de memoria en el cliente — y el nombre del síntoma ("shader") apuntaba a otro
+lado. La mitad que se pagó dos veces es que **`getNewDamage()` ⊘ está recortado a la vida**.
+
+### 2. Los marcos de ítem no reciben el ataque — el cono ⊘ mira lo que ⊘ está vivo
+
+**El reporte:** con un arma en mano, apuntar a un marco de ítem y clickear izquierda ⊘ hacía nada. Ni
+soltar el ítem ni romper el marco.
+
+La causa son **dos puertas que dan la misma respuesta equivocada**:
+
+- El cono (`ConeTargeting.findTarget`) escanea **`LivingEntity` y nada más**. Un marco, una pintura,
+  un bote, un minecart, un cristal del End, un nudo de correa y las partes del dragón **⊘ son
+  `LivingEntity`** → "acá ⊘ hay nada".
+- El escape de minado de `press` pregunta `isOnBlock(mc)`, y `mc.hitResult` es **ENTITY**, no BLOCK →
+  tampoco dispara.
+
+Así que el press caía hasta `claim = OURS` y `MinecraftAttackMixin` cancelaba `startAttack` en el
+HEAD, **antes** del caso ENTITY de vanilla (`gameMode.attack` → `player.attack` → `ItemFrame#hurt`,
+que es literalmente la ruta que suelta el ítem). La lógica de vanilla, leída: `hurt` con ítem
+→ `dropItem(entity, false)` (suelta el objeto, el marco queda); vacío → `super.hurt` → se rompe.
+
+**El fix:** una puerta en `press`, después del gate `isRanged`, que si `mc.hitResult` es un
+`EntityHitResult` cuya entidad **⊘ es `LivingEntity`**, devuelve ⊘ (deja `claim` en `NOT_OURS`) y
+vanilla atiende el click. **El cursor gana sobre el cono** para lo sin vida: el cono pregunta "¿hay un
+cuerpo al que pegarle", y un marco ⊘ es un cuerpo — su interacción es un click puntual sobre una
+superficie, y vanilla ya la resuelve. Una regla con forma de cono para los marcos sería inventar una
+segunda versión de algo que el motor ya tiene. Va **antes** de los gates de guardia y cooldown a
+propósito: atacar un marco ⊘ es un swing, así que lo dictado por el reporte ("como vanilla") es que ⊘
+dependa del cooldown duro y funcione igual con el escudo arriba.
+
+**Cubre de una sola regla** los siete tipos de entidad sin vida del juego, ⊘ sólo los marcos.
+
+**Lo que se revisó y ⊘ era el problema:** el click **derecho** (`SpecialRightClickMixin` /
+`SpecialInputHandler`) ⊘ está implicado — la especial sólo dispara cuando la interacción del mundo
+**⊘** la consume, y la del marco la consume. Sólo faltaba el click izquierdo.
+
+**Guards:** `DamageParticlesTest.hugeDamageIsCapped` (y `Float.MAX_VALUE`, `+Inf`, `1e9` todos al
+techo) y `SwingInputHandlerWiringTest.aBodylessEntityIsVanillas`, un source-read que afirma las **dos**
+mitades del fix: la pregunta por lo vivo **negada**, y el `return` **antes** de `claim = OURS`. **Los
+dos sabotajes mataron por su razón**: quitar el `Math.min` → rojo en `hugeDamageIsCapped`; invertir el
+`!(.. instanceof LivingEntity)` → rojo en el guard de wiring. **1167 tests verdes.**

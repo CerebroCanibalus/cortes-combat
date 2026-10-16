@@ -204,6 +204,60 @@ class SwingInputHandlerWiringTest {
                         + "position of any check stops mattering");
     }
 
+    /**
+     * A thing under the crosshair with no health is handed back to vanilla, whole.
+     *
+     * <h2>The bug this is for</h2>
+     *
+     * <p>Item frames, paintings, boats, minecarts, end crystals, leash knots and the ender dragon's
+     * parts all stopped working, and they all stopped for the same reason: the cone scans
+     * {@code LivingEntity} and nothing else, so a non-living crosshair entity was never a cone
+     * target -- "nothing is here" -- while {@code mc.hitResult} said ENTITY and not BLOCK, so the
+     * mining escape did not fire either. The press fell through to {@code claim = OURS} and the
+     * mixin cancelled {@code startAttack} before vanilla's ENTITY case ({@code gameMode.attack} ->
+     * {@code player.attack} -> the frame's own {@code hurt}) could run. The frame was unreachable
+     * with any weapon the player actually carries.</p>
+     *
+     * <p><b>What is asserted is the shape of the fix, not a line number:</b> the press asks whether
+     * the crosshair entity is alive, and when it is not it returns <em>before</em> it claims the
+     * click, so {@code claim} stays {@code NOT_OURS} and vanilla runs. The two things that can go
+     * wrong are an inverted test and a gate placed after the claim, and both are checked here.</p>
+     *
+     * <p>A source read, like every other guard in this class, because {@code press} takes a
+     * {@code Minecraft}.</p>
+     */
+    @Test
+    @DisplayName("a non-living entity under the crosshair goes back to vanilla")
+    void aBodylessEntityIsVanillas() {
+        String handler = readSource();
+
+        int press = handler.indexOf("private static void press(Minecraft mc)");
+        assertTrue(press > 0, "press() has to exist for this to be about anything");
+        int end = handler.indexOf("\n    /**", press);
+        String body = handler.substring(press, end > press ? end : handler.length());
+
+        int gate = body.indexOf("mc.hitResult instanceof EntityHitResult");
+        assertTrue(gate > 0,
+                "**press() has to ask whether the crosshair rests on an entity.** Without it the "
+                        + "cone and the block check both answer 'nothing is here' for a frame, and "
+                        + "the press claims the click");
+        assertTrue(body.contains("!(pointed.getEntity() instanceof LivingEntity)"),
+                "and the test has to be for a LIVING entity, negated: the frame is what is not "
+                        + "alive, and an inverted test would hand every mob to vanilla and claim "
+                        + "every frame");
+
+        int claim = body.indexOf("claim = Claim.OURS;");
+        assertTrue(claim > 0, "the claim has to be in press() for the ordering to mean anything");
+
+        String gateToClaim = gate < claim ? body.substring(gate, claim) : "";
+        assertTrue(gate < claim && gateToClaim.contains("return;"),
+                "**and it has to return before the claim.** Handing vanilla the click is that "
+                        + "return leaving `claim` at NOT_OURS; a gate after `claim = OURS` would "
+                        + "read as the fix while the mixin still cancelled vanilla, which is the "
+                        + "exact shape of this project's repeated 'the line is there and does "
+                        + "nothing' bugs");
+    }
+
     private static int countOccurrences(String haystack, String needle) {
         int count = 0;
         for (int at = haystack.indexOf(needle); at >= 0; at = haystack.indexOf(needle, at + 1)) {

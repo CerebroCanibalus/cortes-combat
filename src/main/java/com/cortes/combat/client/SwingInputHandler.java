@@ -11,9 +11,11 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -240,6 +242,40 @@ public final class SwingInputHandler {
         // still full vanilla": the same shape as the tag that never existed, one layer up.
         if (CombatAim.isRanged(player.getMainHandItem())) {
             debug("press NO NUESTRO: ranged");
+            return;
+        }
+        // **A thing under the crosshair that is not alive is vanilla's click, whole.**
+        //
+        // This is the gate that broke every item frame, painting, boat, minecart, end crystal,
+        // leash knot and ender-dragon part in the game. The cone scans `LivingEntity` and nothing
+        // else (`ConeTargeting.findTarget`), so a non-living entity under the crosshair was never a
+        // cone target -- which read as "nothing is here" -- while `mc.hitResult` said ENTITY and
+        // not BLOCK, so the `isOnBlock` mining escape below did not fire either. The press then fell
+        // all the way through to `claim = OURS`, and `MinecraftAttackMixin` cancelled `startAttack`
+        // before vanilla's own ENTITY case (`gameMode.attack` -> `player.attack` -> the frame's
+        // `hurt`) ever ran. The player held a sword, put the crosshair on a frame full of items,
+        // clicked, and nothing happened: the one path that removes the item is the path the
+        // replacement ate.
+        //
+        // **Why the cursor wins over the cone, and not the other way round.** The cone is how this
+        // mod asks "is there a body in front of me to hit"; a frame is not a body and never will be
+        // -- its whole interaction is a point click on a surface, and vanilla already answers it.
+        // Asking the cone first would leave the frame unreachable again for exactly the weapons
+        // people carry, and inventing a second, cone-shaped rule for frames would be a rule vanilla
+        // already has. So: if the crosshair rests on something with no health, hand the press back
+        // and let vanilla be vanilla. `startAttack`'s ENTITY case therefore runs, and the item (if
+        // the frame holds one) drops; an empty frame drops itself.
+        //
+        // It comes before the guard and cooldown gates on purpose, and that is the vanilla
+        // behaviour the report asked for: attacking a frame is not a swing, so it is not gated by
+        // this mod's hard cooldown and it works with a shield raised, exactly as it does in
+        // vanilla. The debug line names the type so a playtest can tell this branch from
+        // "not a weapon" and from "ranged".
+        if (mc.hitResult instanceof EntityHitResult pointed
+                && !(pointed.getEntity() instanceof LivingEntity)) {
+            Entity pointedEntity = pointed.getEntity();
+            debug("press NO NUESTRO: entidad sin vida bajo la mira ("
+                    + pointedEntity.getClass().getSimpleName() + ")");
             return;
         }
         // Covered, so no swing. Read from the local prediction rather than the synced flag,
