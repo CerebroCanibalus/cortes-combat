@@ -3,6 +3,7 @@ package com.cortes.combat.particle;
 import com.cortes.combat.CortesCombat;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import com.cortes.combat.config.ServerConfig;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -48,6 +49,7 @@ public final class DeathBurst {
 
     @SubscribeEvent
     public static void onDeath(LivingDeathEvent event) {
+        if (!ServerConfig.particles()) return;
         LivingEntity dead = event.getEntity();
         if (!(dead.level() instanceof ServerLevel server)) {
             return;

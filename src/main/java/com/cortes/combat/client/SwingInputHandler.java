@@ -5,6 +5,7 @@ import com.cortes.combat.CombatTrace;
 import com.cortes.combat.attack.AttackTiming;
 import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.attack.WeaponStats;
+import com.cortes.combat.config.ServerConfig;
 import com.cortes.combat.sound.ModSounds;
 import com.cortes.combat.net.SwingPayload;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -180,6 +181,10 @@ public final class SwingInputHandler {
      * move is the bracket bar filling up.</p>
      */
     private static void press(Minecraft mc) {
+        if (!ServerConfig.combatRework()) {
+            claim = Claim.NOT_OURS;
+            return;
+        }
         claim = Claim.NOT_OURS;
         firedOnPress = false;
         swingTargetId = SwingPayload.NO_TARGET;
@@ -754,6 +759,9 @@ public final class SwingInputHandler {
     }
 
     public static boolean holding() {
+        if (!ServerConfig.combatRework()) {
+            return false;
+        }
         return holding;
     }
 

@@ -1,6 +1,7 @@
 package com.cortes.combat.particle;
 
 import com.cortes.combat.attack.DamageSplit;
+import com.cortes.combat.config.ServerConfig;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
@@ -58,6 +59,7 @@ public final class HitParticles {
      * preguntas distintas y cada una tiene su puerta.</p>
      */
     public static void impact(ServerLevel level, LivingEntity target, float amount, int rgb) {
+        if (!ServerConfig.particles()) return;
         int total = DamageParticles.countFor(amount);
         if (total <= 0) {
             return;
@@ -71,6 +73,7 @@ public final class HitParticles {
      * @param heavy el golpe cargado: cambia la textura, no el color ni la cantidad
      */
     public static void impact(ServerLevel level, LivingEntity target, DamageSplit split, boolean heavy) {
+        if (!ServerConfig.particles()) return;
         int total = DamageParticles.countFor(split.raw());
         if (total <= 0) {
             return;

@@ -9,6 +9,7 @@ import com.cortes.combat.viewmodel.ViewModelDefaults;
 import com.cortes.combat.viewmodel.ViewModelInput;
 import com.cortes.combat.viewmodel.ViewModelMotion;
 import com.cortes.combat.viewmodel.ViewModelProfile;
+import com.cortes.combat.config.ClientConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.item.Item;
@@ -411,6 +412,9 @@ public final class ItemViewModel {
     private static void applyProfile(com.mojang.blaze3d.vertex.PoseStack pose,
                                      net.minecraft.world.entity.HumanoidArm arm,
                                      boolean bareHand) {
+        if (!ClientConfig.VIEW_MODEL_MOTION.get()) {
+            return;
+        }
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null || arm != player.getMainArm()) {
             return;

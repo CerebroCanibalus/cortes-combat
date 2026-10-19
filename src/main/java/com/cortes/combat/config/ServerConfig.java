@@ -58,6 +58,15 @@ public final class ServerConfig {
     /** Ticks to drink any liquid. */
     public static final ModConfigSpec.IntValue DRINK_TICKS;
 
+    /** Master toggle for the survival rework (food, healing, exhaustion). */
+    public static final ModConfigSpec.BooleanValue SURVIVAL_REWORK;
+
+    /** Master toggle for the mod's particles (spawned server-side). */
+    public static final ModConfigSpec.BooleanValue PARTICLES;
+
+    /** Master toggle for the whole combat rework. Off reverts to vanilla combat. */
+    public static final ModConfigSpec.BooleanValue COMBAT_REWORK;
+
     static {
         HEAL_INTERVAL = BUILDER
                 .comment("Ticks between one point of natural healing. Vanilla uses 80 (4 seconds);",
@@ -88,6 +97,23 @@ public final class ServerConfig {
                         "for 32 ticks; this mod proposes 20 so drinking is usable mid-fight.")
                 .defineInRange("drinkTicks", DEFAULT_DRINK_TICKS, 1, 64);
 
+        SURVIVAL_REWORK = BUILDER
+                .comment("Master toggle for the survival rework: exhaustion removed, food regenerates,",
+                        "healing spends food. Off reverts to vanilla hunger and exhaustion.")
+                .define("survivalRework", true);
+
+        PARTICLES = BUILDER
+                .comment("Master toggle for the mod's particles: hit indicators, blood drops, the flies",
+                        "around the mob cloud and the slash trails. Sound and the rest of the feedback",
+                        "are unaffected.")
+                .define("particles", true);
+
+        COMBAT_REWORK = BUILDER
+                .comment("Master toggle for the whole combat rework: cone reach, charge, guard,",
+                        "specials, hard cooldown. Off reverts to vanilla combat entirely. The FX",
+                        "toggles (particles, damage flash, viewmodel, camera shake) stay independent.")
+                .define("combatRework", true);
+
         SPEC = BUILDER.build();
     }
 
@@ -113,6 +139,21 @@ public final class ServerConfig {
     /** Ticks to drink, or the default when no world has loaded the config yet. */
     public static int drinkTicks() {
         return SPEC.isLoaded() ? DRINK_TICKS.get() : DEFAULT_DRINK_TICKS;
+    }
+
+    /** Whether the survival rework is on. Defaults to true before a world loads. */
+    public static boolean survivalRework() {
+        return !SPEC.isLoaded() || SURVIVAL_REWORK.get();
+    }
+
+    /** Whether the mod's particles are on. Defaults to true before a world loads. */
+    public static boolean particles() {
+        return !SPEC.isLoaded() || PARTICLES.get();
+    }
+
+    /** Whether the combat rework is on. Defaults to true before a world loads. */
+    public static boolean combatRework() {
+        return !SPEC.isLoaded() || COMBAT_REWORK.get();
     }
 
     private ServerConfig() {

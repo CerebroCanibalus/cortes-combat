@@ -1,5 +1,6 @@
 package com.cortes.combat.particle;
 
+import com.cortes.combat.config.ServerConfig;
 import com.cortes.combat.core.weapon.WeaponProfile;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
@@ -50,6 +51,7 @@ public final class SlashParticles {
 public static final int DOUBLE_GAP_TICKS = SlashTiming.DOUBLE_GAP_TICKS;
 
 public static void hit(ServerLevel level, WeaponProfile profile, Entity target, boolean charged) {
+        if (!ServerConfig.particles()) return;
         if (charged) {
             burst(level, target);
             return;
@@ -70,6 +72,7 @@ public static void hit(ServerLevel level, WeaponProfile profile, Entity target, 
      * that wants one does not always want the other.</p>
      */
     public static void damageIndicator(ServerLevel level, Entity target, float damage) {
+        if (!ServerConfig.particles()) return;
         int count = DamageParticles.countFor(damage);
         if (count <= 0) {
             return;
@@ -91,6 +94,7 @@ public static void hit(ServerLevel level, WeaponProfile profile, Entity target, 
      * the player has to already know the rule to read it.</p>
      */
     public static void doubledHit(ServerLevel level, WeaponProfile profile, Entity target) {
+        if (!ServerConfig.particles()) return;
         double[] point = contactPoint(level, target);
         slash(level, profile, point);
 
@@ -133,6 +137,7 @@ public static void hit(ServerLevel level, WeaponProfile profile, Entity target, 
      * the shot's spread are two separate things that each happen once.</p>
      */
     public static void muzzle(ServerLevel level, double x, double y, double z) {
+        if (!ServerConfig.particles()) return;
         level.sendParticles(
                 new SlashParticleOptions(SlashSprite.MUZZLE),
                 x, y, z,
@@ -147,6 +152,7 @@ public static void hit(ServerLevel level, WeaponProfile profile, Entity target, 
      * found nothing.</p>
      */
     public static void sweep(ServerLevel level, WeaponProfile profile, double x, double y, double z) {
+        if (!ServerConfig.particles()) return;
         // The sweep's OWN sprite, not the weapon's hit sprite.
         //
         // This asked SlashSprite.of(profile) and got alabarda_hit, which is a slash that connects.

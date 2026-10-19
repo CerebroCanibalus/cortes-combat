@@ -52,6 +52,9 @@ public abstract class ItemStackDrinkDurationMixin {
     @Inject(method = "getUseDuration(Lnet/minecraft/world/entity/LivingEntity;)I",
             at = @At("HEAD"), cancellable = true)
     private void cortescombat$drinkTicks(LivingEntity entity, CallbackInfoReturnable<Integer> cir) {
+        if (!ServerConfig.survivalRework()) {
+            return;
+        }
         ItemStack self = (ItemStack) (Object) this;
         if (self.getUseAnimation() == UseAnim.DRINK) {
             cir.setReturnValue(ServerConfig.drinkTicks());

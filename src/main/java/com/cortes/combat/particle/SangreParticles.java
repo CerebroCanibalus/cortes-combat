@@ -1,6 +1,7 @@
 package com.cortes.combat.particle;
 
 import com.cortes.combat.registry.ModParticleTypes;
+import com.cortes.combat.config.ServerConfig;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
@@ -109,6 +110,7 @@ public final class SangreParticles {
      * en el suelo es polvo en los tobillos.</p>
      */
     public static void burst(ServerLevel level, LivingEntity target) {
+        if (!ServerConfig.particles()) return;
         AABB box = target.getBoundingBox();
         double centreX = (box.minX + box.maxX) * 0.5;
         double centreZ = (box.minZ + box.maxZ) * 0.5;
@@ -128,6 +130,7 @@ public final class SangreParticles {
      * escrito. El centro de la caja es donde mira el ojo.</p>
      */
     public static void drip(ServerLevel level, LivingEntity target) {
+        if (!ServerConfig.particles()) return;
         AABB box = target.getBoundingBox();
         double centreX = (box.minX + box.maxX) * 0.5;
         double centreZ = (box.minZ + box.maxZ) * 0.5;

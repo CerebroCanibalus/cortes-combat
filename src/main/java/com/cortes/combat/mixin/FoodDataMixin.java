@@ -1,5 +1,6 @@
 package com.cortes.combat.mixin;
 
+import com.cortes.combat.config.ServerConfig;
 import com.cortes.combat.survival.FoodDataSeam;
 import com.cortes.combat.survival.SurvivalTicker;
 
@@ -63,12 +64,18 @@ public abstract class FoodDataMixin implements FoodDataSeam {
     @Inject(method = "tick(Lnet/minecraft/world/entity/player/Player;)V",
             at = @At("HEAD"), cancellable = true)
     private void cortescombat$survivalTick(Player player, CallbackInfo ci) {
+        if (!ServerConfig.survivalRework()) {
+            return;
+        }
         ci.cancel();
         SurvivalTicker.tick(player, (FoodData) (Object) this);
     }
-
+ 
     @Inject(method = "addExhaustion(F)V", at = @At("HEAD"), cancellable = true)
     private void cortescombat$noExhaustion(float exhaustion, CallbackInfo ci) {
+        if (!ServerConfig.survivalRework()) {
+            return;
+        }
         // Two jobs on one line each, and the order is not the point: `ci.cancel()` is what keeps
         // the value from being written at all, `setExhaustion` is what clears a value a save
         // written before this rework already carries. Removing either leaves the other's job

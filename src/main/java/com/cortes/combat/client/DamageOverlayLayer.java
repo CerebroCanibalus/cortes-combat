@@ -1,6 +1,7 @@
 package com.cortes.combat.client;
 
 import com.cortes.combat.CortesCombat;
+import com.cortes.combat.config.ClientConfig;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -102,7 +103,10 @@ public class DamageOverlayLayer implements LayeredDraw.Layer {
         }
 
         checkForDamage(player);
-
+        if (!ClientConfig.DAMAGE_FLASH.get()) {
+            flashAlpha = 0.0F;
+        }
+ 
         if (Minecraft.getInstance().options.hideGui) {
             return;
         }

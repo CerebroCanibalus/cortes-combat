@@ -1,6 +1,7 @@
 package com.cortes.combat.mixin;
 
 import com.cortes.combat.client.SwingInputHandler;
+import com.cortes.combat.config.ServerConfig;
 import net.minecraft.client.Minecraft;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -35,6 +36,9 @@ public abstract class MinecraftAttackMixin {
 
     @Inject(method = "startAttack", at = @At("HEAD"), cancellable = true)
     private void cortescombat$claimThePress(CallbackInfoReturnable<Boolean> cir) {
+        if (!ServerConfig.combatRework()) {
+            return;
+        }
         if (SwingInputHandler.claim() != SwingInputHandler.Claim.NOT_OURS) {
             cir.setReturnValue(true);
         }
@@ -61,6 +65,9 @@ public abstract class MinecraftAttackMixin {
      */
     @Inject(method = "continueAttack", at = @At("HEAD"), cancellable = true)
     private void cortescombat$noMiningWhileCharging(boolean pSwingStart, CallbackInfo ci) {
+        if (!ServerConfig.combatRework()) {
+            return;
+        }
         if (SwingInputHandler.holding()) {
             ci.cancel();
         }

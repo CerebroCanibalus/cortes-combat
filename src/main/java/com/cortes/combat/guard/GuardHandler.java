@@ -16,6 +16,7 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import com.cortes.combat.config.ServerConfig;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.UseAnim;
@@ -102,6 +103,9 @@ public final class GuardHandler {
      * the design is built on.</p>
      */
     public static boolean isGuarding(Player player) {
+        if (!ServerConfig.combatRework()) {
+            return false;
+        }
         return player.getData(ModAttachments.GUARD_STAMINA.get()).isActive();
     }
 
@@ -118,6 +122,9 @@ public final class GuardHandler {
      * client and a server end up with two different opinions about the same tick.</p>
      */
     public static boolean guardIsUsable(Player player) {
+        if (!ServerConfig.combatRework()) {
+            return false;
+        }
         GuardState state = player.getData(ModAttachments.GUARD_STAMINA.get());
         return !state.isExhausted() && !isEating(player);
     }
@@ -135,6 +142,9 @@ public final class GuardHandler {
      */
     @SubscribeEvent
     public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+        if (!ServerConfig.combatRework()) {
+            return;
+        }
         Player player = event.getEntity();
         if (player.level().isClientSide) {
             return;

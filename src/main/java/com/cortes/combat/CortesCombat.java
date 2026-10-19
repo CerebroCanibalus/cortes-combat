@@ -145,6 +145,51 @@ private static void reportSurvivalSeam(
     }
 }
 
+    /**
+     * Asks the game whether every one of our enchantments is actually obtainable, once the world is
+     * up and the tags are real.
+     *
+     * <p><b>This exists because "exists" and "obtainable" are two different questions.</b> An
+     * enchantment with a file, a name and a hook that is not listed in
+     * {@code minecraft:in_enchanting_table} does not error anywhere: the registry loads it, the
+     * table simply never offers it, and the player never finds out. And {@code /enchant} uses the
+     * same tag to decide whether an item accepts it ({@code ItemStack#supportsEnchantment}), so a
+     * missing entry reads as "that enchantment cannot be applied to that item" with no hint of
+     * why.</p>
+     *
+     * <p><b>It reports and does not crash.</b> The game keeps running; the line is the diagnosis,
+     * which is also this project's rule: not crashing over something that can be reported.</p>
+     */
+    private static void reportEnchantmentTags(
+            net.neoforged.neoforge.event.server.ServerStartedEvent event) {
+        var registry = event.getServer().registryAccess()
+                .registryOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT);
+        var tableTag = net.minecraft.tags.EnchantmentTags.IN_ENCHANTING_TABLE;
+        var missing = new java.util.ArrayList<String>();
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        ids.addAll(com.cortes.combat.enchant.CombatEnchantRules.IDS);
+        ids.addAll(com.cortes.combat.enchant.CombatEnchantRules.GOLD_IDS);
+        for (String id : ids) {
+            var key = net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.ENCHANTMENT,
+                    net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                            CortesCombat.MODID, id));
+            var holder = registry.getHolder(key);
+            if (holder.isEmpty() || !holder.get().is(tableTag)) {
+                missing.add(id);
+            }
+        }
+        if (missing.isEmpty()) {
+            LOGGER.info("[encantamientos] los {} nuestros estan en in_enchanting_table.",
+                    ids.size());
+        } else {
+            LOGGER.error("[encantamientos] FALTAN en in_enchanting_table: {}. Sin esa entrada el "
+                    + "jugador no los consigue en la mesa y /enchant dice que el item no los admite. "
+                    + "Revisa data/minecraft/tags/enchantment/in_enchanting_table.json.",
+                    missing);
+        }
+    }
+
 public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         // Supervivencia, y va en el constructor común y no en el cliente porque es SERVER: decide
         // cuánto vida se cura y a qué precio en comida, así que los dos lados tienen que leer lo
@@ -214,6 +259,13 @@ public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         // jugador, y pregunta si le pegamos. Sin esta línea, un FoodDataMixin caído se descubre
         // como un crash en la primera conexión y no como una línea en el arranque.
         NeoForge.EVENT_BUS.addListener(CortesCombat::reportSurvivalSeam);
+// **Y los tags de encantamiento, que es el bug que no deja error.** La mesa baraja solo lo que
+// `in_enchanting_table` lista (EnchantmentMenu:207); un encantamiento nuestro que no esta en el
+// tag existe, tiene archivo, idioma y se da por comando, y **NUNCA aparece en la mesa** -- sin un
+// solo error en el log. Y para `/enchant` (el reporte de la comunidad) el mismo tag es el que decide
+// si el item admite el encantamiento (`ItemStack#supportsEnchantment`). Sin esta linea el bug se lee
+// como "no se puede encantar el hacha" y no dice por que. (￣ε￣＠)
+NeoForge.EVENT_BUS.addListener(CortesCombat::reportEnchantmentTags);
         NeoForge.EVENT_BUS.register(CombatTicker.class);
         NeoForge.EVENT_BUS.register(GuardHandler.class);
         // Gold's nine, and the only subscriber that knows what they do: every hook lives in the

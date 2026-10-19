@@ -124,6 +124,9 @@ public final class SpecialInputHandler {
      * predictions are decided once and cannot disagree with each other.</p>
      */
     public static void afterTheWorldDeclined() {
+        if (!com.cortes.combat.config.ServerConfig.combatRework()) {
+            return;
+        }
         Minecraft mc = Minecraft.getInstance();
         if (mc.getConnection() == null || mc.level == null) {
             return;

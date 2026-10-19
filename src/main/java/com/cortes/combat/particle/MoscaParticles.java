@@ -1,6 +1,7 @@
 package com.cortes.combat.particle;
 
 import com.cortes.combat.registry.ModParticleTypes;
+import com.cortes.combat.config.ServerConfig;
 import net.minecraft.server.level.ServerLevel;
 
 /**
@@ -40,6 +41,7 @@ public final class MoscaParticles {
      * @param radius el volumen, en bloques: cada mosca nace dentro de una esfera de ese radio.
      */
     public static void swarm(ServerLevel level, double x, double y, double z, int count, double radius) {
+        if (!ServerConfig.particles()) return;
         if (count <= 0) {
             return;
         }

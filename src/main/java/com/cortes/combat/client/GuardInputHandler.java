@@ -3,6 +3,7 @@ package com.cortes.combat.client;
 import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.guard.GuardRules;
 import com.cortes.combat.guard.GuardStats;
+import com.cortes.combat.config.ServerConfig;
 import com.cortes.combat.net.GuardInputPayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
@@ -33,6 +34,9 @@ public final class GuardInputHandler {
 
     @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
+        if (!ServerConfig.combatRework()) {
+            return;
+        }
         if (event.getButton() != InputConstants.MOUSE_BUTTON_RIGHT) {
             return;
         }
@@ -104,6 +108,9 @@ public final class GuardInputHandler {
     }
 
     public static boolean predictedHolding() {
+        if (!ServerConfig.combatRework()) {
+            return false;
+        }
         return predictedHolding;
     }
 
@@ -171,6 +178,9 @@ public final class GuardInputHandler {
      */
     @SubscribeEvent
     public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+        if (!ServerConfig.combatRework()) {
+            return;
+        }
         LocalPlayer player = event.getEntity() instanceof LocalPlayer local ? local : null;
         if (player == null) {
             return;

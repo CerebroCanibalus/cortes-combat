@@ -39,6 +39,15 @@ public final class ClientConfig {
      */
     public static final ModConfigSpec.BooleanValue CAMERA_SHAKE;
 
+    /** Master toggle for the viewmodel animation (motion sickness). */
+    public static final ModConfigSpec.BooleanValue VIEW_MODEL_MOTION;
+
+    /** The red damage flash (vignette is separate and always on). */
+    public static final ModConfigSpec.BooleanValue DAMAGE_FLASH;
+
+    /** Debug flag, exposed as config so it can be flipped without recompiling. */
+    public static final ModConfigSpec.BooleanValue DEBUG;
+
     static {
         STARTING_FOV = BUILDER
                 .comment("Field of view the client starts at, on the first launch that still has",
@@ -52,6 +61,21 @@ public final class ClientConfig {
                         "Turn it off for motion sickness; the sound and the particles are unaffected,",
                         "and so is the crosshair's own feedback.")
                 .define("cameraShake", true);
+
+        VIEW_MODEL_MOTION = BUILDER
+                .comment("Whether the weapon's viewmodel animates (wind-up, strike, guard, charge).",
+                        "Turn it off for motion sickness; the item renders in its vanilla pose and",
+                        "the charge FOV effect still works.")
+                .define("viewModelMotion", true);
+
+        DAMAGE_FLASH = BUILDER
+                .comment("The red flash on the screen when you take damage. The low-health vignette",
+                        "is unaffected.")
+                .define("damageFlash", true);
+
+        DEBUG = BUILDER
+                .comment("Enables the mod's debug logging. Off by default.")
+                .define("debug", false);
 
         SPEC = BUILDER.build();
     }
