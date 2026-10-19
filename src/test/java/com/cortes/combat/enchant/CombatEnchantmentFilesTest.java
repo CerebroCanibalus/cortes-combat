@@ -266,4 +266,42 @@ class CombatEnchantmentFilesTest {
             }
         }
     }
+
+    /**
+     * **Y la descripción, que es la compatibilidad con Enchantment Descriptions.**
+     *
+     * <p>El mod de Darkhax lee {@code enchantment.<modid>.<enchid>.desc} del mapa de localización y
+     * la muestra en el tooltip del ítem. Vanilla 1.21.1 no tiene ese mecanismo: el campo
+     * {@code "description"} del JSON es el <b>nombre</b> (lo usa {@code Enchantment.getFullname}), y
+     * las 28 claves {@code .desc} que trae vanilla son de <b>ítems</b> (banner patterns y discos).</p>
+     *
+     * <p><b>Sin la línea no hay error.</b> El encantamiento existe, se consigue, funciona, y el
+     * tooltip sale sin la descripción que el jugador esperaba -- y como el nombre sí está, no hay ni
+     * un solo síntoma. Por eso el test camina <b>los 48</b> (los 37 de {@code IDS} más los 11 de oro
+     * de {@code GOLD_IDS}) y no dos archivos: una descripción que nadie mira es una descripción que
+     * se pudre.</p>
+     */
+    @Test
+    @DisplayName("**cada encantamiento tiene su `.desc` en los 8 idiomas**: es la compatibilidad")
+    void theDescriptionIsInBothLanguages() throws IOException {
+        List<String> ids = new ArrayList<>(CombatEnchantRules.IDS);
+        ids.addAll(CombatEnchantRules.GOLD_IDS);
+        assertTrue(ids.size() == 48,
+                "esperaba los 48 encantamientos (37 + 11 de oro) y hay " + ids.size()
+                        + ": si la lista cambio, el test dejo de mirar algo");
+        for (String lang : ModLocales.ALL) {
+            Path file = Path.of("src", "generated", "resources", "assets", "cortescombat",
+                    "lang", lang + ".json");
+            assertTrue(Files.exists(file),
+                    "falta " + file + ": ModLocales lo pide y el datagen no lo escribio");
+            String json = Files.readString(file, StandardCharsets.UTF_8);
+            for (String id : ids) {
+                assertTrue(json.contains("\"enchantment.cortescombat." + id + ".desc\""),
+                        lang + " no tiene enchantment.cortescombat." + id + ".desc: el mod de "
+                                + "descripciones no tiene nada que mostrar, y el jugador lee un "
+                                + "encantamiento sin saber que hace. Se arregla en "
+                                + "CortesLanguageProvider y despues hay que correr runData");
+            }
+        }
+    }
 }

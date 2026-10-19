@@ -173,6 +173,22 @@ public final class CombatEnchantRules {
     public static final java.util.List<String> GENERIC_IDS = java.util.List.of(RIPOSTE_ID,
             QUEBRANTO_ID);
 
+    /**
+     * Los de oro, que <b>no</b> estan en {@link #IDS} porque no son archivos de datos.
+     *
+     * <p>Los otros 37 se declaran en JSON, asi que este archivo tiene sus reglas y un test puede
+     * recorrer sus ids. Los 11 de oro se declaran en Java ({@code ModEnchantments}), y una clase
+     * que nombra {@code Enchantment} <b>no se puede cargar en un test de JVM pelada</b> -- la linea
+     * exacta del proyecto, y ya mato tres tests de {@code MaceAir}. Asi que los ids viven aca, en el
+     * archivo puro, y sus numeros siguen donde siempre: {@code GoldEnchantRules}.</p>
+     *
+     * <p>Existen para que el test de idiomas camine <b>los 48</b> y no solo los 37: una descripcion
+     * que nadie mira es una descripcion que se pudre, y el idioma es el unico sitio donde viven.</p>
+     */
+    public static final java.util.List<String> GOLD_IDS = java.util.List.of("midas_touch",
+            "gold_echo", "life_steal", "wind_walker", "feather_weight", "phantom_strike",
+            "midas_tool", "miner_frenzy", "golden_hands", "golden_harvest", "phantom_block");
+
     // ---------------------------------------------------------------- E2 · Reflejo de Acero (shotel)
 
     /** El nivel máximo, el del archivo de encantamiento. */
