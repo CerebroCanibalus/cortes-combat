@@ -73,3 +73,7 @@ AGENTS.md.bak-*
 # y PowerShell no). Se cuela en el `git add -A` si no esta aca: paso una vez y el archivo quedo
 # commiteado.
 commit-msg.txt
+
+# Los crudos de las capturas de video. Se graban, se convierten a GIF en docs/media/ y el
+# crudo se tira: un MP4 de 200 megas en el repo no lo va a mirar nadie.
+docs/media/_raw/

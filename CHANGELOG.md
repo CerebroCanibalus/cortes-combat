@@ -79,6 +79,32 @@ Lo que se toma: **un impulso y nada más** (⊘ `LungeMotion` seteando velocidad
 
 ## Iteraciones
 
+- **El README, las galerías y los 14 slots de captura. Sin tocar código de juego.**
+  1. **El README inglés se reescribió entero**, con la estructura de la skill `crear-repo`: título y
+     tagline, badges, descripción corta, **el demo visual antes de las features**, la comparativa
+     con alternativas, instalación, FAQ, configuración, troubleshooting, la explicación técnica sin
+     jerga, el bloque de despedida y el pie de Contributing/Security/License. El español se
+     reescribió como espejo, porque el par tiene que decir lo mismo.
+  2. **Un número del README viejo estaba mal, y era de los que no se ven.** Decía *"34 NEW
+     enchantments"*. Los archivos son **48** en `data/cortescombat/enchantment/` y **6** de vanilla
+     reworked (`sharpness`, `smite`, `looting`, `knockback`, `fire_aspect`, `bane_of_arthropods`).
+     Lo que decía `AGENTS.md` y `docs/encantamientos.md` §10 (34) era de antes de la tanda de
+     encantamientos. **El número del README se verificó contra el disco, no contra la memoria.**
+  3. **La receta del arcabuz tampoco era la que decía el README.** Es bambú + tablones +
+     dispensador + pedernal, y la **lastima** es pólvora + polvo de piedra luminosa. El README
+     viejo decía "una lastima y pólvora" y mentía.
+  4. **El `README.es.md` del working tree estaba corrupto**, con un carácter de reemplazo U+FFFD en
+     cada acento (`Cortés` salía `Cort?s`, `mecánicas` salía `mec?nicas`, y `había` salía `hab??a`).
+     La versión commiteada estaba bien, así que el archivo se regeneró desde cero. **El `write` de
+     la herramienta escribe UTF-8 bien y PowerShell no**, y el escaneo de U+FFFD es el que lo
+     detecta.
+  5. **Los slots de captura existen y están marcados.** 14 GIFs en `docs/media/`, cada uno con un
+     placeholder gris que dice qué tiene que mostrar, más el comando de ffmpeg en
+     `docs/media/CAPTURE-GUIDE.md`. El README, la página de CurseForge y la de Modrinth apuntan a
+     **los mismos nombres de archivo**, así que la captura se graba una vez y se usa en los tres.
+  6. **La tabla de armas del README sale de `WeaponTables`.** Alcance, arco y carga de los 13
+     perfiles, leídos del código y no del `DESIGN.md`.
+
 - **Las siete armas, el arcabuz, y un tajo que no cabe en el canal de la estocada. 639 tests.** Commit `480fd7f`, el primero desde el lunge. Cinco rondas de playtest y **doce bugs reales**, la mayoría de ellos números que describían algo que ya no era cierto.
   1. **Grados sumados a un campo en radianes.** `ModelPart.xRot` está en radianes y el cuerpo sumaba GRADOS ahí: 46 grados como 46.0 son **46 vueltas completas**. La "voltereta hacia el frente varias veces", en los tres canales a la vez, en cada frame. Un número plausible como número y absurdo como ángulo — y el único test que lo atrapa es uno que convierta a radianes y mire.
   2. **El signo al revés en TRES poses.** `setupAttackAnimation` manda el brazo a **−69°**; positivo es **hacia atrás**. La carga, la guardia y el golpe eran positivas, y dos de las tres se reportaron como "al revés". La tercera se iba a reportar después.

@@ -247,6 +247,9 @@ serializador. `InventoryChangeTrigger.hasItems` ⊘ tiene overload de `TagKey<It
 | `docs/fx.md` | **propuesta** de FX (2026-10-12): partículas, pantalla, shake, sonidos |
 | `docs/armas-custom.md` | guía de usuario para armas de otros mods y packs |
 | `docs/weapon-packs-design.md` | diseño del sistema de weapon packs (YAML) |
+| `docs/media/CAPTURE-GUIDE.md` | los 14 slots de GIF del README y de las galerías, con el comando de ffmpeg |
+| `docs/curseforge-page.md` | la página de CurseForge lista para pegar (HTML + galería + changelog) |
+| `docs/modrinth-page.md` | la página de Modrinth lista para pegar (Markdown + metadatos) |
 | `CHANGELOG.md` | historial de rondas cerradas y de los bugs que las costaron |
 | `ARCHITECTURE.md` / `DESIGN.md` | arquitectura y diseño de combate, referenciados abajo |
 
@@ -762,6 +765,7 @@ juego queda en `ConeGauge`, `ConeMath`, `AttackTiming`, `GuardRules`, `GuardStat
 | **El zumbido de Rey de las Moscas** | Arreglado el 2026-10-12 (el `.ogg` estaba en `sounds/combat_fx/` y el JSON lo declaraba en `sounds/weapons/`, y el guard ⊘ lo veía porque los dos tiraban la carpeta). **Queda pendiente de playtest** |
 | `/cc weapons` desactualizado | Tiene 11 armas vanilla. Arcabuz y Firestone: `/cc weapon cortescombat:<id>` |
 | **Los 4 perfiles de pico/pala/maza/tridente** | **Por decisión, ⊘ deuda.** `ViewModelDefaults` los omite: son items de vanilla, y un movimiento dibujado a mano sobre una silueta que no dibujamos pelea c/ el modelo. Sin entrada = pose exacta de vanilla |
+| **Los 14 GIF del README y de las galerías** | Los slots existen y los marcaron (`docs/media/01-...` a `14-...`, cada uno con un placeholder). **Falta la captura**: son 14 videos de ≤6 s, 640 de ancho, grabados con el ffmpeg del repo. La lista exacta, el comando y las reglas están en `docs/media/CAPTURE-GUIDE.md`. La página de CurseForge y la de Modrinth ya tienen su galería escrita y esperando los mismos archivos |
 
 ### Texturas: una sola sigue siendo de `refs/`
 
