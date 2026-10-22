@@ -79,6 +79,48 @@ Lo que se toma: **un impulso y nada más** (⊘ `LungeMotion` seteando velocidad
 
 ## Iteraciones
 
+- **La guía de armas custom, en los dos idiomas, y el ejemplo de config anotado.**
+  1. **La guía era un solo archivo en español** (`docs/armas-custom.md`) y el README en inglés
+     apuntaba a ella. Ahora son dos: `docs/armas-custom.md` (inglés) y `docs/armas-custom.es.md`
+     (español), cada uno con una línea arriba que dice dónde está el otro. **Cada README apunta al
+     suyo**, que es la regla del par del repo.
+  2. **El ejemplo de config es un archivo nuevo** que el mod escribe en
+     `config/cortescombat/weapons/ejemplo.yaml.example`, con cada campo anotado en español y en
+     inglés, línea por línea. Antes no había ningún ejemplo: la guía mostraba tres fragmentos y
+     el usuario tenía que armarlos.
+  3. **La extensión es `.example` y no `.yaml`, y eso es la decisión que importa.** El loader lee
+     todos los `*.yaml` y `*.yml` de la carpeta, así que un ejemplo con esa extensión se leía como
+     un pack vacío y dejaba un warning **en cada arranque**. Con `.example` el loader ni lo ve.
+     El test lo afirma: `loadDirectory` sobre la carpeta del ejemplo devuelve cero packs y cero
+     warnings.
+  4. **El resource pack ahora tiene dos LEEME**, `LEEME.txt` (español) y `README.txt` (inglés), en
+     la misma carpeta. Uno mezclado se lee mal de arriba abajo y quien lee un idioma se queda con
+     la mitad de las anotaciones.
+  5. **El logger quedó afuera del I/O otra vez.** `writeConfigExample` y `writeResourcePackFiles`
+     devuelven un booleano y el log lo pone el wrapper. La primera versión logueaba en el camino
+     feliz y el test murió con `NoClassDefFoundError: net/neoforged/fml/config/IConfigSpec`:
+     `CortesCombat.LOGGER` carga la clase entera y con ella los tipos de Minecraft.
+     **`CortesCombat.MODID` sí se puede usar, porque es una constante y javac la pega adentro.**
+  6. **1170 tests verdes.** Los tres del template cubren los dos LEEME, el ejemplo bilingüe, y que
+     el loader no lo vea.
+
+- **El README, reescrito por el dueño, y las páginas de las dos plataformas.**
+  1. **El README nuevo es del dueño** (voces suyas, "Charge!!!", los chistes) y se respetó tal
+     cual. Lo que se corrigió fueron las **rutas absolutas de Windows** en los `![](...)`: en
+     GitHub, CurseForge y Modrinth no funcionan, y era el mismo bug en los seis.
+  2. **Los medios son 5 GIF y 1 foto**, los que capturó el dueño: `cool_sword_shi`, `reach`,
+     `cooldown`, `charged_attack`, `shield` y `reactor.webp`. Los 14 placeholders que había puesto
+     antes se borraron, y con ellos la guía de captura que los describía.
+  3. **Las páginas de CurseForge y Modrinth están en el mismo formato y el mismo tono** que el
+     README, con lo que cada plataforma pide encima: metadatos, galería, changelog. CurseForge
+     lleva HTML y Modrinth Markdown, porque es lo que renderiza cada una.
+  4. **El peso de los GIF.** `cooldown.gif` pesa 5,8 MB. GitHub aguanta, las galerías tardan.
+     **El encoder de GIF de ffmpeg es peor que el de la herramienta con la que se capturaron:**
+     a la misma resolución y los mismos fps, **ffmpeg agranda los archivos**. La compresión con
+     ruido de captura de pantalla no se deja, y el camino es recapturar con menos fps.
+  5. **El `README.es.md` se reescribió como espejo** del nuevo, con las mismas seis imágenes y la
+     misma tabla. Y se le corrigió una palabra china que se me había colado en la ronda anterior.
+
 - **El README, las galerías y los 14 slots de captura. Sin tocar código de juego.**
   1. **El README inglés se reescribió entero**, con la estructura de la skill `crear-repo`: título y
      tagline, badges, descripción corta, **el demo visual antes de las features**, la comparativa

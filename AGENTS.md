@@ -245,9 +245,9 @@ serializador. `InventoryChangeTrigger.hasItems` ⊘ tiene overload de `TagKey<It
 | `docs/pose-y-multijugador.md` | formato `WeaponPose`, `PoseSolver`, payloads de red, playtest con dos jugadores |
 | `docs/oro-y-cobre.md` | el rework de oro y cobre (diseño cerrado, **⊘ implementado**) |
 | `docs/fx.md` | **propuesta** de FX (2026-10-12): partículas, pantalla, shake, sonidos |
-| `docs/armas-custom.md` | guía de usuario para armas de otros mods y packs |
+| `docs/armas-custom.md` / `.es.md` | guía de usuario para armas de otros mods y packs, **en inglés y en español** (los README apuntan cada uno al suyo) |
 | `docs/weapon-packs-design.md` | diseño del sistema de weapon packs (YAML) |
-| `docs/media/CAPTURE-GUIDE.md` | los 14 slots de GIF del README y de las galerías, con el comando de ffmpeg |
+| `docs/media/CAPTURE-GUIDE.md` | los 5 GIF + la foto que usa el README y las dos galerías, y cómo recomprimirlos |
 | `docs/curseforge-page.md` | la página de CurseForge lista para pegar (HTML + galería + changelog) |
 | `docs/modrinth-page.md` | la página de Modrinth lista para pegar (Markdown + metadatos) |
 | `CHANGELOG.md` | historial de rondas cerradas y de los bugs que las costaron |

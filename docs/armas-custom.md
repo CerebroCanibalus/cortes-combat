@@ -1,26 +1,34 @@
-# Guía de armas custom (weapon packs)
+# Custom weapons guide (weapon packs)
 
-Con un archivo `.yaml` podés: **meter al combate de Cortés Combat las armas de otros mods**,
-**retocar las de este mod**, o **crear armas tuyas** — todo sin escribir una línea de Java.
+> This is the English version. The Spanish one is [`armas-custom.es.md`](armas-custom.es.md), and
+> it says exactly the same thing.
 
-Tres reglas antes de empezar:
+With a `.yaml` file you can: **pull the weapons of other mods into Cortés Combat's combat**,
+**tweak the ones this mod ships**, or **create weapons of your own** — all of it without writing
+a single line of Java.
 
-1. **Los números van en `config/cortescombat/weapons/`** — daño, cono, carga, sonidos.
-   Esa carpeta la leen los dos lados (cliente y servidor), por eso vive ahí.
-2. **Los archivos gráficos van en un resource pack** (`resourcepacks/`) — iconos, sonidos
-   `.ogg`, sprites y poses. Es el único sitio del que Minecraft carga assets.
-3. **Todo campo es opcional**: lo que no declares, se hereda del arquetipo o del molde.
-   Un archivo de dos líneas ya es un arma.
+Three rules before you start:
 
-La primera vez que el mod arranca te escribe una carpeta de ejemplo en
-`resourcepacks/cortescombat-weapon-pack/` con el `pack.mcmeta` y las carpetas listas —
-activála como resource pack y ahí tirás tus archivos.
+1. **The numbers go in `config/cortescombat/weapons/`** — damage, cone, charge, sounds.
+   Both sides read that folder (client and server), which is why it lives there.
+2. **The art goes in a resource pack** (`resourcepacks/`) — icons, `.ogg` sounds, sprites and poses.
+   It is the only place Minecraft loads assets from.
+3. **Every field is optional**: whatever you do not declare is inherited from the archetype or the
+   template. A two line file is already a weapon.
+
+The first time the mod starts it writes you an example folder in
+`resourcepacks/cortescombat-weapon-pack/` with the `pack.mcmeta` and the folders ready — activate it
+as a resource pack and drop your files in there.
+
+The first time it starts it also drops an annotated example at
+`config/cortescombat/weapons/ejemplo.yaml.example`, with every field commented in Spanish and
+English. Copy it to `mi_pack.yaml` and start from there.
 
 ---
 
-## Caso 1 — Que las armas de otro mod entren al combate
+## Case 1 — Getting another mod's weapons into combat
 
-Pones el item en una de nuestras categorías con un datapack, y ya está. Cero YAML.
+You put the item in one of our categories with a datapack, and that is it. Zero YAML.
 
 ```
 # data/tunombrepack/data/mimod/tags/item/mi_datapack.json
@@ -29,151 +37,151 @@ Pones el item en una de nuestras categorías con un datapack, y ya está. Cero Y
 }
 ```
 
-...pero eso escribe en una categoría genérica. Para decirle **qué es** esa arma, un YAML:
+...but that writes it into a generic category. To tell it **what** that weapon is, a YAML:
 
 ```yaml
 # config/cortescombat/weapons/mimod.yaml
 version: 1
 weapons:
-  - match: { id: tercermod:espada_rara }   # o match: { tag: "#tercermod:espadas" }
-    archetype: sword                        # molde de movimiento: la espada de siempre
+  - match: { id: tercermod:espada_rara }   # or match: { tag: "#tercermod:espadas" }
+    archetype: sword                        # movement template: the plain old sword
     stats:
-      damage: 3.5                           # en CORAZONES (la vanilla dice 4 = 2 corazones)
-      attack_speed: 1.8                     # toques por segundo
+      damage: 3.5                           # in HEARTS (vanilla says 4 = 2 hearts)
+      attack_speed: 1.8                     # swings per second
 ```
 
-`/cc stats` con el item en la mano te muestra todo lo resuelto y **de dónde salió cada
-número** (`source=`).
+`/cc stats` with the item in your hand shows you everything that was resolved and **where each
+number came from** (`source=`).
 
-## Caso 2 — Retocar las armas de este mod
+## Case 2 — Tweaking this mod's weapons
 
 ```yaml
 version: 1
 weapons:
   - match: { id: cortescombat:golden_ropera }
     stats:
-      reach: { distance: 3.8 }              # más alcance, en metros
-      cone: { horizontal: 40, vertical: 30 }# ángulos en GRADOS, por eje (no hay "tamaños")
-      charge: { bonus: 1.5 }                # la carga pegue más fuerte
+      reach: { distance: 3.8 }              # more reach, in blocks
+      cone: { horizontal: 40, vertical: 30 }# angles in DEGREES, per axis (there are no "sizes")
+      charge: { bonus: 1.5 }                # the charge hits harder
 ```
 
-Y si querés que un item vanilla **deje de pelear** (un pico que no te gusta):
+And if you want a vanilla item to **stop fighting** (a pickaxe you are not fond of):
 
 ```yaml
 version: 1
 weapons:
   - match: { id: minecraft:iron_pickaxe }
-    profile: none                           # "esto no es un arma"
+    profile: none                           # "this is not a weapon"
 ```
 
-## Caso 3 — Un arma nueva de cero
+## Case 3 — A brand new weapon
 
 ```yaml
 version: 1
 weapons:
-  - creates: mitunmod:cuchillo_de_rubi      # el id que el mod va a registrar
+  - creates: mitunmod:cuchillo_de_rubi      # the id the mod is going to register
     archetype: dagger
     stats:
       damage: 5.0
       durability: 260
     display:
-      name: "Cuchillo de Rubí"              # nombre directo, sin lang
-      tab: cortescombat                     # pestaña donde aparece (vacío = la nuestra)
+      name: "Cuchillo de Rubí"              # direct name, no lang file
+      tab: cortescombat                     # the tab it shows up in (empty = ours)
     texture:
-      slash: mitunmod:textures/particle/slash/rubi.png   # sprite del golpe (32x160, 5 frames)
+      slash: mitunmod:textures/particle/slash/rubi.png   # slash sprite (32x160, 5 frames)
     sounds:
       swing: mitunmod:rubi_swing
       hit:   mitunmod:rubi_hit
       charged: mitunmod:rubi_charged
     animation:
-      pose: mitunmod:cuchillo               # assets/mitunmod/poses/cuchillo.json, si tenés
+      pose: mitunmod:cuchillo               # assets/mitunmod/poses/cuchillo.json, if you have one
 ```
 
-Lo que falta alrededor (ninguno es nuestro, los hacés vos):
+What surrounds it (none of it is ours, you make it):
 
-| Pieza | Dónde va |
+| Piece | Where it goes |
 |---|---|
-| Icono | `resourcepacks/.../assets/mitunmod/models/item/cuchillo_de_rubi.json` + su textura |
-| Sonidos | `sounds.json` + los `.ogg` en el mismo resource pack |
-| Sprite del golpe | `assets/mitunmod/textures/particle/slash/rubi.png` |
-| Receta | Un datapack normal: `recipes/cuchillo_de_rubi.json` referenciando `mitunmod:cuchillo_de_rubi` |
+| Icon | `resourcepacks/.../assets/mitunmod/models/item/cuchillo_de_rubi.json` + its texture |
+| Sounds | `sounds.json` + the `.ogg` files in the same resource pack |
+| Slash sprite | `assets/mitunmod/textures/particle/slash/rubi.png` |
+| Recipe | A normal datapack: `recipes/cuchillo_de_rubi.json` referencing `mitunmod:cuchillo_de_rubi` |
 
-Sin icono, el item aparece con el cubo morado de siempre (y grita solo). Sin stats, nace con
-los de una espada de hierro.
+Without an icon the item shows up with the usual purple cube (and complains on its own). Without
+stats it is born with the ones of an iron sword.
 
 ---
 
-## Los 9 arquetipos
+## The 9 archetypes
 
-Un arquetipo es "tratalo como esto": le da el molde de movimiento, el especial por defecto y
-los defaults. Los números se heredan de ese molde salvo que los cambies.
+An archetype is "treat it like this": it gives the weapon its movement template, its default
+special and its defaults. The numbers are inherited from that template unless you change them.
 
-| Arquetipo | Para qué | Especial por defecto |
+| Archetype | What it is for | Default special |
 |---|---|---|
-| `dagger` | cuchillos y dagas | ninguno |
-| `sword` | espadas | ninguno |
-| `rapier` | roperas / estocadas | **lunge** (el impulso de la ropera) |
-| `sabre` | sables | **parry** |
-| `hammer` | martillos | ninguno (la carga la encendés vos con `charge:`) |
-| `mace` | mazas | ninguno |
-| `spear` | lanzas | ninguno (sin lunge, a propósito) |
-| `polearm` | armas de asta | **multi_hit** (el barrido de la alabarda) |
-| `axe` | hachas de combate | ninguno |
+| `dagger` | knives and daggers | none |
+| `sword` | swords | none |
+| `rapier` | roperas / thrusts | **lunge** (the rapier's dash) |
+| `sabre` | sabres | **parry** |
+| `hammer` | hammers | none (you turn the charge on yourself with `charge:`) |
+| `mace` | maces | none |
+| `spear` | spears | none (no lunge, on purpose) |
+| `polearm` | polearms | **multi_hit** (the halberd's sweep) |
+| `axe` | combat axes | none |
 
-**Sin YAML**: las categorías `#cortescombat:category/<arquetipo>` hacen el mismo trabajo desde
-un datapack — metés el item en `category/dagger` y ya pelea como daga (con los defaults del
-molde). El YAML sólo hace falta cuando querés **cambiar números** o crear items.
+**Without YAML**: the categories `#cortescombat:category/<archetype>` do the same job from a
+datapack — you put the item in `category/dagger` and it already fights like a dagger (with the
+template's defaults). YAML is only needed when you want to **change numbers** or create items.
 
 ---
 
-## Referencia de campos
+## Field reference
 
-Todo va dentro de una entrada de `weapons:`. Identidad: `match: {id|tag}` o `creates`.
+Everything goes inside a `weapons:` entry. Identity: `match: {id|tag}` or `creates`.
 
-| Campo | Unidad y rango | Notas |
+| Field | Unit and range | Notes |
 |---|---|---|
-| `stats.damage` | corazones | Si lo declarás, **reemplaza** el daño del item entero |
-| `stats.attack_speed` | toques/s | El tempo (vanilla espada 1.6). **No existe `cooldown`** |
-| `stats.durability` | usos | Sólo aplica a `creates` |
-| `stats.charge.can_charge` | true/false | La carga nunca resta: el piso es 0 |
-| `stats.charge.bonus` | multiplicador | Bonus a carga completa (guerra: 1.0) |
-| `stats.charge.full_charge_ticks` | ticks | Ticks a carga completa |
-| `stats.max_targets` | cuántos golpea | *(todavía sin cablear)* |
-| `stats.knockback` | `{horizontal, vertical}` | Techos 1.6 / 0.45 — el código reclama si pasás |
-| `reach.distance` | metros, 1.0–6.0 | **Sólo la distancia** |
-| `cone` | `{horizontal, vertical}` en grados, 5–85 | Radio crudo por eje. **`cone: small` ya no existe** |
-| `guard` | `{points, arc, regen, stun}` | Aguante: espada 1/90/40/100, escudo 3/120 |
-| `shot` | `{distance, horizontal, vertical}` | Segundo alcance (tiro) |
-| `special` | `none\|multi_hit\|parry\|slam\|shove\|lunge\|throw\|fusee` | Click derecho |
-| `profile` | los 14 perfiles o `none` | `none` = excluye el item del combate |
-| `texture.slash` | id de textura | PNG 32x160 con 5 frames |
-| `sounds.swing/hit/charged` | ids de `sounds.json` | `swing` suena cuando el golpe **no** conecta |
-| `animation.pose` | id de pose | `assets/<ns>/poses/<id>.json`; si falta, la del arquetipo |
-| `display.name/tab` | texto | Sólo en `creates` |
+| `stats.damage` | hearts | If you declare it, it **replaces** the item's whole damage |
+| `stats.attack_speed` | swings/s | The tempo (vanilla sword is 1.6). **There is no `cooldown`** |
+| `stats.durability` | uses | Only applies to `creates` |
+| `stats.charge.can_charge` | true/false | The charge never subtracts: the floor is 0 |
+| `stats.charge.bonus` | multiplier | Bonus at full charge (war hammer is 1.0) |
+| `stats.charge.full_charge_ticks` | ticks | Ticks to a full charge |
+| `stats.max_targets` | how many it hits | *(not wired up yet)* |
+| `stats.knockback` | `{horizontal, vertical}` | Ceilings 1.6 / 0.45 — the code complains if you pass them |
+| `reach.distance` | blocks, 1.0–6.0 | **The distance only** |
+| `cone` | `{horizontal, vertical}` in degrees, 5–85 | Raw radius per axis. **`cone: small` does not exist anymore** |
+| `guard` | `{points, arc, regen, stun}` | Stamina: sword 1/90/40/100, shield 3/120 |
+| `shot` | `{distance, horizontal, vertical}` | Second reach (ranged) |
+| `special` | `none\|multi_hit\|parry\|slam\|shove\|lunge\|throw\|fusee` | Right click |
+| `profile` | the 14 profiles or `none` | `none` = the item is out of combat |
+| `texture.slash` | texture id | PNG 32x160 with 5 frames |
+| `sounds.swing/hit/charged` | ids from `sounds.json` | `swing` plays when the swing **misses** |
+| `animation.pose` | pose id | `assets/<ns>/poses/<id>.json`; if missing, the archetype's |
+| `display.name/tab` | text | Only in `creates` |
 
-**Lo que el YAML no puede**: apagar la correa del cono (la holgura de cercanía es una
-invariante), hacer que la carga reste, ni pasar los techos de knockback.
+**What YAML cannot do**: turn off the cone's strap (the close range slack is an invariant), make
+the charge subtract, or pass the knockback ceilings.
 
 ---
 
-## Cómo probarlo
+## How to test it
 
-| Comando | Qué hace |
+| Command | What it does |
 |---|---|
-| `/cc reload` | Relee los YAML sin reiniciar (los assets nuevos piden `F3+T`) |
-| `/cc packs` | Lista los packs cargados + qué entrada matchea el arma de la mano |
-| `/cc stats` | Stats resueltos del arma en mano, con **`source=`**: `pack id=tercermod:x` = tu entrada está mandando; `sin pack (tag molde → vanilla → NONE)` = nadie habló y cayó al árbol de siempre |
+| `/cc reload` | Re-reads the YAMLs without restarting (new assets need `F3+T`) |
+| `/cc packs` | Lists the loaded packs + which entry matches the weapon in your hand |
+| `/cc stats` | Resolved stats of the weapon in hand, with **`source=`**: `pack id=tercermod:x` means your entry is in charge; `sin pack (tag molde → vanilla → NONE)` means nobody spoke and it fell to the usual tree |
 
-## Problemas comunes
+## Common problems
 
-- **`versión desconocida '2'`** — este mod entiende `version: 1`.
-- **`campo desconocido 'x'`** — revisá la referencia de arriba; el archivo sigue funcionando,
-  ese campo se ignora.
-- **`cone: small ya no existe`** — el warning te dice exactamente qué mapa poner.
-- **El sonido no suena** — ¿el `sounds.json` y el `.ogg` están en el resource pack activo? El
-  log avisa si el id declarado no está registrado.
-- **El ítem creado no pelea** — le falta `archetype` o `profile`; el log lo dice con archivo y
-  entrada.
-- **No aparece en la pestaña** — `display.tab` sólo conoce `cortescombat`; usá `/give`.
-- **Más detalles**: `docs/weapon-packs-design.md` (diseño completo) y `/cc packs` para ver qué
-  hay cargado ahora mismo.
+- **`unknown version '2'`** — this mod understands `version: 1`.
+- **`unknown field 'x'`** — check the reference above; the file keeps working, that field is
+  ignored.
+- **`cone: small does not exist anymore`** — the warning tells you exactly which map to write.
+- **The sound does not play** — are the `sounds.json` and the `.ogg` in the active resource pack?
+  The log warns if the declared id is not registered.
+- **The created item does not fight** — it is missing `archetype` or `profile`; the log says so
+  with the file and the entry.
+- **It does not show up in the tab** — `display.tab` only knows `cortescombat`; use `/give`.
+- **More details**: `docs/weapon-packs-design.md` (the full design) and `/cc packs` to see what is
+  loaded right now.
