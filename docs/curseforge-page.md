@@ -116,8 +116,8 @@ through a resourcepack.</p>
 <code>config/cortescombat/weapons/ejemplo.yaml.example</code>, with every field commented in Spanish
 and English.</p>
 
-<p>Check the guide in <code>docs/armas-custom.md</code> (English) or
-<code>docs/armas-custom.es.md</code> (Spanish).</p>
+<p>Check the guide in <code>docs/custom-weapons.md</code> (English) or
+<code>docs/custom-weapons.es.md</code> (Spanish).</p>
 
 <h2>Install</h2>
 

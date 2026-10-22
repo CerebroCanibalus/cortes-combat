@@ -79,9 +79,9 @@ Lo que se toma: **un impulso y nada más** (⊘ `LungeMotion` seteando velocidad
 
 ## Iteraciones
 
-- **La guía de armas custom, en los dos idiomas, y el ejemplo de config anotado.**
-  1. **La guía era un solo archivo en español** (`docs/armas-custom.md`) y el README en inglés
-     apuntaba a ella. Ahora son dos: `docs/armas-custom.md` (inglés) y `docs/armas-custom.es.md`
+- **La guía de armas propias, en los dos idiomas, y el ejemplo de config anotado.**
+  1. **La guía era un solo archivo en español** (`docs/custom-weapons.md`) y el README en inglés
+     apuntaba a ella. Ahora son dos: `docs/custom-weapons.md` (inglés) y `docs/custom-weapons.es.md`
      (español), cada uno con una línea arriba que dice dónde está el otro. **Cada README apunta al
      suyo**, que es la regla del par del repo.
   2. **El ejemplo de config es un archivo nuevo** que el mod escribe en

@@ -106,7 +106,7 @@ The first time the mod runs it drops an annotated example at
 `config/cortescombat/weapons/ejemplo.yaml.example`, with every field commented in Spanish and
 English.
 
-The full guide lives in `docs/armas-custom.md` (English) and `docs/armas-custom.es.md` (Spanish).
+The full guide lives in `docs/custom-weapons.md` (English) and `docs/custom-weapons.es.md` (Spanish).
 
 ## Install
 

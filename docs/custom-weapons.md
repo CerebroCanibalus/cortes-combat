@@ -1,6 +1,6 @@
 # Custom weapons guide (weapon packs)
 
-> This is the English version. The Spanish one is [`armas-custom.es.md`](armas-custom.es.md), and
+> This is the English version. The Spanish one is [`custom-weapons.es.md`](custom-weapons.es.md), and
 > it says exactly the same thing.
 
 With a `.yaml` file you can: **pull the weapons of other mods into Cortés Combat's combat**,

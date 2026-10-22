@@ -73,7 +73,7 @@ class WeaponPackTemplateTest {
                     name + " dice qué hacer si el formato cambia");
             assertTrue(readme.contains(WeaponPackTemplate.CONFIG_EXAMPLE),
                     name + " señala el ejemplo de config");
-            assertTrue(readme.contains("armas-custom"),
+            assertTrue(readme.contains("custom-weapons"),
                     name + " dice dónde está la guía");
         }
     }

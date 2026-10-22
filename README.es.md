@@ -105,7 +105,7 @@ no existe y darle los números que quieras. Un tag de datapack puede apuntar a u
 propios a través de un resourcepack.
 
 La guía está en:
-[`docs/armas-custom.es.md`](docs/armas-custom.es.md).
+[`docs/custom-weapons.es.md`](docs/custom-weapons.es.md).
 
 ---
 
@@ -139,7 +139,7 @@ Sí se puede, comrade. Casi todo lo que agrega el mod es configurable.
 
 **¿Por qué mi arma de otro mod pega como un puñetazo?**
 Nada la reclamó, así que cayó en el perfil de manos desnudas. Escribí una entrada de pack o un
-tag para ella, mirá [`docs/armas-custom.es.md`](docs/armas-custom.es.md).
+tag para ella, mirá [`docs/custom-weapons.es.md`](docs/custom-weapons.es.md).
 
 **¿Sirve en multijugador?**
 Sí, y está totalmente testeado.

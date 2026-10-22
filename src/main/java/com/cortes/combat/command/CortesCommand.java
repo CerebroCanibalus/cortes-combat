@@ -280,7 +280,7 @@ public final class CortesCommand {
         if (packs.isEmpty()) {
             ctx.getSource().sendSuccess(() -> Component.literal(
                     "Sin weapon packs. Crea config/cortescombat/weapons/*.yaml "
-                            + "(guía: docs/armas-custom.md)."), false);
+                            + "(guía: docs/custom-weapons.md)."), false);
             return 0;
         }
         for (var pack : packs) {

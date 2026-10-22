@@ -90,8 +90,8 @@ You can add your own weapons and compatibility with other mods through a YAML fi
 The first time the mod runs it drops an annotated example at `config/cortescombat/weapons/ejemplo.yaml.example`, with every field commented in Spanish and English.
 
 Check the guide in:
-[`docs/armas-custom.md`](docs/armas-custom.md), or in Spanish in
-[`docs/armas-custom.es.md`](docs/armas-custom.es.md).
+[`docs/custom-weapons.md`](docs/custom-weapons.md), or in Spanish in
+[`docs/custom-weapons.es.md`](docs/custom-weapons.es.md).
 
 ---
 
@@ -125,7 +125,7 @@ Yes you can comrade. Almost everything the mod adds is configurable.
 
 **Why does my weapon from another mod hits like a punch?**
 Nothing has claimed it, so it fell back to a bare handed profile. Write a pack entry or a tag for
-it, see [`docs/armas-custom.md`](docs/armas-custom.md).
+it, see [`docs/custom-weapons.md`](docs/custom-weapons.md).
 
 **Is it multiplayer compatible?**
 Yes and fully tested!

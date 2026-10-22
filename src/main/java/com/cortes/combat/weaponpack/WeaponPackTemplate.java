@@ -157,7 +157,7 @@ public final class WeaponPackTemplate {
             Si el juego reclama el pack_format al activarlo, el número que pide es el correcto:
             pónelo en pack.mcmeta.
 
-            Guía completa: docs/armas-custom.es.md (español) y docs/armas-custom.md (inglés).
+            Guía completa: docs/custom-weapons.es.md (español) y docs/custom-weapons.md (inglés).
             """;
 
     /** El mismo LEEME, en inglés. */
@@ -188,7 +188,7 @@ public final class WeaponPackTemplate {
             If the game complains about the pack_format when you activate it, the number it asks
             for is the right one: put it in pack.mcmeta.
 
-            Full guide: docs/armas-custom.md (English) and docs/armas-custom.es.md (Spanish).
+            Full guide: docs/custom-weapons.md (English) and docs/custom-weapons.es.md (Spanish).
             """;
 
     /**
@@ -200,7 +200,7 @@ public final class WeaponPackTemplate {
      */
     private static final String CONFIG_EXAMPLE_YAML = """
             # ==========================================================================
-            #  EJEMPLO DE ARMAS CUSTOM  /  CUSTOM WEAPONS EXAMPLE
+            #  EJEMPLO DE ARMAS PROPIAS  /  CUSTOM WEAPONS EXAMPLE
             #  Cortes Combat -- weapon packs
             # ==========================================================================
             #
@@ -213,7 +213,7 @@ public final class WeaponPackTemplate {
             #  After that: /cc reload. New assets (icons, sounds) need F3+T.
             #
             #  La guía completa / the full guide:
-            #    docs/armas-custom.es.md (español)  /  docs/armas-custom.md (English)
+            #    docs/custom-weapons.es.md (español)  /  docs/custom-weapons.md (English)
             # ==========================================================================
 
             # Obligatoria. Este mod entiende la 1.

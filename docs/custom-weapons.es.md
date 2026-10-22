@@ -1,7 +1,7 @@
-# Guía de armas custom (weapon packs)
+# Guía de armas propias (weapon packs)
 
-> Esta es la versión en español. La de inglés está en [`armas-custom.md`](armas-custom.md), y dice
-> exactamente lo mismo.
+> Esta es la versión en español. La de inglés está en [`custom-weapons.md`](custom-weapons.md), y
+> dice exactamente lo mismo.
 
 Con un archivo `.yaml` podés: **meter al combate de Cortés Combat las armas de otros mods**,
 **retocar las de este mod**, o **crear armas tuyas** — todo sin escribir una línea de Java.
