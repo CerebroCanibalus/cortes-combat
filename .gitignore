@@ -77,3 +77,45 @@ commit-msg.txt
 # Los crudos de las capturas de video. Se graban, se convierten a GIF en docs/media/ y el
 # crudo se tira: un MP4 de 200 megas en el repo no lo va a mirar nadie.
 docs/media/_raw/
+
+# ============================================================================
+#  INTERNO DEL PROYECTO -- no se publica
+# ============================================================================
+# Lo que sigue es la memoria de trabajo del proyecto: decisiones, cuentas largas, trampas
+# de la API y el diario de desarrollo. Le sirve a quien lo mantiene y estorba a quien
+# descarga el mod. La guia de usuario (docs/custom-weapons.md) y la historia corta del
+# changelog SI se publican.
+
+# La memoria del proyecto: el design, la arquitectura, las lecciones y el estado.
+AGENTS.md
+AGENTS.md.bak-*
+DESIGN.md
+ARCHITECTURE.md
+TESTING.md
+
+# Documentacion interna. La de cara al usuario va en docs/custom-weapons.md y
+# docs/custom-weapons.es.md, y esas no se tocan.
+docs/api-trampas.md
+docs/encantamientos.md
+docs/fx.md
+docs/lecciones.md
+docs/media/CAPTURE-GUIDE.md
+docs/oro-y-cobre.md
+docs/pose-y-multijugador.md
+docs/referencia.md
+docs/weapon-packs-design.md
+docs/yaml-handoff.md
+
+# Arte en trabajo y fuentes de Blockbench. Lo que se publica vive en
+# src/main/resources/ y en docs/media/.
+/combat.png
+/cortescombatlogo.png
+/cortescombattext.png
+/cortescombat.bbmodel
+/logo.png
+/logo-export.png
+
+# Utilidades de desarrollo.
+devworld.properties
+setup-testworld.ps1
+

@@ -6,18 +6,13 @@ Security fixes land on the current release line.
 
 | Version | Supported |
 | --- | --- |
-| 1.0.x | :white_check_mark: |
+| 1.4.x | :white_check_mark: |
+| 1.0.x | :x: |
 | anything older | :x: |
 
 ## Reporting a vulnerability
 
 **Please don't open a public issue for a security problem.**
-
-> **This repository is private, so GitHub's private vulnerability reporting is not switched on yet** —
-> the setting needs a public repository (or GitHub Advanced Security), and until it is public that
-> link answers 404. While the repository stays private, open a Discussion: in a private repository a
-> Discussion is only readable by people who already have access. The link below becomes the preferred
-> channel the day the repository is published.
 
 Use GitHub's [private vulnerability reporting](https://github.com/CerebroCanibalus/cortes-combat/security/advisories/new) to start a private thread with the maintainer. Include:
 
