@@ -126,6 +126,9 @@ and English.</p>
 <p>Drop the jar in <code>mods/</code>. On a server the jar goes on the server and on every client
 that connects to it, because the client draws the animations and the server decides the hits.</p>
 
+<p>Download: <a href="https://github.com/CerebroCanibalus/cortes-combat/releases/tag/v1.4.12">Cortes
+Combat 1.4.12 for Minecraft 1.21.1</a> (<code>Cortes-combat-1.4.12-1.21.1.jar</code>).</p>
+
 <h2>FAQ</h2>
 
 <p><b>Does the mod need to be on every client?</b> Yes. The server decides the hits and the client

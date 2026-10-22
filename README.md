@@ -102,7 +102,10 @@ Requirements are Minecraft **1.21.1**, NeoForge **21.1.250** or newer, and **Jav
 Drop the jar in `mods/`. On a server the jar goes on the server and on every client that connects
 to it, because the client draws the animations and the server decides the hits.
 
-There is no jar to download yet. Build it from source:
+**Download:** [Cortés Combat 1.4.12 for Minecraft 1.21.1](https://github.com/CerebroCanibalus/cortes-combat/releases/tag/v1.4.12)
+(`Cortes-combat-1.4.12-1.21.1.jar`).
+
+Or build it from source:
 
 ```bash
 git clone https://github.com/CerebroCanibalus/cortes-combat.git

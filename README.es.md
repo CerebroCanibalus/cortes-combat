@@ -116,7 +116,10 @@ Los requisitos son Minecraft **1.21.1**, NeoForge **21.1.250** o superior, y **J
 Dejá el jar en `mods/`. En un servidor va en el servidor y en cada cliente que se conecte, porque
 el cliente dibuja las animaciones y el servidor decide los golpes.
 
-Todavía no hay jar para descargar. Compilalo desde el código:
+**Descarga:** [Cortés Combat 1.4.12 para Minecraft 1.21.1](https://github.com/CerebroCanibalus/cortes-combat/releases/tag/v1.4.12)
+(`Cortes-combat-1.4.12-1.21.1.jar`).
+
+O compilalo desde el código:
 
 ```bash
 git clone https://github.com/CerebroCanibalus/cortes-combat.git
