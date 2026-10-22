@@ -199,8 +199,8 @@ momento justo. Cortés Combat le da a cada arma sus propios números, y el timin
 decisión donde vanilla pide un reflejo. Si querés el feeling de vanilla, el toggle `combatRework`
 de la config del servidor apaga todo el sistema.
 
-**Combatify.** El mod de combate más profundo que hay en Fabric, y la referencia contra la que se
-midió este proyecto. Reescribe mucho más del juego y pide que leas su documentación antes de
+**Combatify.** El mod de combate contra el que se midió este proyecto, y el que tiene el rewrite
+más grande. Es de Fabric, toca mucho más del juego y pide que leas su documentación antes de
 jugar. Cortés Combat deja el foco en el cuerpo a cuerpo, explica cada número en el tooltip y sale
 en NeoForge.
 

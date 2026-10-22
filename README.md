@@ -196,10 +196,10 @@ right moment. Cortes Combat gives every weapon its own numbers, and the timing b
 where vanilla asks for a reflex. If you want the vanilla feel, the `combatRework` toggle in the
 server config turns the whole thing off.
 
-**Combatify.** The deepest combat mod on Fabric, and the reference this project was measured
-against. It rewrites far more of the game and expects a reading of its documentation before you
-play. Cortes Combat keeps the scope on melee, explains every number on the tooltip, and ships on
-NeoForge.
+**Combatify.** The combat mod this project was measured against, and the one with the biggest
+rewrite of its own. It is a Fabric mod, it touches far more of the game, and it expects a reading
+of its documentation before you play. Cortes Combat keeps the scope on melee, explains every
+number on the tooltip, and ships on NeoForge.
 
 **Other combat mods.** Cortes Combat refuses to load next to a competing combat mod and says
 which one it found. Two mods rewriting the same attack flow desyncs the game, and nothing good
