@@ -331,9 +331,10 @@ class EnchantmentHooksTest {
                 "**Rey de las Moscas no cambia la munición**: sigue gastando Firestone, asi que el "
                         + "jugador tiene que craftear lo mismo y el encantamiento no compra nada");
         // Y el orden: el encantamiento se pregunta ANTES que el componente, porque es lo que el
-        // jugador eligio poner y lo que el tooltip promete.
+        // jugador eligio poner y lo que el tooltip promete. La lectura va por la facade para que
+        // la pata 1.20.1 la traduzca, asi que el guard nombra la puerta y no el mecanismo.
         assertTrue(arcabuz.indexOf("CombatEnchantments.REY_DE_LAS_MOSCAS) > 0")
-                        < arcabuz.indexOf("ModComponents.AMMO_PROFILE"),
+                        < arcabuz.indexOf("WeaponData.ammoProfile"),
                 "**El componente manda sobre el encantamiento**, y seria al reves: un arma que "
                         + "declarara su propia municion y tuviera el encantamiento gastaria la suya "
                         + "y no la que el jugador eligio");

@@ -438,14 +438,26 @@ if (!mc121) {
         // Versiona las reglas: el Sync es up-to-date por contenido de entradas, y un cambio solo
         // en el closure del filter no lo invalida. Sin esto, editar las reglas recompila con el
         // arbol viejo y los errores mienten. (μ_μ)
-        inputs.property('renameRules', 'v6-exclude-payload-twins')
+        inputs.property('renameRules', 'v10-exclude-weapondata')
         // Tres reglas en orden de especificidad, porque el rename 20.1->20.2 no fue un
         // prefijo plano: bus.api cambio de nombre (eventbus) y el `neoforge` del medio se cayo.
         // Un reemplazo ciego de `net.neoforged` produce `net.minecraftforge.neoforge`, que no
         // existe en ninguna version y ensucia el backlog con ruido. (￣ω￣)
         def renameLine = { line -> line.replace('net.neoforged.neoforge.', 'net.minecraftforge.')
                 .replace('net.neoforged.bus.', 'net.minecraftforge.eventbus.')
+                // @EventBusSubscriber es anidada en 1.20.1 (@Mod.EventBusSubscriber, buses FORGE/MOD)
+                // y el import suelto no existe: van ANTES del strip generico porque lo nombran con
+                // el paquete viejo.
+                .replace('import net.neoforged.fml.common.EventBusSubscriber;', 'import net.minecraftforge.fml.common.Mod;')
+                .replace('@EventBusSubscriber(', '@Mod.EventBusSubscriber(')
+                .replace('EventBusSubscriber.Bus.GAME', 'Mod.EventBusSubscriber.Bus.FORGE')
+                .replace('EventBusSubscriber.Bus.MOD', 'Mod.EventBusSubscriber.Bus.MOD')
                 .replace('net.neoforged.', 'net.minecraftforge.')
+                // Los tick events son anidadas en 1.20.1: van DESPUES del strip porque buscan su
+                // forma ya renombrada. Importar la anidada por nombre canonico compila.
+                .replace('net.minecraftforge.event.tick.PlayerTickEvent', 'net.minecraftforge.event.TickEvent.PlayerTickEvent')
+                .replace('net.minecraftforge.event.tick.ServerTickEvent', 'net.minecraftforge.event.TickEvent.ServerTickEvent')
+                .replace('net.minecraftforge.client.event.ClientTickEvent', 'net.minecraftforge.event.TickEvent.ClientTickEvent')
                 // Dos clases que ademas cambiaron de nombre y no solo de paquete: con solo el
                 // prefijo quedarian en un paquete que existe con un nombre que no, que es el
                 // error mas confuso de leer. Estas dos lineas lo convierten en el simbolo que
@@ -464,8 +476,12 @@ if (!mc121) {
                 'com/cortes/combat/platform/EnchantView.java',
                 'com/cortes/combat/platform/ResourceIds.java',
                 'com/cortes/combat/platform/CombatPackets.java',
+                'com/cortes/combat/platform/WeaponData.java',
+                'com/cortes/combat/platform/ModPlatform.java',
                 'com/cortes/combat/config/ClientConfig.java',
                 'com/cortes/combat/config/ServerConfig.java',
+                'com/cortes/combat/registry/ModComponents.java',
+                'com/cortes/combat/registry/ModAttachments.java',
                 'com/cortes/combat/net/ModNetworking.java',
                 'com/cortes/combat/net/SwingPayload.java',
                 'com/cortes/combat/net/GuardInputPayload.java',

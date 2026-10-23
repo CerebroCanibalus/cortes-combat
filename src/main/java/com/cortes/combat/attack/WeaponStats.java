@@ -1,5 +1,7 @@
 package com.cortes.combat.attack;
 
+import com.cortes.combat.platform.WeaponData;
+
 import com.cortes.combat.platform.CombatState;
 
 import com.cortes.combat.core.weapon.ChargeProfile;
@@ -12,7 +14,6 @@ import com.cortes.combat.item.WeaponTables;
 import com.cortes.combat.weaponpack.ResolvedWeapon;
 import com.cortes.combat.weaponpack.WeaponPackSpec;
 import com.cortes.combat.weaponpack.WeaponPackStore;
-import com.cortes.combat.registry.ModComponents;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
 import com.cortes.combat.state.GuardState;
@@ -140,7 +141,7 @@ public final class WeaponStats {
         ResolvedWeapon pack = WeaponPackStore.resolve(stack);
         WeaponProfile profile = readProfile(stack, pack);
 
-        ChargeProfile charge = readOr(stack, ModComponents.CHARGE_PROFILE, null);
+        ChargeProfile charge = WeaponData.chargeProfile(stack);
         if (charge == null) {
             charge = WeaponTables.charge(profile);
             if (pack != null) {
@@ -154,7 +155,7 @@ public final class WeaponStats {
             }
         }
 
-        ReachProfile reach = readOr(stack, ModComponents.REACH_PROFILE, null);
+        ReachProfile reach = WeaponData.reachProfile(stack);
         if (reach == null) {
             ReachProfile base = WeaponTables.reach(profile);
             // Distancia y ángulos son parámetros SEPARADOS (decisión del General): el pack puede
@@ -168,13 +169,13 @@ public final class WeaponStats {
                             ? pack.cone().vertical() : base.verticalAngle());
         }
 
-        SpecialType special = readOr(stack, ModComponents.SPECIAL, null);
+        SpecialType special = WeaponData.special(stack);
         if (special == null) {
             special = pack != null && pack.special() != null ? pack.special()
                     : WeaponTables.special(profile);
         }
 
-        KnockbackProfile knockback = readOr(stack, ModComponents.KNOCKBACK_PROFILE, null);
+        KnockbackProfile knockback = WeaponData.knockbackProfile(stack);
         if (knockback == null) {
             KnockbackProfile base = WeaponTables.knockback(profile);
             if (pack != null && pack.knockback() != null) {
@@ -194,7 +195,7 @@ public final class WeaponStats {
             }
         }
 
-        ReachProfile shotReach = readOr(stack, ModComponents.SHOT_REACH, null);
+        ReachProfile shotReach = WeaponData.shotReach(stack);
         if (shotReach == null) {
             WeaponPackSpec.ShotReach declared = pack == null ? null : pack.shot();
             // El segundo cono, resuelto por las mismas capas que todos los demás números:
@@ -233,7 +234,7 @@ public final class WeaponStats {
     }
 
     private static WeaponProfile readProfile(ItemStack stack, ResolvedWeapon pack) {
-        WeaponProfile explicit = stack.get(ModComponents.WEAPON_PROFILE);
+        WeaponProfile explicit = WeaponData.weaponProfile(stack);
         if (explicit != null) {
             return explicit;
         }
@@ -329,14 +330,6 @@ public final class WeaponStats {
 
     private static TagKey<net.minecraft.world.item.Item> itemTag(String path) {
         return TagKey.create(Registries.ITEM, ResourceLocation.withDefaultNamespace(path));
-    }
-
-    private static <T> T readOr(ItemStack stack,
-                                net.neoforged.neoforge.registries.DeferredHolder<net.minecraft.core.component.DataComponentType<?>,
-                                        net.minecraft.core.component.DataComponentType<T>> holder,
-                                T fallback) {
-        T value = stack.get(holder.get());
-        return value == null ? fallback : value;
     }
 
     /**

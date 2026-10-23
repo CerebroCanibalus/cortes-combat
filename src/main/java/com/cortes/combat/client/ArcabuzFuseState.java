@@ -202,8 +202,8 @@ public final class ArcabuzFuseState {
         // **El estado del arma, leido del arma.** Antes eran dos fuentes -- el componente de la
         // recamara y el contador del paquete -- y por eso la pose se quedaba pegada en la que
         // recordaba. Ahora el componente dice las dos cosas y el paquete solo acelera lo que cambia.
-        com.cortes.combat.state.ArcabuzState st = mc.player.getMainHandItem()
-                .get(com.cortes.combat.registry.ModComponents.ARCABUZ);
+        com.cortes.combat.state.ArcabuzState st =
+                com.cortes.combat.platform.WeaponData.arcabuzState(mc.player.getMainHandItem());
         chamberLatched = (st != null && st.loaded()) || fuseTicks > 0;
     }
 

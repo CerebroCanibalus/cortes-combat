@@ -250,7 +250,7 @@ class SurvivalWiringTest {
     @DisplayName("the balance numbers are registered as a SERVER config")
     void theConfigIsRegistered() {
         String entry = read(ROOT.resolve("java").resolve("com").resolve("cortes").resolve("combat")
-                .resolve("CortesCombat.java"));
+                .resolve("platform").resolve("ModPlatform.java"));
 
         assertTrue(entry.contains("modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC);"),
                 "**without this line `ServerConfig.SPEC.isLoaded()` is always false**, so every "

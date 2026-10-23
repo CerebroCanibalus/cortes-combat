@@ -1,5 +1,7 @@
 package com.cortes.combat.special;
 
+import com.cortes.combat.platform.WeaponData;
+
 import com.cortes.combat.platform.CombatPackets;
 
 import com.cortes.combat.platform.CombatState;
@@ -18,7 +20,6 @@ import com.cortes.combat.net.ArcabuzShotPayload;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.particle.SlashParticles;
 import com.cortes.combat.reach.Reach;
-import com.cortes.combat.registry.ModComponents;
 import com.cortes.combat.registry.ModItems;
 import com.cortes.combat.sound.CombatSounds;
 import com.cortes.combat.sound.ModSounds;
@@ -139,7 +140,7 @@ public final class Arcabuz {
             // Antes eran dos lugares: `light()` iba al attachment y el `remove(ARCABUZ_CHAMBER)` al
             // stack, y de ahi salia el `ARCABUZ_GUN` que anotaba contra que arma iban. Ahora hay un
             // solo objeto de estado y no hay nada que pueda quedar apuntando a otra arma.
-            gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ, state.light(now, fuse));
+            WeaponData.setArcabuzState(gun, state.light(now, fuse));
             // **loaded = true, and that one word is the whole of "apunta hacia abajo".** The
             // firestone is spent from the CHAMBER's point of view at the shot, not at the light:
             // the ball is still in the barrel while the fuse burns, so the loaded pose stays for
@@ -187,8 +188,7 @@ public final class Arcabuz {
             // antes: el `tick` pregunta por el boton del jugador, que es donde vive, y esta recarga
             // solo avanza si lo esta.
             int reloadTotal = reloadTicks(gun, player);
-            gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ,
-                    state.startReload(now, reloadTotal));
+            WeaponData.setArcabuzState(gun, state.startReload(now, reloadTotal));
             // **The press sound is NOT played here, and its absence is the fix.**
             //
             // It used to be, and this is the line that has to go for the reload to be able to
@@ -309,7 +309,7 @@ public final class Arcabuz {
 
     /** El estado del arcabuz que hay en ese stack. <b>Ausente = un arma recien salida de la caja.</b> */
     private static ArcabuzState state(ItemStack gun) {
-        ArcabuzState found = gun.get(com.cortes.combat.registry.ModComponents.ARCABUZ);
+        ArcabuzState found = WeaponData.arcabuzState(gun);
         return found == null ? ArcabuzState.EMPTY : found;
     }
 
@@ -392,7 +392,7 @@ public final class Arcabuz {
                 CombatEnchantments.REY_DE_LAS_MOSCAS) > 0) {
             return AmmoProfile.of(ROTTEN_FLESH_AMMO, 1);
         }
-        AmmoProfile declared = weapon.get(com.cortes.combat.registry.ModComponents.AMMO_PROFILE);
+        AmmoProfile declared = WeaponData.ammoProfile(weapon);
         return declared == null ? AmmoProfile.firestone() : declared;
     }
 
@@ -463,7 +463,7 @@ public final class Arcabuz {
             // el componente del stack: un arma que no esta en la mano no se tickea, asi que su mecha
             // no dispara aca. Antes esto necesitaba un `shouldSnuff` y una comparacion de identidad
             // para preguntar "¿esta es la que encendio?"; ahora la pregunta no existe.
-            gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ, state.afterShot());
+            WeaponData.setArcabuzState(gun, state.afterShot());
             // El cliente tiene que bajar la mecha: la pose cargada dura lo que duro la combustion.
             ModNetworking.sendArcabuzFuse(player, false, 0, false, 0);
             if (player.level() instanceof ServerLevel server) {
@@ -485,7 +485,7 @@ public final class Arcabuz {
             // bajando el cañon y volveria sola, por una recarga que ya no existe.
             LOG.info("[arcabuz] recarga CANCELADA (boton soltado en {} de {})",
                     state.reloadTotal() - state.reloadLeft(now), state.reloadTotal());
-            gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ, state.cancelReload());
+            WeaponData.setArcabuzState(gun, state.cancelReload());
             ModNetworking.sendArcabuzFuse(player, false, 0, false, 0);
             return;
         }
@@ -509,13 +509,13 @@ public final class Arcabuz {
             // **Cobrar y cargar son la misma linea, y sobre el mismo objeto.** Cuando la recamara era
             // un componente aparte de una bandera en el attachment del jugador, "cobre y no cargo"
             // era un estado alcanzable que el jugador no podia leer.
-            gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ, state.finished());
+            WeaponData.setArcabuzState(gun, state.finished());
             AttackCooldown.consume(player, AttackCooldown.intervalFor(player));
             CombatSounds.play(server, player, WeaponProfile.ARCABUZ, ModSounds.Kind.LOADED);
             ModNetworking.sendArcabuzFuse(player, false, 0, true, 0);
             trace(player, state, "cargada");
         } else {
-            gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ, state.cancelReload());
+            WeaponData.setArcabuzState(gun, state.cancelReload());
             ModNetworking.sendArcabuzFuse(player, false, 0, false, 0);
         }
     }

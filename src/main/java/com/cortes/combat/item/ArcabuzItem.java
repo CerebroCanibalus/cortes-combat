@@ -3,7 +3,6 @@ package com.cortes.combat.item;
 import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.registry.ArcabuzTier;
-import com.cortes.combat.registry.ModComponents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.SwordItem;
 
@@ -62,13 +61,10 @@ public final class ArcabuzItem extends SwordItem {
      * cone without the display code knowing anything about which weapon is special.</p>
      */
     public static Item.Properties properties() {
-        return new Item.Properties()
+        return com.cortes.combat.platform.WeaponData.tagArcabuz(new Item.Properties()
                 .durability(ArcabuzStats.USES)
                 .attributes(SwordItem.createAttributes(ArcabuzTier.INSTANCE,
-                        ArcabuzStats.DAMAGE, ArcabuzStats.SPEED_OFFSET))
-                .component(ModComponents.WEAPON_PROFILE.get(), WeaponProfile.ARCABUZ)
-                .component(ModComponents.SHOT_REACH.get(), WeaponTables.shotReach(WeaponProfile.ARCABUZ))
-                .component(ModComponents.GUARD_PROFILE.get(), GuardProfile.NONE);
+                        ArcabuzStats.DAMAGE, ArcabuzStats.SPEED_OFFSET)));
     }
 
     /** The one and only way an item of this kind is built. */

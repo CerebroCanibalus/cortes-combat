@@ -2,7 +2,6 @@ package com.cortes.combat.client;
 
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.core.weapon.WeaponProfile;
-import com.cortes.combat.registry.ModComponents;
 import com.cortes.combat.viewmodel.Channel;
 import com.cortes.combat.viewmodel.Offset;
 import com.cortes.combat.viewmodel.ViewModelDefaults;
@@ -618,7 +617,7 @@ public final class ItemViewModel {
             // in the game.
             return ViewModelDefaults.of(WeaponProfile.UNARMED);
         }
-        ViewModelProfile own = stack.get(ModComponents.VIEWMODEL_PROFILE.get());
+        ViewModelProfile own = com.cortes.combat.platform.WeaponData.viewmodelProfile(stack);
         if (cachedProfile != null
                 && cachedItem == stack.getItem()
                 && cachedComponent == own) {

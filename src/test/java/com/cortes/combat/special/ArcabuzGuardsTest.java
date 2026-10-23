@@ -62,9 +62,10 @@ class ArcabuzGuardsTest {
                         + "sintomas");
         assertFalse(arcabuz.contains("player.getData(ModAttachments.ARCABUZ.get())"),
                 "ni el arcabuz debe leer el estado del jugador: lo lee del stack en la mano");
-        assertTrue(arcabuz.contains("gun.set(com.cortes.combat.registry.ModComponents.ARCABUZ"),
+        assertTrue(arcabuz.contains("WeaponData.setArcabuzState(gun,"),
                 "y lo escribe en ESE stack, que es la mitad que hace que un arma fuera de la mano no "
-                        + "tenga estado en ningun lado");
+                        + "tenga estado en ningun lado. La escritura va por la facade para que la "
+                        + "pata 1.20.1 la traduzca a NBT sin tocar este archivo");
     }
 
     @Test

@@ -1,7 +1,7 @@
 package com.cortes.combat.guard;
 
 import com.cortes.combat.core.weapon.GuardProfile;
-import com.cortes.combat.registry.ModComponents;
+import com.cortes.combat.platform.WeaponData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.SwordItem;
@@ -32,7 +32,7 @@ public final class GuardStats {
     }
 
     public static GuardProfile of(ItemStack stack) {
-        GuardProfile component = stack.get(ModComponents.GUARD_PROFILE);
+        GuardProfile component = WeaponData.guardProfile(stack);
         if (component != null) {
             return component;
         }

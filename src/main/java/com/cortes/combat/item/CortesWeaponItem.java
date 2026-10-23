@@ -3,7 +3,6 @@ package com.cortes.combat.item;
 import com.cortes.combat.core.weapon.WeaponMaterial;
 import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.registry.CortesTier;
-import com.cortes.combat.registry.ModComponents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
@@ -53,11 +52,9 @@ public final class CortesWeaponItem extends SwordItem {
      * and the profile component is ours.</p>
      */
     public static Item.Properties propertiesFor(WeaponFamily family, WeaponMaterial material) {
-        return new Item.Properties()
+        return com.cortes.combat.platform.WeaponData.tagWeapon(new Item.Properties()
                 .durability(CortesTier.of(material).getUses())
-                .attributes(attributesFor(family, material))
-                .component(ModComponents.WEAPON_PROFILE.get(), family.profile())
-                .component(ModComponents.GUARD_PROFILE.get(), family.guard());
+                .attributes(attributesFor(family, material)), family);
     }
 
     private static ItemAttributeModifiers attributesFor(WeaponFamily family, WeaponMaterial material) {

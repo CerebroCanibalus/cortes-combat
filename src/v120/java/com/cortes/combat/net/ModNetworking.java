@@ -12,7 +12,6 @@ import com.cortes.combat.platform.ResourceIds;
 import com.cortes.combat.state.SyncState;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
@@ -22,18 +21,18 @@ import net.minecraftforge.network.simple.SimpleChannel;
  * The 1.20.1 twin of the network registry: one {@code SimpleChannel} instead of payload
  * registrations, same 14 messages, same handlers, same send helpers.
  *
- * <p><b>Registration rides the mod bus like everything else.</b> The shared
+ * <p><b>Registration rides the mod bus through the shared constructor call.</b> The shared
  * {@code CortesCombat} constructor calls {@code modEventBus.addListener(ModNetworking::register)}
  * on both legs; here that method takes the 1.20.1 setup event instead of the 1.21.1 payload
  * event, and each leg resolves the same call site to its own loader. No shared line knows
- * which version it compiled against. (⌒‿⌒)</p>
+ * which version it compiled against, and there is exactly one registration path (no
+ * self-registration here) so a message can never be registered twice. (⌒‿⌒)</p>
  *
  * <p>Every handler ends with {@code setPacketHandled(true)} and runs game logic inside
  * {@code enqueueWork}: a 1.20.1 channel handler runs on the network thread, and the camera-shake
  * lesson (touching client state from the wrong thread makes the effect silently vanish) applies
  * to the server thread the same way.</p>
  */
-@Mod.EventBusSubscriber(modid = CortesCombat.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class ModNetworking {
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(

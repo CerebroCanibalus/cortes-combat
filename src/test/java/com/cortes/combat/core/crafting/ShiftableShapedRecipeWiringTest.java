@@ -60,7 +60,7 @@ class ShiftableShapedRecipeWiringTest {
     @Test
     @DisplayName("the serializer is registered from the mod's constructor")
     void theSerializerIsRegisteredAtStartup() {
-        String mod = read(MAIN.resolve("CortesCombat.java"));
+        String mod = read(MAIN.resolve("platform").resolve("ModPlatform.java"));
 
         assertTrue(mod.contains("ShiftableShapedRecipe.ModRecipes.register(modEventBus)"),
                 "**This is the whole test.** The serializer has to reach the mod event bus, and the "

@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p><b>Both rules are about where a thing is written, and nothing at runtime can observe where a
  * thing was written.</b> A {@code ResourceLocation} built inline and one built through
- * {@link com.cortes.combat.CortesCombat#rl} are the same object; a rule about the pure packages
+ * {@link com.cortes.combat.platform.ResourceIds#rl} are the same object; a rule about the pure packages
  * returning a correct number is not evidence that the package stayed pure. So the question has to be
  * asked of the source the game is compiled from, the same way {@code ReactorWiringTest} asks about
  * its wires.</p>
@@ -140,7 +140,7 @@ class PortabilityGuardsTest {
         }
         assertTrue(offenders.isEmpty(),
                 "**estos archivos construyen un ResourceLocation a mano**: " + offenders
-                        + " -- usa CortesCombat.rl(path). La fábrica acoplada a la versión tiene que "
+                        + " -- usa ResourceIds.rl(path). La fabrica acoplada a la version tiene que "
                         + "estar en un solo archivo o cada bump de Minecraft la vuelve a cobrar");
     }
 
@@ -192,7 +192,7 @@ class PortabilityGuardsTest {
      * one file a port rewrites -- and this guard is what keeps it that way.</p>
      *
      * <p><b>Three files are allowed because three jobs exist.</b> {@code ModAttachments} defines the
-     * types, {@code CortesCombat} registers them against the mod bus, and {@code CombatState} is the
+     * types, {@code ModPlatform} registers them against the mod bus, and {@code CombatState} is the
      * only door anyone walks through. A fourth file naming either the registry or the
      * {@code getData}/{@code setData} verbs is a call site that went around the facade, and the next
      * version bump collects it with interest.</p>
@@ -207,7 +207,7 @@ class PortabilityGuardsTest {
         for (Path path : sources()) {
             String name = path.getFileName().toString();
             if (name.equals("CombatState.java") || name.equals("ModAttachments.java")
-                    || name.equals("CortesCombat.java")) {
+                    || name.equals("ModPlatform.java")) {
                 continue;
             }
             String code = stripComments(read(path));
