@@ -1,5 +1,7 @@
 package com.cortes.combat.data;
 
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.CortesCombat;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -34,7 +36,7 @@ public final class NetherReactorLoot implements DataProvider {
 
     @Override
     public CompletableFuture<?> run(CachedOutput cached) {
-        ResourceLocation block = CortesCombat.rl("nether_reactor");
+        ResourceLocation block = ResourceIds.rl("nether_reactor");
 
         JsonObject explosion = new JsonObject();
         explosion.addProperty("condition", "minecraft:survives_explosion");

@@ -1,6 +1,7 @@
 package com.cortes.combat.net;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -37,7 +38,7 @@ public record SwingPayload(int entityId, boolean pressed) implements CustomPacke
     public static final int NO_TARGET = 0;
 
     public static final Type<SwingPayload> TYPE = new Type<>(
-            CortesCombat.rl("swing"));
+            ResourceIds.rl("swing"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, SwingPayload> STREAM_CODEC =
             StreamCodec.composite(

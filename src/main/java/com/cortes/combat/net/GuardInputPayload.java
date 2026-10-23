@@ -1,6 +1,7 @@
 package com.cortes.combat.net;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -17,7 +18,7 @@ import net.minecraft.resources.ResourceLocation;
 public record GuardInputPayload(boolean holding) implements CustomPacketPayload {
 
     public static final Type<GuardInputPayload> TYPE = new Type<>(
-            CortesCombat.rl("guard_input"));
+            ResourceIds.rl("guard_input"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, GuardInputPayload> STREAM_CODEC =
             StreamCodec.composite(

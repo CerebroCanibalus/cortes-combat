@@ -1,6 +1,7 @@
 package com.cortes.combat.net;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -22,7 +23,7 @@ import net.minecraft.world.item.ItemStack;
 public record SpecialPayload(ItemStack stack) implements CustomPacketPayload {
 
     public static final Type<SpecialPayload> TYPE = new Type<>(
-            CortesCombat.rl("special"));
+            ResourceIds.rl("special"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, SpecialPayload> STREAM_CODEC =
             StreamCodec.composite(

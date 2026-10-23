@@ -46,11 +46,13 @@ class PortabilityGuardsTest {
     /**
      * The file allowed to name the version-coupled factory, and the only one.
      *
-     * <p>It is the file that holds {@code rl()}. Anything else naming it is a call site that will
-     * cost an edit on the next version bump, which is the whole thing this guard exists to stop.
+     * <p>It is the file that holds {@code rl()}: {@code platform/ResourceIds}, in one body per
+     * leg (shared tree = 1.21.1 spelling, {@code src/v120} twin = 1.20.1 spelling, which this
+     * guard never scans). Anything else naming the factory is a call site that will cost an
+     * edit on the next version bump, which is the whole thing this guard exists to stop.
      * (μ_μ)</p>
      */
-    private static final String FACADE_FILE = "CortesCombat.java";
+    private static final String FACADE_FILE = "ResourceIds.java";
 
     /**
      * Packages with zero Minecraft imports today, asserted to stay that way.
@@ -250,5 +252,38 @@ class PortabilityGuardsTest {
                 "**estos archivos llaman a EnchantmentHelper por fuera de la facade**: " + offenders
                         + " -- usa EnchantView. El helper cambia por version y el call site no "
                         + "deberia nombrarlo");
+    }
+
+    /**
+     * <b>No version conditions inline, and this is a deliberate limitation of the setup.</b>
+     *
+     * <p>Stonecutter's {@code //?} markers only take effect where a leg processes them. The 1.21.1
+     * leg chisels (processes) its tree; the 1.20.1 leg compiles a Sync-renamed copy that no
+     * condition processing ever touches. An inline branch would therefore compile <em>both</em>
+     * sides on 1.20.1 -- the 1.21.1 spelling first, which does not exist there -- and the failure
+     * would arrive as a confusing compile error instead of a clear rule.</p>
+     *
+     * <p>So version differences live in whole files: the shared twin under {@code src/main} and
+     * the 1.20.1 body at the same path under {@code src/v120}, picked by the leg's source set
+     * wiring. A file that needs a branch and cannot be a facade is a design smell, not a reason
+     * for an inline condition. (￣ω￣)</p>
+     *
+     * <p><b>Sabotage to verify:</b> write a {@code //? if} line into any gameplay file and this
+     * names it. (¬‿¬)</p>
+     */
+    @Test
+    @DisplayName("no inline version conditions; branches live in whole files")
+    void noInlineVersionConditions() {
+        List<String> offenders = new ArrayList<>();
+        for (Path path : sources()) {
+            String code = read(path);
+            if (code.contains("//?") || code.contains("//$") || code.contains("//~")) {
+                offenders.add(relative(path));
+            }
+        }
+        assertTrue(offenders.isEmpty(),
+                "**estos archivos traen condiciones de version inline**: " + offenders + " -- la "
+                        + "pata 1.20.1 no las procesa y compilaria las dos ramas. La diferencia va "
+                        + "en un archivo entero bajo src/v120, nunca en un comentario");
     }
 }

@@ -1,6 +1,7 @@
 package com.cortes.combat.client;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.entity.AntimatterOrb;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -25,7 +26,7 @@ import net.minecraft.resources.ResourceLocation;
  */
 public class AntimatterOrbRenderer extends EntityRenderer<AntimatterOrb> {
 
-    private static final ResourceLocation TEXTURE = CortesCombat.rl("textures/particle/purified_effect.png");
+    private static final ResourceLocation TEXTURE = ResourceIds.rl("textures/particle/purified_effect.png");
 
     public AntimatterOrbRenderer(EntityRendererProvider.Context context) {
         super(context);

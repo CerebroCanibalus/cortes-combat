@@ -1,6 +1,7 @@
 package com.cortes.combat.effect;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.particle.PurifiedParticles;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -57,7 +58,7 @@ public class PurificationEffect extends MobEffect {
         super(MobEffectCategory.HARMFUL, 0x4AA0A0);
         addAttributeModifier(
                 Attributes.ATTACK_DAMAGE,
-                CortesCombat.rl("purification_damage"),
+                ResourceIds.rl("purification_damage"),
                 DAMAGE_CUT,
                 AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
     }

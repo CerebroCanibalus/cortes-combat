@@ -1,6 +1,7 @@
 package com.cortes.combat.effect;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
@@ -40,7 +41,7 @@ public class VampiricEffect extends MobEffect {
     /** Diez segundos, iguales en los cuatro niveles. */
     public static final int DURATION_TICKS = 200;
 
-    private static final ResourceLocation MODIFIER = CortesCombat.rl("vampiric");
+    private static final ResourceLocation MODIFIER = ResourceIds.rl("vampiric");
 
     public VampiricEffect() {
         super(MobEffectCategory.BENEFICIAL, 0x9B1B3A);

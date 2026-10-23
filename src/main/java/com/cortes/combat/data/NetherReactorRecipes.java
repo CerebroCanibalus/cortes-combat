@@ -1,5 +1,7 @@
 package com.cortes.combat.data;
 
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.crafting.ShiftableShapedRecipe;
 import com.cortes.combat.registry.ModBlocks;
@@ -76,7 +78,7 @@ public final class NetherReactorRecipes implements DataProvider {
                     "", CraftingBookCategory.REDSTONE, pattern,
                     new ItemStack(ModBlocks.NETHER_REACTOR_ITEM.get()), true);
 
-            ResourceLocation id = CortesCombat.rl("nether_reactor");
+            ResourceLocation id = ResourceIds.rl("nether_reactor");
             return CompletableFuture.allOf(
                     recipe(cached, provider, id, recipe),
                     advancement(cached, provider, id));

@@ -1,6 +1,7 @@
 package com.cortes.combat.client;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import net.minecraft.client.gui.GuiGraphics;
@@ -94,6 +95,6 @@ public final class ChargeBar {
     }
 
     private static ResourceLocation sprite(String name) {
-        return CortesCombat.rl("textures/gui/sprites/hud/" + name + ".png");
+        return ResourceIds.rl("textures/gui/sprites/hud/" + name + ".png");
     }
 }

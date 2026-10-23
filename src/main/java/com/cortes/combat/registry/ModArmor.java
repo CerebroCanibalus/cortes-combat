@@ -1,5 +1,7 @@
 package com.cortes.combat.registry;
 
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.gear.CopperGear;
 import com.cortes.combat.core.weapon.WeaponMaterial;
@@ -66,7 +68,7 @@ public final class ModArmor {
                     SoundEvents.ARMOR_EQUIP_IRON,
                     () -> Ingredient.of(Items.COPPER_INGOT),
                     List.of(new ArmorMaterial.Layer(
-                            CortesCombat.rl("copper"))),
+                            ResourceIds.rl("copper"))),
                     0.0F,
                     0.0F));
 

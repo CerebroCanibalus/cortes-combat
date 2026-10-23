@@ -1,5 +1,7 @@
 package com.cortes.combat.data;
 
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.CortesCombat;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -41,7 +43,7 @@ public final class FirestoneBlockLoot implements DataProvider {
 
     @Override
     public CompletableFuture<?> run(CachedOutput cached) {
-        ResourceLocation block = CortesCombat.rl("firestone_block");
+        ResourceLocation block = ResourceIds.rl("firestone_block");
 
         JsonObject explosion = new JsonObject();
         explosion.addProperty("condition", "minecraft:survives_explosion");

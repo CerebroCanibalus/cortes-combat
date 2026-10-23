@@ -1,5 +1,7 @@
 package com.cortes.combat.data;
 
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.registry.ModItems;
 import net.minecraft.advancements.Advancement;
@@ -78,7 +80,7 @@ public final class FirestoneRecipes implements DataProvider {
             ingredients.add(Ingredient.of(Items.GUNPOWDER));
             ingredients.add(Ingredient.of(Items.GLOWSTONE_DUST));
 
-            ResourceLocation id = CortesCombat.rl("firestone");
+            ResourceLocation id = ResourceIds.rl("firestone");
             ShapelessRecipe recipe = new ShapelessRecipe(
                     "", CraftingBookCategory.MISC,
                     new ItemStack(ModItems.FIRESTONE.get(), 2), ingredients);

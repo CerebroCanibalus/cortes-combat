@@ -1,6 +1,7 @@
 package com.cortes.combat.client;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.config.ClientConfig;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.DeltaTracker;
@@ -20,7 +21,7 @@ import net.minecraft.resources.ResourceLocation;
  */
 public class DamageOverlayLayer implements LayeredDraw.Layer {
 
-    private static final ResourceLocation OVERLAY = CortesCombat.rl("textures/gui/damage_overlay.png");
+    private static final ResourceLocation OVERLAY = ResourceIds.rl("textures/gui/damage_overlay.png");
 
     /** Health below this starts the vignette. */
     private static final float FADE_START_HEALTH = 14.0F;

@@ -1,6 +1,7 @@
 package com.cortes.combat.item;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.core.weapon.WeaponProfile;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -63,6 +64,6 @@ public final class WeaponProfileTags {
     /** The tag that selects {@code profile}'s mould. */
     public static TagKey<Item> profileTag(WeaponProfile profile) {
         return TagKey.create(Registries.ITEM,
-                CortesCombat.rl(profile.tagPath()));
+                ResourceIds.rl(profile.tagPath()));
     }
 }

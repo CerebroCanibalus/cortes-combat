@@ -1,6 +1,7 @@
 package com.cortes.combat.net;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -28,7 +29,7 @@ public record DelayedSoundPayload(String sound, float pitch, int delayTicks)
         implements CustomPacketPayload {
 
     public static final Type<DelayedSoundPayload> TYPE = new Type<>(
-            CortesCombat.rl("delayed_sound"));
+            ResourceIds.rl("delayed_sound"));
 
     public static final StreamCodec<ByteBuf, DelayedSoundPayload> STREAM_CODEC =
             StreamCodec.composite(

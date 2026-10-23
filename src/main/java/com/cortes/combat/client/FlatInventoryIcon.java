@@ -1,6 +1,7 @@
 package com.cortes.combat.client;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 
 import java.util.Map;
 
@@ -93,7 +94,7 @@ public final class FlatInventoryIcon {
     // ("Side-loaded models must use the 'standalone' variant") -- and this is the file that
     // threw it the first time the listener below was actually wired.
     private static final ModelResourceLocation ICON = ModelResourceLocation.standalone(
-            CortesCombat.rl("arcabuz_icon"));
+            ResourceIds.rl("arcabuz_icon"));
 
     /**
      * Ask for the icon, because nothing else does.

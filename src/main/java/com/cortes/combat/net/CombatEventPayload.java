@@ -1,6 +1,7 @@
 package com.cortes.combat.net;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -57,7 +58,7 @@ public record CombatEventPayload(int entityId, Kind kind, float charge, int dura
     }
 
     public static final Type<CombatEventPayload> TYPE = new Type<>(
-            CortesCombat.rl("combat_event"));
+            ResourceIds.rl("combat_event"));
 
     /**
      * The kind, on one byte, and <b>out of range is {@link Kind#CANCEL}</b>.

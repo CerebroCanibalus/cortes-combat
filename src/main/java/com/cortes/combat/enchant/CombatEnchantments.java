@@ -1,6 +1,7 @@
 package com.cortes.combat.enchant;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
@@ -205,7 +206,7 @@ public final class CombatEnchantments {
 
     private static ResourceKey<Enchantment> key(String id) {
         return ResourceKey.create(Registries.ENCHANTMENT,
-                CortesCombat.rl(id));
+                ResourceIds.rl(id));
     }
 
     private CombatEnchantments() {

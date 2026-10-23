@@ -1,6 +1,7 @@
 package com.cortes.combat.client;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.entity.MobCloud;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -33,7 +34,7 @@ import net.minecraft.resources.ResourceLocation;
  */
 public class MobCloudRenderer extends EntityRenderer<MobCloud> {
 
-    private static final ResourceLocation TEXTURE = CortesCombat.rl("textures/particle/mosca.png");
+    private static final ResourceLocation TEXTURE = ResourceIds.rl("textures/particle/mosca.png");
 
     public MobCloudRenderer(EntityRendererProvider.Context context) {
         super(context);

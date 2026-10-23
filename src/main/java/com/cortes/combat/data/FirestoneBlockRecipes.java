@@ -1,5 +1,7 @@
 package com.cortes.combat.data;
 
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.crafting.ShiftableShapedRecipe;
 import com.cortes.combat.registry.ModBlocks;
@@ -86,7 +88,7 @@ public final class FirestoneBlockRecipes implements DataProvider {
                 "", CraftingBookCategory.BUILDING, pattern,
                 new ItemStack(ModBlocks.FIRESTONE_BLOCK.get()), true);
 
-        ResourceLocation id = CortesCombat.rl("firestone_block");
+        ResourceLocation id = ResourceIds.rl("firestone_block");
         return CompletableFuture.allOf(
                 recipe(cached, registries, id, recipe),
                 advancement(cached, registries, id,
@@ -103,7 +105,7 @@ public final class FirestoneBlockRecipes implements DataProvider {
                 "", CraftingBookCategory.MISC,
                 new ItemStack(ModItems.FIRESTONE.get(), 9), ingredients);
 
-        ResourceLocation id = CortesCombat.rl("firestone_from_block");
+        ResourceLocation id = ResourceIds.rl("firestone_from_block");
         return CompletableFuture.allOf(
                 recipe(cached, registries, id, recipe),
                 advancement(cached, registries, id,

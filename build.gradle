@@ -434,7 +434,7 @@ if (!mc121) {
         // Versiona las reglas: el Sync es up-to-date por contenido de entradas, y un cambio solo
         // en el closure del filter no lo invalida. Sin esto, editar las reglas recompila con el
         // arbol viejo y los errores mienten. (μ_μ)
-        inputs.property('renameRules', 'v2-strip-neoforge-bus-eventbus')
+        inputs.property('renameRules', 'v3-exclude-v120-twins')
         // Tres reglas en orden de especificidad, porque el rename 20.1->20.2 no fue un
         // prefijo plano: bus.api cambio de nombre (eventbus) y el `neoforge` del medio se cayo.
         // Un reemplazo ciego de `net.neoforged` produce `net.minecraftforge.neoforge`, que no
@@ -444,9 +444,18 @@ if (!mc121) {
                 .replace('net.neoforged.', 'net.minecraftforge.')
                 .replace('JAVA_21', 'JAVA_17') }
         // Root-anchored: the leg's CWD is versions/1.20.1, which has no src of its own.
+        //
+        // Los gemelos con cuerpo v120 NO se copian: el exclude va en el Sync y no en el
+        // sourceSet, porque un exclude del sourceSet pega en TODOS los srcDirs -- incluido
+        // src/v120, que es justo el que trae el reemplazo -- y la pata compila sin el paquete
+        // entero, con un error que apunta a los importadores y no a la causa. (￣ω￣)
+        def v120Replaces = ['com/cortes/combat/platform/CombatState.java',
+                'com/cortes/combat/platform/EnchantView.java',
+                'com/cortes/combat/platform/ResourceIds.java']
         into('java') {
             from(rootProject.file('src/main/java')) {
                 include '**/*.java'
+                exclude v120Replaces
                 filter(renameLine)
             }
         }
@@ -473,9 +482,15 @@ if (!mc121) {
     // script on purpose: setSrcDirs replaces, so it must run after every srcDir above.
     // `build/forgeSrc` stays leg-relative (it IS a build output); generated data and expanded
     // metadata are root-anchored because they live in the shared tree.
+    //
+    // Files with a 1.20.1-native body live in src/v120 and REPLACE their shared twin, which the
+    // Sync above already excluded from the renamed copy. v120 sources are 1.20.1-native
+    // (net.minecraftforge imports) and never pass through renameForgeSources.
     sourceSets.main.java.setSrcDirs([layout.buildDirectory.dir('forgeSrc/java').get().asFile])
+    sourceSets.main.java.srcDir(rootProject.file('src/v120/java'))
     sourceSets.main.resources.setSrcDirs([layout.buildDirectory.dir('forgeSrc/resources').get().asFile,
             rootProject.file('src/generated/resources'), generateModMetadata])
+    sourceSets.main.resources.srcDir(rootProject.file('src/v120/resources'))
     tasks.named('compileJava', JavaCompile).configure {
         dependsOn(forgeSrc)
     }

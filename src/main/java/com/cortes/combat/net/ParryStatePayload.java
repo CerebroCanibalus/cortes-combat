@@ -1,6 +1,7 @@
 package com.cortes.combat.net;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -27,7 +28,7 @@ import net.minecraft.resources.ResourceLocation;
 public record ParryStatePayload(boolean active, int cooldown) implements CustomPacketPayload {
 
     public static final Type<ParryStatePayload> TYPE = new Type<>(
-            CortesCombat.rl("parry_state"));
+            ResourceIds.rl("parry_state"));
 
     public static final StreamCodec<ByteBuf, ParryStatePayload> STREAM_CODEC =
             StreamCodec.composite(

@@ -1,5 +1,7 @@
 package com.cortes.combat.data;
 
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.weapon.WeaponMaterial;
 import com.cortes.combat.item.WeaponFamily;
@@ -105,7 +107,7 @@ public class CortesRecipeProvider implements DataProvider {
 
     private CompletableFuture<?> write(CachedOutput cached, HolderLookup.Provider registries,
                                        WeaponFamily family, WeaponMaterial material) {
-        ResourceLocation id = CortesCombat.rl(family.itemName(material));
+        ResourceLocation id = ResourceIds.rl(family.itemName(material));
         Item result = ModItems.weapon(family.itemName(material)).get();
 
         Map<Character, Ingredient> key = new LinkedHashMap<>();

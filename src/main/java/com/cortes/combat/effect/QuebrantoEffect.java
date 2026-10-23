@@ -1,6 +1,7 @@
 package com.cortes.combat.effect;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 
 import com.cortes.combat.enchant.CombatEnchantRules;
 import net.minecraft.core.Holder;
@@ -45,7 +46,7 @@ public class QuebrantoEffect extends MobEffect {
     /** Tres stacks: veinticuatro por ciento con el efecto al máximo. */
     public static final int MAX_STACKS = 3;
 
-    private static final ResourceLocation MODIFIER = CortesCombat.rl("quebranto");
+    private static final ResourceLocation MODIFIER = ResourceIds.rl("quebranto");
 
     public QuebrantoEffect() {
         super(MobEffectCategory.HARMFUL, 0x5A4A2A);

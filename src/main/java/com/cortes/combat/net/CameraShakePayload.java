@@ -1,6 +1,7 @@
 package com.cortes.combat.net;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -43,7 +44,7 @@ public record CameraShakePayload(double x, double y, double z, float degrees, in
         implements CustomPacketPayload {
 
     public static final Type<CameraShakePayload> TYPE = new Type<>(
-            CortesCombat.rl("camera_shake"));
+            ResourceIds.rl("camera_shake"));
 
     public static final StreamCodec<ByteBuf, CameraShakePayload> STREAM_CODEC =
             StreamCodec.composite(

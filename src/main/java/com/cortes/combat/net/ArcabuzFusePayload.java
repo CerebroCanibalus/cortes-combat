@@ -1,6 +1,7 @@
 package com.cortes.combat.net;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -43,7 +44,7 @@ public record ArcabuzFusePayload(boolean lit, int fuseTicks, boolean loaded, int
         implements CustomPacketPayload {
 
     public static final Type<ArcabuzFusePayload> TYPE = new Type<>(
-            CortesCombat.rl("arcabuz_fuse"));
+            ResourceIds.rl("arcabuz_fuse"));
 
     public static final StreamCodec<ByteBuf, ArcabuzFusePayload> STREAM_CODEC =
             StreamCodec.composite(

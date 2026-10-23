@@ -1,5 +1,7 @@
 package com.cortes.combat.data;
 
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.weapon.WeaponMaterial;
 import com.cortes.combat.core.weapon.WeaponProfile;
@@ -205,7 +207,7 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
     private void categoryTags() {
         for (String type : com.cortes.combat.weaponpack.ArchetypeSpec.builtins().keySet()) {
             tag(TagKey.create(Registries.ITEM,
-                    CortesCombat.rl("category/" + type)));
+                    ResourceIds.rl("category/" + type)));
         }
     }
 
@@ -381,7 +383,7 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
     /** Un tag de encantamiento nuestro, por id. */
     private static TagKey<Item> own(String path) {
         return TagKey.create(Registries.ITEM,
-                CortesCombat.rl(path));
+                ResourceIds.rl(path));
     }
 
     /**

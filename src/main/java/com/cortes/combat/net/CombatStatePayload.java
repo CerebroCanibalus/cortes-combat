@@ -1,6 +1,7 @@
 package com.cortes.combat.net;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -30,7 +31,7 @@ public record CombatStatePayload(float chargeRatio, float cooldownRatio, int gua
         implements CustomPacketPayload {
 
     public static final Type<CombatStatePayload> TYPE = new Type<>(
-            CortesCombat.rl("combat_state"));
+            ResourceIds.rl("combat_state"));
 
     /**
      * <p><b>Seis componentes, que es el techo de {@code StreamCodec.composite} en 1.21.1.</b> El

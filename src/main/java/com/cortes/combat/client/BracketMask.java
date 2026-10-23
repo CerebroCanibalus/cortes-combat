@@ -1,6 +1,7 @@
 package com.cortes.combat.client;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import com.mojang.blaze3d.platform.NativeImage;
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,7 +45,7 @@ final class BracketMask {
     record Run(int leftX, int rightX, int y, int width, int alpha) {
     }
 
-    private static final ResourceLocation TEXTURE = CortesCombat.rl("textures/gui/sprites/hud/cooldown_corchetes.png");
+    private static final ResourceLocation TEXTURE = ResourceIds.rl("textures/gui/sprites/hud/cooldown_corchetes.png");
 
     /** Below this there is no ink. 21x15 art with a hard edge, so the test is generous. */
     private static final int ALPHA_FLOOR = 16;

@@ -1,6 +1,7 @@
 package com.cortes.combat.net;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.core.CombatFeedback;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -22,7 +23,7 @@ import net.minecraft.resources.ResourceLocation;
 public record CombatFeedbackPayload(CombatFeedback kind) implements CustomPacketPayload {
 
     public static final Type<CombatFeedbackPayload> TYPE = new Type<>(
-            CortesCombat.rl("combat_feedback"));
+            ResourceIds.rl("combat_feedback"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, CombatFeedbackPayload> STREAM_CODEC =
             StreamCodec.composite(

@@ -1,5 +1,7 @@
 package com.cortes.combat.data;
 
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.crafting.ShiftableShapedRecipe;
 import com.cortes.combat.core.gear.CopperGear;
@@ -123,7 +125,7 @@ public final class CopperGearRecipes implements DataProvider {
         ShapedRecipe recipe = new ShiftableShapedRecipe(
                 "", CraftingBookCategory.EQUIPMENT, pattern, new ItemStack(result), true);
 
-        ResourceLocation id = CortesCombat.rl(name);
+        ResourceLocation id = ResourceIds.rl(name);
         // DATA_PACK and `"recipe"` singular: the two silent failures this project has paid for. A
         // recipe written under assets/ or under `recipes/` is a file the game never reads.
         return CompletableFuture.allOf(

@@ -1,5 +1,7 @@
 package com.cortes.combat.client;
 
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.config.ClientConfig;
 import com.cortes.combat.client.ArcabuzModelProperties;
@@ -173,14 +175,14 @@ public class CortesCombatClient {
     }
 
     private static void registerLayers(RegisterGuiLayersEvent event) {
-        event.registerBelowAll(CortesCombat.rl("damage_overlay"),
+        event.registerBelowAll(ResourceIds.rl("damage_overlay"),
                 new DamageOverlayLayer());
         event.replaceLayer(VanillaGuiLayers.CROSSHAIR, new CombatCrosshairLayer());
         event.registerAbove(VanillaGuiLayers.CROSSHAIR,
-                CortesCombat.rl("cooldown_brackets"),
+                ResourceIds.rl("cooldown_brackets"),
                 new CooldownBracketLayer());
         event.registerAbove(VanillaGuiLayers.CROSSHAIR,
-                CortesCombat.rl("guard_orbs"),
+                ResourceIds.rl("guard_orbs"),
                 new GuardOrbsLayer());
     }
 

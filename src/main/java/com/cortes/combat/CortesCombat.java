@@ -19,7 +19,6 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import net.minecraft.resources.ResourceLocation;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
 
@@ -34,29 +33,6 @@ public class CortesCombat {
 
     public static final String MODID = "cortescombat";
     public static final Logger LOGGER = LogUtils.getLogger();
-
-    /**
-     * The one way this mod names anything of its own: {@code cortescombat:path}.
-     *
-     * <p><b>It is a one-line method and it earns its keep.</b> The factory that builds a
-     * {@link ResourceLocation} is the cheapest example of the thing that makes a version bump
-     * expensive: {@code ResourceLocation.fromNamespaceAndPath} does not exist before 1.21 and
-     * {@code new ResourceLocation} is deprecated after it, so a mod that spells the factory inline
-     * pays the change once per call site. There were sixty-seven of those across forty-seven files,
-     * and every one of them was the same edit.</p>
-     *
-     * <p>So the spelling lives here and nowhere else, and {@code PortabilityGuardsTest} fails the
-     * build if it comes back. <b>An abstraction without a guard is a suggestion</b>, and this
-     * project has watched a suggestion rot three times already
-     * ({@code RemoteMotion.cooldownRatio}, the orphan icon listener, the {@code BREAK} track).</p>
-     *
-     * <p>Note it takes the path and not the namespace: every resource this mod names is in its own
-     * namespace, and the two call sites that spelled {@code "cortescombat"} by hand were exactly the
-     * two that would have survived a modid rename silently.</p>
-     */
-    public static ResourceLocation rl(String path) {
-        return ResourceLocation.fromNamespaceAndPath(MODID, path);
-    }
 
     /**
      * Console switch for the development overlays, so a tester can be told to run one command
@@ -196,7 +172,7 @@ private static void reportSurvivalSeam(
         for (String id : ids) {
             var key = net.minecraft.resources.ResourceKey.create(
                     net.minecraft.core.registries.Registries.ENCHANTMENT,
-                    CortesCombat.rl(id));
+                    com.cortes.combat.platform.ResourceIds.rl(id));
             var holder = registry.getHolder(key);
             if (holder.isEmpty() || !holder.get().is(tableTag)) {
                 missing.add(id);

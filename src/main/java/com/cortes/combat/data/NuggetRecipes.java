@@ -1,6 +1,7 @@
 package com.cortes.combat.data;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.registry.ModItems;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
@@ -85,7 +86,7 @@ public final class NuggetRecipes implements DataProvider {
         NonNullList<Ingredient> ingredients = NonNullList.withSize(inputCount,
                 Ingredient.of(input));
 
-        ResourceLocation id = CortesCombat.rl(name);
+        ResourceLocation id = ResourceIds.rl(name);
         ShapelessRecipe recipe = new ShapelessRecipe(
                 "", CraftingBookCategory.MISC, result, ingredients);
 

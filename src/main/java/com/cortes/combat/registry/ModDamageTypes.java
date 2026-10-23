@@ -1,6 +1,7 @@
 package com.cortes.combat.registry;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -30,7 +31,7 @@ public final class ModDamageTypes {
      */
     public static final ResourceKey<DamageType> WARHAMMER_IGNORED_ARMOUR = ResourceKey.create(
             Registries.DAMAGE_TYPE,
-            CortesCombat.rl("warhammer_ignored_armour"));
+            ResourceIds.rl("warhammer_ignored_armour"));
 
     /**
      * The axe's fully charged swing.
@@ -46,7 +47,7 @@ public final class ModDamageTypes {
      */
     public static final ResourceKey<DamageType> AXE_CHARGED = ResourceKey.create(
             Registries.DAMAGE_TYPE,
-            CortesCombat.rl("axe_charged"));
+            ResourceIds.rl("axe_charged"));
 
     private ModDamageTypes() {
     }

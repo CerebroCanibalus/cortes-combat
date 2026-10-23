@@ -1,6 +1,7 @@
 package com.cortes.combat.client;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.guard.GuardHandler;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.DeltaTracker;
@@ -24,8 +25,8 @@ import net.minecraft.resources.ResourceLocation;
  */
 public class GuardOrbsLayer implements LayeredDraw.Layer {
 
-    private static final ResourceLocation FULL = CortesCombat.rl("textures/gui/sprites/hud/crosshair_shield_indicator_full.png");
-    private static final ResourceLocation DISABLED = CortesCombat.rl("textures/gui/sprites/hud/crosshair_shield_indicator_disabled.png");
+    private static final ResourceLocation FULL = ResourceIds.rl("textures/gui/sprites/hud/crosshair_shield_indicator_full.png");
+    private static final ResourceLocation DISABLED = ResourceIds.rl("textures/gui/sprites/hud/crosshair_shield_indicator_disabled.png");
 
     private static final int ORB_SIZE = 9;
     private static final int SPACING = 3;

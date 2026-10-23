@@ -1,8 +1,9 @@
 package com.cortes.combat.net;
 
+import com.cortes.combat.platform.ResourceIds;
+
 import java.util.List;
 
-import com.cortes.combat.CortesCombat;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -37,7 +38,7 @@ public record ArcabuzShotPayload(List<Integer> targets) implements CustomPacketP
     public static final int MAX_TARGETS_IN_A_PACKET = 16;
 
     public static final Type<ArcabuzShotPayload> TYPE = new Type<>(
-            CortesCombat.rl("arcabuz_shot"));
+            ResourceIds.rl("arcabuz_shot"));
 
     /**
      * Hand-written rather than {@code ByteBufCodecs.VAR_INT.apply(list())}, for one reason and

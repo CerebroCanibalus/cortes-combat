@@ -1,6 +1,7 @@
 package com.cortes.combat.net;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -31,7 +32,7 @@ import net.minecraft.resources.ResourceLocation;
 public record SpecialHeldPayload(boolean held) implements CustomPacketPayload {
 
     public static final Type<SpecialHeldPayload> TYPE = new Type<>(
-            CortesCombat.rl("special_held"));
+            ResourceIds.rl("special_held"));
 
     /** A record, so {@link com.mojang.serialization.codecs.RecordCodecBuilder} is ⊘ needed. */
     public static final StreamCodec<io.netty.buffer.ByteBuf, SpecialHeldPayload> STREAM_CODEC =

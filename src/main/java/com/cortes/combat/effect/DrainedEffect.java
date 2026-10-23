@@ -1,6 +1,7 @@
 package com.cortes.combat.effect;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 
 import com.cortes.combat.enchant.CombatEnchantRules;
 import net.minecraft.core.Holder;
@@ -43,7 +44,7 @@ public class DrainedEffect extends MobEffect {
     /** Diez segundos, los mismos que dura el robo del otro lado. */
     public static final int DURATION_TICKS = 200;
 
-    private static final ResourceLocation MODIFIER = CortesCombat.rl("drained");
+    private static final ResourceLocation MODIFIER = ResourceIds.rl("drained");
 
     /**
      * Si este cuerpo puede pagar el robo sin quedar con el techo por debajo de uno.

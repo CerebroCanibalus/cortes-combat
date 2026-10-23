@@ -1,6 +1,7 @@
 package com.cortes.combat.client;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.state.ArcabuzState;
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
@@ -69,7 +70,7 @@ public final class ArcabuzModelProperties {
      * it is elapsed rather than remaining because every ramp in this project's viewmodel is written
      * as progress, and elapsed is what a set of ascending thresholds can select a frame from.</p>
      */
-    public static final ResourceLocation FUSE = CortesCombat.rl("fuse");
+    public static final ResourceLocation FUSE = ResourceIds.rl("fuse");
 
     /**
      * A firestone is in the chamber, which is what puts the flintlock down.
@@ -80,7 +81,7 @@ public final class ArcabuzModelProperties {
      * a separate model, and the only thing this predicate has to say is whether that model is the
      * one to draw.</p>
      */
-    public static final ResourceLocation LOADED = CortesCombat.rl("loaded");
+    public static final ResourceLocation LOADED = ResourceIds.rl("loaded");
 
     /**
      * **No GUI predicate, on purpose.**
@@ -113,7 +114,7 @@ public final class ArcabuzModelProperties {
      */
     public static final net.minecraft.client.resources.model.ModelResourceLocation ICON_MODEL =
             net.minecraft.client.resources.model.ModelResourceLocation.standalone(
-                    CortesCombat.rl("arcabuz_icon"));
+                    ResourceIds.rl("arcabuz_icon"));
 
     /**
      * Registers both predicates. Client side, once, at startup.

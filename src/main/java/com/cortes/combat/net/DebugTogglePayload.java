@@ -1,6 +1,7 @@
 package com.cortes.combat.net;
 
-import com.cortes.combat.CortesCombat;
+import com.cortes.combat.platform.ResourceIds;
+
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -37,7 +38,7 @@ public record DebugTogglePayload(boolean cone, boolean hud, boolean trace, boole
         implements CustomPacketPayload {
 
     public static final Type<DebugTogglePayload> TYPE = new Type<>(
-            CortesCombat.rl("debug_toggle"));
+            ResourceIds.rl("debug_toggle"));
 
     // Five components: StreamCodec.composite supports arities 1 to 6, and this is inside it.
     public static final StreamCodec<RegistryFriendlyByteBuf, DebugTogglePayload> STREAM_CODEC =

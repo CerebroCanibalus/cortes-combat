@@ -1,9 +1,10 @@
 package com.cortes.combat.attack;
 
+import com.cortes.combat.platform.ResourceIds;
+
 import com.cortes.combat.platform.CombatState;
 import com.cortes.combat.platform.EnchantView;
 
-import com.cortes.combat.CortesCombat;
 
 import java.util.List;
 
@@ -1429,7 +1430,7 @@ public final class CombatEngine {
 
     /** El id del modificador de Estocada, para poder quitarlo exactamente. */
     private static final net.minecraft.resources.ResourceLocation ESTOCADA_MODIFIER_ID =
-            CortesCombat.rl("estocada_pierce");
+            ResourceIds.rl("estocada_pierce");
 
     /**
      * El id del modificador de Contragolpe.
@@ -1439,7 +1440,7 @@ public final class CombatEngine {
      * una fuga lenta de memoria por pegar.</p>
      */
     private static final net.minecraft.resources.ResourceLocation RIPOSTE_MODIFIER_ID =
-            CortesCombat.rl("contragolpe");
+            ResourceIds.rl("contragolpe");
 
     /**
      * The Knockback enchantment's push for one target.
