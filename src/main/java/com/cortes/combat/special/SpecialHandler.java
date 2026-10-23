@@ -1,5 +1,7 @@
 package com.cortes.combat.special;
 
+import com.cortes.combat.platform.CombatPackets;
+
 import com.cortes.combat.platform.CombatState;
 
 import com.cortes.combat.attack.AttackCooldown;
@@ -106,7 +108,7 @@ public final class SpecialHandler {
             // the server's decision, not the client's: the client already predicted it, so a client
             // that was wrong about the cooldown will animate a sweep that nobody else ever sees,
             // which is the correct outcome -- their prediction was wrong and the truth is the truth.
-            net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntity(player,
+            CombatPackets.sendToPlayersTrackingEntity(player,
                     com.cortes.combat.net.CombatEventPayload.sweep(player.getId()));
         } else if (stats.special() == SpecialType.PARRY) {
             parry(player, level, stats);

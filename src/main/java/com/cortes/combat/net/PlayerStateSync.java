@@ -1,5 +1,7 @@
 package com.cortes.combat.net;
 
+import com.cortes.combat.platform.CombatPackets;
+
 import com.cortes.combat.platform.CombatState;
 
 import com.cortes.combat.attack.AttackCooldown;
@@ -13,7 +15,6 @@ import com.cortes.combat.state.ParryState;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * Server side: tell everyone who can see a player what that player is doing.
@@ -73,7 +74,7 @@ public final class PlayerStateSync {
         if (state == null) {
             return;
         }
-        PacketDistributor.sendToPlayersTrackingEntity(player,
+        CombatPackets.sendToPlayersTrackingEntity(player,
                 new PlayerCombatStatePayload(state));
     }
 

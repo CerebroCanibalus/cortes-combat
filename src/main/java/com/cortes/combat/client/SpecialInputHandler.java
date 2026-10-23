@@ -1,5 +1,7 @@
 package com.cortes.combat.client;
 
+import com.cortes.combat.platform.CombatPackets;
+
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.guard.GuardStats;
@@ -10,7 +12,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * The right button, when it means a special instead of a guard.
@@ -156,7 +157,7 @@ public final class SpecialInputHandler {
             return;
         }
 
-        PacketDistributor.sendToServer(new SpecialPayload(player.getMainHandItem()));
+        CombatPackets.sendToServer(new SpecialPayload(player.getMainHandItem()));
 
         // **And the button itself, before the press lands.**
         //
@@ -168,7 +169,7 @@ public final class SpecialInputHandler {
         // Setting the local mirror here too, so the tick's reconciliation sees no change and does
         // not send this a second time.
         lastSentHeld = true;
-        PacketDistributor.sendToServer(new SpecialHeldPayload(true));
+        CombatPackets.sendToServer(new SpecialHeldPayload(true));
 
         // The sweep's arc, predicted on the press.
         //
@@ -277,7 +278,7 @@ public final class SpecialInputHandler {
             return false;
         }
         lastSentHeld = down;
-        PacketDistributor.sendToServer(new SpecialHeldPayload(down));
+        CombatPackets.sendToServer(new SpecialHeldPayload(down));
         return true;
     }
 

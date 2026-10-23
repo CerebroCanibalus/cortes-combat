@@ -1,5 +1,7 @@
 package com.cortes.combat.client;
 
+import com.cortes.combat.platform.CombatPackets;
+
 import com.cortes.combat.CombatTrace;
 
 import com.cortes.combat.attack.AttackTiming;
@@ -21,7 +23,6 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.Optional;
 
@@ -604,7 +605,7 @@ public final class SwingInputHandler {
     }
 
     private static void send(SwingPayload payload) {
-        PacketDistributor.sendToServer(payload);
+        CombatPackets.sendToServer(payload);
     }
 
     /**

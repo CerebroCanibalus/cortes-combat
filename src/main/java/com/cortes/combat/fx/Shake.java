@@ -1,11 +1,12 @@
 package com.cortes.combat.fx;
 
+import com.cortes.combat.platform.CombatPackets;
+
 import com.cortes.combat.net.CameraShakePayload;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * Manda un temblor de cámara. Tres formas, y cada una contesta una pregunta distinta.
@@ -39,7 +40,7 @@ public final class Shake {
 
     /** Un impulso en un punto, para un jugador. */
     public static void to(ServerPlayer player, double x, double y, double z, ShakeKind kind) {
-        PacketDistributor.sendToPlayer(player, payload(x, y, z, kind));
+        CombatPackets.sendToPlayer(player, payload(x, y, z, kind));
     }
 
     /** Un impulso en la posición de una entidad, para el jugador que lo va a sentir. */
@@ -56,13 +57,13 @@ public final class Shake {
      */
     public static void to(ServerPlayer player, double x, double y, double z, float degrees,
                           int ticks) {
-        PacketDistributor.sendToPlayer(player,
+        CombatPackets.sendToPlayer(player,
                 new CameraShakePayload(x, y, z, degrees, ticks, ShakeKind.COMMON_REACH));
     }
 
     /** Un impulso que lo sienten todos los que estén dentro del alcance del impulso. Sin dueño. */
     public static void around(ServerLevel level, double x, double y, double z, ShakeKind kind) {
-        PacketDistributor.sendToPlayersNear(level, null, x, y, z, kind.reach(),
+        CombatPackets.sendToPlayersNear(level, null, x, y, z, kind.reach(),
                 payload(x, y, z, kind));
     }
 
@@ -76,7 +77,7 @@ public final class Shake {
      */
     public static void around(ServerLevel level, double x, double y, double z, double reach,
                               float degrees, int ticks) {
-        PacketDistributor.sendToPlayersNear(level, null, x, y, z, reach,
+        CombatPackets.sendToPlayersNear(level, null, x, y, z, reach,
                 new CameraShakePayload(x, y, z, degrees, ticks, (float) reach));
     }
 

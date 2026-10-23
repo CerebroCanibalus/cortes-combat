@@ -408,6 +408,10 @@ publishing {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+    // The 1.20.1 leg is mid-port: capped errors hide the backlog behind an arbitrary
+    // alphabet, and "101 errors" that change between runs are a counting artifact, not
+    // progress. Uncapped on every leg (it changes nothing when there are no errors).
+    options.compilerArgs.addAll(['-Xmaxerrs', '10000'])
 }
 
 // IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.
@@ -434,7 +438,7 @@ if (!mc121) {
         // Versiona las reglas: el Sync es up-to-date por contenido de entradas, y un cambio solo
         // en el closure del filter no lo invalida. Sin esto, editar las reglas recompila con el
         // arbol viejo y los errores mienten. (μ_μ)
-        inputs.property('renameRules', 'v4-neoforge-minecraftforge-commonhooks-forgehooks')
+        inputs.property('renameRules', 'v6-exclude-payload-twins')
         // Tres reglas en orden de especificidad, porque el rename 20.1->20.2 no fue un
         // prefijo plano: bus.api cambio de nombre (eventbus) y el `neoforge` del medio se cayo.
         // Un reemplazo ciego de `net.neoforged` produce `net.minecraftforge.neoforge`, que no
@@ -459,8 +463,24 @@ if (!mc121) {
         def v120Replaces = ['com/cortes/combat/platform/CombatState.java',
                 'com/cortes/combat/platform/EnchantView.java',
                 'com/cortes/combat/platform/ResourceIds.java',
+                'com/cortes/combat/platform/CombatPackets.java',
                 'com/cortes/combat/config/ClientConfig.java',
-                'com/cortes/combat/config/ServerConfig.java']
+                'com/cortes/combat/config/ServerConfig.java',
+                'com/cortes/combat/net/ModNetworking.java',
+                'com/cortes/combat/net/SwingPayload.java',
+                'com/cortes/combat/net/GuardInputPayload.java',
+                'com/cortes/combat/net/SpecialPayload.java',
+                'com/cortes/combat/net/SpecialHeldPayload.java',
+                'com/cortes/combat/net/CombatStatePayload.java',
+                'com/cortes/combat/net/DebugTogglePayload.java',
+                'com/cortes/combat/net/CombatFeedbackPayload.java',
+                'com/cortes/combat/net/ParryStatePayload.java',
+                'com/cortes/combat/net/ArcabuzFusePayload.java',
+                'com/cortes/combat/net/CameraShakePayload.java',
+                'com/cortes/combat/net/PlayerCombatStatePayload.java',
+                'com/cortes/combat/net/CombatEventPayload.java',
+                'com/cortes/combat/net/ArcabuzShotPayload.java',
+                'com/cortes/combat/net/DelayedSoundPayload.java']
         into('java') {
             from(rootProject.file('src/main/java')) {
                 include '**/*.java'
