@@ -1,9 +1,21 @@
 pluginManagement {
     repositories {
         gradlePluginPortal()
+        gradlePluginPortal()
     }
 }
 
 plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+    id 'dev.kikugie.stonecutter' version '0.7.11'
+}
+
+stonecutter {
+    // Groovy, como el resto del build. Kotlin es el default de Stonecutter y este repo no lo habla.
+    kotlinController = false
+    centralScript = "build.gradle"
+
+    create(rootProject) {
+        versions '1.20.1', '1.21.1'
+    }
 }

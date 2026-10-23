@@ -1,0 +1,39 @@
+# Expanded by the generateModMetadata Gradle task, same as the 1.21.1 leg.
+# The 1.20.1 leg targets Forge 47.x (net.minecraftforge packages), so the loader dependency
+# names Forge and not NeoForge. Everything else is the same shape on purpose: one template
+# per leg, zero conditionals inside either of them.
+#
+# Keep this file in src/main/templates-1.20.1 only. A hand-written copy in src/main/resources
+# would ship with unresolved placeholders.
+
+modLoader="javafml" #mandatory
+loaderVersion="${loader_version_range}" #mandatory
+
+license="${mod_license}"
+
+[[mods]] #mandatory
+modId="${mod_id}" #mandatory
+version="${mod_version}" #mandatory
+displayName="${mod_name}" #optional
+authors="${mod_authors}" #optional
+
+description='''${mod_description}'''
+
+# Required so the mixin config actually loads in production. A mixin listed only in
+# cortescombat.mixins.json works in dev and is missing from the shipped jar without this.
+[[mixins]]
+config="${mod_id}.mixins.json"
+
+[[dependencies.${mod_id}]] #mandatory
+    modId="forge" #mandatory
+    type="required" #mandatory
+    versionRange="${forge_version_range}" #mandatory
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]] #mandatory
+    modId="minecraft" #mandatory
+    type="required" #mandatory
+    versionRange="${minecraft_version_range}" #mandatory
+    ordering="NONE"
+    side="BOTH"

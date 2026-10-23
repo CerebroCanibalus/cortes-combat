@@ -120,3 +120,7 @@ docs/yaml-handoff.md
 devworld.properties
 setup-testworld.ps1
 
+# Estado local de Stonecutter: a que pata apunta el sync del IDE. Lo genera el plugin en
+# cada sync y cambia por desarrollador, asi que no viaja.
+stonecutter.gradle
+
