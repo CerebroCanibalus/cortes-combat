@@ -40,8 +40,7 @@ public class VampiricEffect extends MobEffect {
     /** Diez segundos, iguales en los cuatro niveles. */
     public static final int DURATION_TICKS = 200;
 
-    private static final ResourceLocation MODIFIER = ResourceLocation.fromNamespaceAndPath(
-            CortesCombat.MODID, "vampiric");
+    private static final ResourceLocation MODIFIER = CortesCombat.rl("vampiric");
 
     public VampiricEffect() {
         super(MobEffectCategory.BENEFICIAL, 0x9B1B3A);

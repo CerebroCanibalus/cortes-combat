@@ -30,7 +30,7 @@ public record CombatStatePayload(float chargeRatio, float cooldownRatio, int gua
         implements CustomPacketPayload {
 
     public static final Type<CombatStatePayload> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "combat_state"));
+            CortesCombat.rl("combat_state"));
 
     /**
      * <p><b>Seis componentes, que es el techo de {@code StreamCodec.composite} en 1.21.1.</b> El

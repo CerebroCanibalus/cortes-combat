@@ -1,5 +1,10 @@
 package com.cortes.combat.attack;
 
+import com.cortes.combat.platform.CombatState;
+import com.cortes.combat.platform.EnchantView;
+
+import com.cortes.combat.CortesCombat;
+
 import java.util.List;
 
 import com.cortes.combat.core.CombatFeedback;
@@ -14,7 +19,6 @@ import com.cortes.combat.registry.ModEffects;
 import com.cortes.combat.reach.Reach;
 import net.minecraft.world.effect.MobEffectInstance;
 import com.cortes.combat.sound.ModSounds;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.registry.ModDamageTypes;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.SecondWindWindow;
@@ -29,7 +33,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -85,7 +88,7 @@ public final class CombatEngine {
      *         charged is the shape that drifts.</p>
      */
     public static float resolveSwing(Player player, int targetId) {
-        ChargeState charge = player.getData(ModAttachments.CHARGE.get());
+        ChargeState charge = CombatState.charge(player);
         if (!charge.holding()) {
             // No open swing. Either the release arrived twice, or it arrived without a press,
             // or the press was refused client side because the cooldown was not ready. All three
@@ -107,7 +110,7 @@ public final class CombatEngine {
         // them; without this line a stale pending hit would land a swing nobody is throwing any
         // more, at a charge an earlier release decided. Placed after the open-swing gate above,
         // so a stray or replayed release cannot cancel a legitimate window either.
-        player.setData(com.cortes.combat.registry.ModAttachments.PENDING_HIT.get(),
+        CombatState.setPendingHit(player,
                 com.cortes.combat.state.PendingHit.NONE);
 
         float ratio = chargedRatio(charge, stats.charge());
@@ -231,7 +234,7 @@ public final class CombatEngine {
         }
 
         float base = (float) player.getAttributeValue(Attributes.ATTACK_DAMAGE);
-        StreakState streak = player.getData(ModAttachments.HAMMER_STREAK.get());
+        StreakState streak = CombatState.hammerStreak(player);
         // **The flags first, because the damage source they choose is what the enchantment hooks
         // need.** Whether this swing bypasses armour is a property of the weapon and the charge and
         // has nothing to do with the enchantments on it, so a bonus-free resolve is the honest way
@@ -498,7 +501,7 @@ public final class CombatEngine {
             // once per cut: the sable's second cut is the same victim, and setting it on fire
             // twice is not twice the fire, it is the same fire set a tick later.
             if (player.level() instanceof net.minecraft.server.level.ServerLevel level) {
-                EnchantmentHelper.doPostAttackEffects(level, target,
+                EnchantView.postAttackEffects(level, target,
                         damageSource(player, result.kind()));
             }
 
@@ -678,7 +681,7 @@ public final class CombatEngine {
     private static void openPending(Player player, int targetId, float chargeRatio) {
         String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM
                 .getKey(player.getMainHandItem().getItem()).toString();
-        player.setData(com.cortes.combat.registry.ModAttachments.PENDING_HIT.get(),
+        CombatState.setPendingHit(player,
                 new com.cortes.combat.state.PendingHit(targetId, chargeRatio, itemId,
                         player.level().getGameTime()
                                 + com.cortes.combat.state.PendingHit.WINDOW_TICKS));
@@ -764,8 +767,8 @@ public final class CombatEngine {
                     com.cortes.combat.enchant.CombatEnchantments.level(
                             player.level().registryAccess(), player.getMainHandItem(),
                             com.cortes.combat.enchant.CombatEnchantments.RHYTHM_OF_IRON));
-            StreakState streak = player.getData(ModAttachments.HAMMER_STREAK.get()).onHit(window);
-            player.setData(ModAttachments.HAMMER_STREAK.get(), streak);
+            StreakState streak = CombatState.hammerStreak(player).onHit(window);
+            CombatState.setHammerStreak(player, streak);
             // After the increment, so the first landed hit is one and sounds at the floor. The pitch
             // reads the new streak rather than taking a count as an argument, so a caller cannot
             // play the note for the streak the player was in before this swing.
@@ -799,7 +802,7 @@ public final class CombatEngine {
                         com.cortes.combat.enchant.CombatEnchantments.level(
                                 player.level().registryAccess(), player.getMainHandItem(),
                                 com.cortes.combat.enchant.CombatEnchantments.INERCIA),
-                        player.getData(ModAttachments.HAMMER_STREAK.get()).hits());
+                        CombatState.hammerStreak(player).hits());
             }
             if (lift > 0.0F) {
                 Knockback.applyLift(target, stats.knockback(),
@@ -935,7 +938,7 @@ public final class CombatEngine {
         // premio que te cobra a vos es el veto C2 con otro nombre.
         if (stats.profile() == WeaponProfile.WARHAMMER) {
             int level = CombatEnchantments.level(access, held, CombatEnchantments.SENTENCIA);
-            int hits = player.getData(ModAttachments.HAMMER_STREAK.get()).hits();
+            int hits = CombatState.hammerStreak(player).hits();
             if (level > 0 && hits >= CombatEnchantRules.SENTENCIA_STREAK) {
                 sentencia(player, living, level);
             }
@@ -946,7 +949,7 @@ public final class CombatEngine {
             int streak = CombatEnchantRules.palizaStreak(CombatEnchantments.level(
                     access, held, CombatEnchantments.PALIZA));
             if (streak > 0) {
-                StreakState series = player.getData(ModAttachments.PALIZA_STREAK.get())
+                StreakState series = CombatState.palizaStreak(player)
                         .onHit(CombatEnchantRules.PALIZA_WINDOW_TICKS);
                 if (charged && series.hits() > streak) {
                     // **El empuje reemplaza al del golpe y no se suma**, y los dos numeros -- 2,4 y
@@ -960,7 +963,7 @@ public final class CombatEngine {
                             CombatEnchantRules.PALIZA_LIFT_SHARE);
                     series = StreakState.EMPTY;
                 }
-                player.setData(ModAttachments.PALIZA_STREAK.get(), series);
+                CombatState.setPalizaStreak(player, series);
             }
         }
 
@@ -994,7 +997,7 @@ public final class CombatEngine {
         if (stats.profile() == WeaponProfile.SABRE) {
             int interval = CombatEnchantRules.corteGemeloInterval(CombatEnchantments.level(
                     access, held, CombatEnchantments.CORTE_GEMELO));
-            var gemelo = player.getData(ModAttachments.CORTE_GEMELO.get());
+            var gemelo = CombatState.corteGemelo(player);
             if (interval >= 0 && gemelo.isReady(now)) {
                 living.invulnerableTime = 0;
                 living.hurt(player.damageSources().playerAttack(player),
@@ -1002,7 +1005,7 @@ public final class CombatEngine {
                 living.invulnerableTime = AttackTiming.IFRAME_TICKS;
                 // El nivel dos tiene intervalo cero, asi que el reloj no se mueve y el corte sale
                 // siempre; el uno lo gasta por cuatro segundos.
-                player.setData(ModAttachments.CORTE_GEMELO.get(), gemelo.spent(now, interval));
+                CombatState.setCorteGemelo(player, gemelo.spent(now, interval));
             }
         }
     }
@@ -1135,7 +1138,7 @@ public final class CombatEngine {
             return 0.0F;
         }
         ItemStack weapon = player.getWeaponItem();
-        float enchanted = EnchantmentHelper.modifyDamage(level, weapon, target, source, base) - base;
+        float enchanted = EnchantView.modifiedDamage(level, weapon, target, source, base) - base;
         return Math.max(0.0F, enchanted + perTargetBonus(player, weapon, target, base));
     }
 
@@ -1194,7 +1197,7 @@ public final class CombatEngine {
         // La ventana NO se gasta aca, y la razon es de orden: el empuje se cobra en otro canal que
         // corre DESPUES de este, y una ventana gastada en el primero deja al segundo sin premio. Se
         // lee en los dos y se gasta una sola vez, en el ultimo.
-        SecondWindWindow wind = player.getData(ModAttachments.SECOND_WINDOW.get());
+        SecondWindWindow wind = CombatState.secondWindow(player);
         if (wind.isOpen(player.level().getGameTime())) {
             share += CombatEnchantRules.segundoAliento(CombatEnchantments.level(access, weapon,
                     CombatEnchantments.SEGUNDO_ALIENTO));
@@ -1241,7 +1244,7 @@ public final class CombatEngine {
             return;
         }
         float base = (float) player.getAttributeValue(Attributes.ATTACK_DAMAGE);
-        StreakState streak = player.getData(ModAttachments.HAMMER_STREAK.get());
+        StreakState streak = CombatState.hammerStreak(player);
         float charged = DamageResolver.resolve(base, stats.charge(), stats.profile(), chargeRatio,
                 streak, player.fallDistance).damage();
         float waveDamage = charged * com.cortes.combat.weapon.SweepingEdge.share(enchant);
@@ -1322,11 +1325,11 @@ public final class CombatEngine {
      */
     private static void cashAdrenalina(Player player, Entity target) {
         com.cortes.combat.state.Adrenalina state =
-                player.getData(com.cortes.combat.registry.ModAttachments.ADRENALINA.get());
+                CombatState.adrenalina(player);
         if (state.banked() <= 0.0F) {
             return;
         }
-        player.setData(com.cortes.combat.registry.ModAttachments.ADRENALINA.get(), state.cashed());
+        CombatState.setAdrenalina(player, state.cashed());
         if (!(target instanceof net.minecraft.world.entity.LivingEntity living)) {
             return;
         }
@@ -1369,7 +1372,7 @@ public final class CombatEngine {
         }
         long now = attacker.level().getGameTime();
         com.cortes.combat.state.ContragolpeWindow window =
-                attacker.getData(ModAttachments.CONTRAGOLPE.get());
+                CombatState.contragolpe(attacker);
         if (!window.isOpen(now)) {
             return null;
         }
@@ -1385,7 +1388,7 @@ public final class CombatEngine {
         }
         // **"Tu siguiente ataque" es uno.** La ventana se gasta en el golpe que la usa: si
         // sobreviviera, un bloqueo daria cuarenta ticks de penetracion en vez de un golpe.
-        attacker.setData(ModAttachments.CONTRAGOLPE.get(), window.spent());
+        CombatState.setContragolpe(attacker, window.spent());
         return new net.minecraft.world.entity.ai.attributes.AttributeModifier(
                 RIPOSTE_MODIFIER_ID, -ignored,
                 net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation
@@ -1426,8 +1429,7 @@ public final class CombatEngine {
 
     /** El id del modificador de Estocada, para poder quitarlo exactamente. */
     private static final net.minecraft.resources.ResourceLocation ESTOCADA_MODIFIER_ID =
-            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cortescombat",
-                    "estocada_pierce");
+            CortesCombat.rl("estocada_pierce");
 
     /**
      * El id del modificador de Contragolpe.
@@ -1437,8 +1439,7 @@ public final class CombatEngine {
      * una fuga lenta de memoria por pegar.</p>
      */
     private static final net.minecraft.resources.ResourceLocation RIPOSTE_MODIFIER_ID =
-            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
-                    com.cortes.combat.CortesCombat.MODID, "contragolpe");
+            CortesCombat.rl("contragolpe");
 
     /**
      * The Knockback enchantment's push for one target.
@@ -1456,7 +1457,7 @@ public final class CombatEngine {
             return 0.0F;
         }
         ItemStack weapon = player.getWeaponItem();
-        float strength = EnchantmentHelper.modifyKnockback(level, weapon, target,
+        float strength = EnchantView.modifiedKnockback(level, weapon, target,
                 damageSource(player, result.kind()),
                 NO_WEAPON_KNOCKBACK);
         float push = ENCHANT_KNOCKBACK_SCALE * Math.max(0.0F, strength);
@@ -1482,11 +1483,11 @@ public final class CombatEngine {
         // "Tu siguiente golpe" es uno, y este es el ultimo canal que mira la ventana: el dano la lee
         // antes y no la toca. Gastarla aca es lo que hace que un bloqueo roto de un premio y no un
         // estado de tres segundos.
-        SecondWindWindow wind = player.getData(ModAttachments.SECOND_WINDOW.get());
+        SecondWindWindow wind = CombatState.secondWindow(player);
         if (wind.isOpen(player.level().getGameTime())) {
             push += CombatEnchantRules.SEGUNDO_ALIENTO_PUSH
                     * WeaponTables.knockback(WeaponStats.of(weapon).profile()).horizontal();
-            player.setData(ModAttachments.SECOND_WINDOW.get(), wind.spent());
+            CombatState.setSecondWindow(player, wind.spent());
         }
         return push;
     }

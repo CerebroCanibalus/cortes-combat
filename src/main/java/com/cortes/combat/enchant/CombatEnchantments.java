@@ -205,7 +205,7 @@ public final class CombatEnchantments {
 
     private static ResourceKey<Enchantment> key(String id) {
         return ResourceKey.create(Registries.ENCHANTMENT,
-                ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, id));
+                CortesCombat.rl(id));
     }
 
     private CombatEnchantments() {

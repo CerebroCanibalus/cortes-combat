@@ -139,7 +139,7 @@ class MaceFallWiringTest {
         String engine = read();
 
         int begin = engine.indexOf("smash.onLanding(");
-        int effects = engine.indexOf("EnchantmentHelper.doPostAttackEffects(");
+        int effects = engine.indexOf("EnchantView.postAttackEffects(");
         int reaffirm = engine.indexOf("smash.afterEffects(");
 
         assertTrue(begin >= 0, "**CombatEngine has to land the maza's smash at all.** Without the "

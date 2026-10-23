@@ -85,7 +85,7 @@ public final class NuggetRecipes implements DataProvider {
         NonNullList<Ingredient> ingredients = NonNullList.withSize(inputCount,
                 Ingredient.of(input));
 
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, name);
+        ResourceLocation id = CortesCombat.rl(name);
         ShapelessRecipe recipe = new ShapelessRecipe(
                 "", CraftingBookCategory.MISC, result, ingredients);
 

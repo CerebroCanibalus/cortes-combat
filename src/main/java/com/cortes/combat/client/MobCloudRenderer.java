@@ -33,8 +33,7 @@ import net.minecraft.resources.ResourceLocation;
  */
 public class MobCloudRenderer extends EntityRenderer<MobCloud> {
 
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            CortesCombat.MODID, "textures/particle/mosca.png");
+    private static final ResourceLocation TEXTURE = CortesCombat.rl("textures/particle/mosca.png");
 
     public MobCloudRenderer(EntityRendererProvider.Context context) {
         super(context);

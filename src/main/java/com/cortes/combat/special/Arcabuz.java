@@ -1,5 +1,7 @@
 package com.cortes.combat.special;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.attack.AttackCooldown;
 import com.cortes.combat.attack.Knockback;
 import com.cortes.combat.attack.WeaponStats;
@@ -14,7 +16,6 @@ import com.cortes.combat.net.ArcabuzShotPayload;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.particle.SlashParticles;
 import com.cortes.combat.reach.Reach;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.registry.ModComponents;
 import com.cortes.combat.registry.ModItems;
 import com.cortes.combat.sound.CombatSounds;
@@ -231,11 +232,11 @@ public final class Arcabuz {
      * state nothing in the game is producing.</p>
      */
     public static void setHeld(ServerPlayer player, boolean held) {
-        boolean before = player.getData(ModAttachments.ARCABUZ_BUTTON.get());
+        boolean before = CombatState.arcabuzButton(player);
         if (before == held) {
             return;
         }
-        player.setData(ModAttachments.ARCABUZ_BUTTON.get(), held);
+        CombatState.setArcabuzButton(player, held);
         // **The log line is not decoration: it is one of the five refusals.** A reload that does not
         // advance and a reload that was never started look identical from outside, and this is the
         // cheapest half of telling them apart.
@@ -474,7 +475,7 @@ public final class Arcabuz {
             return;
         }
 
-        boolean button = player.getData(ModAttachments.ARCABUZ_BUTTON.get());
+        boolean button = CombatState.arcabuzButton(player);
         if (!button) {
             // **La cancelacion, y es la mitad que el cliente no puede deducir solo.**
             //
@@ -971,7 +972,7 @@ private static void blast(ServerPlayer player, ServerLevel level, Vec3 muzzle,
         // arma: un arcabuz guardado en un cofre conserva su recamara, que es lo que se quiere, y no
         // hay nada del jugador que resetear salvo el boton. Antes esto vaciaba una recamara que podia
         // ser de cualquier arma, y por eso el jugador perdia la carga al reconectar.
-        player.setData(ModAttachments.ARCABUZ_BUTTON.get(), false);
+        CombatState.setArcabuzButton(player, false);
         ModNetworking.sendArcabuzFuse(player, false, 0, false, 0);
     }
 

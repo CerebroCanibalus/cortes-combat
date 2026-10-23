@@ -1,9 +1,10 @@
 package com.cortes.combat.guard;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.attack.AttackCooldown;
 import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.core.weapon.GuardProfile;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.enchant.CombatEnchantRules;
 import com.cortes.combat.enchant.CombatEnchantments;
 import com.cortes.combat.state.GuardFree;
@@ -61,7 +62,7 @@ public final class GuardHandler {
      * regenerating (holding costs the regen) and would never become ready.</p>
      */
     public static void setGuard(ServerPlayer player, boolean raising) {
-        GuardState current = player.getData(ModAttachments.GUARD_STAMINA.get());
+        GuardState current = CombatState.guard(player);
         // The playtest's order rule: you cover first, you eat after. A raise that arrives while
         // the player is already chewing is refused, which is what makes the order a fact instead
         // of something that happens to fall out of which hand holds what. The guard and the meal
@@ -75,7 +76,7 @@ public final class GuardHandler {
         }
         GuardState next = raising ? current.raise() : current.lower();
         if (next != current) {
-            player.setData(ModAttachments.GUARD_STAMINA.get(), next);
+            CombatState.setGuard(player, next);
         }
         if (raising && next.held() && !current.held()) {
             // Covering abandons a swing that was already open. Same shape as the menu case and
@@ -106,7 +107,7 @@ public final class GuardHandler {
         if (!ServerConfig.combatRework()) {
             return false;
         }
-        return player.getData(ModAttachments.GUARD_STAMINA.get()).isActive();
+        return CombatState.guard(player).isActive();
     }
 
     /** The guard the player's items are currently worth, and which item is providing it. */
@@ -125,7 +126,7 @@ public final class GuardHandler {
         if (!ServerConfig.combatRework()) {
             return false;
         }
-        GuardState state = player.getData(ModAttachments.GUARD_STAMINA.get());
+        GuardState state = CombatState.guard(player);
         return !state.isExhausted() && !isEating(player);
     }
 
@@ -203,7 +204,7 @@ public final class GuardHandler {
             return;
         }
 
-        GuardState state = player.getData(ModAttachments.GUARD_STAMINA.get());
+        GuardState state = CombatState.guard(player);
         float blocked = blockedFraction(event.getDamageSource(), player, guard.profile());
         if (!state.isActive() || blocked <= 0.0F) {
             return;
@@ -226,7 +227,7 @@ public final class GuardHandler {
         // strike: a sweep hits four different mobs and each of them has to pay.</p>
         Entity attacker = event.getDamageSource().getEntity();
         long now = player.level().getGameTime();
-        GuardStamp last = player.getData(ModAttachments.GUARD_LAST_BLOCK.get());
+        GuardStamp last = CombatState.lastBlock(player);
         int attackerId = attacker == null ? 0 : attacker.getId();
         int targetId = player.getId();
         if (!last.shouldCharge(now, attackerId, targetId)) {
@@ -246,7 +247,7 @@ public final class GuardHandler {
         // gasta -- `shouldCharge` ya lo cortó -- y ése no es "el primer bloqueo", es el mismo. El
         // gratis se cobra donde se cobra el punto, que es el único lugar donde "cuánto cuesta este
         // golpe" tiene una respuesta.
-        GuardFree free = player.getData(ModAttachments.GUARD_FREE.get());
+        GuardFree free = CombatState.guardFree(player);
         boolean gratis = free.isReady(now) && CombatEnchantRules.guardiaFirme(
                 CombatEnchantments.level(player.level().registryAccess(), guard.item(),
                         CombatEnchantments.GUARDIA_FIRME));
@@ -254,7 +255,7 @@ public final class GuardHandler {
         if (gratis) {
             // Gratis: la aguante no se toca, y `after` es la de siempre para que el chequeo de
             // agotamiento de mas abajo siga preguntando lo mismo.
-            player.setData(ModAttachments.GUARD_FREE.get(), free.usedAt(now));
+            CombatState.setGuardFree(player, free.usedAt(now));
             after = state;
         } else {
             // **Astilladora: el hacha cansa la guardia, no la rompe.**
@@ -267,15 +268,15 @@ public final class GuardHandler {
                     player.level().registryAccess(), guard.item(),
                     CombatEnchantments.ASTILLADORA));
             after = state.block(guard.profile().regenTicks(), cost);
-            player.setData(ModAttachments.GUARD_STAMINA.get(), after);
+            CombatState.setGuard(player, after);
         }
-        player.setData(ModAttachments.GUARD_LAST_BLOCK.get(),
+        CombatState.setLastBlock(player,
                 last.charged(now, attackerId, targetId));
         // **Contragolpe: el bloqueo que costó aguante abre una ventana ofensiva.** Se arma acá y no
         // en la rama de arriba, y esa es la distinción entera del encantamiento: el segundo corte
         // del mismo swing bloquea igual -- la guardia se sostiene -- pero no rearma nada. El premio
         // es por el golpe que se pagó, no por el que ya estaba pagado.
-        player.setData(ModAttachments.CONTRAGOLPE.get(),
+        CombatState.setContragolpe(player,
                 com.cortes.combat.state.ContragolpeWindow.armedAt(now));
 
         event.setBlocked(true);
@@ -401,11 +402,11 @@ public final class GuardHandler {
         if (!guard.canGuard()) {
             return;
         }
-        GuardState state = player.getData(ModAttachments.GUARD_STAMINA.get());
+        GuardState state = CombatState.guard(player);
         if (!state.isActive()) {
             return;
         }
-        player.setData(ModAttachments.GUARD_STAMINA.get(),
+        CombatState.setGuard(player,
                 state.breakGuard(guard.profile().regenTicks()));
         stagger(player, guard, guard.profile().stunTicks());
 
@@ -426,7 +427,7 @@ public final class GuardHandler {
         if (CombatEnchantRules.segundoAliento(CombatEnchantments.level(
                 player.level().registryAccess(), guard.item(),
                 CombatEnchantments.SEGUNDO_ALIENTO)) > 0.0F) {
-            player.setData(ModAttachments.SECOND_WINDOW.get(),
+            CombatState.setSecondWindow(player,
                     SecondWindWindow.armedAt(player.level().getGameTime()));
         }
     }

@@ -123,7 +123,7 @@ public final class CopperGearRecipes implements DataProvider {
         ShapedRecipe recipe = new ShiftableShapedRecipe(
                 "", CraftingBookCategory.EQUIPMENT, pattern, new ItemStack(result), true);
 
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, name);
+        ResourceLocation id = CortesCombat.rl(name);
         // DATA_PACK and `"recipe"` singular: the two silent failures this project has paid for. A
         // recipe written under assets/ or under `recipes/` is a file the game never reads.
         return CompletableFuture.allOf(

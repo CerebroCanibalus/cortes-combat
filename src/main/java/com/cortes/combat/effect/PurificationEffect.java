@@ -57,7 +57,7 @@ public class PurificationEffect extends MobEffect {
         super(MobEffectCategory.HARMFUL, 0x4AA0A0);
         addAttributeModifier(
                 Attributes.ATTACK_DAMAGE,
-                ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "purification_damage"),
+                CortesCombat.rl("purification_damage"),
                 DAMAGE_CUT,
                 AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
     }

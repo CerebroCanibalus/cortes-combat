@@ -1,8 +1,9 @@
 package com.cortes.combat.attack;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.CombatTrace;
 import com.cortes.combat.CortesCombat;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.reach.Reach;
 import com.cortes.combat.state.PendingHit;
 
@@ -69,7 +70,7 @@ public final class HitCoyote {
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
-        PendingHit pending = player.getData(ModAttachments.PENDING_HIT.get());
+        PendingHit pending = CombatState.pendingHit(player);
         if (pending.none()) {
             return;
         }
@@ -122,7 +123,7 @@ public final class HitCoyote {
     }
 
     private static void clear(Player player) {
-        player.setData(ModAttachments.PENDING_HIT.get(), PendingHit.NONE);
+        CombatState.setPendingHit(player, PendingHit.NONE);
     }
 
     /** One line per window that moves, server side, paired with the client's own in the log. */

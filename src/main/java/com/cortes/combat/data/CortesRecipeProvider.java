@@ -105,8 +105,7 @@ public class CortesRecipeProvider implements DataProvider {
 
     private CompletableFuture<?> write(CachedOutput cached, HolderLookup.Provider registries,
                                        WeaponFamily family, WeaponMaterial material) {
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(
-                CortesCombat.MODID, family.itemName(material));
+        ResourceLocation id = CortesCombat.rl(family.itemName(material));
         Item result = ModItems.weapon(family.itemName(material)).get();
 
         Map<Character, Ingredient> key = new LinkedHashMap<>();

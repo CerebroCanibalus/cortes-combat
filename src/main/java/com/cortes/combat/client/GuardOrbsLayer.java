@@ -24,10 +24,8 @@ import net.minecraft.resources.ResourceLocation;
  */
 public class GuardOrbsLayer implements LayeredDraw.Layer {
 
-    private static final ResourceLocation FULL = ResourceLocation.fromNamespaceAndPath(
-            CortesCombat.MODID, "textures/gui/sprites/hud/crosshair_shield_indicator_full.png");
-    private static final ResourceLocation DISABLED = ResourceLocation.fromNamespaceAndPath(
-            CortesCombat.MODID, "textures/gui/sprites/hud/crosshair_shield_indicator_disabled.png");
+    private static final ResourceLocation FULL = CortesCombat.rl("textures/gui/sprites/hud/crosshair_shield_indicator_full.png");
+    private static final ResourceLocation DISABLED = CortesCombat.rl("textures/gui/sprites/hud/crosshair_shield_indicator_disabled.png");
 
     private static final int ORB_SIZE = 9;
     private static final int SPACING = 3;

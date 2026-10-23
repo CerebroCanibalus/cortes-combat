@@ -45,8 +45,7 @@ public class QuebrantoEffect extends MobEffect {
     /** Tres stacks: veinticuatro por ciento con el efecto al máximo. */
     public static final int MAX_STACKS = 3;
 
-    private static final ResourceLocation MODIFIER = ResourceLocation.fromNamespaceAndPath(
-            CortesCombat.MODID, "quebranto");
+    private static final ResourceLocation MODIFIER = CortesCombat.rl("quebranto");
 
     public QuebrantoEffect() {
         super(MobEffectCategory.HARMFUL, 0x5A4A2A);

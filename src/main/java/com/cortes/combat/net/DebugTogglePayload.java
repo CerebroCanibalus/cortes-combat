@@ -37,7 +37,7 @@ public record DebugTogglePayload(boolean cone, boolean hud, boolean trace, boole
         implements CustomPacketPayload {
 
     public static final Type<DebugTogglePayload> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "debug_toggle"));
+            CortesCombat.rl("debug_toggle"));
 
     // Five components: StreamCodec.composite supports arities 1 to 6, and this is inside it.
     public static final StreamCodec<RegistryFriendlyByteBuf, DebugTogglePayload> STREAM_CODEC =

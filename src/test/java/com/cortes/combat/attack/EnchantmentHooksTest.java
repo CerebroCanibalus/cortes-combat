@@ -37,17 +37,18 @@ class EnchantmentHooksTest {
     void theThreeHooksAreCalled() {
         String engine = read();
 
-        assertTrue(engine.contains("EnchantmentHelper.modifyDamage("),
+        assertTrue(engine.contains("EnchantView.modifiedDamage("),
                 "**Sharpness, Smite, Bane of Arthropods, Impaling and Density run here.** They are "
                         + "the body of `ServerPlayer#getEnchantedDamage`, which only `Player#attack` "
                         + "calls -- and that flow is replaced. Without this line an enchanted sword "
-                        + "does exactly the damage of an unenchanted one, silently");
+                        + "does exactly the damage of an unenchanted one, silently. The call goes "
+                        + "through EnchantView so the version-coupled helper lives in one file");
 
-        assertTrue(engine.contains("EnchantmentHelper.modifyKnockback("),
+        assertTrue(engine.contains("EnchantView.modifiedKnockback("),
                 "**and Knockback.** Vanilla's `getKnockback` is the other half of the same lost "
                         + "call; without it a Knockback II sword shoves like a plain one");
 
-        assertTrue(engine.contains("EnchantmentHelper.doPostAttackEffects("),
+        assertTrue(engine.contains("EnchantView.postAttackEffects("),
                 "**and the post-attack effects.** This is where Aspect of Fire and Wind Burst "
                         + "live -- an enchanted sword that cannot set anything on fire is a bug a "
                         + "player notices, a build a test does not");
@@ -58,7 +59,7 @@ class EnchantmentHooksTest {
     void oncePerLandedBody() {
         String engine = read();
         int guard = engine.indexOf("if (anyLanded)");
-        int effects = engine.indexOf("EnchantmentHelper.doPostAttackEffects(");
+        int effects = engine.indexOf("EnchantView.postAttackEffects(");
 
         assertTrue(guard > 0 && effects > 0);
         assertTrue(guard < effects,
@@ -603,20 +604,24 @@ class EnchantmentHooksTest {
     void theGuardEnchantmentsReachTheGuard() {
         String guard = readGuard();
 
-        assertTrue(guard.contains("CombatEnchantRules.guardiaFirme(") && guard.contains("GUARD_FREE"),
+        assertTrue(guard.contains("CombatEnchantRules.guardiaFirme(")
+                        && guard.contains("CombatState.guardFree(")
+                        && guard.contains("CombatState.setGuardFree("),
                 "**Guardia Firme no ahorra nada.** La regla puede estar llamada y el reloj sin "
-                        + "tocar, que es un bloqueo que cuesta siempre con el build verde");
+                        + "tocar, que es un bloqueo que cuesta siempre con el build verde. La puerta "
+                        + "es CombatState: el reloj se lee con guardFree y se gasta con setGuardFree");
         assertTrue(guard.contains("SecondWindWindow.armedAt("),
                 "**Segundo Aliento no arma la ventana**: la guardia se rompe, el jugador paga el "
                         + "stun y no hay premio");
 
         String engine = read();
-        assertTrue(engine.contains("SECOND_WINDOW"),
+        assertTrue(engine.contains("CombatState.secondWindow("),
                 "**y la ventana se cobra en el motor.** Armarla y no leerla es un premio que existe "
-                        + "en el estado y no en el juego");
-        assertTrue(engine.contains("wind.spent()"),
+                        + "en el estado y no en el juego. La puerta es CombatState: el attachment "
+                        + "vive ahi y el motor pregunta por la facade");
+        assertTrue(engine.contains("wind.spent()") && engine.contains("CombatState.setSecondWindow("),
                 "**y se gasta.** \"Tu siguiente golpe\" es uno: sin el `spent()` serian tres segundos "
-                        + "de premio en vez de un golpe");
+                        + "de premio en vez de un golpe, y sin escribirlo de vuelta el gasto no existe");
     }
 
     /**

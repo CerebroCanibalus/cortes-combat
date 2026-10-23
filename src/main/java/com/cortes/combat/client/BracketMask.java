@@ -44,8 +44,7 @@ final class BracketMask {
     record Run(int leftX, int rightX, int y, int width, int alpha) {
     }
 
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            CortesCombat.MODID, "textures/gui/sprites/hud/cooldown_corchetes.png");
+    private static final ResourceLocation TEXTURE = CortesCombat.rl("textures/gui/sprites/hud/cooldown_corchetes.png");
 
     /** Below this there is no ink. 21x15 art with a hard edge, so the test is generous. */
     private static final int ALPHA_FLOOR = 16;

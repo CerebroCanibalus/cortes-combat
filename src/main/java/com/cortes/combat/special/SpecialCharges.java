@@ -1,8 +1,9 @@
 package com.cortes.combat.special;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.attack.AttackCooldown;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
 
 import java.util.List;
@@ -65,19 +66,19 @@ public final class SpecialCharges {
 
     /** El boton derecho bajo o levantado. */
     public static void setHeld(ServerPlayer player, boolean held) {
-        ChargeState state = player.getData(ModAttachments.SPECIAL_CHARGE.get());
+        ChargeState state = CombatState.specialCharge(player);
         if (held) {
             if (!armed(player)) {
                 return;
             }
-            player.setData(ModAttachments.SPECIAL_CHARGE.get(), new ChargeState(0, true));
+            CombatState.setSpecialCharge(player, new ChargeState(0, true));
             return;
         }
 
         if (!state.holding()) {
             return;
         }
-        player.setData(ModAttachments.SPECIAL_CHARGE.get(), ChargeState.EMPTY);
+        CombatState.setSpecialCharge(player, ChargeState.EMPTY);
 
         SpecialCharge charge = of(player);
         if (charge == null || !AttackCooldown.isReady(player)) {
@@ -97,7 +98,7 @@ public final class SpecialCharges {
 
     /** Un tick de carga, con las guardas que la tiran abajo. */
     public static void tick(ServerPlayer player) {
-        ChargeState state = player.getData(ModAttachments.SPECIAL_CHARGE.get());
+        ChargeState state = CombatState.specialCharge(player);
         if (!state.holding()) {
             return;
         }
@@ -105,13 +106,13 @@ public final class SpecialCharges {
         // del arcabuz. Y pasado el tope no acumula: la carga llena se queda llena hasta que suelten.
         SpecialCharge charge = of(player);
         if (charge == null || !AttackCooldown.isReady(player)) {
-            player.setData(ModAttachments.SPECIAL_CHARGE.get(), ChargeState.EMPTY);
+            CombatState.setSpecialCharge(player, ChargeState.EMPTY);
             return;
         }
         if (state.ticks() >= charge.ticks()) {
             return;
         }
-        player.setData(ModAttachments.SPECIAL_CHARGE.get(), state.advance());
+        CombatState.setSpecialCharge(player, state.advance());
     }
 
     /**
@@ -123,7 +124,7 @@ public final class SpecialCharges {
      * tampoco esta escrita aca.</p>
      */
     public static float ratio(ServerPlayer player) {
-        ChargeState state = player.getData(ModAttachments.SPECIAL_CHARGE.get());
+        ChargeState state = CombatState.specialCharge(player);
         if (!state.holding()) {
             return 0.0F;
         }

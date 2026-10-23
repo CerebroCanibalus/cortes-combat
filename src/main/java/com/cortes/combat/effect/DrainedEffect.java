@@ -43,8 +43,7 @@ public class DrainedEffect extends MobEffect {
     /** Diez segundos, los mismos que dura el robo del otro lado. */
     public static final int DURATION_TICKS = 200;
 
-    private static final ResourceLocation MODIFIER = ResourceLocation.fromNamespaceAndPath(
-            CortesCombat.MODID, "drained");
+    private static final ResourceLocation MODIFIER = CortesCombat.rl("drained");
 
     /**
      * Si este cuerpo puede pagar el robo sin quedar con el techo por debajo de uno.

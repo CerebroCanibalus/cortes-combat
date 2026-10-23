@@ -1,8 +1,9 @@
 package com.cortes.combat.attack;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.guard.GuardHandler;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
 import net.minecraft.world.entity.LivingEntity;
@@ -22,7 +23,7 @@ public final class AttackCooldown {
     }
 
     public static boolean isReady(Player player) {
-        return player.getData(ModAttachments.COOLDOWN.get()).isReady();
+        return CombatState.cooldown(player).isReady();
     }
 
     /**
@@ -30,8 +31,8 @@ public final class AttackCooldown {
      * Callers must check {@link #isReady} first; this does not.
      */
     public static void consume(Player player, int attackInterval) {
-        player.setData(ModAttachments.COOLDOWN.get(), new CooldownState(attackInterval));
-        player.setData(ModAttachments.CHARGE.get(), ChargeState.EMPTY);
+        CombatState.setCooldown(player, new CooldownState(attackInterval));
+        CombatState.setCharge(player, ChargeState.EMPTY);
     }
 
     /**
@@ -62,20 +63,20 @@ public final class AttackCooldown {
         if (GuardHandler.isGuarding(player)) {
             return;
         }
-        ChargeState current = player.getData(ModAttachments.CHARGE.get());
+        ChargeState current = CombatState.charge(player);
         if (!current.holding()) {
-            player.setData(ModAttachments.CHARGE.get(), new ChargeState(0, true));
+            CombatState.setCharge(player, new ChargeState(0, true));
         }
     }
 
     /** Stop accumulating without spending anything, for a press that was abandoned. */
     public static void endCharge(Player player) {
-        player.setData(ModAttachments.CHARGE.get(), player.getData(ModAttachments.CHARGE.get()).reset());
+        CombatState.setCharge(player, CombatState.charge(player).reset());
     }
 
     /** Drop the cooldown to zero without touching the charge, for a fresh session. */
     public static void resetCooldown(Player player) {
-        player.setData(ModAttachments.COOLDOWN.get(), CooldownState.READY);
+        CombatState.setCooldown(player, CooldownState.READY);
     }
 
     /**
@@ -90,7 +91,7 @@ public final class AttackCooldown {
      */
     public static float chargeRatio(Player player, ChargeProfile profile) {
         return AttackTiming.chargeRatioFor(
-                player.getData(ModAttachments.CHARGE.get()).ticks(),
+                CombatState.charge(player).ticks(),
                 profile.fullChargeTicks(),
                 profile.canCharge());
     }
@@ -100,7 +101,7 @@ public final class AttackCooldown {
      * should not carry a stale cooldown: the new weapon's interval applies from the swap.
      */
     public static void resetOnItemChange(Player player) {
-        player.setData(ModAttachments.COOLDOWN.get(), CooldownState.READY);
+        CombatState.setCooldown(player, CooldownState.READY);
     }
 
     public static int intervalFor(LivingEntity holder) {

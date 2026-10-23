@@ -32,7 +32,7 @@ import net.minecraft.resources.ResourceLocation;
 public record PlayerCombatStatePayload(PlayerCombatState state) implements CustomPacketPayload {
 
     public static final Type<PlayerCombatStatePayload> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "player_combat_state"));
+            CortesCombat.rl("player_combat_state"));
 
     /**
      * Hand-written, for the same reason {@code PlayerCombatState} is hand-written.

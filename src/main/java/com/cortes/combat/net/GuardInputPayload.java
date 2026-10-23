@@ -17,7 +17,7 @@ import net.minecraft.resources.ResourceLocation;
 public record GuardInputPayload(boolean holding) implements CustomPacketPayload {
 
     public static final Type<GuardInputPayload> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "guard_input"));
+            CortesCombat.rl("guard_input"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, GuardInputPayload> STREAM_CODEC =
             StreamCodec.composite(

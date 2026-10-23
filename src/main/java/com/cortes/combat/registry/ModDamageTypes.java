@@ -30,7 +30,7 @@ public final class ModDamageTypes {
      */
     public static final ResourceKey<DamageType> WARHAMMER_IGNORED_ARMOUR = ResourceKey.create(
             Registries.DAMAGE_TYPE,
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "warhammer_ignored_armour"));
+            CortesCombat.rl("warhammer_ignored_armour"));
 
     /**
      * The axe's fully charged swing.
@@ -46,7 +46,7 @@ public final class ModDamageTypes {
      */
     public static final ResourceKey<DamageType> AXE_CHARGED = ResourceKey.create(
             Registries.DAMAGE_TYPE,
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "axe_charged"));
+            CortesCombat.rl("axe_charged"));
 
     private ModDamageTypes() {
     }

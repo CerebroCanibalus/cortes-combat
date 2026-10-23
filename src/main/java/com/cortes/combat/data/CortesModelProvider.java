@@ -82,7 +82,7 @@ private ResourceLocation familyBase(WeaponFamily family) {
     // and an enum that claimed one existed for a shape nobody had drawn would point at a file that
     // is not there.
     if (family == WeaponFamily.ALABARDA) {
-        return ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "weapon/alabarda");
+        return CortesCombat.rl("weapon/alabarda");
     }
     return null;
 }
@@ -220,7 +220,7 @@ private boolean handDrawn(ResourceLocation id) {
                 // Still named explicitly rather than left to the item's own path: `write` grew that
                 // overload for this call, and dropping the argument now would delete the reason it
                 // exists.
-                ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "item/firestone")));
+                CortesCombat.rl("item/firestone")));
 
         // **And the block, which is three files rather than one and none of them is an item
         // model of the shape `write` produces.** A block's inventory sprite is not a flat texture:
@@ -283,7 +283,7 @@ private boolean handDrawn(ResourceLocation id) {
 
         return DataProvider.saveStable(cached, json,
                 output.createPathProvider(PackOutput.Target.RESOURCE_PACK, "models/block")
-                        .json(ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, name)));
+                        .json(CortesCombat.rl(name)));
     }
 
     /**
@@ -347,7 +347,7 @@ private boolean handDrawn(ResourceLocation id) {
 
         return DataProvider.saveStable(cached, json,
                 output.createPathProvider(PackOutput.Target.RESOURCE_PACK, "models/block")
-                        .json(ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, name)));
+                        .json(CortesCombat.rl(name)));
     }
 
     /**
@@ -407,8 +407,7 @@ private boolean handDrawn(ResourceLocation id) {
 
         return DataProvider.saveStable(cached, json,
                 output.createPathProvider(PackOutput.Target.RESOURCE_PACK, "blockstates")
-                        .json(ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID,
-                                "nether_reactor")));
+                        .json(CortesCombat.rl("nether_reactor")));
     }
 
     private static JsonObject part(JsonObject when, JsonObject apply) {
@@ -432,8 +431,7 @@ private boolean handDrawn(ResourceLocation id) {
 
         return DataProvider.saveStable(cached, json,
                 output.createPathProvider(PackOutput.Target.RESOURCE_PACK, "models/item")
-                        .json(ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID,
-                                "nether_reactor")));
+                        .json(CortesCombat.rl("nether_reactor")));
     }
 
     /**
@@ -452,8 +450,7 @@ private boolean handDrawn(ResourceLocation id) {
 
         return DataProvider.saveStable(cached, json,
                 output.createPathProvider(PackOutput.Target.RESOURCE_PACK, "models/block")
-                        .json(ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID,
-                                "firestone_block")));
+                        .json(CortesCombat.rl("firestone_block")));
     }
 
     /**
@@ -474,8 +471,7 @@ private boolean handDrawn(ResourceLocation id) {
 
         return DataProvider.saveStable(cached, json,
                 output.createPathProvider(PackOutput.Target.RESOURCE_PACK, "blockstates")
-                        .json(ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID,
-                                "firestone_block")));
+                        .json(CortesCombat.rl("firestone_block")));
     }
 
     /**
@@ -492,8 +488,7 @@ private boolean handDrawn(ResourceLocation id) {
 
         return DataProvider.saveStable(cached, json,
                 output.createPathProvider(PackOutput.Target.RESOURCE_PACK, "models/item")
-                        .json(ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID,
-                                "firestone_block")));
+                        .json(CortesCombat.rl("firestone_block")));
     }
 
     private CompletableFuture<?> write(CachedOutput cached, WeaponFamily family, Item item,

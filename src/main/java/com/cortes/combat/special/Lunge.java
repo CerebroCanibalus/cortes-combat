@@ -1,5 +1,7 @@
 package com.cortes.combat.special;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.attack.CombatEngine;
 import com.cortes.combat.attack.Knockback;
 import com.cortes.combat.attack.WeaponStats;
@@ -7,7 +9,6 @@ import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.particle.SlashParticles;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.registry.ModEffects;
 import com.cortes.combat.sound.CombatSounds;
 import com.cortes.combat.sound.ModSounds;
@@ -153,7 +154,7 @@ public final class Lunge {
      * covers the tick the player committed on, which is the tick they most need it.</p>
      */
     public static void begin(ServerPlayer player, int materialRank) {
-        player.setData(ModAttachments.LUNGE.get(), new LungeState(
+        CombatState.setLunge(player, new LungeState(
                 0, player.getX(), player.getZ(), player.getX(), player.getZ(), materialRank));
         player.invulnerableTime = LungeDamage.INVULNERABLE_TICKS;
         // The effect is applied here and never refreshed, so its countdown IS the lunge's countdown:
@@ -186,7 +187,7 @@ public final class Lunge {
      * </ul>
      */
     public static void tick(ServerPlayer player) {
-        LungeState state = player.getData(ModAttachments.LUNGE.get());
+        LungeState state = CombatState.lunge(player);
         if (!state.running()) {
             if (!state.equals(LungeState.IDLE)) {
                 clear(player);
@@ -310,7 +311,7 @@ public final class Lunge {
         }
 
         if (next.running()) {
-            player.setData(ModAttachments.LUNGE.get(), next);
+            CombatState.setLunge(player, next);
         } else {
             LOG.info("[lunge] rank={} movido={} techo={} ticks={} golpes={}",
                     state.materialRank(), fmt(state.travelled(x, z)),
@@ -378,7 +379,7 @@ public final class Lunge {
      * the dash but not the player.</p>
      */
     private static Set<LivingEntity> wasHit(ServerPlayer player) {
-        Set<LivingEntity> wasHit = player.getData(ModAttachments.LUNGE_HITS.get());
+        Set<LivingEntity> wasHit = CombatState.lungeHits(player);
         if (!Lunge.active(player)) {
             wasHit.clear();
         }
@@ -413,13 +414,13 @@ public final class Lunge {
 
     /** Whether a lunge is in progress. */
     public static boolean active(ServerPlayer player) {
-        return player.getData(ModAttachments.LUNGE.get()).running();
+        return CombatState.lunge(player).running();
     }
 
     /** Stops the lunge. Called on login, and available for death and world change. */
     public static void clear(ServerPlayer player) {
-        player.setData(ModAttachments.LUNGE.get(), LungeState.IDLE);
-        player.getData(ModAttachments.LUNGE_HITS.get()).clear();
+        CombatState.setLunge(player, LungeState.IDLE);
+        CombatState.lungeHits(player).clear();
         // **The immunity is driven by the window and never by its own clock.**
         //
         // The effect is applied once, for twenty ticks, and this line is what makes its life exactly

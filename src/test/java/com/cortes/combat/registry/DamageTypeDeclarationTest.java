@@ -86,7 +86,10 @@ class DamageTypeDeclarationTest {
 
         String java = Files.readString(source, StandardCharsets.UTF_8);
         String literal = "\"warhammer_ignored_armour\"";
-        assertTrue(java.contains("fromNamespaceAndPath(CortesCombat.MODID, " + literal + ")"),
+        // The factory moved to `CortesCombat.rl` so the spelling of a ResourceLocation lives in one
+        // file; the namespace is implied there and is still the mod id, so the comparison this test
+        // exists for -- the literal against the file name -- is unchanged. (￣ω￣)
+        assertTrue(java.contains("CortesCombat.rl(" + literal + ")"),
                 "ModDamageTypes.java no longer builds the key from the mod id and the literal "
                         + literal + ". The datapack file is still called that, so the key and the "
                         + "file have drifted apart and the game throws on the first charged hit");

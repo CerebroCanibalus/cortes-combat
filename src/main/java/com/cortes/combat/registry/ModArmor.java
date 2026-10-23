@@ -66,7 +66,7 @@ public final class ModArmor {
                     SoundEvents.ARMOR_EQUIP_IRON,
                     () -> Ingredient.of(Items.COPPER_INGOT),
                     List.of(new ArmorMaterial.Layer(
-                            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "copper"))),
+                            CortesCombat.rl("copper"))),
                     0.0F,
                     0.0F));
 

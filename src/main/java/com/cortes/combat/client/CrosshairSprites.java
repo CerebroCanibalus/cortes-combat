@@ -46,8 +46,7 @@ public final class CrosshairSprites {
     }
 
     private static ResourceLocation sprite(String name) {
-        return ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID,
-                "textures/gui/sprites/hud/" + name + ".png");
+        return CortesCombat.rl("textures/gui/sprites/hud/" + name + ".png");
     }
 
     /**

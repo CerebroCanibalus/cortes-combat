@@ -20,8 +20,7 @@ import net.minecraft.resources.ResourceLocation;
  */
 public class DamageOverlayLayer implements LayeredDraw.Layer {
 
-    private static final ResourceLocation OVERLAY = ResourceLocation.fromNamespaceAndPath(
-            CortesCombat.MODID, "textures/gui/damage_overlay.png");
+    private static final ResourceLocation OVERLAY = CortesCombat.rl("textures/gui/damage_overlay.png");
 
     /** Health below this starts the vignette. */
     private static final float FADE_START_HEALTH = 14.0F;

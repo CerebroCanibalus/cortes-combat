@@ -28,7 +28,7 @@ public record DelayedSoundPayload(String sound, float pitch, int delayTicks)
         implements CustomPacketPayload {
 
     public static final Type<DelayedSoundPayload> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "delayed_sound"));
+            CortesCombat.rl("delayed_sound"));
 
     public static final StreamCodec<ByteBuf, DelayedSoundPayload> STREAM_CODEC =
             StreamCodec.composite(

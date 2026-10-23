@@ -41,8 +41,7 @@ public final class FirestoneBlockLoot implements DataProvider {
 
     @Override
     public CompletableFuture<?> run(CachedOutput cached) {
-        ResourceLocation block = ResourceLocation.fromNamespaceAndPath(
-                CortesCombat.MODID, "firestone_block");
+        ResourceLocation block = CortesCombat.rl("firestone_block");
 
         JsonObject explosion = new JsonObject();
         explosion.addProperty("condition", "minecraft:survives_explosion");

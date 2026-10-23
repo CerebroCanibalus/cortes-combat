@@ -25,8 +25,7 @@ import net.minecraft.resources.ResourceLocation;
  */
 public class AntimatterOrbRenderer extends EntityRenderer<AntimatterOrb> {
 
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            CortesCombat.MODID, "textures/particle/purified_effect.png");
+    private static final ResourceLocation TEXTURE = CortesCombat.rl("textures/particle/purified_effect.png");
 
     public AntimatterOrbRenderer(EntityRendererProvider.Context context) {
         super(context);

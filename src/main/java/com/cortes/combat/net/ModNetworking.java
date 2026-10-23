@@ -1,11 +1,12 @@
 package com.cortes.combat.net;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.attack.AttackCooldown;
 import com.cortes.combat.attack.CombatEngine;
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.guard.GuardHandler;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.SyncState;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -298,8 +299,8 @@ public final class ModNetworking {
         org.slf4j.LoggerFactory.getLogger("cortescombat").info(
                 "[server] release de " + player.getName().getString()
                         + " objetivo=" + payload.entityId()
-                        + " abierto=" + player.getData(ModAttachments.CHARGE.get()).holding()
-                        + " ticks=" + player.getData(ModAttachments.CHARGE.get()).ticks());
+                        + " abierto=" + CombatState.charge(player).holding()
+                        + " ticks=" + CombatState.charge(player).ticks());
 
         float charged = CombatEngine.resolveSwing(player, payload.entityId());
 
@@ -385,15 +386,15 @@ public final class ModNetworking {
     public static void syncTo(ServerPlayer player) {
         WeaponStats stats = WeaponStats.of(player.getMainHandItem());
         float charge = AttackCooldown.chargeRatio(player, stats.charge());
-        float cooldown = player.getData(ModAttachments.COOLDOWN.get())
+        float cooldown = CombatState.cooldown(player)
                 .ratio(AttackCooldown.intervalFor(player));
         com.cortes.combat.state.GuardState guard =
-                player.getData(ModAttachments.GUARD_STAMINA.get());
+                CombatState.guard(player);
         int stamina = guard.stamina();
         int max = guard.max();
         boolean held = guard.isActive();
 
-        SyncState last = player.getData(ModAttachments.LAST_SYNCED.get());
+        SyncState last = CombatState.lastSynced(player);
         // **La carga del boton derecho sale de la MISMA funcion que la de la pose**, y no de una
         // cuenta escrita aca: dos copias de "ticks sobre el tope" es lo que este proyecto ya pago
         // con una barra que iba por una funcion distinta que el dano.
@@ -402,7 +403,7 @@ public final class ModNetworking {
         if (!last.isDirty(charge, cooldown, stamina, max, held, specialCharge, SYNC_EPSILON)) {
             return;
         }
-        player.setData(ModAttachments.LAST_SYNCED.get(),
+        CombatState.setLastSynced(player,
                 new SyncState(charge, cooldown, stamina, max, held, specialCharge));
         PacketDistributor.sendToPlayer(player,
                 new CombatStatePayload(charge, cooldown, stamina, max, held, specialCharge));

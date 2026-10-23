@@ -205,8 +205,7 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
     private void categoryTags() {
         for (String type : com.cortes.combat.weaponpack.ArchetypeSpec.builtins().keySet()) {
             tag(TagKey.create(Registries.ITEM,
-                    ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID,
-                            "category/" + type)));
+                    CortesCombat.rl("category/" + type)));
         }
     }
 
@@ -382,7 +381,7 @@ public class CortesItemTagProvider extends IntrinsicHolderTagsProvider<Item> {
     /** Un tag de encantamiento nuestro, por id. */
     private static TagKey<Item> own(String path) {
         return TagKey.create(Registries.ITEM,
-                ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, path));
+                CortesCombat.rl(path));
     }
 
     /**

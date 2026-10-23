@@ -76,8 +76,7 @@ public final class NetherReactorRecipes implements DataProvider {
                     "", CraftingBookCategory.REDSTONE, pattern,
                     new ItemStack(ModBlocks.NETHER_REACTOR_ITEM.get()), true);
 
-            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(
-                    CortesCombat.MODID, "nether_reactor");
+            ResourceLocation id = CortesCombat.rl("nether_reactor");
             return CompletableFuture.allOf(
                     recipe(cached, provider, id, recipe),
                     advancement(cached, provider, id));

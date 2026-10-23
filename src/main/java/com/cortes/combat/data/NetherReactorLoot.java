@@ -34,8 +34,7 @@ public final class NetherReactorLoot implements DataProvider {
 
     @Override
     public CompletableFuture<?> run(CachedOutput cached) {
-        ResourceLocation block = ResourceLocation.fromNamespaceAndPath(
-                CortesCombat.MODID, "nether_reactor");
+        ResourceLocation block = CortesCombat.rl("nether_reactor");
 
         JsonObject explosion = new JsonObject();
         explosion.addProperty("condition", "minecraft:survives_explosion");

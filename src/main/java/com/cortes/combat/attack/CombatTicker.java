@@ -1,5 +1,7 @@
 package com.cortes.combat.attack;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.guard.GuardRules;
@@ -7,7 +9,6 @@ import com.cortes.combat.guard.GuardStats;
 import com.cortes.combat.client.RemotePoseStates;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.net.PlayerStateSync;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
 import com.cortes.combat.state.GuardState;
@@ -131,11 +132,11 @@ public final class CombatTicker {
     }
 
     private static void tickCooldown(ServerPlayer player) {
-        CooldownState cooldown = player.getData(ModAttachments.COOLDOWN.get());
+        CooldownState cooldown = CombatState.cooldown(player);
         if (cooldown.isReady()) {
             return;
         }
-        player.setData(ModAttachments.COOLDOWN.get(), cooldown.tick());
+        CombatState.setCooldown(player, cooldown.tick());
     }
 
     /**
@@ -143,16 +144,16 @@ public final class CombatTicker {
      * the next swing is an uncharged one.
      */
     private static void tickCharge(ServerPlayer player) {
-        ChargeState charge = player.getData(ModAttachments.CHARGE.get());
+        ChargeState charge = CombatState.charge(player);
         if (!charge.holding()) {
             return;
         }
-        player.setData(ModAttachments.CHARGE.get(), charge.advance());
+        CombatState.setCharge(player, charge.advance());
     }
 
     /** Guard recovers on its own and never touches food. */
     private static void tickGuard(ServerPlayer player) {
-        GuardState guard = player.getData(ModAttachments.GUARD_STAMINA.get());
+        GuardState guard = CombatState.guard(player);
         // The item decides the timings, read fresh every tick so a hotbar swap cannot leave a
         // stale regen rate running.
         GuardStats.Resolved resolved = GuardHandler.bestFor(player);
@@ -188,16 +189,16 @@ public final class CombatTicker {
 
         GuardState ticked = settled.tick(profile.regenTicks(), regenPaused);
         if (ticked != settled) {
-            player.setData(ModAttachments.GUARD_STAMINA.get(), ticked);
+            CombatState.setGuard(player, ticked);
         }
     }
 
     /** The warhammer streak only breaks when its 4s window runs out, never on taking damage. */
     private static void tickStreak(ServerPlayer player) {
-        StreakState streak = player.getData(ModAttachments.HAMMER_STREAK.get());
+        StreakState streak = CombatState.hammerStreak(player);
         StreakState ticked = streak.tick();
         if (ticked != streak) {
-            player.setData(ModAttachments.HAMMER_STREAK.get(), ticked);
+            CombatState.setHammerStreak(player, ticked);
         }
     }
 
@@ -211,8 +212,8 @@ public final class CombatTicker {
      * five second lockout never ran down and the sabre could be parried once per session.</p>
      */
     private static void tickParry(ServerPlayer player) {
-        ParryState.Step step = player.getData(ModAttachments.PARRY.get()).step();
-        player.setData(ModAttachments.PARRY.get(), step.state());
+        ParryState.Step step = CombatState.parry(player).step();
+        CombatState.setParry(player, step.state());
         if (step.tellClient()) {
             com.cortes.combat.net.ModNetworking.sendParryState(
                     player, false, step.state().cooldownTicks());

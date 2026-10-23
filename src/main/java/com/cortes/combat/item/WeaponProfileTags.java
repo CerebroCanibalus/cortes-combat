@@ -63,6 +63,6 @@ public final class WeaponProfileTags {
     /** The tag that selects {@code profile}'s mould. */
     public static TagKey<Item> profileTag(WeaponProfile profile) {
         return TagKey.create(Registries.ITEM,
-                ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, profile.tagPath()));
+                CortesCombat.rl(profile.tagPath()));
     }
 }

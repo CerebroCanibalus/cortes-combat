@@ -1,5 +1,7 @@
 package com.cortes.combat.attack;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.core.weapon.KnockbackProfile;
 import com.cortes.combat.core.weapon.ReachProfile;
@@ -458,23 +460,23 @@ public final class WeaponStats {
     }
 
     public static CooldownState cooldownOf(Player player) {
-        return player.getData(com.cortes.combat.registry.ModAttachments.COOLDOWN.get());
+        return CombatState.cooldown(player);
     }
 
     public static ChargeState chargeOf(Player player) {
-        return player.getData(com.cortes.combat.registry.ModAttachments.CHARGE.get());
+        return CombatState.charge(player);
     }
 
     public static GuardState guardOf(Player player) {
-        return player.getData(com.cortes.combat.registry.ModAttachments.GUARD_STAMINA.get());
+        return CombatState.guard(player);
     }
 
     public static StreakState streakOf(Player player) {
-        return player.getData(com.cortes.combat.registry.ModAttachments.HAMMER_STREAK.get());
+        return CombatState.hammerStreak(player);
     }
 
     public static ParryState parryOf(Player player) {
-        return player.getData(com.cortes.combat.registry.ModAttachments.PARRY.get());
+        return CombatState.parry(player);
     }
 
     /**

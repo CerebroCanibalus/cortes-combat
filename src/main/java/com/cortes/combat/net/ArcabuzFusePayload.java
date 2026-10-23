@@ -43,7 +43,7 @@ public record ArcabuzFusePayload(boolean lit, int fuseTicks, boolean loaded, int
         implements CustomPacketPayload {
 
     public static final Type<ArcabuzFusePayload> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "arcabuz_fuse"));
+            CortesCombat.rl("arcabuz_fuse"));
 
     public static final StreamCodec<ByteBuf, ArcabuzFusePayload> STREAM_CODEC =
             StreamCodec.composite(

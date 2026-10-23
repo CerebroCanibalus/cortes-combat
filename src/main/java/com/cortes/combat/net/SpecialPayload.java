@@ -22,7 +22,7 @@ import net.minecraft.world.item.ItemStack;
 public record SpecialPayload(ItemStack stack) implements CustomPacketPayload {
 
     public static final Type<SpecialPayload> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "special"));
+            CortesCombat.rl("special"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, SpecialPayload> STREAM_CODEC =
             StreamCodec.composite(

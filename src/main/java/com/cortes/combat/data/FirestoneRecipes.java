@@ -78,8 +78,7 @@ public final class FirestoneRecipes implements DataProvider {
             ingredients.add(Ingredient.of(Items.GUNPOWDER));
             ingredients.add(Ingredient.of(Items.GLOWSTONE_DUST));
 
-            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(
-                    CortesCombat.MODID, "firestone");
+            ResourceLocation id = CortesCombat.rl("firestone");
             ShapelessRecipe recipe = new ShapelessRecipe(
                     "", CraftingBookCategory.MISC,
                     new ItemStack(ModItems.FIRESTONE.get(), 2), ingredients);

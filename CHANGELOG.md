@@ -1487,3 +1487,25 @@ techo) y `SwingInputHandlerWiringTest.aBodylessEntityIsVanillas`, un source-read
 mitades del fix: la pregunta por lo vivo **negada**, y el `return` **antes** de `claim = OURS`. **Los
 dos sabotajes mataron por su razón**: quitar el `Math.min` → rojo en `hugeDamageIsCapped`; invertir el
 `!(.. instanceof LivingEntity)` → rojo en el guard de wiring. **1167 tests verdes.**
+
+## Ronda de portabilidad (2026-10-23)
+
+**Motivo:** los usuarios piden 1.20.1 a gritos, y el mod estaba construido sobre cuatro sistemas que
+ahi no existen (components, attachments, payloads, encantamientos data-driven). Decision del dueno:
+refactor de portabilidad primero, port despues.
+
+**Tres facades, cero logica movida:** `CortesCombat.rl()` (67 `fromNamespaceAndPath` en 47 archivos),
+`platform/CombatState` (112 `getData`/`setData` en 18 archivos: los 21 attachments, delegacion pura,
+sin computo, sin copia, sin cache) y `platform/EnchantView` (los 3 `EnchantmentHelper` del engine).
+16 imports huerfanos de `ModAttachments` limpiados.
+
+**Cuatro guards en `PortabilityGuardsTest`, los cuatro sabotaje-verificados, 1174 tests verdes.**
+
+**Lo que costo y no fue regresion:** la migracion rompio 5 tests textuales que nombraban el mecanismo
+en el call site -- los tres de `EnchantmentHooksTest` que pedian `GUARD_FREE`/`SECOND_WINDOW`/
+`EnchantmentHelper.*`, el orden de `MaceFallWiringTest` y `DamageTypeDeclarationTest` que afirmaba la
+fabrica vieja. Migrar la puerta y no la regla es el fix, y es el que se aplico.
+
+**Nota de sabotaje:** el primer sabotaje del guard de estado reemplazo cinco sitios sin su import y
+murio en compilacion antes de llegar al guard -- sabotaje mal disenado, no guard sordo. El bueno es
+un solo call site fully-qualified, que compila y el guard nombra.

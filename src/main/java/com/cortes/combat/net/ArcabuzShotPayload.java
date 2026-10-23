@@ -37,7 +37,7 @@ public record ArcabuzShotPayload(List<Integer> targets) implements CustomPacketP
     public static final int MAX_TARGETS_IN_A_PACKET = 16;
 
     public static final Type<ArcabuzShotPayload> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "arcabuz_shot"));
+            CortesCombat.rl("arcabuz_shot"));
 
     /**
      * Hand-written rather than {@code ByteBufCodecs.VAR_INT.apply(list())}, for one reason and

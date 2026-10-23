@@ -1,5 +1,7 @@
 package com.cortes.combat.command;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.CombatTrace;
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.block.NetherReactorBlock;
@@ -171,7 +173,7 @@ public final class CortesCommand {
         // Refill against the item's own maximum, not a fixed number: a sword is worth 1, so
         // "full" means a different thing depending on what is in hand.
         int max = com.cortes.combat.guard.GuardHandler.bestFor(player).profile().safePoints();
-        player.setData(com.cortes.combat.registry.ModAttachments.GUARD_STAMINA.get(),
+        CombatState.setGuard(player,
                 new com.cortes.combat.state.GuardState(false, max, max, 40));
         ctx.getSource().sendSuccess(() -> Component.literal("Aguante restaurada (" + max + ")."),
                 false);
@@ -340,7 +342,7 @@ public final class CortesCommand {
         // full charge is not something a damage number can explain: it needs the count and the
         // threshold side by side, which is the whole difference between a feeling and a fact.
         com.cortes.combat.state.ChargeState live =
-                player.getData(com.cortes.combat.registry.ModAttachments.CHARGE.get());
+                CombatState.charge(player);
         int threshold = com.cortes.combat.attack.AttackTiming.MIN_CHARGE_HOLD_TICKS;
         String verdict = !live.holding()
                 ? "sin swing abierto"

@@ -1,9 +1,10 @@
 package com.cortes.combat.enchant;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.core.weapon.WeaponProfile;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.Adrenalina;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -57,7 +58,7 @@ public final class AdrenalinaHandler {
             return;
         }
         long now = player.level().getGameTime();
-        Adrenalina state = player.getData(ModAttachments.ADRENALINA.get());
+        Adrenalina state = CombatState.adrenalina(player);
         if (!state.isReady(now)) {
             return;
         }
@@ -68,7 +69,7 @@ public final class AdrenalinaHandler {
         // **La cuenta se arma aca y la cobra el golpe.** Solo el nivel dos la guarda: el L1 es
         // defensivo puro, y darle la mitad ofensiva al nivel uno dejaria al segundo sin nada que
         // agregar salvo diez puntos de reduccion.
-        player.setData(ModAttachments.ADRENALINA.get(),
+        CombatState.setAdrenalina(player,
                 state.spent(now, CombatEnchantRules.adrenalinaCooldown(level))
                         .banking(level >= CombatEnchantRules.ADRENALINA_MAX_LEVEL ? saved : 0.0F));
         // Sin particulas propias: el brillo de Velocidad que el jugador ya conoce es el de la pocion,

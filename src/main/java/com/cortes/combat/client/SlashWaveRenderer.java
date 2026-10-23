@@ -59,8 +59,7 @@ import net.neoforged.neoforge.client.event.ModelEvent;
  */
 public class SlashWaveRenderer extends EntityRenderer<SlashWave> {
 
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            CortesCombat.MODID, "projectile/slash");
+    private static final ResourceLocation TEXTURE = CortesCombat.rl("projectile/slash");
 
     /**
      * El modelo, con la variante {@code standalone} que NeoForge exige para lo que se pide a mano.
@@ -69,7 +68,7 @@ public class SlashWaveRenderer extends EntityRenderer<SlashWave> {
      * 'standalone' variant"}. El de nombre completo queda "unused" en el bake y no llega nunca.</p>
      */
     public static final ModelResourceLocation MODEL = ModelResourceLocation.standalone(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "projectile/sweeping_edge"));
+            CortesCombat.rl("projectile/sweeping_edge"));
 
     public SlashWaveRenderer(EntityRendererProvider.Context context) {
         super(context);

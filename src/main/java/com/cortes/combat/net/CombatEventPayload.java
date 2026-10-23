@@ -57,7 +57,7 @@ public record CombatEventPayload(int entityId, Kind kind, float charge, int dura
     }
 
     public static final Type<CombatEventPayload> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "combat_event"));
+            CortesCombat.rl("combat_event"));
 
     /**
      * The kind, on one byte, and <b>out of range is {@link Kind#CANCEL}</b>.

@@ -1,8 +1,9 @@
 package com.cortes.combat.attack;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.weapon.WeaponProfile;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.FallDeferral;
 
 import net.minecraft.world.damagesource.DamageTypes;
@@ -59,7 +60,7 @@ public final class FallCoyote {
         if (!event.getSource().is(DamageTypes.FALL)) {
             return;
         }
-        FallDeferral held = player.getData(ModAttachments.FALL_DEFERRAL.get());
+        FallDeferral held = CombatState.fallDeferral(player);
         // The second pass: this is the deferred damage being applied and must go through.
         if (held.applying()) {
             return;
@@ -74,7 +75,7 @@ public final class FallCoyote {
         if (held.pending()) {
             return;
         }
-        player.setData(ModAttachments.FALL_DEFERRAL.get(),
+        CombatState.setFallDeferral(player,
                 new FallDeferral(event.getAmount(),
                         player.level().getGameTime() + WINDOW_TICKS, false));
     }
@@ -82,16 +83,16 @@ public final class FallCoyote {
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
-        FallDeferral held = player.getData(ModAttachments.FALL_DEFERRAL.get());
+        FallDeferral held = CombatState.fallDeferral(player);
         if (!held.pending() || player.level().getGameTime() < held.dueTick()) {
             return;
         }
         // Marked before the hurt, so the handler above recognises its own second pass, and cleared
         // after it. See FallDeferral.applying for why this is state and not a static.
-        player.setData(ModAttachments.FALL_DEFERRAL.get(),
+        CombatState.setFallDeferral(player,
                 new FallDeferral(held.damage(), held.dueTick(), true));
         player.hurt(player.damageSources().fall(), held.damage());
-        player.setData(ModAttachments.FALL_DEFERRAL.get(), FallDeferral.NONE);
+        CombatState.setFallDeferral(player, FallDeferral.NONE);
     }
 
     /**
@@ -127,8 +128,8 @@ public final class FallCoyote {
         // Vanilla's own, dropped by the replaced flow. See the javadoc: this is the half that makes
         // "hitting on the way down" save you before you have even landed.
         player.resetFallDistance();
-        if (player.getData(ModAttachments.FALL_DEFERRAL.get()).pending()) {
-            player.setData(ModAttachments.FALL_DEFERRAL.get(), FallDeferral.NONE);
+        if (CombatState.fallDeferral(player).pending()) {
+            CombatState.setFallDeferral(player, FallDeferral.NONE);
         }
     }
 

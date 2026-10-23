@@ -27,7 +27,7 @@ import net.minecraft.resources.ResourceLocation;
 public record ParryStatePayload(boolean active, int cooldown) implements CustomPacketPayload {
 
     public static final Type<ParryStatePayload> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "parry_state"));
+            CortesCombat.rl("parry_state"));
 
     public static final StreamCodec<ByteBuf, ParryStatePayload> STREAM_CODEC =
             StreamCodec.composite(

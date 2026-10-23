@@ -22,7 +22,7 @@ import net.minecraft.resources.ResourceLocation;
 public record CombatFeedbackPayload(CombatFeedback kind) implements CustomPacketPayload {
 
     public static final Type<CombatFeedbackPayload> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "combat_feedback"));
+            CortesCombat.rl("combat_feedback"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, CombatFeedbackPayload> STREAM_CODEC =
             StreamCodec.composite(

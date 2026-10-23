@@ -1,5 +1,7 @@
 package com.cortes.combat.special;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.core.CombatFeedback;
 import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.effect.DrainedEffect;
@@ -7,7 +9,6 @@ import com.cortes.combat.effect.VampiricEffect;
 import com.cortes.combat.enchant.CombatEnchantRules;
 import com.cortes.combat.enchant.CombatEnchantments;
 import com.cortes.combat.net.ModNetworking;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.registry.ModEffects;
 import com.cortes.combat.sound.CombatSounds;
 import com.cortes.combat.sound.ModSounds;
@@ -55,7 +56,7 @@ public final class ParryHandler {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-        ParryState state = player.getData(ModAttachments.PARRY.get());
+        ParryState state = CombatState.parry(player);
         if (!state.isParrying()) {
             return;
         }
@@ -101,7 +102,7 @@ public final class ParryHandler {
                 throughTheAir);
 
         event.setAmount(0.0F);
-        player.setData(ModAttachments.PARRY.get(), state.consume());
+        CombatState.setParry(player, state.consume());
         ModNetworking.sendParryState(player, false, state.cooldownTicks());
 
         // **Capacitor: lo que vuelve, ahora con un rayo encima.**

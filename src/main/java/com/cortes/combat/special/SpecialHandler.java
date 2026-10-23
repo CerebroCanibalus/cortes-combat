@@ -1,5 +1,7 @@
 package com.cortes.combat.special;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.attack.AttackCooldown;
 import com.cortes.combat.attack.AttackResult;
 import com.cortes.combat.attack.DamageResolver;
@@ -15,7 +17,6 @@ import com.cortes.combat.core.weapon.ReachProfile;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.particle.SlashParticles;
 import com.cortes.combat.reach.Reach;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ParryState;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -268,7 +269,7 @@ public final class SpecialHandler {
      * supposed to be readable.</p>
      */
     private static void parry(ServerPlayer player, ServerLevel level, WeaponStats stats) {
-        ParryState state = player.getData(ModAttachments.PARRY.get());
+        ParryState state = CombatState.parry(player);
         if (!state.canActivate()) {
             return;
         }
@@ -278,7 +279,7 @@ public final class SpecialHandler {
         // barra que dura una cosa y una ventana que se abre en otra.
         ParryState armed = state.activate(CombatEnchantments.level(level.registryAccess(),
                 player.getMainHandItem(), CombatEnchantments.STEEL_REFLEX));
-        player.setData(ModAttachments.PARRY.get(), armed);
+        CombatState.setParry(player, armed);
 
         player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
                 net.minecraft.world.effect.MobEffects.MOVEMENT_SLOWDOWN,
@@ -343,7 +344,7 @@ public final class SpecialHandler {
                     stats.charge(),
                     stats.profile(),
                     0.0F,
-                    player.getData(com.cortes.combat.registry.ModAttachments.HAMMER_STREAK.get()));
+                    CombatState.hammerStreak(player));
             Knockback.apply(player, target, stats.knockback(), HalberdSweep.PUSH);
             target.invulnerableTime = 0;
             if (target.hurt(player.damageSources().playerAttack(player), result.damage())) {
@@ -371,8 +372,8 @@ public final class SpecialHandler {
                 player.level().registryAccess(), player.getMainHandItem(),
                 CombatEnchantments.SEGUNDA_PASADA));
         if (kills == 0 && pasada > 0.0F) {
-            var cooldown = player.getData(com.cortes.combat.registry.ModAttachments.COOLDOWN.get());
-            player.setData(com.cortes.combat.registry.ModAttachments.COOLDOWN.get(),
+            var cooldown = CombatState.cooldown(player);
+            CombatState.setCooldown(player,
                     cooldown.refund(Math.round(cost * pasada)));
         }
     }

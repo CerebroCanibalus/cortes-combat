@@ -1,7 +1,8 @@
 package com.cortes.combat.enchant;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.CortesCombat;
-import com.cortes.combat.registry.ModAttachments;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
@@ -193,9 +194,9 @@ public final class GoldEnchantmentHandler {
         }
         int now = (int) level.getGameTime();
         int ceiling = GoldEnchantRules.frenzyMaxStacks(frenzy);
-        FrenzyState current = player.getData(ModAttachments.FRENZY).asOf(now);
+        FrenzyState current = CombatState.frenzy(player).asOf(now);
         FrenzyState grown = current.broken(now, ceiling);
-        player.setData(ModAttachments.FRENZY, grown);
+        CombatState.setFrenzy(player, grown);
         // **Una linea cada cinco bloques, y existe porque "no lo noto" no se contesta mirando.**
         //
         // El bono es una multiplicacion sobre el minado: no aparece en el inventario ni en ningun
@@ -358,7 +359,7 @@ public final class GoldEnchantmentHandler {
         // **The frenzy, and it is the same pass as the other two.** The stack is read from the
         // attachment, resolved against the current game time so a window that closed pays nothing,
         // and written only by the break event -- this reads, the block one writes.
-        FrenzyState frenzy = player.getData(ModAttachments.FRENZY)
+        FrenzyState frenzy = CombatState.frenzy(player)
                 .asOf((int) player.level().getGameTime());
         int frenzyLevel = level(player.getMainHandItem(), ModEnchantments.MINER_FRENZY);
         apply(player, net.minecraft.world.entity.ai.attributes.Attributes.BLOCK_BREAK_SPEED,

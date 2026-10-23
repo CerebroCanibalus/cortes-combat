@@ -1,7 +1,8 @@
 package com.cortes.combat.survival;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.config.ServerConfig;
-import com.cortes.combat.registry.ModAttachments;
 
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.player.Player;
@@ -102,7 +103,7 @@ public final class SurvivalTicker {
         // 4.0 forever is worse than one that reads 0, because it claims to be tracking something.
         data.setExhaustion(0.0F);
 
-        SurvivalState state = player.getData(ModAttachments.SURVIVAL.get());
+        SurvivalState state = CombatState.survival(player);
         int foodLevel = data.getFoodLevel();
         boolean regenerationOn = player.level().getGameRules()
                 .getBoolean(GameRules.RULE_NATURAL_REGENERATION);
@@ -111,7 +112,7 @@ public final class SurvivalTicker {
                 player.isHurt(), regenerationOn);
 
         if (plan.state() != state) {
-            player.setData(ModAttachments.SURVIVAL.get(), plan.state());
+            CombatState.setSurvival(player, plan.state());
         }
 
         if (plan.healAmount() > 0) {

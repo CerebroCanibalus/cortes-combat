@@ -39,7 +39,7 @@ public final class ReactorTags {
      * {@code getBestNeighborSignal}. The scan asks this tag before it spends a neighbour update.</p>
      */
     public static final TagKey<Block> POWERABLE = TagKey.create(Registries.BLOCK,
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "reactor_powerable"));
+            CortesCombat.rl("reactor_powerable"));
 
     /**
      * The blocks that may switch the reactor itself off, and <b>the only thing that may</b>.
@@ -56,7 +56,7 @@ public final class ReactorTags {
      * extends it the same way as {@link #POWERABLE}.</p>
      */
     public static final TagKey<Block> SWITCH = TagKey.create(Registries.BLOCK,
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "reactor_switch"));
+            CortesCombat.rl("reactor_switch"));
 
     private ReactorTags() {
     }

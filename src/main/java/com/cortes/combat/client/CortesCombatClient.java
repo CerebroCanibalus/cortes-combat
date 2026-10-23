@@ -173,14 +173,14 @@ public class CortesCombatClient {
     }
 
     private static void registerLayers(RegisterGuiLayersEvent event) {
-        event.registerBelowAll(ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "damage_overlay"),
+        event.registerBelowAll(CortesCombat.rl("damage_overlay"),
                 new DamageOverlayLayer());
         event.replaceLayer(VanillaGuiLayers.CROSSHAIR, new CombatCrosshairLayer());
         event.registerAbove(VanillaGuiLayers.CROSSHAIR,
-                ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "cooldown_brackets"),
+                CortesCombat.rl("cooldown_brackets"),
                 new CooldownBracketLayer());
         event.registerAbove(VanillaGuiLayers.CROSSHAIR,
-                ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "guard_orbs"),
+                CortesCombat.rl("guard_orbs"),
                 new GuardOrbsLayer());
     }
 

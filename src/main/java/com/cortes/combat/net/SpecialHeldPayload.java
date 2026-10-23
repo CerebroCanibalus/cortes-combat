@@ -31,7 +31,7 @@ import net.minecraft.resources.ResourceLocation;
 public record SpecialHeldPayload(boolean held) implements CustomPacketPayload {
 
     public static final Type<SpecialHeldPayload> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "special_held"));
+            CortesCombat.rl("special_held"));
 
     /** A record, so {@link com.mojang.serialization.codecs.RecordCodecBuilder} is ⊘ needed. */
     public static final StreamCodec<io.netty.buffer.ByteBuf, SpecialHeldPayload> STREAM_CODEC =

@@ -1,10 +1,11 @@
 package com.cortes.combat.net;
 
+import com.cortes.combat.platform.CombatState;
+
 import com.cortes.combat.attack.AttackCooldown;
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.guard.GuardStats;
-import com.cortes.combat.registry.ModAttachments;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.enchant.CombatEnchantRules;
 import com.cortes.combat.state.GuardState;
@@ -85,9 +86,9 @@ public final class PlayerStateSync {
      * that plays its first and last frame and nothing between.</p>
      */
     private static PlayerCombatState describe(ServerPlayer player) {
-        ChargeState charge = player.getData(ModAttachments.CHARGE.get());
-        GuardState guard = player.getData(ModAttachments.GUARD_STAMINA.get());
-        ParryState parry = player.getData(ModAttachments.PARRY.get());
+        ChargeState charge = CombatState.charge(player);
+        GuardState guard = CombatState.guard(player);
+        ParryState parry = CombatState.parry(player);
 
         // **The stagger is the guard item's remaining cooldown, not the weapon's.**
         //
@@ -132,7 +133,7 @@ public final class PlayerStateSync {
                 // which is the shape of bug this project has already paid for once with the
                 // sabre's BREAK track: pinned at a value nothing could move, in every frame of
                 // every session, and nobody noticed for a round.
-                player.getData(ModAttachments.COOLDOWN.get())
+                CombatState.cooldown(player)
                         .ratio(AttackCooldown.intervalFor(player)),
                 // **La carga del boton derecho, que hoy solo tiene la pala.**
                 //

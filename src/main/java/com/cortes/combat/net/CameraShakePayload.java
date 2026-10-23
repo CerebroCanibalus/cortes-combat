@@ -43,7 +43,7 @@ public record CameraShakePayload(double x, double y, double z, float degrees, in
         implements CustomPacketPayload {
 
     public static final Type<CameraShakePayload> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "camera_shake"));
+            CortesCombat.rl("camera_shake"));
 
     public static final StreamCodec<ByteBuf, CameraShakePayload> STREAM_CODEC =
             StreamCodec.composite(

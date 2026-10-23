@@ -178,7 +178,7 @@ public final class ArcabuzRecipes implements DataProvider {
         // different roots and a recipe under assets/ is a file the loader never reads. It parses,
         // it exists, and no recipe appears in game.
         return output.createPathProvider(PackOutput.Target.DATA_PACK, "recipe")
-                .json(ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "arcabuz"));
+                .json(CortesCombat.rl("arcabuz"));
     }
 
     /**
@@ -197,7 +197,7 @@ public final class ArcabuzRecipes implements DataProvider {
      */
     private CompletableFuture<?> advancement(CachedOutput cached,
                                              HolderLookup.Provider registries) {
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CortesCombat.MODID, "arcabuz");
+        ResourceLocation id = CortesCombat.rl("arcabuz");
 
         Advancement advancement = Advancement.Builder.recipeAdvancement()
                 .parent(RecipeBuilder.ROOT_RECIPE_ADVANCEMENT)
