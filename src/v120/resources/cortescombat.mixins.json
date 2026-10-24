@@ -1,0 +1,28 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.cortes.combat.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "cortescombat.refmap.json",
+  "mixins": [
+    "FoodDataMixin",
+    "GoldDurabilityMixin",
+    "ItemStackDrinkDurationMixin",
+    "MobEffectInstanceAccessor",
+    "RedStoneWireBlockMixin"
+  ],
+  "client": [
+    "MinecraftAttackMixin",
+    "ItemInHandRendererMixin",
+    "PlayerModelMixin",
+    "SpecialRightClickMixin",
+    "ArcabuzGuiIconMixin",
+    "TrabazonSprintMixin",
+    "OverlayTextureMixin",
+    "LivingEntityOverlayMixin",
+    "LivingEntityRenderMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

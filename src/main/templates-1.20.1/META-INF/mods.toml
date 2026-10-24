@@ -26,14 +26,14 @@ config="${mod_id}.mixins.json"
 
 [[dependencies.${mod_id}]] #mandatory
     modId="forge" #mandatory
-    type="required" #mandatory
+    mandatory=true #mandatory
     versionRange="${forge_version_range}" #mandatory
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.${mod_id}]] #mandatory
     modId="minecraft" #mandatory
-    type="required" #mandatory
+    mandatory=true #mandatory
     versionRange="${minecraft_version_range}" #mandatory
     ordering="NONE"
     side="BOTH"

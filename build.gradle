@@ -9,10 +9,12 @@ buildscript {
         gradlePluginPortal()
         maven { url = 'https://maven.neoforged.net/releases/' }
         maven { url = 'https://maven.minecraftforge.net/' }
+        maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
     }
     dependencies {
         classpath 'net.neoforged.moddev:net.neoforged.moddev.gradle.plugin:2.0.141'
         classpath 'net.minecraftforge.gradle:ForgeGradle:6.0.54'
+        classpath 'org.spongepowered:mixingradle:0.7.38'
     }
 }
 
@@ -27,6 +29,11 @@ if (mc121) {
     apply plugin: 'net.neoforged.moddev'
 } else {
     apply plugin: 'net.minecraftforge.gradle'
+    // MixinGradle solo en la 1.20.1: genera el refmap que traduce los mixins de
+    // Mojmap (dev) a SRG (produccion). La 1.21.1 usa Mojmap en ambos lados y
+    // ModDevGradle ya se encarga; aplicar esto alla romperia su pipeline.
+    // (verificado en el wiki Mixins-on-Minecraft-Forge de SpongePowered). (⌒‿⌒)
+    apply plugin: 'org.spongepowered.mixin'
 }
 
 // The wrapper task lives on the root project only: version subprojects evaluating this
@@ -61,6 +68,10 @@ repositories {
     // Declared explicitly so the 1.20.1 leg does not depend on whatever the plugin auto-adds.
     maven { url = 'https://maven.minecraftforge.net/' }
     mavenCentral()
+    if (!mc121) {
+        // MixinGradle + el annotation processor salen de aca.
+        maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
+    }
 }
 
 base {
@@ -312,10 +323,26 @@ dependencies {
             prefer '2.3'
         }
     }
+    if (!mc121) {
+        // El annotation processor de Mixin (el fat jar con classifier `processor`
+        // trae sus propias dependencias). Misma version que el runtime 0.8.5 que
+        // reporta el log del server, o el refmap nace de otra version. (⌒‿⌒)
+        annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    }
 
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
+}
+
+if (!mc121) {
+    // El refmap de la 1.20.1: el nombre tiene que coincidir con el `refMap` del
+    // JSON de la pata (src/v120/resources/cortescombat.mixins.json). El `config`
+    // inyecta el JSON en las run configs y en el manifest de los jars ofuscados.
+    mixin {
+        add sourceSets.main, 'cortescombat.refmap.json'
+        config 'cortescombat.mixins.json'
+    }
 }
 
 tasks.named('test', Test).configure {
@@ -438,7 +465,7 @@ if (!mc121) {
         // Versiona las reglas: el Sync es up-to-date por contenido de entradas, y un cambio solo
         // en el closure del filter no lo invalida. Sin esto, editar las reglas recompila con el
         // arbol viejo y los errores mienten. (μ_μ)
-                                inputs.property('renameRules', 'v32-render-mixin');
+                                inputs.property('renameRules', 'v35-drink-twin');
         // Tres reglas en orden de especificidad, porque el rename 20.1->20.2 no fue un
         // prefijo plano: bus.api cambio de nombre (eventbus) y el `neoforge` del medio se cayo.
         // Un reemplazo ciego de `net.neoforged` produce `net.minecraftforge.neoforge`, que no
@@ -554,6 +581,7 @@ if (!mc121) {
                 'com/cortes/combat/weaponpack/WeaponPackItems.java',
                 'com/cortes/combat/weaponpack/WeaponPackAttributes.java',
                 'com/cortes/combat/block/NetherReactorBlockEntity.java',
+                'com/cortes/combat/CortesCombat.java',
                 'com/cortes/combat/mixin/LivingEntityRenderMixin.java',
                 'com/cortes/combat/mixin/PlayerModelMixin.java',
                 'com/cortes/combat/client/GuardOrbsLayer.java',
@@ -566,6 +594,7 @@ if (!mc121) {
                 'com/cortes/combat/client/FlatInventoryIcon.java',
                 'com/cortes/combat/client/ConeDebugRenderer.java',
                 'com/cortes/combat/client/CortesCombatClient.java',
+                'com/cortes/combat/mixin/ItemStackDrinkDurationMixin.java',
                 'com/cortes/combat/client/ArcabuzModelProperties.java',
                 'com/cortes/combat/client/HealthFlashBuffer.java',
                 'com/cortes/combat/client/VertexBounds.java',
@@ -598,6 +627,7 @@ if (!mc121) {
                 'com/cortes/combat/weaponpack/WeaponPackItems.java',
                 'com/cortes/combat/weaponpack/WeaponPackAttributes.java',
                 'com/cortes/combat/block/NetherReactorBlockEntity.java',
+                'com/cortes/combat/CortesCombat.java',
                 'com/cortes/combat/mixin/LivingEntityRenderMixin.java',
                 'com/cortes/combat/mixin/PlayerModelMixin.java',
                 'com/cortes/combat/client/GuardOrbsLayer.java',
@@ -610,6 +640,7 @@ if (!mc121) {
                 'com/cortes/combat/client/FlatInventoryIcon.java',
                 'com/cortes/combat/client/ConeDebugRenderer.java',
                 'com/cortes/combat/client/CortesCombatClient.java',
+                'com/cortes/combat/mixin/ItemStackDrinkDurationMixin.java',
                 'com/cortes/combat/client/ArcabuzModelProperties.java',
                 'com/cortes/combat/client/HealthFlashBuffer.java',
                 'com/cortes/combat/client/VertexBounds.java',
@@ -646,6 +677,10 @@ if (!mc121) {
                 include '**/*.toml'
                 include '**/*.properties'
                 include '**/*.txt'
+                // El mixins.json lo pone la pata (src/v120/resources): lleva el
+                // `refMap` que la 1.21.1 no usa. Sin este exclude viajan los dos
+                // y el refmap apunta al que no lo declara. (μ_μ)
+                exclude 'cortescombat.mixins.json'
                 filter(renameLine)
             }
             from(rootProject.file('src/main/resources')) {
@@ -676,5 +711,24 @@ if (!mc121) {
     }
     tasks.named('processResources', Copy).configure {
         dependsOn(forgeSrc)
+    }
+    // The 1175 unit tests run on the 1.21.1 leg only. They read the shared tree as text
+    // and assert 1.21.1 wiring (DeferredHolder, NeoForge buses, singular datagen folders),
+    // so compiling them against the 1.20.1 leg fails on purpose -- MaceRebalance, for
+    // example, has no twin because there is no vanilla mace to rebalance. The 1.20.1 leg
+    // is verified by compilation plus a real server boot (see test-server-1.20.1/), not
+    // by re-running a suite that describes the other leg.
+    tasks.named('compileTestJava', JavaCompile).configure {
+        enabled = false
+    }
+    tasks.named('test', Test).configure {
+        enabled = false
+    }
+    // FG6 creates the jarJar task disabled; without this the jar ships without its
+    // embedded libraries and the server dies with NoClassDefFoundError (verified:
+    // `Task is enabled is false` in the jarJar log). Project-qualified because a bare
+    // `jarJar { }` would resolve to the dependency *configuration* of the same name.
+    project.extensions.getByName('jarJar').with {
+        enable()
     }
 }
