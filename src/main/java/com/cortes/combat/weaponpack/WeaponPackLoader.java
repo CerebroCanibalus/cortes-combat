@@ -39,7 +39,7 @@ import java.util.stream.Stream;
 public final class WeaponPackLoader {
 
     private static final String BUILT_IN_RESOURCE = "data/cortescombat/weapon_packs/builtin.yaml";
-    private static final Set<String> ROOT_KEYS = Set.of("version", "archetypes", "weapons");
+    private static final Set<String> ROOT_KEYS = Set.of("version", "strict", "archetypes", "weapons");
     private static final Set<String> ENTRY_KEYS = Set.of("creates", "match", "archetype",
             "profile", "stats", "special", "cone", "reach", "shot", "texture", "sounds",
             "animation", "display", "guard");
@@ -63,30 +63,61 @@ public final class WeaponPackLoader {
     private WeaponPackLoader() {
     }
 
-    /** Packs en orden de precedencia + warnings de parseo; los dos viajan juntos. */
-    public record Result(List<WeaponPackSpec> packs, List<String> warnings) {
+    /**
+     * Packs en orden de precedencia + lo que el parseo dejó que decir; los tres viajan juntos.
+     *
+     * <p>Warnings y errores son dos listas porque se gritan distinto: un warning dice "esto se
+     * ignoró", un error dice "este archivo no cargó". Los dos nombran el archivo, y los dos
+     * cuentan para el `warnings` de `/cc reload` -- un CI que cuenta warnings quiere verlos
+     * todos en un solo número.</p>
+     */
+    public record Result(List<WeaponPackSpec> packs, List<String> warnings, List<String> errors) {
         public Result {
             packs = List.copyOf(packs);
             warnings = List.copyOf(warnings);
+            errors = List.copyOf(errors);
+        }
+
+        /** Todos los mensajes, errores primero: lo que `/cc reload` cuenta. */
+        public List<String> allMessages() {
+            List<String> all = new ArrayList<>(errors);
+            all.addAll(warnings);
+            return List.copyOf(all);
         }
     }
 
     /** Archivo que no se pudo leer como weapon pack. El mensaje siempre nombra el archivo. */
     public static class ParseException extends RuntimeException {
         private final String origin;
+        private final boolean strict;
 
         public ParseException(String origin, String detail, Throwable cause) {
-            super(origin + " :: " + detail, cause);
-            this.origin = origin;
+            this(origin, detail, cause, false);
         }
 
         /** Errores propios, sin exception de SnakeYAML detrás: el detalle basta. */
         public ParseException(String origin, String detail) {
-            this(origin, detail, null);
+            this(origin, detail, null, false);
+        }
+
+        /** Un archivo `strict` que no pasa limpio: el store lo grita en vez de susurrarlo. (⌒‿⌒) */
+        public ParseException(String origin, String detail, boolean strict) {
+            this(origin, detail, null, strict);
+        }
+
+        private ParseException(String origin, String detail, Throwable cause, boolean strict) {
+            super(origin + " :: " + detail, cause);
+            this.origin = origin;
+            this.strict = strict;
         }
 
         public String origin() {
             return origin;
+        }
+
+        /** Este archivo pedía `strict`: el fallo es un error de carga, no un warning más. */
+        public boolean isStrict() {
+            return strict;
         }
     }
 
@@ -105,7 +136,6 @@ public final class WeaponPackLoader {
         }
         Map<?, ?> map = cast(root);
         List<String> warnings = new ArrayList<>();
-        unknownKeys(origin, "raíz", map, ROOT_KEYS, warnings);
 
         Object version = map.get("version");
         if (version == null) {
@@ -116,40 +146,60 @@ public final class WeaponPackLoader {
                     + "' -- este mod entiende la 1");
         }
 
+        // **`strict` se lee antes que todo lo demás, porque decide qué hacer con lo demás.**
+        // Un archivo estricto no tolera ni un warning: campo desconocido, tipo que no
+        // corresponde o entrada sin identidad abortan el ARCHIVO (los demás siguen entrando).
+        // Lo que `strict` no puede prometer se documenta en el template: la existencia de un
+        // asset de cliente (un sprite, una pose, un sonido) no se comprueba acá porque el
+        // servidor no ve `assets/` -- eso sigue siendo warning en uso, con origen. (￣ε￣＠)
+        boolean strict = map.get("strict") instanceof Boolean flag && flag;
+        List<String> fileWarnings = new ArrayList<>();
+        unknownKeys(origin, "raíz", map, ROOT_KEYS, fileWarnings);
+
         List<WeaponPackSpec.Entry> entries = new ArrayList<>();
         if (map.get("weapons") instanceof List<?> list) {
             for (int i = 0; i < list.size(); i++) {
                 WeaponPackSpec.Entry entry = parseEntry(origin, "weapons[" + i + "]", list.get(i),
-                        warnings);
+                        fileWarnings);
                 if (entry != null) {
                     entries.add(entry);
                 }
             }
         } else if (map.get("weapons") != null) {
-            warnings.add(origin + " :: `weapons` no es una lista -- se ignora entera");
+            fileWarnings.add(origin + " :: `weapons` no es una lista -- se ignora entera");
         }
 
         Map<String, ArchetypeSpec> archetypes = new LinkedHashMap<>();
         if (map.get("archetypes") instanceof Map<?, ?> raw) {
             raw.forEach((name, value) -> {
-                ArchetypeSpec spec = parseArchetype(origin, String.valueOf(name), value, warnings);
+                ArchetypeSpec spec = parseArchetype(origin, String.valueOf(name), value,
+                        fileWarnings);
                 if (spec != null) {
                     archetypes.put(String.valueOf(name), spec);
                 }
             });
         } else if (map.get("archetypes") != null) {
-            warnings.add(origin + " :: `archetypes` no es un mapa -- se ignora entero");
+            fileWarnings.add(origin + " :: `archetypes` no es un mapa -- se ignora entero");
         }
 
-        return new Result(List.of(new WeaponPackSpec(origin, entries, archetypes)), warnings);
+        if (strict && !fileWarnings.isEmpty()) {
+            throw new ParseException(origin, "strict: " + fileWarnings.size()
+                    + " problema(s) y el archivo no carga -- el primero: "
+                    + fileWarnings.get(0), true);
+        }
+        warnings.addAll(fileWarnings);
+
+        return new Result(List.of(new WeaponPackSpec(origin, entries, archetypes)), warnings,
+                List.of());
     }
 
     /** Todos los {@code *.yaml} de {@code configDir}, en orden alfabético (más abajo gana). */
     public static Result loadDirectory(Path configDir) {
         List<WeaponPackSpec> packs = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
         if (!Files.isDirectory(configDir)) {
-            return new Result(packs, warnings);
+            return new Result(packs, warnings, errors);
         }
         List<Path> files;
         try (Stream<Path> found = Files.list(configDir)) {
@@ -157,7 +207,7 @@ public final class WeaponPackLoader {
                     .sorted().toList();
         } catch (IOException e) {
             warnings.add(configDir + " :: no se pudo listar: " + e.getMessage());
-            return new Result(packs, warnings);
+            return new Result(packs, warnings, errors);
         }
         for (Path file : files) {
             try {
@@ -165,16 +215,22 @@ public final class WeaponPackLoader {
                         Files.readString(file, StandardCharsets.UTF_8));
                 packs.addAll(one.packs());
                 warnings.addAll(one.warnings());
+                errors.addAll(one.errors());
             } catch (ParseException e) {
                 // Un archivo roto no aborta la carga entera: se nombra completo (con su línea,
-                // si SnakeYAML la trae) y los demás archivos siguen entrando.
-                warnings.add(e.getMessage());
+                // si SnakeYAML la trae) y los demás archivos siguen entrando. Un strict que
+                // falla va a la otra lista: el store lo grita en vez de susurrarlo.
+                if (e.isStrict()) {
+                    errors.add(e.getMessage());
+                } else {
+                    warnings.add(e.getMessage());
+                }
             } catch (IOException | RuntimeException e) {
                 // Un archivo ilegible no tira la carga entera: se nombra y se salta.
                 warnings.add(file.getFileName() + " :: ilegible: " + e.getMessage());
             }
         }
-        return new Result(packs, warnings);
+        return new Result(packs, warnings, errors);
     }
 
     /** El pack del propio mod, desde el classpath; ausente = warning, no silencio. */
@@ -183,13 +239,13 @@ public final class WeaponPackLoader {
                 .getResourceAsStream(BUILT_IN_RESOURCE)) {
             if (stream == null) {
                 return new Result(List.of(),
-                        List.of(BUILT_IN_RESOURCE + " no está en el classpath"));
+                        List.of(BUILT_IN_RESOURCE + " no está en el classpath"), List.of());
             }
             return fromYaml("builtin.yaml",
                     new String(stream.readAllBytes(), StandardCharsets.UTF_8));
         } catch (IOException e) {
             return new Result(List.of(),
-                    List.of(BUILT_IN_RESOURCE + " ilegible: " + e.getMessage()));
+                    List.of(BUILT_IN_RESOURCE + " ilegible: " + e.getMessage()), List.of());
         }
     }
 
@@ -201,7 +257,9 @@ public final class WeaponPackLoader {
         packs.addAll(directory.packs());
         List<String> warnings = new ArrayList<>(builtIn.warnings());
         warnings.addAll(directory.warnings());
-        return new Result(packs, warnings);
+        List<String> errors = new ArrayList<>(builtIn.errors());
+        errors.addAll(directory.errors());
+        return new Result(packs, warnings, errors);
     }
 
     // ---------------------------------------------------------------- parsing

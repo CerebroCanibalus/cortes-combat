@@ -609,10 +609,14 @@ public final class CombatEngine {
         // number that says "twice" about the damage and the one that says it about the picture are
         // the same number.
         if (charged && com.cortes.combat.particle.SlashParticles.chargesToDouble(stats.profile(), stats.charge())) {
-            com.cortes.combat.particle.SlashParticles.doubledHit(level, stats.profile(), target);
+            com.cortes.combat.particle.SlashParticles.doubledHit(level,
+                    com.cortes.combat.particle.SlashParticles.spriteFor(player, stats.profile()),
+                    target);
         } else {
             com.cortes.combat.particle.SlashParticles.hit(
-                    level, stats.profile(), target, charged);
+                    level,
+                    com.cortes.combat.particle.SlashParticles.spriteFor(player, stats.profile()),
+                    target, charged);
         }
         // Same place, same branch: a charged hit is a different slash AND a different sound, and
         // the two must never disagree about which happened.
@@ -889,7 +893,10 @@ public final class CombatEngine {
             if (other.hurt(player.damageSources().playerAttack(player), result.damage() * share)) {
                 other.invulnerableTime = AttackTiming.IFRAME_TICKS;
                 if (player.level() instanceof net.minecraft.server.level.ServerLevel level) {
-                    com.cortes.combat.particle.SlashParticles.hit(level, stats.profile(), other, false);
+                    com.cortes.combat.particle.SlashParticles.hit(level,
+                            com.cortes.combat.particle.SlashParticles.spriteFor(player,
+                                    stats.profile()),
+                            other, false);
                 }
             }
             // Uno y no todos: la estocada atraviesa a UNO, que es lo que la palabra dice.
@@ -1024,7 +1031,10 @@ public final class CombatEngine {
 
         body.hurt(player.damageSources().playerAttack(player), damage);
         if (player.level() instanceof net.minecraft.server.level.ServerLevel server) {
-            com.cortes.combat.particle.SlashParticles.hit(server, WeaponProfile.WARHAMMER, body, true);
+            com.cortes.combat.particle.SlashParticles.hit(server,
+                    com.cortes.combat.particle.SlashParticles.spriteFor(player,
+                            WeaponProfile.WARHAMMER),
+                    body, true);
         }
 
         AABB box = body.getBoundingBox().inflate(CombatEnchantRules.SENTENCIA_RADIUS);

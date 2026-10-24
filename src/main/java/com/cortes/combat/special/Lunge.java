@@ -289,7 +289,8 @@ public final class Lunge {
             }
             if (landed) {
                 target.invulnerableTime = IFRAME_TICKS;
-                SlashParticles.hit(level, stats.profile(), target, false);
+                SlashParticles.hit(level, SlashParticles.spriteFor(player, stats.profile()),
+                        target, false);
                 // The per-target hit, a sixth of a tone down from the weapon's own: a rising series
                 // across a group rather than one sound repeated. Vanilla's riptide plays three sounds
                 // for one thrust; a lunge that can pass through six things earns six.

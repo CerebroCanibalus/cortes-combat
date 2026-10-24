@@ -1,9 +1,13 @@
 package com.cortes.combat.particle;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.ParticleRenderType;
 import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.client.particle.TextureSheetParticle;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.NoSuchElementException;
 
@@ -142,27 +146,21 @@ public class SlashParticle extends TextureSheetParticle {
      * the sprite draws a quad of nothing. No crash, no warning, no log line: the four UV
      * accessors return zero and the particle is simply invisible, which is the same thing on
      * screen as art that is too faint to see. Two launches went into that.</p>
+     *
+     * <p><b>The sprite comes from the atlas by id, not from the set by index.</b> The set only
+     * spans the eleven strips this mod ships; a weapon pack's sprite lives in another namespace
+     * and no index reaches it. The atlas stitches every {@code textures/particle/} PNG of every
+     * enabled pack, so a direct lookup draws ours and theirs through the same door -- and a
+     * missing id falls back to the sword with a warning naming it, which is the
+     * fail-loud half of the weapon pack contract. (⌒‿⌒)</p>
      */
     public void bindSprite(SpriteSet sprites) {
-        if (sprites == null) {
-            return;
-        }
-        int lastIndex = SlashSprite.SPRITES.size() - 1;
-        int index = SlashSprite.indexOf(options.sprite());
-        warnIfUnbound(sprites, index, lastIndex);
-        try {
-            this.setSprite(sprites.get(Math.min(index, lastIndex), Math.max(1, lastIndex)));
-        } catch (RuntimeException unbound) {
-            // An unbound set means the description JSON did not load. A slash that draws nothing is
-            // a cosmetic bug; a NullPointerException on the render thread twenty frames later is
-            // not the same thing.
-            this.setSprite(null);
-        }
+        setSprite(resolveSprite(sprites));
     }
 
     @Override
     public void pickSprite(SpriteSet sprites) {
-        // Bound by WHICH weapon, not by age.
+        // Bound by WHICH sprite id, not by age.
         //
         // SpriteSet has no get(index). Its two accessors are get(age, lifetime), which is
         // list.get(age * (size - 1) / lifetime), and get(RandomSource), which is a coin flip. The
@@ -170,19 +168,68 @@ public class SlashParticle extends TextureSheetParticle {
         // slideshow through the whole catalogue; the second would pick a different weapon on every
         // spawn.
         //
-        // So it is inverted: the index we want is fed in as the "age" and the list's last index as
-        // the "lifetime", which makes the division land exactly on it -- age * (size-1) / (size-1).
+        // The atlas lookup below replaced the inverted index trick: it draws any stitched sprite
+        // through one door instead of one door per catalogue.
+        setSprite(resolveSprite(sprites));
+    }
+
+    /**
+     * The strip for this swing, from the particle atlas by id.
+     *
+     * @param sprites the old set-index door, kept as the last fallback so a session where the
+     *                atlas lookup itself fails still draws what it drew before this round
+     */
+    private TextureAtlasSprite resolveSprite(SpriteSet sprites) {
+        java.util.function.Function<ResourceLocation, TextureAtlasSprite> atlas =
+                Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_PARTICLES);
+        // `tryParse` and not the constructor: the one-arg constructor is gone from 1.21 on and
+        // the two-arg one is private there, while `tryParse` reads on both legs and answers null
+        // instead of throwing on the render thread. (μ_μ)
+        String raw = SlashTextureId.resolve(options.sprite());
+        ResourceLocation id = raw != null ? ResourceLocation.tryParse(raw) : null;
+        if (id != null && !isMissing(atlas.apply(id), id)) {
+            return atlas.apply(id);
+        }
+        if (id != null) {
+            warnMissingSprite(id.toString());
+        }
+        ResourceLocation fallbackId =
+                com.cortes.combat.platform.ResourceIds.rl(SlashSprite.FALLBACK);
+        TextureAtlasSprite fallback = atlas.apply(fallbackId);
+        if (!isMissing(fallback, fallbackId)) {
+            return fallback;
+        }
+        // The atlas itself is broken past this point; the set-index door is what used to run.
+        return setSpriteByIndex(sprites);
+    }
+
+    /**
+     * Whether the atlas substituted its missing texture: a sprite whose stitched name is not
+     * what was asked for.
+     *
+     * <p>Asked instead of naming the missing sprite, because the missing sprite's own class
+     * does not exist on both legs ({@code MissingTextureAtlasSprite} is gone from 1.21 on)
+     * while "give me what I asked" holds everywhere. (￣ε￣＠)</p>
+     */
+    private static boolean isMissing(TextureAtlasSprite sprite, ResourceLocation asked) {
+        return sprite == null || !sprite.contents().name().equals(asked);
+    }
+
+    /** The pre-atlas door, kept as the floor: an unbound set draws nothing, never crashes. */
+    private TextureAtlasSprite setSpriteByIndex(SpriteSet sprites) {
+        if (sprites == null) {
+            return null;
+        }
         int lastIndex = SlashSprite.SPRITES.size() - 1;
         int index = SlashSprite.indexOf(options.sprite());
         warnIfUnbound(sprites, index, lastIndex);
         try {
-            this.setSprite(sprites.get(Math.min(index, lastIndex), Math.max(1, lastIndex)));
+            return sprites.get(Math.min(index, lastIndex), Math.max(1, lastIndex));
         } catch (RuntimeException unbound) {
-            // An unbound set means the description JSON did not load, and the alternative to this
-            // catch is a NullPointerException on the render thread twenty frames later. A slash
-            // that draws nothing is a cosmetic bug; a crash on the first hit is not the same
-            // thing.
-            this.setSprite(null);
+            // An unbound set means the description JSON did not load. A slash that draws nothing is
+            // a cosmetic bug; a NullPointerException on the render thread twenty frames later is
+            // not the same thing.
+            return null;
         }
     }
 
@@ -241,18 +288,26 @@ public class SlashParticle extends TextureSheetParticle {
     }
 
     /**
-     * Warns once per session if the strip has no sprite at that index.
+     * Warns once per session about a sprite id the atlas never stitched.
      *
      * <p>A slash whose sprite is null is an invisible quad, and an invisible quad looks exactly
      * like art that is too faint to see -- the two are indistinguishable from the outside, and two
-     * launches went into guessing between them. The UV accessors are null-tolerant precisely so
-     * that this does not crash the render thread, and that is also why it fails silently; this
-     * line is the difference between a log that names the cause and one that does not.</p>
-     *
-     * <p>Only the null case warns. A sprite that bound to the wrong rectangle draws something
-     * wrong, which is visible, and a warning on every one of the 30 weapons on every first hit
-     * would be noise trained to be ignored.</p>
+     * launches went into guessing between them. The name in the message is the full sprite id, so
+     * a pack author sees which file the game never saw: a wrong namespace reads as a pack problem
+     * and a missing PNG as an art problem, which is the whole diagnosis in one line. (¬‿¬)</p>
      */
+    private static final java.util.Set<String> warnedSprites = new java.util.HashSet<>();
+
+    private static void warnMissingSprite(String spriteId) {
+        if (!warnedSprites.add(spriteId)) {
+            return;
+        }
+        org.slf4j.LoggerFactory.getLogger("cortescombat")
+                .warn("[slash] sin sprite '{}': no esta cocido en el atlas de particulas -- "
+                        + "revisa el PNG en textures/particle/ y el id en texture.slash. "
+                        + "Se dibuja el generico.", spriteId);
+    }
+
     private static void warnIfUnbound(SpriteSet sprites, int index, int lastIndex) {
         if (warnedNullSprite) {
             return;

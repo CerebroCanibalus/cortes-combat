@@ -238,7 +238,8 @@ public final class SpecialHandler {
             boolean landed = target.hurt(player.damageSources().playerAttack(player), damage);
             if (landed) {
                 target.invulnerableTime = com.cortes.combat.attack.AttackTiming.IFRAME_TICKS;
-                SlashParticles.hit(level, stats.profile(), target, false);
+                SlashParticles.hit(level, SlashParticles.spriteFor(player, stats.profile()),
+                        target, false);
                 CombatSounds.play(level, target, WeaponProfile.ROPERA, ModSounds.Kind.HIT,
                         1.0F - index * 0.06F);
             }
@@ -324,7 +325,7 @@ public final class SpecialHandler {
         // `ModSounds#pitch`) instead of sounding exactly like a halberd.
         CombatSounds.play(level, player, stats.profile(), ModSounds.Kind.SPECIAL);
         double arc = HalberdSweep.arcOffset(reach);
-        SlashParticles.sweep(level, stats.profile(),
+        SlashParticles.sweep(level, SlashParticles.sweepSpriteFor(player),
                 player.getX() + player.getLookAngle().x * arc,
                 player.getEyeY(),
                 player.getZ() + player.getLookAngle().z * arc);
@@ -351,7 +352,8 @@ public final class SpecialHandler {
             target.invulnerableTime = 0;
             if (target.hurt(player.damageSources().playerAttack(player), result.damage())) {
                 target.invulnerableTime = IFRAME_TICKS;
-                SlashParticles.hit(level, stats.profile(), target, false);
+                SlashParticles.hit(level, SlashParticles.spriteFor(player, stats.profile()),
+                        target, false);
                 ModNetworking.sendFeedback(player,
                         com.cortes.combat.core.CombatFeedback.HIT);
                 // **Se pregunta despues del `hurt`, y no por el valor de retorno.** `hurt` contesta

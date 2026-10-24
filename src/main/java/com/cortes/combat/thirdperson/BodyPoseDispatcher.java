@@ -4,7 +4,7 @@ import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.guard.GuardStats;
 import com.cortes.combat.client.ItemViewModel;
 import com.cortes.combat.client.RemotePoseStates;
-import com.cortes.combat.viewmodel.ViewModelDefaults;
+import com.cortes.combat.client.PackPose;
 import com.cortes.combat.pose.PoseSolver;
 import com.cortes.combat.pose.PoseState;
 import java.util.HashMap;
@@ -171,7 +171,10 @@ public final class BodyPoseDispatcher {
                 GuardStats.best(local).profile(),
                 stack.is(Items.SHIELD),
                 ItemViewModel.frame(),
-                ViewModelDefaults.of(stats.profile())));
+                // La pose del pack si el arma en mano nombra una que exista; si no, el
+                // perfil del molde. Misma puerta que la primera persona, para que la mano
+                // y el brazo no cuenten dos historias distintas. (⌒‿⌒)
+                com.cortes.combat.client.PackPose.profileFor(stack, stats.profile())));
     }
 
     /** Drops a player, so a disconnect does not leak two entries. */

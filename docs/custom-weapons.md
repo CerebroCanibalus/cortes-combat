@@ -176,7 +176,10 @@ the charge subtract, or pass the knockback ceilings.
 
 - **`unknown version '2'`** — this mod understands `version: 1`.
 - **`unknown field 'x'`** — check the reference above; the file keeps working, that field is
-  ignored.
+  ignored. Unless the file says **`strict: true`**: then any unknown field or wrongly typed
+  one fails the whole file with a log error instead. Strict is for pack CI. What strict does
+  NOT check: whether a client asset exists (a sprite, a pose, a sound) — the server never
+  sees resource packs, so a missing one stays a warning at use time, naming the file.
 - **`cone: small does not exist anymore`** — the warning tells you exactly which map to write.
 - **The sound does not play** — are the `sounds.json` and the `.ogg` in the active resource pack?
   The log warns if the declared id is not registered.

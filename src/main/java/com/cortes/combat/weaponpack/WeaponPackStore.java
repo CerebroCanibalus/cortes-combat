@@ -57,12 +57,15 @@ public final class WeaponPackStore {
         for (String warning : result.warnings()) {
             CortesCombat.LOGGER.warn("[weaponpack] {}", warning);
         }
+        for (String error : result.errors()) {
+            CortesCombat.LOGGER.error("[weaponpack] {}", error);
+        }
         TAG_CACHE.clear();
         packs = result.packs();
         empty = packs.stream().allMatch(pack -> pack.weapons().isEmpty());
         int entries = packs.stream().mapToInt(pack -> pack.weapons().size()).sum();
         CortesCombat.LOGGER.info("[weaponpack] {} packs, {} entradas de arma", packs.size(), entries);
-        return new Summary(packs.size(), entries, result.warnings().size());
+        return new Summary(packs.size(), entries, result.allMessages().size());
     }
 
     /** {@code true} cuando ningún pack declara un arma: el fast-path. */

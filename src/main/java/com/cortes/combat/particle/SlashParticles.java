@@ -50,13 +50,34 @@ public final class SlashParticles {
  */
 public static final int DOUBLE_GAP_TICKS = SlashTiming.DOUBLE_GAP_TICKS;
 
-public static void hit(ServerLevel level, WeaponProfile profile, Entity target, boolean charged) {
+    /**
+     * Which slash to draw for this swing: the pack's custom sprite when the weapon has one,
+     * else the profile's own.
+     *
+     * <p>Resolved per swing and not cached: packs reload live with {@code /cc reload}, and a
+     * cached sprite would draw the pack that was unloaded. The lookup is a HashMap plus a
+     * tag check -- the same cost {@code WeaponStats.of} already pays once per swing.</p>
+     *
+     * @param attacker who swung, for the item in their hand
+     * @param profile  the fallback when no pack claims the item
+     * @return a full sprite id ({@code namespace:path}), never null
+     */
+    public static String spriteFor(net.minecraft.world.entity.player.Player attacker,
+                                   WeaponProfile profile) {
+        com.cortes.combat.weaponpack.ResolvedWeapon pack =
+                com.cortes.combat.weaponpack.WeaponPackStore.resolve(
+                        attacker.getMainHandItem());
+        String custom = pack != null ? SlashTextureId.resolve(pack.slash()) : null;
+        return custom != null ? custom : SlashSprite.spriteId(SlashSprite.of(profile));
+    }
+
+public static void hit(ServerLevel level, String sprite, Entity target, boolean charged) {
         if (!ServerConfig.particles()) return;
         if (charged) {
             burst(level, target);
             return;
         }
-        slash(level, profile, contactPoint(level, target));
+        slash(level, sprite, contactPoint(level, target));
     }
 
     /**
@@ -83,6 +104,22 @@ public static void hit(ServerLevel level, WeaponProfile profile, Entity target, 
     }
 
     /**
+     * Which slash to draw for the wide swing: the pack halberd's own slash when it has one,
+     * else the wide art.
+     *
+     * <p>Same rule as {@link #spriteFor}: the weapon's art wins over the event's. The fallback
+     * here is the sweep instead of the profile's hit, because the wide swing is its own event
+     * with its own art. (⌒‿⌒)</p>
+     */
+    public static String sweepSpriteFor(net.minecraft.world.entity.player.Player attacker) {
+        com.cortes.combat.weaponpack.ResolvedWeapon pack =
+                com.cortes.combat.weaponpack.WeaponPackStore.resolve(
+                        attacker.getMainHandItem());
+        String custom = pack != null ? SlashTextureId.resolve(pack.slash()) : null;
+        return custom != null ? custom : SlashSprite.spriteId(SlashSprite.SWEEP);
+    }
+
+    /**
      * The sabre's full charge: the same slash, twice, a beat apart.
      *
      * <p>Used instead of {@link #hit} for a weapon whose full charge is a <b>double</b> rather
@@ -93,10 +130,10 @@ public static void hit(ServerLevel level, WeaponProfile profile, Entity target, 
      * gap is the shape of "twice"; a slash and a burst is the shape of "twice, differently", and
      * the player has to already know the rule to read it.</p>
      */
-    public static void doubledHit(ServerLevel level, WeaponProfile profile, Entity target) {
+    public static void doubledHit(ServerLevel level, String sprite, Entity target) {
         if (!ServerConfig.particles()) return;
         double[] point = contactPoint(level, target);
-        slash(level, profile, point);
+        slash(level, sprite, point);
 
         // **The second cut goes to the side, not on top of the first.** Two of the same sprite at
         // the same place are one shape drawn twice however far apart in time -- the eye reads the
@@ -108,7 +145,7 @@ public static void hit(ServerLevel level, WeaponProfile profile, Entity target, 
         double[] offset = SlashTiming.secondCutOffset(look);
 
         level.sendParticles(
-                new SlashParticleOptions(SlashSprite.of(profile)).delayed(DOUBLE_GAP_TICKS),
+                new SlashParticleOptions(sprite).delayed(DOUBLE_GAP_TICKS),
                 point[0] + offset[0], point[1], point[2] + offset[1],
                 1, 0.0, 0.0, 0.0, 0.0);
     }
@@ -151,7 +188,7 @@ public static void hit(ServerLevel level, WeaponProfile profile, Entity target, 
      * or it hits nothing, and the player needs to see that they did the thing even when the thing
      * found nothing.</p>
      */
-    public static void sweep(ServerLevel level, WeaponProfile profile, double x, double y, double z) {
+    public static void sweep(ServerLevel level, String sprite, double x, double y, double z) {
         if (!ServerConfig.particles()) return;
         // The sweep's OWN sprite, not the weapon's hit sprite.
         //
@@ -159,9 +196,10 @@ public static void hit(ServerLevel level, WeaponProfile profile, Entity target, 
         // The sweep is a different event and it has different art: it says the weapon went wide,
         // not that something was cut, and it throws whether or not anything was there. Passing the
         // profile made it say the wrong thing on every swing and the playtest read it as "no
-        // particle at all" because the two look alike at a glance.
+        // particle at all" because the two look alike at a glance. A pack halberd draws its own
+        // slash instead of the wide one here: same rule as the hit, the weapon's art wins.
         level.sendParticles(
-                new SlashParticleOptions(SlashSprite.SWEEP),
+                new SlashParticleOptions(sprite),
                 x, y, z,
                 1, 0.0, 0.0, 0.0, 0.0);
     }
@@ -196,9 +234,9 @@ public static void hit(ServerLevel level, WeaponProfile profile, Entity target, 
                 30, spreadX, spreadY, spreadZ, 0.05);
     }
 
-    private static void slash(ServerLevel level, WeaponProfile profile, double[] point) {
+    private static void slash(ServerLevel level, String sprite, double[] point) {
         level.sendParticles(
-                new SlashParticleOptions(SlashSprite.of(profile)),
+                new SlashParticleOptions(sprite),
                 point[0], point[1], point[2],
                 1, 0.0, 0.0, 0.0, 0.0);
     }

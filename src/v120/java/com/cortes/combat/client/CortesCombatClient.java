@@ -87,6 +87,10 @@ public final class CortesCombatClient {
         modEventBus.addListener(CortesCombatClient::registerLayers);
         modEventBus.addListener(CortesCombatClient::onClientSetup);
         modEventBus.addListener(CortesCombatClient::registerEntityRenderers);
+        // **Las poses de los weapon packs, que son assets y no config.** Mismo evento y
+        // método que en la otra pata; sólo cambia el paquete del import (el rename no lo
+        // toca porque esta clase es gemela, no renombrada). (⌒‿⌒)
+        modEventBus.addListener(CortesCombatClient::registerPackPoses);
         // The crosshair swap: vanilla's off, ours on. Same tick, same screen.
         MinecraftForge.EVENT_BUS.addListener(CortesCombatClient::hideVanillaCrosshair);
     }
@@ -284,6 +288,17 @@ public final class CortesCombatClient {
         event.registerEntityRenderer(com.cortes.combat.registry.ModEntities.MUNGUS_SHELL.get(),
                 context -> new net.minecraft.client.renderer.entity.ThrownItemRenderer<>(
                         context, 3.0F, true));
+    }
+
+    /**
+     * Las poses de los weapon packs entran al reload de recursos del cliente.
+     *
+     * <p>Público y no privado: el EventBus de esta pata rechaza un {@code @SubscribeEvent}
+     * privado en carga de clase (verificado con runData).</p>
+     */
+    public static void registerPackPoses(
+            net.minecraftforge.client.event.RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener(com.cortes.combat.weaponpack.WeaponPackPoses.INSTANCE);
     }
 
     public static void onClientSetup(FMLClientSetupEvent event) {

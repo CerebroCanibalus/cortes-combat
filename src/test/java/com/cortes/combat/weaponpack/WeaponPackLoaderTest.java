@@ -230,4 +230,64 @@ class WeaponPackLoaderTest {
         assertEquals("tag=knives", resolved.source());
         assertNull(resolved.damage(), "nada escrito: los números los hereda el molde");
     }
+
+    /** `strict` sin problemas: carga igual que sin él, cero warnings y cero errores. */
+    @Test
+    void strictCleanFileLoads() {
+        WeaponPackLoader.Result result = WeaponPackLoader.fromYaml("limpio.yaml", """
+                version: 1
+                strict: true
+                weapons:
+                  - match: { id: mymod:ruby_knife }
+                    archetype: dagger
+                """);
+        assertEquals(1, result.packs().size());
+        assertTrue(result.warnings().isEmpty());
+        assertTrue(result.errors().isEmpty());
+    }
+
+    /** `strict` con campo desconocido: el archivo no carga y el error lo dice. */
+    @Test
+    void strictUnknownFieldFailsTheFile() {
+        WeaponPackLoader.ParseException strict = assertThrows(
+                WeaponPackLoader.ParseException.class,
+                () -> WeaponPackLoader.fromYaml("estricto.yaml", """
+                        version: 1
+                        strict: true
+                        potencia: 9000
+                        weapons:
+                          - match: { id: x }
+                        """));
+        assertTrue(strict.isStrict());
+        assertTrue(strict.getMessage().contains("estricto.yaml"));
+        assertTrue(strict.getMessage().contains("potencia"));
+    }
+
+    /** Sin `strict`, el mismo campo desconocido es warning y el archivo sí carga. */
+    @Test
+    void nonStrictUnknownFieldWarnsAndLoads() {
+        WeaponPackLoader.Result result = WeaponPackLoader.fromYaml("raro.yaml", """
+                version: 1
+                potencia: 9000
+                weapons:
+                  - match: { id: x }
+                """);
+        assertEquals(1, result.packs().size(), "el archivo carga igual");
+        assertTrue(result.errors().isEmpty());
+        assertEquals(1, result.warnings().size());
+        assertTrue(result.warnings().get(0).contains("potencia"));
+    }
+
+    /** `strict` con tipo que no corresponde: también es error de carga, no warning. */
+    @Test
+    void strictWrongTypeFailsTheFile() {
+        assertThrows(WeaponPackLoader.ParseException.class,
+                () -> WeaponPackLoader.fromYaml("tipos.yaml", """
+                        version: 1
+                        strict: true
+                        weapons:
+                          - match: { id: x }
+                            stats: { damage: alto }
+                        """));
+    }
 }

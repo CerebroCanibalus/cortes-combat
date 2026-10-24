@@ -620,15 +620,22 @@ public final class ItemViewModel {
         ViewModelProfile own = com.cortes.combat.platform.WeaponData.viewmodelProfile(stack);
         if (cachedProfile != null
                 && cachedItem == stack.getItem()
-                && cachedComponent == own) {
+                && cachedComponent == own
+                && (own != null || com.cortes.combat.weaponpack.WeaponPackStore.isEmpty())) {
             return cachedProfile;
         }
+        // Sin componente: la pose del pack (capa 2) y si no, el perfil del molde (capa 3).
+        // Fresco en cada frame a propósito cuando hay packs: se recargan en vivo y un perfil
+        // cacheado congelaría el archivo de ayer. El fast-path del store deja el caso sin
+        // packs en dos lecturas volátiles, así que el costo sólo existe para quien usa packs.
         ViewModelProfile resolved = own != null
                 ? own
-                : ViewModelDefaults.of(WeaponStats.of(stack).profile());
-        cachedItem = stack.getItem();
-        cachedComponent = own;
-        cachedProfile = resolved;
+                : PackPose.profileFor(stack, WeaponStats.of(stack).profile());
+        if (own != null || com.cortes.combat.weaponpack.WeaponPackStore.isEmpty()) {
+            cachedItem = stack.getItem();
+            cachedComponent = own;
+            cachedProfile = resolved;
+        }
         return resolved;
     }
 

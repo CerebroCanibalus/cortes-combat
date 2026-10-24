@@ -220,6 +220,20 @@ public final class WeaponPackTemplate {
             # Required. This mod understands version 1.
             version: 1
 
+            # Modo estricto (opcional, false si se omite): cualquier campo desconocido o
+            # con tipo que no corresponde aborta ESTE archivo con un error en el log, en
+            # vez de un warning. Para CI de packs: un pack estricto que carga con un typo
+            # es un pack que miente. Lo que strict NO promete: la existencia de un asset
+            # de cliente (sprite, pose, sonido) no se puede comprobar en el servidor, que
+            # no ve resource packs -- eso sigue siendo warning en uso, con el archivo.
+            # Strict mode (optional, false when omitted): any unknown field or wrongly
+            # typed one fails THIS file with a log error instead of a warning. For pack
+            # CI: a strict pack that loads past a typo is a pack that lies. What strict
+            # does NOT promise: a client asset's existence (sprite, pose, sound) cannot
+            # be checked on the server, which never sees resource packs -- that stays a
+            # warning at use time, naming the file.
+            # strict: true
+
             # La lista de armas. Cada entrada es un ítem.
             # The list of weapons. Each entry is one item.
             weapons:

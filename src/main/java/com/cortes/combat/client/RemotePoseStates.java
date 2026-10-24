@@ -86,6 +86,14 @@ public final class RemotePoseStates {
         private boolean vanillaShield;
         private float cooldownRatio = 1.0F;
 
+        /**
+         * The viewmodel profile for the item they were holding when the last packet arrived:
+         * the pack's pose when it names one that exists, else the profile default. Same door
+         * as the local hand ({@link PackPose}), read off the entity once per packet for the
+         * same reason as the charge and the guard above.
+         */
+        private ViewModelProfile viewmodel;
+
         /** A state has arrived that this tick has not consumed yet. */
         private boolean pending;
     }
@@ -166,6 +174,7 @@ public final class RemotePoseStates {
         remote.charge = WeaponStats.of(hand).charge();
         remote.guard = GuardStats.best(player).profile();
         remote.vanillaShield = hand.is(Items.SHIELD);
+        remote.viewmodel = PackPose.profileFor(hand, state.weapon());
         remote.cooldownRatio = state.cooldownRatio();
         remote.hadAny = true;
     }
@@ -211,7 +220,13 @@ public final class RemotePoseStates {
     /** Whether that player's weapon can do the thing that channel is for. */
     public static boolean reads(int entityId, Channel channel) {
         RemoteMotion remote = CLOCKS.get(entityId);
-        return remote != null && ViewModelDefaults.of(remote.state.weapon()).reads(channel);
+        return remote != null && viewmodelOf(remote).reads(channel);
+    }
+
+    /** The viewmodel to evaluate for this clock, defaulting while no packet arrived yet. */
+    private static ViewModelProfile viewmodelOf(RemoteMotion remote) {
+        return remote.viewmodel != null ? remote.viewmodel
+                : ViewModelDefaults.of(remote.state.weapon());
     }
 
     /**
@@ -238,7 +253,9 @@ public final class RemotePoseStates {
         remote.motion.observeStagger(state.stagger());
         remote.motion.observeParry(state.parryActive(), state.parryCooldown());
 
-        ViewModelProfile profile = ViewModelDefaults.of(state.weapon());
+        // The pack's pose when the last packet's item named one that exists, else the
+        // profile default -- read off the entity in `accept`, never looked up per tick.
+        ViewModelProfile profile = viewmodelOf(remote);
 
         remote.motion.tick(state.holding(),
                 rawCharge(remote),

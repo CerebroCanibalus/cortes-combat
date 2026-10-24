@@ -76,6 +76,11 @@ public class CortesCombatClient {
         modEventBus.addListener(CortesCombatClient::registerLayers);
         modEventBus.addListener(CortesCombatClient::onClientSetup);
         modEventBus.addListener(CortesCombatClient::registerEntityRenderers);
+        // **Las poses de los weapon packs, que son assets y no config.** Se releen con cada
+        // resource reload (F3+T las trae sin reiniciar), igual que los modelos y los sonidos.
+        // El evento existe con el mismo nombre y método en las dos patas; el rename del Sync
+        // lo traduce solo.
+        modEventBus.addListener(CortesCombatClient::registerPackPoses);
     }
 
     /**
@@ -249,6 +254,18 @@ public class CortesCombatClient {
         event.registerEntityRenderer(com.cortes.combat.registry.ModEntities.MUNGUS_SHELL.get(),
                 context -> new net.minecraft.client.renderer.entity.ThrownItemRenderer<>(
                         context, 3.0F, true));
+    }
+
+    /**
+     * Las poses de los weapon packs entran al reload de recursos del cliente.
+     *
+     * <p>Público y no privado aunque nadie lo llame desde afuera: el EventBus de Forge 1.20.1
+     * rechaza un {@code @SubscribeEvent} privado en carga de clase, y esta clase se carga en
+     * las dos patas. (¬‿¬)</p>
+     */
+    public static void registerPackPoses(
+            net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener(com.cortes.combat.weaponpack.WeaponPackPoses.INSTANCE);
     }
 
     public static void onClientSetup(FMLClientSetupEvent event) {

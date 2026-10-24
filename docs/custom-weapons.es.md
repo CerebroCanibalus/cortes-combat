@@ -171,7 +171,11 @@ invariante), hacer que la carga reste, ni pasar los techos de knockback.
 
 - **`versión desconocida '2'`** — este mod entiende `version: 1`.
 - **`campo desconocido 'x'`** — revisá la referencia de arriba; el archivo sigue funcionando,
-  ese campo se ignora.
+  ese campo se ignora. Salvo que el archivo diga **`strict: true`**: ahí cualquier campo
+  desconocido o con tipo que no corresponde tumba el archivo entero con un error en el log.
+  Strict es para CI de packs. Lo que strict NO revisa: si un asset de cliente existe (un
+  sprite, una pose, un sonido) — el servidor nunca ve resource packs, así que un faltante
+  sigue siendo warning en uso, con el archivo.
 - **`cone: small ya no existe`** — el warning te dice exactamente qué mapa poner.
 - **El sonido no suena** — ¿el `sounds.json` y el `.ogg` están en el resource pack activo? El
   log avisa si el id declarado no está registrado.
