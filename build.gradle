@@ -438,7 +438,7 @@ if (!mc121) {
         // Versiona las reglas: el Sync es up-to-date por contenido de entradas, y un cambio solo
         // en el closure del filter no lo invalida. Sin esto, editar las reglas recompila con el
         // arbol viejo y los errores mienten. (μ_μ)
-                                inputs.property('renameRules', 'v23-rebalance-path');
+                                inputs.property('renameRules', 'v24-datagen-path');
         // Tres reglas en orden de especificidad, porque el rename 20.1->20.2 no fue un
         // prefijo plano: bus.api cambio de nombre (eventbus) y el `neoforge` del medio se cayo.
         // Un reemplazo ciego de `net.neoforged` produce `net.minecraftforge.neoforge`, que no
@@ -524,6 +524,19 @@ if (!mc121) {
                 'com/cortes/combat/attack/HoeRebalance.java',
                 'com/cortes/combat/attack/MaceRebalance.java',
                 'com/cortes/combat/attack/MaceSmash.java',
+                'com/cortes/combat/core/crafting/ShiftableShapedRecipe.java',
+                'com/cortes/combat/data/RecipeJson.java',
+                'com/cortes/combat/data/CortesRecipeProvider.java',
+                'com/cortes/combat/data/NuggetRecipes.java',
+                'com/cortes/combat/data/FirestoneRecipes.java',
+                'com/cortes/combat/data/ArcabuzRecipes.java',
+                'com/cortes/combat/data/CopperGearRecipes.java',
+                'com/cortes/combat/data/FirestoneBlockRecipes.java',
+                'com/cortes/combat/data/NetherReactorRecipes.java',
+                'com/cortes/combat/data/CortesItemTagProvider.java',
+                'com/cortes/combat/data/CortesBlockTagProvider.java',
+                'com/cortes/combat/data/CortesDataEvents.java',
+                'com/cortes/combat/data/RecipeBookPopulation.java',
                 'com/cortes/combat/platform/ItemDamage.java',
                 'com/cortes/combat/attack/ArmorWearHandler.java',
                 'com/cortes/combat/item/CortesWeaponItem.java',
