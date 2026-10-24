@@ -186,6 +186,29 @@ public final class CombatEnchantments {
         return level(holder.level().registryAccess(), holder.getMainHandItem(), BARREDOR);
     }
 
+    /**
+     * The weapon's Sweeping Edge level, straight off the stack.
+     *
+     * <p>1.20.1 enchantments are registry objects, so there is no holder to resolve: missing
+     * would mean a broken install, but the install cannot be half-built here the way a
+     * datapack registry can, so a plain read is the honest shape.</p>
+     */
+    public static int sweepingEdgeLevel(net.minecraft.server.level.ServerLevel level, ItemStack weapon) {
+        return net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(
+                net.minecraft.world.item.enchantment.Enchantments.SWEEPING_EDGE, weapon);
+    }
+
+    /**
+     * The weapon's Density level, straight off the stack.
+     *
+     * <p>Zero, always, on this leg: Density is a 1.21 enchantment and 1.20.1 has no such key.
+     * The mace's fall still grows from the fall itself; only the enchanted bonus is absent,
+     * which is the same answer as "the player has no Density" on the other leg.</p>
+     */
+    public static int densityLevel(net.minecraft.world.entity.player.Player player) {
+        return 0;
+    }
+
     private static ResourceKey<Enchantment> key(String id) {
         return ResourceKey.create(Registries.ENCHANTMENT,
                 ResourceIds.rl(id));

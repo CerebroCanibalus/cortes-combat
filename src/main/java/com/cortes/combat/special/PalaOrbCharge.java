@@ -58,9 +58,9 @@ public final class PalaOrbCharge implements SpecialCharge {
         // en que se rompe cualquier herramienta.
         //
         // **`hurtAndBreak` y no un `setDamageValue` a mano**, por lo mismo que el resto del mod: el
-        // metodo de vanilla es el que dispara `onBroken`, el sonido y las estadisticas.
-        player.getMainHandItem().hurtAndBreak(
-                com.cortes.combat.enchant.CombatEnchantRules.PALA_ANTIMATERIAL_DURABILITY_COST,
-                player, net.minecraft.world.entity.EquipmentSlot.MAINHAND);
+        // metodo de vanilla es el que dispara `onBroken`, el sonido y las estadisticas. La
+        // llamada va por `ItemDamage` porque el slot se dice distinto en cada pata.
+        com.cortes.combat.platform.ItemDamage.damageMainHand(player,
+                com.cortes.combat.enchant.CombatEnchantRules.PALA_ANTIMATERIAL_DURABILITY_COST);
     }
 }

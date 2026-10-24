@@ -40,7 +40,7 @@ class WeaponWearTest {
     void aLandedHitWearsTheWeapon() {
         String engine = read();
 
-        assertTrue(engine.contains("hurtAndBreak"),
+        assertTrue(engine.contains("ItemDamage.damageMainHand(player, 1)"),
                 "**`CombatEngine` tiene que desgastar el arma en cada golpe que aterriza.** "
                         + "Vanilla lo hace en `Item.postHurtEnemy`, que vive en el item, y este "
                         + "mod reemplaza el flujo de ataque entero -- asi que ese camino nunca "
@@ -49,7 +49,7 @@ class WeaponWearTest {
                         + "baje: se ve bien desde todos los lados menos desde 'pega cien veces y "
                         + "contá'");
 
-        assertTrue(engine.contains("EquipmentSlot.MAINHAND"),
+        assertTrue(readItemDamage().contains("EquipmentSlot.MAINHAND"),
                 "y sobre la mano principal, que es lo que vanilla pasa: la durabilidad del arma "
                         + "que se esta usando, no la de otra cosa");
     }
@@ -57,6 +57,21 @@ class WeaponWearTest {
     private static String read() {
         Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "attack",
                 "CombatEngine.java");
+        try {
+            return Files.readString(file, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new AssertionError("could not read " + file + ": " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * The payment moved to the seam: the slot is spelled there now, one spelling per leg.
+     * The rule ("the hand being used") is asserted where the slot is named, not where the
+     * point is paid.
+     */
+    private static String readItemDamage() {
+        Path file = Path.of("src", "main", "java", "com", "cortes", "combat", "platform",
+                "ItemDamage.java");
         try {
             return Files.readString(file, StandardCharsets.UTF_8);
         } catch (IOException e) {

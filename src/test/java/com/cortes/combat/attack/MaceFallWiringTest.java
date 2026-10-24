@@ -101,7 +101,7 @@ class MaceFallWiringTest {
     void theEngineHandsOverDensity() {
         String engine = read();
 
-        assertTrue(engine.contains("Enchantments.DENSITY"),
+        assertTrue(engine.contains("CombatEnchantments.densityLevel(player)"),
                 "**CombatEngine has to resolve the Density enchantment.** Without the read the "
                         + "level is never known and the curve in MaceFall is a comment that costs a "
                         + "sum -- the exact shape the fall's own wiring test was written to catch");

@@ -204,6 +204,39 @@ public final class CombatEnchantments {
         return level(holder.level().registryAccess(), holder.getMainHandItem(), BARREDOR);
     }
 
+    /**
+     * The weapon's Sweeping Edge level, through the registry.
+     *
+     * <p>A {@code ResourceKey} and not a {@code Holder}, so it has to be resolved against the
+     * level's registry before the item can be asked. {@code getHolderOrThrow} rather than a nullable
+     * get is deliberate: the enchantment is built into the game, and a missing one is a broken
+     * install that should say so rather than read as "no enchantment".</p>
+     */
+    public static int sweepingEdgeLevel(net.minecraft.server.level.ServerLevel level, ItemStack weapon) {
+        net.minecraft.core.Holder<Enchantment> sweeping = level.registryAccess()
+                .holderOrThrow(net.minecraft.world.item.enchantment.Enchantments.SWEEPING_EDGE);
+        return weapon.getEnchantmentLevel(sweeping);
+    }
+
+    /**
+     * The weapon's Density level, through the registry.
+     *
+     * <p><b>The enchantment that keeps the maza's fall growing.</b> Vanilla applies Density inside
+     * {@code MaceItem#getAttackDamageBonus} as {@code modifyFallBasedDamage(...) * fallDistance},
+     * and that class appears nowhere in this project because the entire attack flow is replaced --
+     * so without this read a Density maza carried a dead enchantment. Zero outside a server level,
+     * where there is no registry to ask; the resolver then sums a zero and the maza's fall is
+     * unchanged, which is the right answer for a client-side call and the only one available.</p>
+     */
+    public static int densityLevel(net.minecraft.world.entity.player.Player player) {
+        if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
+            return 0;
+        }
+        net.minecraft.core.Holder<Enchantment> density = level.registryAccess()
+                .holderOrThrow(net.minecraft.world.item.enchantment.Enchantments.DENSITY);
+        return player.getMainHandItem().getEnchantmentLevel(density);
+    }
+
     private static ResourceKey<Enchantment> key(String id) {
         return ResourceKey.create(Registries.ENCHANTMENT,
                 ResourceIds.rl(id));

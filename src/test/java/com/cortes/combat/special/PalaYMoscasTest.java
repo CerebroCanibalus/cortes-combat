@@ -52,7 +52,7 @@ class PalaYMoscasTest {
         String charge = stripComments(read(PALA_ORB));
         // **La llamada al ras.** Reconocer + metodo + parentesis, no el nombre del metodo: si el
         // cobro se apaga, esto muere.
-        assertTrue(charge.contains("player.getMainHandItem().hurtAndBreak("),
+        assertTrue(charge.contains("ItemDamage.damageMainHand(player,"),
                 "**el orbe tiene que gastar durabilidad.** Era el reporte: \"un ataque muy "
                         + "gratuito\". Un golpe comun pierde un punto y el orbe -- catorce de dano en "
                         + "un radio de cuatro con un tiron de cinco bloques -- no perdia ninguno");

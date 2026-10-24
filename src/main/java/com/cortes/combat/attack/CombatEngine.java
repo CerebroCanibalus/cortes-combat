@@ -31,10 +31,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -251,7 +248,7 @@ public final class CombatEngine {
         //
         // Density is read once and sits with the fall, because the fall and Density are the same
         // family: the level does not depend on the body being hit, so one read feeds every target.
-        int density = densityLevel(player);
+        int density = CombatEnchantments.densityLevel(player);
         AttackResult result = DamageResolver.resolve(base, stats.charge(), stats.profile(),
                 chargeRatio, streak, player.fallDistance, density,
                 enchantBonus(player, target, source, base));
@@ -432,8 +429,7 @@ public final class CombatEngine {
                 // point per landed hit for every weapon, which is vanilla's sword rule generalised,
                 // and per HIT rather than per swing so the sabre's double cut is paid for twice:
                 // it lands twice.
-                player.getMainHandItem().hurtAndBreak(1, player,
-                        net.minecraft.world.entity.EquipmentSlot.MAINHAND);
+                com.cortes.combat.platform.ItemDamage.damageMainHand(player, 1);
                 // The knockback goes on the first cut only. Twice the push would throw a mob
                 // across the room, and a second cut that shoves is not a second cut.
                 if (i == 0) {
@@ -1124,7 +1120,7 @@ public final class CombatEngine {
      * <p><b>Density and Breach do not use {@code modifyDamage}.</b> They are
      * {@code SMASH_DAMAGE_PER_FALLEN_BLOCK} and {@code ARMOR_EFFECTIVENESS}, each with its own hook
      * and its own {@code EnchantmentHelper} method. Density is ours: it is applied beside the fall,
-     * read here by {@link #densityLevel}.</p>
+     * read by {@link CombatEnchantments#densityLevel}.</p>
      *
      * <p><b>Breach needs no code and never did.</b> Its only consumer is
      * {@code CombatRules.getDamageAfterAbsorb}, and that runs on the <em>defender</em>, inside
@@ -1138,7 +1134,7 @@ public final class CombatEngine {
         if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
             return 0.0F;
         }
-        ItemStack weapon = player.getWeaponItem();
+        ItemStack weapon = player.getMainHandItem();
         float enchanted = EnchantView.modifiedDamage(level, weapon, target, source, base) - base;
         return Math.max(0.0F, enchanted + perTargetBonus(player, weapon, target, base));
     }
@@ -1240,7 +1236,7 @@ public final class CombatEngine {
                 || !(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
             return;
         }
-        int enchant = sweepingEdgeLevel(level, player.getWeaponItem());
+        int enchant = CombatEnchantments.sweepingEdgeLevel(level, player.getMainHandItem());
         if (!com.cortes.combat.weapon.SweepingEdge.fires(enchant)) {
             return;
         }
@@ -1259,45 +1255,6 @@ public final class CombatEngine {
                         com.cortes.combat.sound.ModSounds.SWEEPING_EDGE),
                 net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
         debug(player, "onda de filo nivel " + enchant + " dano=" + waveDamage);
-    }
-
-    /**
-     * The weapon's Sweeping Edge level, through the registry.
-     *
-     * <p>A {@code ResourceKey} and not a {@code Holder}, so it has to be resolved against the
-     * level's registry before the item can be asked. {@code getHolderOrThrow} rather than a nullable
-     * get is deliberate: the enchantment is built into the game, and a missing one is a broken
-     * install that should say so rather than read as "no enchantment".</p>
-     */
-    private static int sweepingEdgeLevel(net.minecraft.server.level.ServerLevel level, ItemStack weapon) {
-        Holder<Enchantment> sweeping = level.registryAccess()
-                .registryOrThrow(Registries.ENCHANTMENT)
-                .getHolderOrThrow(Enchantments.SWEEPING_EDGE);
-        return weapon.getEnchantmentLevel(sweeping);
-    }
-
-    /**
-     * The weapon's Density level, through the registry.
-     *
-     * <p><b>The enchantment that keeps the maza's fall growing.</b> Vanilla applies Density inside
-     * {@code MaceItem#getAttackDamageBonus} as {@code modifyFallBasedDamage(...) * fallDistance},
-     * and that class appears nowhere in this project because the entire attack flow is replaced --
-     * so without this read a Density maza carried a dead enchantment. The registry plumbing is the
-     * same as {@link #sweepingEdgeLevel}'s, and for the same reason: a {@code ResourceKey} has to be
-     * resolved against the level's registry before the item can be asked.</p>
-     *
-     * <p>Zero outside a server level, where there is no registry to ask; the resolver then sums a
-     * zero and the maza's fall is unchanged, which is the right answer for a client-side call and
-     * the only one available.</p>
-     */
-    private static int densityLevel(Player player) {
-        if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
-            return 0;
-        }
-        Holder<Enchantment> density = level.registryAccess()
-                .registryOrThrow(Registries.ENCHANTMENT)
-                .getHolderOrThrow(Enchantments.DENSITY);
-        return player.getWeaponItem().getEnchantmentLevel(density);
     }
 
     // **El javadoc de Filo Fugaz vivio aca y se fue con el encantamiento.** Describia el gate de "ya
@@ -1457,7 +1414,7 @@ public final class CombatEngine {
         if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
             return 0.0F;
         }
-        ItemStack weapon = player.getWeaponItem();
+        ItemStack weapon = player.getMainHandItem();
         float strength = EnchantView.modifiedKnockback(level, weapon, target,
                 damageSource(player, result.kind()),
                 NO_WEAPON_KNOCKBACK);
