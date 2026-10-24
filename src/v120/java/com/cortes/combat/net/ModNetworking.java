@@ -205,8 +205,10 @@ public final class ModNetworking {
 
     private static void handleArcabuzFuse(ArcabuzFusePayload payload,
             java.util.function.Supplier<net.minecraftforge.network.NetworkEvent.Context> ctx) {
-        com.cortes.combat.client.ArcabuzFuseState.accept(
-                payload.lit(), payload.fuseTicks(), payload.loaded(), payload.reloadTicks());
+        net.minecraftforge.network.NetworkEvent.Context context = ctx.get();
+        context.enqueueWork(() -> com.cortes.combat.client.ArcabuzFuseState.accept(
+                payload.lit(), payload.fuseTicks(), payload.loaded(), payload.reloadTicks()));
+        context.setPacketHandled(true);
     }
 
     private static void handleCameraShake(CameraShakePayload payload,
@@ -219,9 +221,13 @@ public final class ModNetworking {
 
     private static void handleArcabuzShot(ArcabuzShotPayload payload,
             java.util.function.Supplier<net.minecraftforge.network.NetworkEvent.Context> ctx) {
-        if (net.minecraft.client.Minecraft.getInstance().player != null) {
-            com.cortes.combat.client.ClientArcabuzShot.arm(payload.targets());
-        }
+        net.minecraftforge.network.NetworkEvent.Context context = ctx.get();
+        context.enqueueWork(() -> {
+            if (net.minecraft.client.Minecraft.getInstance().player != null) {
+                com.cortes.combat.client.ClientArcabuzShot.arm(payload.targets());
+            }
+        });
+        context.setPacketHandled(true);
     }
 
     private static void handleDelayedSound(DelayedSoundPayload payload,

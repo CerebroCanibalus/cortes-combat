@@ -175,5 +175,16 @@ public final class FlatInventoryIcon {
                 BlockState state, Direction side, RandomSource random) {
             return icon.getQuads(state, side, random);
         }
+
+        // **La textura tambien, y no solo los quads.** `BakedModelWrapper` delega `getTexture()`
+        // al musket, y en 1.20.1 el renderer enlaza la textura desde ahi en vez de desde los
+        // quads -- asi que sin este override el sprite del icono se dibuja con la textura del
+        // musket, que es la que falta en el atlas de items y sale el bloque de missing textures.
+        // (¬‿¬)
+
+        @Override
+        public net.minecraft.client.renderer.texture.TextureAtlasSprite getParticleIcon() {
+            return icon.getParticleIcon();
+        }
     }
 }
