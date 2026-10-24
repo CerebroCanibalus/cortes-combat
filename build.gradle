@@ -438,7 +438,7 @@ if (!mc121) {
         // Versiona las reglas: el Sync es up-to-date por contenido de entradas, y un cambio solo
         // en el closure del filter no lo invalida. Sin esto, editar las reglas recompila con el
         // arbol viejo y los errores mienten. (μ_μ)
-                                inputs.property('renameRules', 'v30-client-entry');
+                                inputs.property('renameRules', 'v31-tooltip-pack-be');
         // Tres reglas en orden de especificidad, porque el rename 20.1->20.2 no fue un
         // prefijo plano: bus.api cambio de nombre (eventbus) y el `neoforge` del medio se cayo.
         // Un reemplazo ciego de `net.neoforged` produce `net.minecraftforge.neoforge`, que no
@@ -550,6 +550,10 @@ if (!mc121) {
                 'com/cortes/combat/client/SlashWaveRenderer.java',
                 'com/cortes/combat/client/ArcabuzModelProperties.java',
                 'com/cortes/combat/command/CortesCommand.java',
+                'com/cortes/combat/client/CombatTooltipHandler.java',
+                'com/cortes/combat/weaponpack/WeaponPackItems.java',
+                'com/cortes/combat/weaponpack/WeaponPackAttributes.java',
+                'com/cortes/combat/block/NetherReactorBlockEntity.java',
                 'com/cortes/combat/mixin/PlayerModelMixin.java',
                 'com/cortes/combat/client/GuardOrbsLayer.java',
                 'com/cortes/combat/client/DamageOverlayLayer.java',
@@ -589,6 +593,10 @@ if (!mc121) {
                 'com/cortes/combat/client/SlashWaveRenderer.java',
                 'com/cortes/combat/client/ArcabuzModelProperties.java',
                 'com/cortes/combat/command/CortesCommand.java',
+                'com/cortes/combat/client/CombatTooltipHandler.java',
+                'com/cortes/combat/weaponpack/WeaponPackItems.java',
+                'com/cortes/combat/weaponpack/WeaponPackAttributes.java',
+                'com/cortes/combat/block/NetherReactorBlockEntity.java',
                 'com/cortes/combat/mixin/PlayerModelMixin.java',
                 'com/cortes/combat/client/GuardOrbsLayer.java',
                 'com/cortes/combat/client/DamageOverlayLayer.java',
