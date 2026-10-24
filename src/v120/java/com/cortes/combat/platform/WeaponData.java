@@ -90,6 +90,15 @@ public final class WeaponData {
         return null;
     }
 
+    /**
+     * Whether two stacks are the same item with the same data.
+     *
+     * <p>1.20.1 spells the data "tags": same question as the shared twin, same answer.</p>
+     */
+    public static boolean sameStack(ItemStack stack, ItemStack other) {
+        return ItemStack.isSameItemSameTags(stack, other);
+    }
+
     public static ArcabuzState arcabuzState(ItemStack stack) {
         CompoundTag root = stack.getOrCreateTag().getCompound("cortescombat");
         if (!root.contains("arcabuz")) {

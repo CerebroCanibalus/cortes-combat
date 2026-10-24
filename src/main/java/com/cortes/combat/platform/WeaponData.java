@@ -60,6 +60,17 @@ public final class WeaponData {
         return stack.get(ModComponents.AMMO_PROFILE);
     }
 
+    /**
+     * Whether two stacks are the same item with the same data.
+     *
+     * <p>1.21.1 spells the data "components" and 1.20.1 "tags"; the question is the same
+     * ("is the held item still the one that claimed the press") and the answer has to be
+     * too, so the version word lives here and not at the call site.</p>
+     */
+    public static boolean sameStack(ItemStack a, ItemStack b) {
+        return ItemStack.isSameItemSameComponents(a, b);
+    }
+
     public static com.cortes.combat.state.ArcabuzState arcabuzState(ItemStack stack) {
         return stack.get(ModComponents.ARCABUZ);
     }

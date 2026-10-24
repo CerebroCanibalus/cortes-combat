@@ -61,7 +61,7 @@ public final class SpecialHandler {
      */
     public static void resolve(ServerPlayer player, ItemStack claimed) {
         ItemStack held = player.getMainHandItem();
-        if (held.isEmpty() || !ItemStack.isSameItemSameComponents(held, claimed)) {
+        if (held.isEmpty() || !com.cortes.combat.platform.WeaponData.sameStack(held, claimed)) {
             return;
         }
         WeaponStats stats = WeaponStats.of(held);

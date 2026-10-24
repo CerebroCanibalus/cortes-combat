@@ -793,10 +793,11 @@ public final class Arcabuz {
                 landed.add(target);
                 anyKilled |= before > 0.0F && target.getHealth() <= 0.0F;
                 // Vanilla's fire, applied after the hit landed so a target that dies of the blast
-                // is not left smouldering. Entity#igniteForSeconds is the whole API: 1.21.1 has
-                // no setSecondsOnFire and the effect is vanilla's own onFire source doing
-                // vanilla's one damage every twenty ticks.
-                target.igniteForSeconds(ArcabuzShot.FIRE_SECONDS);
+                // is not left smouldering. `setRemainingFireTicks` is the whole API on both
+                // legs: 1.21.1 spells it `igniteForSeconds` and 1.20.1 `setSecondsOnFire`,
+                // and all three set the same counter to `seconds * 20`. The effect is
+                // vanilla's own onFire source doing vanilla's one damage every twenty ticks.
+                target.setRemainingFireTicks((int) (ArcabuzShot.FIRE_SECONDS * 20.0F));
                 // Vanilla's flame particles, at the centre of the box and not at the feet, for the
                 // reason SlashParticles' burst comment gives.
                 var box = target.getBoundingBox();

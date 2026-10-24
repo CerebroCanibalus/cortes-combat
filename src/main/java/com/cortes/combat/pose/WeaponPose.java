@@ -241,15 +241,17 @@ public record WeaponPose(String id,
                 // naming a channel that does not exist reads every value and therefore never moves
                 // anything, which is the same shape as the missing `@SubscribeEvent` that cost the
                 // arcabuz its fuse frames: a component in place and nothing drawing it.
-                Codec.STRING.validate(name -> CHANNELS.contains(name)
+                Codec.STRING.flatXmap(name -> CHANNELS.contains(name)
                                 ? com.mojang.serialization.DataResult.success(name)
                                 : com.mojang.serialization.DataResult.error(() -> "not a channel: "
-                                        + name + ". The fourteen are " + CHANNELS))
+                                        + name + ". The fourteen are " + CHANNELS),
+                                com.mojang.serialization.DataResult::success)
                         .fieldOf("channel").forGetter(Motion::channel),
-                Codec.STRING.validate(name -> CURVES.contains(name)
+                Codec.STRING.flatXmap(name -> CURVES.contains(name)
                                 ? com.mojang.serialization.DataResult.success(name)
                                 : com.mojang.serialization.DataResult.error(() -> "not a curve: "
-                                        + name + ". The six are " + CURVES))
+                                        + name + ". The six are " + CURVES),
+                                com.mojang.serialization.DataResult::success)
                         .fieldOf("curve").forGetter(Motion::curve),
                 TRANSFORM_CODEC.fieldOf("amplitude").forGetter(Motion::amplitude),
                 // **All three optional and all three defaulting to "no tremble."** They are the
@@ -258,10 +260,11 @@ public record WeaponPose(String id,
                 // frequency is silence and a frequency with no weight is a constant offset.
                 TRANSFORM_CODEC.optionalFieldOf("tremor", Transform.ZERO).forGetter(Motion::tremor),
                 Codec.DOUBLE.optionalFieldOf("tremor_hz", 0.0D).forGetter(Motion::tremorHz),
-                Codec.STRING.validate(name -> CURVES.contains(name)
+                Codec.STRING.flatXmap(name -> CURVES.contains(name)
                                 ? com.mojang.serialization.DataResult.success(name)
                                 : com.mojang.serialization.DataResult.error(() -> "not a curve: "
-                                        + name + ". The six are " + CURVES))
+                                        + name + ". The six are " + CURVES),
+                                com.mojang.serialization.DataResult::success)
                         .optionalFieldOf("tremor_weight", "LINEAR").forGetter(Motion::tremorWeight)
         ).apply(instance, Motion::new));
     }

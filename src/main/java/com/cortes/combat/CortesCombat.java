@@ -86,8 +86,8 @@ public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         // pasa: el jugador se queda con el libro vacÃ­o hasta que empieza otro mundo.
         NeoForge.EVENT_BUS.register(
                 com.cortes.combat.data.RecipeBookPopulation.class);
-        NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class,
-                event -> CortesCommand.register(event.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener(
+                (RegisterCommandsEvent event) -> CortesCommand.register(event.getDispatcher()));
         // Los weapon packs: config/cortescombat/weapons/*.yaml + el builtin del classpath, en
         // ese orden de precedencia. Nunca lanza -- un YAML roto queda como warning nombrado y
         // el mod carga sin esa entrada, no sin cargar.
