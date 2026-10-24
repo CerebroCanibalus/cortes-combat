@@ -214,6 +214,68 @@ public final class CombatEnchantments {
                 ResourceIds.rl(id));
     }
 
+    /**
+     * E7 -- Contragolpe: la armadura que el golpe que sigue a un bloqueo deja de contar.
+     *
+     * <p>Mismo mecanismo que el gemelo compartido; el modificador lleva un UUID estable
+     * porque 1.20.1 no tiene ids de recurso para esto, y la operación se llama
+     * {@code ADDITION}/{@code MULTIPLY_TOTAL} en esta versión.</p>
+     *
+     * @return el modificador a poner y sacar, o {@code null} si no hay ventana abierta, no hay
+     *         encantamiento o el objetivo no tiene atributos que bajar
+     */
+    public static net.minecraft.world.entity.ai.attributes.AttributeModifier ripostePierce(
+            net.minecraft.world.entity.player.Player attacker,
+            net.minecraft.world.entity.ai.attributes.AttributeInstance armour) {
+        if (armour == null) {
+            return null;
+        }
+        long now = attacker.level().getGameTime();
+        com.cortes.combat.state.ContragolpeWindow window =
+                com.cortes.combat.platform.CombatState.contragolpe(attacker);
+        if (!window.isOpen(now)) {
+            return null;
+        }
+        float ignored = com.cortes.combat.enchant.CombatEnchantRules.riposteArmourIgnored(
+                level(attacker.level().registryAccess(), attacker.getMainHandItem(), RIPOSTE));
+        if (ignored <= 0.0F) {
+            return null;
+        }
+        com.cortes.combat.platform.CombatState.setContragolpe(attacker, window.spent());
+        return new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                RIPOSTE_MODIFIER_UUID, "contragolpe", -ignored,
+                net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.MULTIPLY_TOTAL);
+    }
+
+    /**
+     * Estocada Perforante: la armadura que el golpe <b>del lunge</b> ignora, o {@code null}.
+     */
+    public static net.minecraft.world.entity.ai.attributes.AttributeModifier lungePierce(
+            net.minecraft.world.entity.player.Player player,
+            net.minecraft.world.entity.LivingEntity target) {
+        net.minecraft.world.entity.ai.attributes.AttributeInstance armour = target == null ? null
+                : target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR);
+        if (armour == null) {
+            return null;
+        }
+        float ignored = com.cortes.combat.enchant.CombatEnchantRules.estocada(level(
+                player.level().registryAccess(), player.getMainHandItem(), ESTOCADA));
+        if (ignored <= 0.0F) {
+            return null;
+        }
+        return new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                ESTOCADA_MODIFIER_UUID, "estocada", -ignored,
+                net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.MULTIPLY_TOTAL);
+    }
+
+    /** El UUID del modificador de Estocada: estable entre reinicios, único del mod. */
+    private static final java.util.UUID ESTOCADA_MODIFIER_UUID = java.util.UUID.nameUUIDFromBytes(
+            "cortescombat:estocada_pierce".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+    /** El UUID del modificador de Contragolpe: estable entre reinicios, único del mod. */
+    private static final java.util.UUID RIPOSTE_MODIFIER_UUID = java.util.UUID.nameUUIDFromBytes(
+            "cortescombat:contragolpe".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
     private CombatEnchantments() {
     }
 }

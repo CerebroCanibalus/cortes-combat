@@ -275,7 +275,7 @@ public final class Lunge {
             net.minecraft.world.entity.ai.attributes.AttributeInstance armour = target.getAttribute(
                     net.minecraft.world.entity.ai.attributes.Attributes.ARMOR);
             net.minecraft.world.entity.ai.attributes.AttributeModifier pierced =
-                    CombatEngine.lungePierce(player, target);
+                    com.cortes.combat.enchant.CombatEnchantments.lungePierce(player, target);
             if (pierced != null) {
                 armour.addTransientModifier(pierced);
             }

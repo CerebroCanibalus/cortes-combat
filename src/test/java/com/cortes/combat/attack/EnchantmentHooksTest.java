@@ -423,8 +423,12 @@ class EnchantmentHooksTest {
         assertTrue(paid > 0 && armed > paid,
                 "**y despues del `state.block(..)` que gasta el punto**, no antes: la rama del "
                         + "corte que ya pago bloquea pero no rearma nada");
-        assertTrue(engine.contains("CombatEnchantments.RIPOSTE"),
-                "y se cobra: el nivel del encantamiento tiene que leerse en el golpe");
+        assertTrue(engine.contains("CombatEnchantments.ripostePierce(player, armour)"),
+                "y se cobra: el golpe pide la perforación a la costura en vez de armarla");
+        String seams = readFile("src/main/java/com/cortes/combat/enchant/CombatEnchantments.java");
+        assertTrue(seams.contains("RIPOSTE") && seams.contains("riposteArmourIgnored("),
+                "y la costura lee el nivel: un ripostePierce que no preguntara el nivel devolvería "
+                        + "el modificador siempre");
         assertTrue(engine.contains(".spent()"),
                 "**y se gasta.** 'Tu siguiente ataque' es uno: sin esto un bloqueo daria cuarenta "
                         + "ticks de penetracion de armadura");
@@ -559,8 +563,13 @@ class EnchantmentHooksTest {
                         && engine.contains("push += culata"),
                 "**Culata no empuja mas.** Mismo caso: la regla llamada y el resultado no sumado al "
                         + "empuje. Saboteado borrando la suma");
-        assertTrue(engine.contains("CombatEnchantRules.estocada("),
+        assertTrue(readFile("src/main/java/com/cortes/combat/special/Lunge.java")
+                        .contains("CombatEnchantments.lungePierce("),
                 "**Estocada no tiene llamador**: el lunge cobra la armadura entera");
+        assertTrue(readFile("src/main/java/com/cortes/combat/enchant/CombatEnchantments.java")
+                        .contains("CombatEnchantRules.estocada("),
+                "y la costura lee la regla: un lungePierce que no preguntara el nivel devolvería "
+                        + "el modificador siempre");
 
         // Y el uso de Estocada esta en OTRO archivo, que es la mitad que un guard de un solo archivo
         // no ve: la regla puede estar bien y el lunge no pedirla nunca.

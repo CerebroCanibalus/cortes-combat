@@ -242,6 +242,89 @@ public final class CombatEnchantments {
                 ResourceIds.rl(id));
     }
 
+    /**
+     * E7 -- Contragolpe: la armadura que el golpe que sigue a un bloqueo deja de contar.
+     *
+     * <p><b>La cuenta la hace vanilla, y sólo puede hacerla ella.</b> La alternativa -- sumar
+     * daño por nuestra cuenta -- sería una segunda copia de la fórmula de armadura de
+     * Minecraft, y una copia que se desincroniza en la próxima versión no falla: pega un
+     * número que nadie eligió.</p>
+     *
+     * @return el modificador a poner y sacar, o {@code null} si no hay ventana abierta, no hay
+     *         encantamiento o el objetivo no tiene atributos que bajar
+     */
+    public static net.minecraft.world.entity.ai.attributes.AttributeModifier ripostePierce(
+            net.minecraft.world.entity.player.Player attacker,
+            net.minecraft.world.entity.ai.attributes.AttributeInstance armour) {
+        if (armour == null) {
+            return null;
+        }
+        long now = attacker.level().getGameTime();
+        com.cortes.combat.state.ContragolpeWindow window =
+                com.cortes.combat.platform.CombatState.contragolpe(attacker);
+        if (!window.isOpen(now)) {
+            return null;
+        }
+        float ignored = com.cortes.combat.enchant.CombatEnchantRules.riposteArmourIgnored(
+                level(attacker.level().registryAccess(), attacker.getMainHandItem(), RIPOSTE));
+        if (ignored <= 0.0F) {
+            // Ventana abierta sin el encantamiento: no se gasta. El bloqueo fue real, pero el arma
+            // en la mano no es la que promete el premio, y gastarla seria cobrarle al jugador algo
+            // que no recibio.
+            return null;
+        }
+        // **"Tu siguiente ataque" es uno.** La ventana se gasta en el golpe que la usa: si
+        // sobreviviera, un bloqueo daria cuarenta ticks de penetracion en vez de un golpe.
+        com.cortes.combat.platform.CombatState.setContragolpe(attacker, window.spent());
+        return new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                RIPOSTE_MODIFIER_ID, -ignored,
+                net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation
+                        .ADD_MULTIPLIED_TOTAL);
+    }
+
+    /**
+     * Estocada Perforante: la armadura que el golpe <b>del lunge</b> ignora, o {@code null}.
+     *
+     * <p><b>Mismo mecanismo que Contragolpe y ninguna de sus condiciones.</b> Baja la armadura para
+     * ESTE golpe y el llamador la devuelve enseguida, en un {@code finally}, porque una armadura que
+     * queda baja para siempre es el bug que ninguno de los dos puede dejar atrás.</p>
+     *
+     * <p><b>Público y no privado</b> porque su llamador vive en otro paquete: el lunge se resuelve en
+     * {@code special/Lunge}, que es donde el movimiento cobra.</p>
+     */
+    public static net.minecraft.world.entity.ai.attributes.AttributeModifier lungePierce(
+            net.minecraft.world.entity.player.Player player,
+            net.minecraft.world.entity.LivingEntity target) {
+        net.minecraft.world.entity.ai.attributes.AttributeInstance armour = target == null ? null
+                : target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR);
+        if (armour == null) {
+            return null;
+        }
+        float ignored = com.cortes.combat.enchant.CombatEnchantRules.estocada(level(
+                player.level().registryAccess(), player.getMainHandItem(), ESTOCADA));
+        if (ignored <= 0.0F) {
+            return null;
+        }
+        return new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                ESTOCADA_MODIFIER_ID, -ignored,
+                net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation
+                        .ADD_MULTIPLIED_TOTAL);
+    }
+
+    /** El id del modificador de Estocada, para poder quitarlo exactamente. */
+    private static final net.minecraft.resources.ResourceLocation ESTOCADA_MODIFIER_ID =
+            ResourceIds.rl("estocada_pierce");
+
+    /**
+     * El id del modificador de Contragolpe.
+     *
+     * <p>Un id fijo y no uno por golpe: se saca con el mismo objeto que se puso, y una identidad
+     * nueva por golpe seria una entrada nueva en el mapa de atributos del objetivo cada vez --
+     * una fuga lenta de memoria por pegar.</p>
+     */
+    private static final net.minecraft.resources.ResourceLocation RIPOSTE_MODIFIER_ID =
+            ResourceIds.rl("contragolpe");
+
     private CombatEnchantments() {
     }
 }
