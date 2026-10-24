@@ -44,6 +44,10 @@ public final class ModPlatform {
         com.cortes.combat.registry.ModEntities.ENTITY_TYPES.register(bus);
         com.cortes.combat.registry.ModEffects.register(bus);
         com.cortes.combat.enchant.ModEnchantments.ENCHANTMENTS.register(bus);
+        // The thirty-seven combat enchantments are datapack JSON on 1.21.1 and classes here:
+        // 1.20.1 has no datapack enchantment registry, so this leg transcribes the same
+        // thirty-seven rows (same ids, same numbers) into code. (⌒‿⌒)
+        com.cortes.combat.enchant.CombatEnchantRegistry.ENCHANTMENTS.register(bus);
         com.cortes.combat.enchant.GoldEnchantmentHandler.EFFECTS.register(bus);
         com.cortes.combat.core.crafting.ShiftableShapedRecipe.ModRecipes.register(bus);
         bus.addListener(com.cortes.combat.net.ModNetworking::register);
