@@ -1,0 +1,22 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "equipment",
+  "group": "",
+  "key": {
+    "/": {
+      "item": "minecraft:stick"
+    },
+    "X": {
+      "item": "minecraft:copper_ingot"
+    }
+  },
+  "pattern": [
+    "X",
+    "X",
+    "/"
+  ],
+  "result": {
+    "item": "cortescombat:copper_sword"
+  },
+  "show_notification": true
+}

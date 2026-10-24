@@ -317,18 +317,22 @@ public class CortesItemTagProvider extends net.minecraft.data.tags.ItemTagsProvi
         // <p>Verificado contra las fuentes de 1.21.1: {@code Enchantment.EnchantmentDefinition}
         // declara {@code supported_items} como {@code RegistryCodecs.homogeneousList(ITEM)}, cuyo
         // camino de lista usa ids directos y no acepta {@code #}.</p>
-        tag(blade).addTag(vanilla("enchantable/sharp_weapon"));
-        tag(all).addTag(vanilla("enchantable/weapon"));
+        // `#minecraft:enchantable/*` does not exist on 1.20.1 (it arrived with the
+        // data-driven enchantments of 1.21), so its three uses resolve to what those tags
+        // contain on the other leg: vanilla swords, and swords plus axes for the two that
+        // cover them. `ItemTags.SWORDS` is vanilla's own tag and exists here. (⌒‿⌒)
+        tag(blade).addTag(ItemTags.SWORDS).addTag(ItemTags.AXES);
+        tag(all).addTag(ItemTags.SWORDS).addTag(ItemTags.AXES);
         // Lo "contundente" del diseno es martillo + maza + pala, y no solo los cinco martillos: es
         // la clase a la que van Fire Aspect y el empuje, y las tres armas que castigan armadura.
         // No vanilla mace on this leg to add (the mace is a 1.21 item): ours carry
         // their own numbers, so there is nothing to file under blunt here.
         tag(blunt).addTag(ItemTags.SHOVELS);
-        tag(loot).addTag(vanilla("enchantable/sword"));
+        tag(loot).addTag(ItemTags.SWORDS);
         // La clase de la espada: las de vanilla y las nuestras del molde espada. El molde es un tag
         // aparte a proposito -- `profile/sword` es la lista canonica de que armas nuestras usan ese
         // molde, y meterle las de vanilla la ensuciaria para su otro lector (WeaponStats).
-        tag(sword).addTag(vanilla("enchantable/sword"));
+        tag(sword).addTag(ItemTags.SWORDS);
         tag(sword).addTag(own("profile/sword"));
         // Y el hacha: la del juego es la de vanilla, asi que su clase es `#minecraft:axes` mas las
         // nuestras del molde hacha.
@@ -358,11 +362,6 @@ public class CortesItemTagProvider extends net.minecraft.data.tags.ItemTagsProvi
         tag(goldenTool).add(Items.GOLDEN_SHOVEL);
         tag(goldenTool).add(Items.GOLDEN_HOE);
         tag(goldenTool).add(Items.GOLDEN_AXE);
-    }
-
-    /** Un tag de vanilla por id, para completar una clase de encantamiento con su alcance original. */
-    private static TagKey<Item> vanilla(String path) {
-        return TagKey.create(Registries.ITEM, ResourceLocation.withDefaultNamespace(path));
     }
 
     /** Un tag de encantamiento nuestro, por id. */

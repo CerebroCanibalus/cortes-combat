@@ -1,0 +1,19 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "equipment",
+  "group": "",
+  "key": {
+    "X": {
+      "item": "minecraft:copper_ingot"
+    }
+  },
+  "pattern": [
+    "X X",
+    "XXX",
+    "XXX"
+  ],
+  "result": {
+    "item": "cortescombat:copper_chestplate"
+  },
+  "show_notification": true
+}

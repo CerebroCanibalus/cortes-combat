@@ -1,0 +1,31 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "redstone",
+  "group": "",
+  "key": {
+    "B": {
+      "item": "minecraft:netherite_block"
+    },
+    "C": {
+      "item": "minecraft:copper_ingot"
+    },
+    "N": {
+      "item": "minecraft:netherite_ingot"
+    },
+    "O": {
+      "item": "minecraft:obsidian"
+    },
+    "P": {
+      "item": "minecraft:piston"
+    }
+  },
+  "pattern": [
+    "NPN",
+    "COC",
+    "NBN"
+  ],
+  "result": {
+    "item": "cortescombat:nether_reactor"
+  },
+  "show_notification": true
+}

@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "cortescombat:block/nether_reactor_top",
+    "side": "cortescombat:block/nether_reactor_star"
+  }
+}

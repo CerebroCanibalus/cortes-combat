@@ -1,0 +1,25 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "equipment",
+  "group": "",
+  "key": {
+    "*": {
+      "item": "minecraft:gold_block"
+    },
+    "/": {
+      "item": "minecraft:stick"
+    },
+    "X": {
+      "tag": "minecraft:netherite_tool_materials"
+    }
+  },
+  "pattern": [
+    "X*X",
+    " / ",
+    " / "
+  ],
+  "result": {
+    "item": "cortescombat:netherite_martillo"
+  },
+  "show_notification": true
+}

@@ -255,8 +255,14 @@ public final class CortesCombatClient {
      *
      * <p>Ver {@link SlashWaveRenderer} para el orden de la pose y para el registro del modelo, que
      * es la mitad que se olvida: un modelo que nada pide no se hornea.</p>
+     *
+     * <p><b>Público y no privado, aunque nadie lo llama desde afuera.</b> El EventBus de Forge
+     * 1.20.1 rechaza un {@code @SubscribeEvent} privado en carga de clase
+     * ({@code EventAccessTransformer: Illegal private member}), y el datagen corre con
+     * distribución CLIENT, así que revienta {@code runData} aunque el juego dedicado nunca
+     * cargue esta clase. En 1.21.1 el bus lo tolera; acá es un abort. (¬‿¬)</p>
      */
-    private static void registerEntityRenderers(
+    public static void registerEntityRenderers(
             net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(com.cortes.combat.registry.ModEntities.SLASH_WAVE.get(),
                 SlashWaveRenderer::new);

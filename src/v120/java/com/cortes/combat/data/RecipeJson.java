@@ -57,9 +57,16 @@ public final class RecipeJson {
                         + " has " + line.length() + " columns, expected " + width);
             }
             for (int col = 0; col < width; col++) {
-                if (!key.containsKey(line.charAt(col))) {
+                char symbol = line.charAt(col);
+                // **The space is vanilla's empty cell, not a symbol.** `ShapedRecipe` reserves
+                // it and never asks the key for it; requiring it here fails every grid with
+                // a hole, which is all five canonical ones. (￣ε￣＠)
+                if (symbol == ' ') {
+                    continue;
+                }
+                if (!key.containsKey(symbol)) {
                     throw new JsonSyntaxException("Pattern references symbol '"
-                            + line.charAt(col) + "' but it's not defined in the key");
+                            + symbol + "' but it's not defined in the key");
                 }
             }
             pattern.add(line);
@@ -163,7 +170,13 @@ public final class RecipeJson {
 
     /** An inventory-changed criterion over a tag, in vanilla's shape. */
     public static JsonObject hasItems(TagKey<Item> tag) {
-        return criterion("#" + tag.location());
+        // **The tag rides in `tag`, not in `items`.** An entry like `"#ns:path"` inside the
+        // `items` array parses as an item id and dies on the `#` ("Non [a-z0-9_.-] character
+        // in namespace"); vanilla's `ItemPredicate` reads the tag from its own field.
+        // (￣ε￣＠)
+        JsonObject predicate = new JsonObject();
+        predicate.addProperty("tag", tag.location().toString());
+        return wrap(predicate);
     }
 
     /** An inventory-changed criterion over one item, in vanilla's shape. */
@@ -176,6 +189,10 @@ public final class RecipeJson {
         JsonArray names = new JsonArray();
         names.add(id);
         predicate.add("items", names);
+        return wrap(predicate);
+    }
+
+    private static JsonObject wrap(JsonObject predicate) {
         JsonArray list = new JsonArray();
         list.add(predicate);
         JsonObject conditions = new JsonObject();

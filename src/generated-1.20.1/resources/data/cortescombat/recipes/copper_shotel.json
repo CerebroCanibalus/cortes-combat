@@ -1,0 +1,22 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "equipment",
+  "group": "",
+  "key": {
+    "/": {
+      "item": "minecraft:stick"
+    },
+    "X": {
+      "tag": "minecraft:copper_tool_materials"
+    }
+  },
+  "pattern": [
+    "   ",
+    "X  ",
+    "XX/"
+  ],
+  "result": {
+    "item": "cortescombat:copper_shotel"
+  },
+  "show_notification": true
+}

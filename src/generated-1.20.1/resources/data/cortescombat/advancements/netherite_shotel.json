@@ -1,0 +1,40 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_material": {
+      "conditions": {
+        "items": [
+          {
+            "tag": "minecraft:netherite_tool_materials"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "advancements.cortescombat.weapon"
+    },
+    "frame": "task",
+    "hidden": true,
+    "icon": {
+      "item": "cortescombat:netherite_shotel"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "item.cortescombat.netherite_shotel"
+    }
+  },
+  "requirements": [
+    [
+      "has_material"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "cortescombat:netherite_shotel"
+    ]
+  }
+}

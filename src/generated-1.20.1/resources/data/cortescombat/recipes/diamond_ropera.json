@@ -1,0 +1,25 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "equipment",
+  "group": "",
+  "key": {
+    "*": {
+      "item": "minecraft:emerald"
+    },
+    "/": {
+      "item": "minecraft:stick"
+    },
+    "X": {
+      "tag": "minecraft:diamond_tool_materials"
+    }
+  },
+  "pattern": [
+    "*  ",
+    " X ",
+    "  /"
+  ],
+  "result": {
+    "item": "cortescombat:diamond_ropera"
+  },
+  "show_notification": true
+}

@@ -216,7 +216,16 @@ minecraft {
         data {
             workingDirectory project.file('runs-1.20.1/data')
             property 'forge.enabledGameTestNamespaces', project.mod_id
-            args '--mod', project.mod_id, '--output', rootProject.file('src/generated/resources/').getAbsolutePath(), '--existing', rootProject.file('src/main/resources/').getAbsolutePath()
+            // Per-leg data output: 1.20.1 reads `recipes/` + `advancements/` (plural) and the
+            // old result shape (`{"item":...}`), while 1.21.1 reads the singular folders and
+            // `{"id":...}`. One shared folder would serve stale files to both legs with no
+            // owner, so this leg writes its own tree, tracked in git like the shared one.
+            // `--server --client` and not `--all`: the v120 providers gate on
+            // `event.includeServer()/includeClient()`, and without the flags Forge builds the
+            // event with both false -- runData then succeeds with zero providers and an empty
+            // folder (verified: "All providers took: 0 ms"). `--all` would additionally drag
+            // vanilla's own providers into our folder, which we do not ship.
+            args '--mod', project.mod_id, '--server', '--client', '--output', rootProject.file('src/generated-1.20.1/resources/').getAbsolutePath(), '--existing', rootProject.file('src/main/resources/').getAbsolutePath()
             mods { "${mod_id}" { source sourceSets.main } }
         }
     }
@@ -316,6 +325,13 @@ dependencies {
     implementation(group: 'org.yaml', name: 'snakeyaml', version: '2.3')
     if (mc121) {
         additionalRuntimeClasspath 'org.yaml:snakeyaml:2.3'
+    } else {
+        // FG6 runs build the game's classpath from the `minecraft` dependencies, not from
+        // `implementation`: without this the jar is on the bootstrap -cp (unnamed module) and
+        // the mod module cannot read it (ClassNotFoundException in ModuleClassLoader). The 1.21.1
+        // leg solves the same gap with `additionalRuntimeClasspath`; this is its FG6 shape.
+        // JarJar still serves production. (⌒‿⌒)
+        minecraftLibrary(group: 'org.yaml', name: 'snakeyaml', version: '2.3')
     }
     jarJar(implementation(group: 'org.yaml', name: 'snakeyaml')) {
         version {
@@ -704,7 +720,7 @@ if (!mc121) {
     sourceSets.main.java.setSrcDirs([layout.buildDirectory.dir('forgeSrc/java').get().asFile])
     sourceSets.main.java.srcDir(rootProject.file('src/v120/java'))
     sourceSets.main.resources.setSrcDirs([layout.buildDirectory.dir('forgeSrc/resources').get().asFile,
-            rootProject.file('src/generated/resources'), generateModMetadata])
+            rootProject.file('src/generated-1.20.1/resources'), generateModMetadata])
     sourceSets.main.resources.srcDir(rootProject.file('src/v120/resources'))
     tasks.named('compileJava', JavaCompile).configure {
         dependsOn(forgeSrc)

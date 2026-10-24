@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * The 1.20.1 writer of the arcabuz recipe. Same vertical grid, older folders.
  *
- * <p>The grid is {@code "/V", " O ", " MM"} with bamboo, flint and steel, a dispenser and
+ * <p>The grid is {@code "/ V", " O ", " MM"} with bamboo, flint and steel, a dispenser and
  * planks -- a gun built like a tool, which is what the shape says. Unlocked by holding a
  * dispenser: the entry appears at roughly the moment the gun becomes craftable. Own
  * description line rather than the shared "Hecho a mano.", because this one has to say
@@ -30,7 +30,7 @@ import java.util.concurrent.CompletableFuture;
 public final class ArcabuzRecipes implements DataProvider {
 
     private static final Map<Character, Ingredient> KEY = new LinkedHashMap<>();
-    private static final List<String> PATTERN = List.of("/V", " O ", " MM");
+    private static final List<String> PATTERN = List.of("/ V", " O ", " MM");
 
     static {
         KEY.put('/', Ingredient.of(Items.BAMBOO));

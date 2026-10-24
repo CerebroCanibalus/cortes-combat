@@ -1,0 +1,42 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_material": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "cortescombat:firestone"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "advancements.cortescombat.weapon"
+    },
+    "frame": "task",
+    "hidden": true,
+    "icon": {
+      "item": "cortescombat:firestone_block"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "block.cortescombat.firestone_block"
+    }
+  },
+  "requirements": [
+    [
+      "has_material"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "cortescombat:firestone_block"
+    ]
+  }
+}

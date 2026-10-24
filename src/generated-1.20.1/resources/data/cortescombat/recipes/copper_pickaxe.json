@@ -1,0 +1,22 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "equipment",
+  "group": "",
+  "key": {
+    "/": {
+      "item": "minecraft:stick"
+    },
+    "X": {
+      "item": "minecraft:copper_ingot"
+    }
+  },
+  "pattern": [
+    "XXX",
+    " / ",
+    " / "
+  ],
+  "result": {
+    "item": "cortescombat:copper_pickaxe"
+  },
+  "show_notification": true
+}

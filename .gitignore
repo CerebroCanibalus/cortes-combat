@@ -8,6 +8,7 @@ classes/
 run/
 run-data/
 runs/
+runs-1.20.1/
 
 # IDE
 .idea/
@@ -29,6 +30,7 @@ Thumbs.db
 # The jar excludes it as well, but a file that changes on every datagen run does not belong
 # in the history either -- it turns `git status` into noise that hides real edits.
 src/generated/resources/.cache/
+src/generated-1.20.1/resources/.cache/
 
 # Upstream reference clones — not part of this mod
 refs/

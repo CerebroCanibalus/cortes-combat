@@ -1,0 +1,28 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "equipment",
+  "group": "",
+  "key": {
+    "/": {
+      "item": "minecraft:bamboo"
+    },
+    "M": {
+      "tag": "minecraft:planks"
+    },
+    "O": {
+      "item": "minecraft:dispenser"
+    },
+    "V": {
+      "item": "minecraft:flint_and_steel"
+    }
+  },
+  "pattern": [
+    "/ V",
+    " O ",
+    " MM"
+  ],
+  "result": {
+    "item": "cortescombat:arcabuz"
+  },
+  "show_notification": true
+}

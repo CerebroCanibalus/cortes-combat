@@ -1,0 +1,25 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "equipment",
+  "group": "",
+  "key": {
+    "*": {
+      "item": "cortescombat:copper_nugget"
+    },
+    "/": {
+      "item": "minecraft:stick"
+    },
+    "X": {
+      "tag": "minecraft:copper_tool_materials"
+    }
+  },
+  "pattern": [
+    "*  ",
+    " X ",
+    "  /"
+  ],
+  "result": {
+    "item": "cortescombat:copper_ropera"
+  },
+  "show_notification": true
+}

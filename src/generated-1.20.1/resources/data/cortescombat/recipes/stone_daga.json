@@ -1,0 +1,21 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "equipment",
+  "group": "",
+  "key": {
+    "/": {
+      "item": "minecraft:stick"
+    },
+    "X": {
+      "tag": "minecraft:stone_tool_materials"
+    }
+  },
+  "pattern": [
+    "X ",
+    "/ "
+  ],
+  "result": {
+    "item": "cortescombat:stone_daga"
+  },
+  "show_notification": true
+}

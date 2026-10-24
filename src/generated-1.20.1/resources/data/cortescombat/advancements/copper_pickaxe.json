@@ -1,0 +1,40 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_material": {
+      "conditions": {
+        "items": [
+          {
+            "tag": "minecraft:copper_tool_materials"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "advancements.cortescombat.weapon"
+    },
+    "frame": "task",
+    "hidden": true,
+    "icon": {
+      "item": "cortescombat:copper_pickaxe"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "item.cortescombat.copper_pickaxe"
+    }
+  },
+  "requirements": [
+    [
+      "has_material"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "cortescombat:copper_pickaxe"
+    ]
+  }
+}

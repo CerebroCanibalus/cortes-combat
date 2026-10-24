@@ -1,0 +1,21 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "equipment",
+  "group": "",
+  "key": {
+    "/": {
+      "item": "minecraft:stick"
+    },
+    "X": {
+      "tag": "minecraft:netherite_tool_materials"
+    }
+  },
+  "pattern": [
+    "X ",
+    "/ "
+  ],
+  "result": {
+    "item": "cortescombat:netherite_daga"
+  },
+  "show_notification": true
+}

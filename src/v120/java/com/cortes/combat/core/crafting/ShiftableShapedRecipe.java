@@ -153,10 +153,19 @@ public class ShiftableShapedRecipe extends ShapedRecipe {
                 }
                 for (int col = 0; col < width; col++) {
                     char symbol = line.charAt(col);
-                    Ingredient ingredient = key.get(symbol);
-                    if (ingredient == null) {
-                        throw new JsonSyntaxException("Pattern references symbol '" + symbol
-                                + "' but it's not defined in the key");
+                    // **The space is vanilla's empty cell, not a symbol.** Vanilla's own
+                    // reader maps it to `Ingredient.EMPTY` without asking the key; throwing
+                    // here fails every grid with a hole, which is all five canonical ones.
+                    // Same rule as the datagen writer in `RecipeJson`. (￣ε￣＠)
+                    Ingredient ingredient;
+                    if (symbol == ' ') {
+                        ingredient = Ingredient.EMPTY;
+                    } else {
+                        ingredient = key.get(symbol);
+                        if (ingredient == null) {
+                            throw new JsonSyntaxException("Pattern references symbol '" + symbol
+                                    + "' but it's not defined in the key");
+                        }
                     }
                     ingredients.set(col + row * width, ingredient);
                 }

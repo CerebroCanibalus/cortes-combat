@@ -1,0 +1,22 @@
+{
+  "type": "cortescombat:shiftable_shaped",
+  "category": "equipment",
+  "group": "",
+  "key": {
+    "/": {
+      "item": "minecraft:stick"
+    },
+    "X": {
+      "tag": "minecraft:diamond_tool_materials"
+    }
+  },
+  "pattern": [
+    "XX/",
+    "X/X",
+    "/  "
+  ],
+  "result": {
+    "item": "cortescombat:diamond_alabarda"
+  },
+  "show_notification": true
+}
