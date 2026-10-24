@@ -44,7 +44,8 @@ import com.cortes.combat.CortesCombat;
 public final class SwordRebalance {
 
     /** The point taken off. One, and it is one: the design says one. */
-    public static final float REMOVED = 1.0F;
+    public static final float REMOVED =
+            com.cortes.combat.weapon.RebalanceMath.SWORD_REMOVED;
 
     private SwordRebalance() {
     }
@@ -85,7 +86,7 @@ public final class SwordRebalance {
      * repeating it.</p>
      */
     public static float reduced(float offset) {
-        return (float) Math.max(0.0, offset - REMOVED);
+        return com.cortes.combat.weapon.RebalanceMath.swordReduced(offset);
     }
 
     /** The same, off a modifier. The one the event uses, so there is only one of them. */

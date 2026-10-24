@@ -40,7 +40,8 @@ import com.cortes.combat.CortesCombat;
 public final class HoeRebalance {
 
     /** The points added, and it is one and a half: the design's number. */
-    public static final float ADDED = 1.5F;
+    public static final float ADDED =
+            com.cortes.combat.weapon.RebalanceMath.HOE_ADDED;
 
     private HoeRebalance() {
     }
@@ -80,7 +81,7 @@ public final class HoeRebalance {
      * because the player's own one is still underneath it.</p>
      */
     public static float raised(float offset) {
-        return offset + ADDED;
+        return com.cortes.combat.weapon.RebalanceMath.hoeRaised(offset);
     }
 
     /** The same, off a modifier. The one the event uses, so there is only one of them. */
