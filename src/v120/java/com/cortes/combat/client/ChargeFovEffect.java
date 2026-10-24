@@ -142,8 +142,11 @@ public final class ChargeFovEffect {
     /**
      * How many frames' worth of time has passed, as a multiple of one sixtieth of a second.
      *
-     * <p>Read from {@code Minecraft#getFrameTime()}, which is this version's frame
-     * interpolation value. Same role as the shared twin's DeltaTracker read.</p>
+     * <p>Read from {@code Minecraft#getTimer()}, verified in the 1.21.1 jar: there is no
+     * {@code getDeltaTracker} and no {@code getFrameTime} on the client, and the field behind the
+     * timer is private. {@link DeltaTracker.Timer#getGameTimeDeltaPartialTick(boolean)} with
+     * {@code false} gives the fraction of a tick the last frame covered, which is exactly the
+     * real frame time and not the tick rate.</p>
      *
      * <p>Using the tick rate here instead would make the easing run at a third of its intended
      * speed on a thirty frame machine, and the FOV would visibly lag the charge that is driving
@@ -255,8 +258,8 @@ public final class ChargeFovEffect {
     /**
      * This frame's interpolation value, read the only way 1.21.1 allows.
      *
-     * <p>1.20.1 names it {@code getFrameTime()}; the shared twin documents the 1.21.1
-     * spelling. Same value: the fraction of a tick the last frame covered.</p>
+     * <p>{@code Minecraft} has no {@code getDeltaTracker()}: it is
+     * {@code getTimer().getGameTimeDeltaPartialTick(false)}, verified against the 1.21.1 jar.</p>
      */
     private static float partialTick() {
         Minecraft mc = Minecraft.getInstance();

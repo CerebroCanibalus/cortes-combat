@@ -46,9 +46,14 @@ public final class ModPlatform {
         com.cortes.combat.enchant.ModEnchantments.ENCHANTMENTS.register(bus);
         com.cortes.combat.enchant.GoldEnchantmentHandler.EFFECTS.register(bus);
         com.cortes.combat.core.crafting.ShiftableShapedRecipe.ModRecipes.register(bus);
-        // NOT here yet: enchantments and the shiftable recipe serializer. Their v120 twins do
-        // not exist, and naming them would break this leg -- each lands with its own cluster.
         bus.addListener(com.cortes.combat.net.ModNetworking::register);
+        // The client entry lives behind a dist gate: loading it on a dedicated server would
+        // fail on the client-only references, which is why the shared twin splits the class.
+        if (net.minecraftforge.fml.loading.FMLEnvironment.dist
+                == net.minecraftforge.api.distmarker.Dist.CLIENT) {
+            com.cortes.combat.client.CortesCombatClient.register(bus,
+                    (net.minecraftforge.fml.ModContainer) modContainer);
+        }
     }
 
     /**
