@@ -220,7 +220,7 @@ class EnchantmentHooksTest {
                 "**Paliza no cuenta la serie**, asi que el golpe cargado empuja siempre lo mismo");
         assertTrue(engine.contains("CombatEnchantRules.gripaMaxStacks("),
                 "**Gripa no apila moco**");
-        assertTrue(engine.contains("ModEffects.TRABAZON"),
+        assertTrue(engine.contains("ModEffects.trabazon()"),
                 "**Trabazon no clava al rival**");
         assertTrue(engine.contains("CombatEnchantRules.corteGemeloInterval("),
                 "**Corte Gemelo no corta**, y el nivel uno y el dos serian el mismo encantamiento");
@@ -640,8 +640,8 @@ class EnchantmentHooksTest {
                 "**los tres que dejan efecto no se cobran.** La funcion puede estar escrita, con sus "
                         + "tres efectos adentro y perfecta, y sin llamador: el build queda verde y el "
                         + "golpe no deja nada");
-        assertTrue(engine.contains("ModEffects.ANTI_HEALING") && engine.contains("ModEffects.BLEEDING")
-                        && engine.contains("ModEffects.QUEBRANTO"),
+        assertTrue(engine.contains("ModEffects.antiHealing()") && engine.contains("ModEffects.bleeding()")
+                        && engine.contains("ModEffects.quebranto()"),
                 "los tres efectos tienen que APLICARSE, no solo leerse");
         assertTrue(engine.contains("CombatEnchantRules.amplifierFor("),
                 "y el nivel del efecto sale de la conversion pura: cuatro copias de `nivel - 1` son "
@@ -652,7 +652,7 @@ class EnchantmentHooksTest {
                         + "sangrado y el encantamiento deja de ser un premio por cargar");
 
         String parry = readFile("src/main/java/com/cortes/combat/special/ParryHandler.java");
-        assertTrue(parry.contains("ModEffects.VAMPIRIC") && parry.contains("ModEffects.DRAINED"),
+        assertTrue(parry.contains("ModEffects.vampiric()") && parry.contains("ModEffects.drained()"),
                 "**Desvio Vampirico son DOS efectos** y el parry tiene que aplicar los dos: sumarle "
                         + "al que desvia sin restarle al desviado no es un robo, es un regalo");
         assertTrue(parry.contains("CombatEnchantRules.canDrain("),

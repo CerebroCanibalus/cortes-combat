@@ -100,7 +100,7 @@ public final class PlayerStateSync {
         GuardStats.Resolved resolved = GuardStats.best(player);
         float stagger = cooldownPercent(player, resolved.item());
 
-        boolean lunge = player.hasEffect(com.cortes.combat.registry.ModEffects.LUNGE);
+        boolean lunge = player.hasEffect(com.cortes.combat.registry.ModEffects.lunge());
 
         if (!charge.holding() && !guard.isActive() && !parry.isParrying()
                 && stagger <= 0.0F && !lunge) {

@@ -38,7 +38,7 @@ public final class AntiHealingHandler {
 
     @SubscribeEvent
     public static void onHeal(LivingHealEvent event) {
-        MobEffectInstance effect = event.getEntity().getEffect(ModEffects.ANTI_HEALING);
+        MobEffectInstance effect = event.getEntity().getEffect(ModEffects.antiHealing());
         if (effect == null) {
             return;
         }

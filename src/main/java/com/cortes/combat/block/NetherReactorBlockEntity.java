@@ -779,7 +779,7 @@ public class NetherReactorBlockEntity extends BlockEntity {
                 continue;
             }
             mob.addEffect(new MobEffectInstance(
-                    ModEffects.REVELATION, RevelationEffect.DURATION_TICKS, 0, false, true, true));
+                    ModEffects.revelation(), RevelationEffect.DURATION_TICKS, 0, false, true, true));
         }
     }
 

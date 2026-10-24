@@ -44,7 +44,7 @@ public abstract class TrabazonSprintMixin {
     @Inject(method = "canStartSprinting", at = @At("HEAD"), cancellable = true)
     private void cortescombat$trabazonBlocksSprint(CallbackInfoReturnable<Boolean> cir) {
         LocalPlayer self = (LocalPlayer) (Object) this;
-        MobEffectInstance effect = self.getEffect(ModEffects.TRABAZON);
+        MobEffectInstance effect = self.getEffect(ModEffects.trabazon());
         if (effect != null
                 && CombatEnchantRules.trabazonBlocksSprint(effect.getAmplifier() + 1)) {
             cir.setReturnValue(false);

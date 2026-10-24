@@ -72,7 +72,7 @@ public final class CopperEffects {
             return;
         }
         int pieces = copperPieces(player);
-        MobEffectInstance current = player.getEffect(ModEffects.ANTISEPTIC);
+        MobEffectInstance current = player.getEffect(ModEffects.antiseptic());
         if (pieces == 0) {
             return;     // it expires on its own, which is what we want when the armour comes off
         }
@@ -83,7 +83,7 @@ public final class CopperEffects {
             return;
         }
         player.addEffect(new MobEffectInstance(
-                ModEffects.ANTISEPTIC, ANTISEPTIC_DURATION, level, false, true, true));
+                ModEffects.antiseptic(), ANTISEPTIC_DURATION, level, false, true, true));
     }
 
     /**
@@ -110,7 +110,7 @@ public final class CopperEffects {
         if (incoming.getEffect().value().getCategory() != MobEffectCategory.HARMFUL) {
             return;
         }
-        MobEffectInstance antiseptic = entity.getEffect(ModEffects.ANTISEPTIC);
+        MobEffectInstance antiseptic = entity.getEffect(ModEffects.antiseptic());
         if (antiseptic == null || entity.hasEffect(incoming.getEffect())) {
             return;
         }
@@ -150,7 +150,7 @@ public final class CopperEffects {
             return;
         }
         target.addEffect(new MobEffectInstance(
-                ModEffects.PURIFICATION, PurificationEffect.DURATION_TICKS, 0, false, true, true),
+                ModEffects.purification(), PurificationEffect.DURATION_TICKS, 0, false, true, true),
                 attacker);
     }
 

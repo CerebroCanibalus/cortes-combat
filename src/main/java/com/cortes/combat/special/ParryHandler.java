@@ -199,7 +199,7 @@ public final class ParryHandler {
         int vampiric = CombatEnchantments.level(player.level().registryAccess(),
                 player.getMainHandItem(), CombatEnchantments.VAMPIRICO);
         if (vampiric > 0) {
-            MobEffectInstance current = player.getEffect(ModEffects.VAMPIRIC);
+            MobEffectInstance current = player.getEffect(ModEffects.vampiric());
             int alreadyStolen = current == null ? 0 : current.getAmplifier() + 1;
             int stolen = CombatEnchantRules.vampiricoStolen(alreadyStolen, vampiric);
             // El piso se pregunta ANTES de aplicar nada: bajarle el techo a un cuerpo le baja la
@@ -207,9 +207,9 @@ public final class ParryHandler {
             // unico que se puede garantizar es que no mate. Un desvio sin premio es mejor que un
             // boton de borrar sobre cualquiera que este tocado.
             if (CombatEnchantRules.canDrain(attacker.getMaxHealth(), 0)) {
-                player.addEffect(new MobEffectInstance(ModEffects.VAMPIRIC,
+                player.addEffect(new MobEffectInstance(ModEffects.vampiric(),
                         VampiricEffect.DURATION_TICKS, stolen - 1, false, true));
-                attacker.addEffect(new MobEffectInstance(ModEffects.DRAINED,
+                attacker.addEffect(new MobEffectInstance(ModEffects.drained(),
                         DrainedEffect.DURATION_TICKS, 0, false, true));
                 // **Y la vida actual viene con el techo, que era el bug que reporto el playtest.**
                 //

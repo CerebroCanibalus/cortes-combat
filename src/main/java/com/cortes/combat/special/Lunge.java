@@ -166,7 +166,7 @@ public final class Lunge {
         // every one of the twenty ticks, which is the same objection the sabre's parry has: the
         // effect would sit exactly where an incoming hit is supposed to be readable.
         player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
-                ModEffects.LUNGE, LungeDamage.WINDOW_TICKS, 0, false, false, false));
+                ModEffects.lunge(), LungeDamage.WINDOW_TICKS, 0, false, false, false));
     }
 
     /**
@@ -427,6 +427,6 @@ public final class Lunge {
         // the lunge's life. A wall at tick four used to leave the player untouchable for the sixteen
         // ticks that were left on the timer -- a free dodge tail that nothing had earned and nothing
         // announced, since the effect is the only visible part of the mechanic.
-        player.removeEffect(ModEffects.LUNGE);
+        player.removeEffect(ModEffects.lunge());
     }
 }

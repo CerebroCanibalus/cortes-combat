@@ -30,7 +30,7 @@ public final class RevelationDrops {
 
     @SubscribeEvent
     public static void onDeath(LivingDropsEvent event) {
-        if (!event.getEntity().hasEffect(ModEffects.REVELATION)) {
+        if (!event.getEntity().hasEffect(ModEffects.revelation())) {
             return;
         }
         event.getDrops().add(new ItemEntity(event.getEntity().level(),

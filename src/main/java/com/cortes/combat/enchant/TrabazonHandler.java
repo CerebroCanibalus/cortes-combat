@@ -40,7 +40,7 @@ public final class TrabazonHandler {
     /** El salto: la mitad que impide cruzar un hueco. */
     @SubscribeEvent
     public static void onJump(LivingEvent.LivingJumpEvent event) {
-        if (!(event.getEntity() instanceof Player player) || !player.hasEffect(ModEffects.TRABAZON)) {
+        if (!(event.getEntity() instanceof Player player) || !player.hasEffect(ModEffects.trabazon())) {
             return;
         }
         var motion = player.getDeltaMovement();
@@ -57,7 +57,7 @@ public final class TrabazonHandler {
         if (!player.isSprinting()) {
             return;
         }
-        var effect = player.getEffect(ModEffects.TRABAZON);
+        var effect = player.getEffect(ModEffects.trabazon());
         if (effect == null) {
             return;
         }

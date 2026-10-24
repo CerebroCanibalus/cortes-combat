@@ -122,6 +122,56 @@ public final class ModEffects {
     private ModEffects() {
     }
 
+    /**
+     * The version-proof way to ask for an effect at a call site.
+     *
+     * <p>Same methods as the shared twin, but each hands over the bare {@code MobEffect},
+     * which is what 1.20.1 vanilla methods take. The fields stay for registration.</p>
+     */
+    public static MobEffect lunge() {
+        return LUNGE.get();
+    }
+
+    public static MobEffect antiseptic() {
+        return ANTISEPTIC.get();
+    }
+
+    public static MobEffect purification() {
+        return PURIFICATION.get();
+    }
+
+    public static MobEffect revelation() {
+        return REVELATION.get();
+    }
+
+    public static MobEffect antiHealing() {
+        return ANTI_HEALING.get();
+    }
+
+    public static MobEffect bleeding() {
+        return BLEEDING.get();
+    }
+
+    public static MobEffect quebranto() {
+        return QUEBRANTO.get();
+    }
+
+    public static MobEffect vampiric() {
+        return VAMPIRIC.get();
+    }
+
+    public static MobEffect drained() {
+        return DRAINED.get();
+    }
+
+    public static MobEffect moco() {
+        return MOCO.get();
+    }
+
+    public static MobEffect trabazon() {
+        return TRABAZON.get();
+    }
+
     /** Hands the register to the mod bus. Called from the mod's constructor. */
     public static void register(net.minecraftforge.eventbus.api.IEventBus bus) {
         EFFECTS.register(bus);

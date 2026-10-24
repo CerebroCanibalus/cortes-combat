@@ -976,10 +976,10 @@ public final class CombatEngine {
                 // **El stack sube y se clampea al tope del nivel.** El efecto que ya esta se lee para
                 // saber cuantos hay: sin eso, cada golpe empezaria de uno y el encantamiento seria un
                 // daño plano por tick disfrazado de acumulacion.
-                var current = living.getEffect(com.cortes.combat.registry.ModEffects.MOCO);
+                var current = living.getEffect(com.cortes.combat.registry.ModEffects.moco());
                 int stacks = current == null ? 1 : Math.min(max, current.getAmplifier() + 2);
                 living.addEffect(new net.minecraft.world.effect.MobEffectInstance(
-                        com.cortes.combat.registry.ModEffects.MOCO,
+                        com.cortes.combat.registry.ModEffects.moco(),
                         CombatEnchantRules.GRIPA_TICKS, stacks - 1, false, false, false));
             }
         }
@@ -989,7 +989,7 @@ public final class CombatEngine {
             int level = CombatEnchantments.level(access, held, CombatEnchantments.TRABAZON);
             if (level > 0) {
                 living.addEffect(new net.minecraft.world.effect.MobEffectInstance(
-                        com.cortes.combat.registry.ModEffects.TRABAZON,
+                        com.cortes.combat.registry.ModEffects.trabazon(),
                         CombatEnchantRules.TRABAZON_TICKS, level - 1, false, false, false));
             }
         }
@@ -1081,25 +1081,25 @@ public final class CombatEngine {
 
         int bruiser = CombatEnchantments.level(access, weapon, CombatEnchantments.CICATRIZADOR);
         if (bruiser > 0) {
-            target.addEffect(new MobEffectInstance(ModEffects.ANTI_HEALING,
+            target.addEffect(new MobEffectInstance(ModEffects.antiHealing(),
                     CombatEnchantRules.CICATRIZADOR_TICKS,
                     CombatEnchantRules.amplifierFor(bruiser), false, true));
         }
 
         int gut = CombatEnchantments.level(access, weapon, CombatEnchantments.DESTRIPAMIENTO);
         if (gut > 0 && chargeRatio >= DamageResolver.FULL_CHARGE) {
-            target.addEffect(new MobEffectInstance(ModEffects.BLEEDING,
+            target.addEffect(new MobEffectInstance(ModEffects.bleeding(),
                     CombatEnchantRules.sangradoTicks(gut),
                     CombatEnchantRules.amplifierFor(gut), false, true));
         }
 
         int sunder = CombatEnchantments.level(access, weapon, CombatEnchantments.QUEBRANTO);
         if (sunder > 0) {
-            MobEffectInstance current = target.getEffect(ModEffects.QUEBRANTO);
+            MobEffectInstance current = target.getEffect(ModEffects.quebranto());
             int stacks = current == null
                     ? 1
                     : Math.min(QuebrantoEffect.MAX_STACKS, current.getAmplifier() + 2);
-            target.addEffect(new MobEffectInstance(ModEffects.QUEBRANTO,
+            target.addEffect(new MobEffectInstance(ModEffects.quebranto(),
                     CombatEnchantRules.QUEBRANTO_TICKS, stacks - 1, false, true));
         }
     }

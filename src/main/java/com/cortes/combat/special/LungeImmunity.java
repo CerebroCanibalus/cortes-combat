@@ -44,7 +44,7 @@ public final class LungeImmunity {
     @SubscribeEvent
     public static void onIncomingDamage(LivingIncomingDamageEvent event) {
         LivingEntity entity = event.getEntity();
-        if (!entity.hasEffect(ModEffects.LUNGE)) {
+        if (!entity.hasEffect(ModEffects.lunge())) {
             return;
         }
         event.setCanceled(true);

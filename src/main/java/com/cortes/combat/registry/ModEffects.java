@@ -122,6 +122,58 @@ public final class ModEffects {
     private ModEffects() {
     }
 
+    /**
+     * The version-proof way to ask for an effect at a call site.
+     *
+     * <p>1.21.1 vanilla methods take a {@code Holder<MobEffect>} (and a
+     * {@code DeferredHolder} <em>is</em> one); 1.20.1 takes the bare {@code MobEffect}.
+     * No single field type satisfies both, so call sites ask through these methods and
+     * each leg answers with what its vanilla wants. The fields stay for registration.</p>
+     */
+    public static net.minecraft.core.Holder<MobEffect> lunge() {
+        return LUNGE;
+    }
+
+    public static net.minecraft.core.Holder<MobEffect> antiseptic() {
+        return ANTISEPTIC;
+    }
+
+    public static net.minecraft.core.Holder<MobEffect> purification() {
+        return PURIFICATION;
+    }
+
+    public static net.minecraft.core.Holder<MobEffect> revelation() {
+        return REVELATION;
+    }
+
+    public static net.minecraft.core.Holder<MobEffect> antiHealing() {
+        return ANTI_HEALING;
+    }
+
+    public static net.minecraft.core.Holder<MobEffect> bleeding() {
+        return BLEEDING;
+    }
+
+    public static net.minecraft.core.Holder<MobEffect> quebranto() {
+        return QUEBRANTO;
+    }
+
+    public static net.minecraft.core.Holder<MobEffect> vampiric() {
+        return VAMPIRIC;
+    }
+
+    public static net.minecraft.core.Holder<MobEffect> drained() {
+        return DRAINED;
+    }
+
+    public static net.minecraft.core.Holder<MobEffect> moco() {
+        return MOCO;
+    }
+
+    public static net.minecraft.core.Holder<MobEffect> trabazon() {
+        return TRABAZON;
+    }
+
     /** Hands the register to the mod bus. Called from the mod's constructor. */
     public static void register(net.neoforged.bus.api.IEventBus bus) {
         EFFECTS.register(bus);
