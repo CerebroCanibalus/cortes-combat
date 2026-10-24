@@ -5,8 +5,6 @@ import net.minecraftforge.registries.RegistryObject;
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.core.gear.CopperGear;
 import com.cortes.combat.core.weapon.WeaponMaterial;
-import net.minecraft.tags.BlockTags;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.Item;
@@ -15,7 +13,6 @@ import net.minecraft.world.item.ShovelItem;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.Tier;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.level.block.Block;
 import net.minecraftforge.registries.DeferredRegister;
 
 import java.util.List;
@@ -57,34 +54,29 @@ public final class ModTools {
      * durability, which the tool class reads on its own.</p>
      */
     public static final RegistryObject<SwordItem> COPPER_SWORD =
-            TOOL_ITEMS.register(CopperGear.SWORD, properties -> new SwordItem(
-                    CopperToolTier.INSTANCE,
-                    properties.attributes(SwordItem.createAttributes(
-                            CopperToolTier.INSTANCE, 3, -2.4F))));
+            TOOL_ITEMS.register(CopperGear.SWORD,
+                    () -> new SwordItem(CopperToolTier.INSTANCE, 3, -2.4F,
+                            new Item.Properties()));
 
     public static final RegistryObject<PickaxeItem> COPPER_PICKAXE =
-            TOOL_ITEMS.register(CopperGear.PICKAXE, properties -> new PickaxeItem(
-                    CopperToolTier.INSTANCE,
-                    properties.attributes(PickaxeItem.createAttributes(
-                            CopperToolTier.INSTANCE, 1.0F, -2.8F))));
+            TOOL_ITEMS.register(CopperGear.PICKAXE,
+                    () -> new PickaxeItem(CopperToolTier.INSTANCE, 1, -2.8F,
+                            new Item.Properties()));
 
     public static final RegistryObject<AxeItem> COPPER_AXE =
-            TOOL_ITEMS.register(CopperGear.AXE, properties -> new AxeItem(
-                    CopperToolTier.INSTANCE,
-                    properties.attributes(AxeItem.createAttributes(
-                            CopperToolTier.INSTANCE, 6.0F, -3.1F))));
+            TOOL_ITEMS.register(CopperGear.AXE,
+                    () -> new AxeItem(CopperToolTier.INSTANCE, 6.0F, -3.1F,
+                            new Item.Properties()));
 
     public static final RegistryObject<ShovelItem> COPPER_SHOVEL =
-            TOOL_ITEMS.register(CopperGear.SHOVEL, properties -> new ShovelItem(
-                    CopperToolTier.INSTANCE,
-                    properties.attributes(ShovelItem.createAttributes(
-                            CopperToolTier.INSTANCE, 1.5F, -3.0F))));
+            TOOL_ITEMS.register(CopperGear.SHOVEL,
+                    () -> new ShovelItem(CopperToolTier.INSTANCE, 1.5F, -3.0F,
+                            new Item.Properties()));
 
     public static final RegistryObject<HoeItem> COPPER_HOE =
-            TOOL_ITEMS.register(CopperGear.HOE, properties -> new HoeItem(
-                    CopperToolTier.INSTANCE,
-                    properties.attributes(HoeItem.createAttributes(
-                            CopperToolTier.INSTANCE, -2.0F, -1.0F))));
+            TOOL_ITEMS.register(CopperGear.HOE,
+                    () -> new HoeItem(CopperToolTier.INSTANCE, -2, -1.0F,
+                            new Item.Properties()));
 
     /** The five tools, in the order they are drawn. */
     public static List<RegistryObject<? extends Item>> tools() {
@@ -120,16 +112,17 @@ public final class ModTools {
         }
 
         /**
-         * Stone's list, because copper mines at stone's level.
+         * Stone's rung, because copper mines at stone's level.
          *
          * <p>The material is "between stone and iron" in durability and speed, but a mining
          * <em>level</em> is not a spectrum: it is which blocks drop. Copper takes stone's, so a
          * copper pickaxe mines iron ore and not diamond, and the upgrade it sells is speed and
-         * lifespan rather than reach.</p>
+         * lifespan rather than reach. 1.21.1 expresses the same rung as a tag
+         * ({@code INCORRECT_FOR_STONE_TOOL}); 1.20.1 asks for the number directly.</p>
          */
         @Override
-        public TagKey<Block> getIncorrectBlocksForDrops() {
-            return BlockTags.INCORRECT_FOR_STONE_TOOL;
+        public int getLevel() {
+            return 1;
         }
 
         @Override

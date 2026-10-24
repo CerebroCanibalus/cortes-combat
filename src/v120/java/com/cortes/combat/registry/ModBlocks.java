@@ -8,6 +8,7 @@ import com.cortes.combat.block.NetherReactorBlock;
 import com.cortes.combat.block.ReactorCharge;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraftforge.eventbus.api.IEventBus;

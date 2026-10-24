@@ -30,6 +30,21 @@ public final class ModPlatform {
         net.minecraftforge.fml.ModLoadingContext.get().registerConfig(
                 net.minecraftforge.fml.config.ModConfig.Type.SERVER,
                 com.cortes.combat.config.ServerConfig.SPEC);
+        com.cortes.combat.registry.ModItems.ITEMS.register(bus);
+        com.cortes.combat.registry.ModArmor.register(bus);
+        com.cortes.combat.registry.ModTools.register(bus);
+        com.cortes.combat.registry.ModBlocks.register(bus);
+        // The block-entity type registers on the mod bus; its item-handler capability attaches
+        // per instance through the class's own @Mod.EventBusSubscriber, which defaults to the
+        // Forge bus where AttachCapabilitiesEvent fires. No manual game-bus line needed here,
+        // unlike the shared twin's RegisterCapabilitiesEvent listener.
+        com.cortes.combat.registry.ModBlockEntities.register(bus);
+        com.cortes.combat.registry.ModCreativeTabs.TABS.register(bus);
+        com.cortes.combat.registry.ModParticleTypes.PARTICLE_TYPES.register(bus);
+        com.cortes.combat.registry.ModEntities.ENTITY_TYPES.register(bus);
+        com.cortes.combat.registry.ModEffects.register(bus);
+        // NOT here yet: enchantments and the shiftable recipe serializer. Their v120 twins do
+        // not exist, and naming them would break this leg -- each lands with its own cluster.
         bus.addListener(com.cortes.combat.net.ModNetworking::register);
     }
 

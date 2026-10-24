@@ -36,19 +36,14 @@ public final class ModParticleTypes {
 
     /** The animated slash. One type, one class, every weapon. */
     public static final RegistryObject<ParticleType<SlashParticleOptions>> SLASH =
-            PARTICLE_TYPES.register("slash", () -> new ParticleType<SlashParticleOptions>(false) {
-                @Override
-                public com.mojang.serialization.MapCodec<SlashParticleOptions> codec() {
-                    return SlashParticleOptions.CODEC;
-                }
-
-                @Override
-                public net.minecraft.network.codec.StreamCodec<
-                        ? super net.minecraft.network.RegistryFriendlyByteBuf, SlashParticleOptions>
-                        streamCodec() {
-                    return SlashParticleOptions.STREAM_CODEC;
-                }
-            });
+            PARTICLE_TYPES.register("slash",
+                    () -> new ParticleType<SlashParticleOptions>(false,
+                            SlashParticleOptions.DESERIALIZER) {
+                        @Override
+                        public com.mojang.serialization.Codec<SlashParticleOptions> codec() {
+                            return SlashParticleOptions.CODEC;
+                        }
+                    });
 
     /**
      * The purification plume. A plain, parameterless particle: unlike the slash it carries no
@@ -87,19 +82,14 @@ public final class ModParticleTypes {
      * {@code slash.json} lista once armas bajo un tipo: la variante es un dato, no un registro.</p>
      */
     public static final RegistryObject<ParticleType<HurtParticleOptions>> HURT =
-            PARTICLE_TYPES.register("hurt", () -> new ParticleType<HurtParticleOptions>(false) {
-                @Override
-                public com.mojang.serialization.MapCodec<HurtParticleOptions> codec() {
-                    return HurtParticleOptions.CODEC;
-                }
-
-                @Override
-                public net.minecraft.network.codec.StreamCodec<
-                        ? super net.minecraft.network.RegistryFriendlyByteBuf, HurtParticleOptions>
-                        streamCodec() {
-                    return HurtParticleOptions.STREAM_CODEC;
-                }
-            });
+            PARTICLE_TYPES.register("hurt",
+                    () -> new ParticleType<HurtParticleOptions>(false,
+                            HurtParticleOptions.DESERIALIZER) {
+                        @Override
+                        public com.mojang.serialization.Codec<HurtParticleOptions> codec() {
+                            return HurtParticleOptions.CODEC;
+                        }
+                    });
 
     /**
      * El corazoncito verde de la curacion.
