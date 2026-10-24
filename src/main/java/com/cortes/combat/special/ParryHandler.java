@@ -114,12 +114,14 @@ public final class ParryHandler {
         if (throughTheAir) {
             int level = CombatEnchantments.level(player.level().registryAccess(),
                     player.getMainHandItem(), CombatEnchantments.CAPACITOR);
-            if (level > 0 && attacker instanceof net.minecraft.world.entity.LivingEntity living) {
-                living.hurt(player.damageSources().playerAttack(player),
+            if (level > 0) {
+                attacker.hurt(player.damageSources().playerAttack(player),
                         CombatEnchantRules.capacitorDamage(level) + amount);
                 // Quemar cuatro segundos: es lo que convierte una devolucion en una advertencia, porque
-                // el que disparo tiene que apagarse en vez de disparar otra vez.
-                living.setRemainingFireTicks(Math.max(living.getRemainingFireTicks(),
+                // el que disparo tiene que apagarse en vez de disparar otra vez. `attacker` ya es un
+                // LivingEntity por el gate de arriba; repetirlo con `instanceof` no compila en
+                // JDK 17 (patron dominado) aunque el 21 lo deje pasar.
+                attacker.setRemainingFireTicks(Math.max(attacker.getRemainingFireTicks(),
                         CombatEnchantRules.CAPACITOR_FIRE_TICKS));
                 if (player.level() instanceof net.minecraft.server.level.ServerLevel server) {
                     // **La linea entera, del jugador al cuerpo**, y no un penacho en el objetivo.
@@ -127,8 +129,8 @@ public final class ParryHandler {
                     // información -- el playtest lo vio como "particulas que aparecen ahi".
                     com.cortes.combat.particle.LightningParticles.zigzag(server,
                             player.getEyePosition(),
-                            new net.minecraft.world.phys.Vec3(living.getX(),
-                                    living.getY() + living.getBbHeight() * 0.6, living.getZ()));
+                            new net.minecraft.world.phys.Vec3(attacker.getX(),
+                                    attacker.getY() + attacker.getBbHeight() * 0.6, attacker.getZ()));
                 }
             }
         }

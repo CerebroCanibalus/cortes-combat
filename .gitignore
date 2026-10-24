@@ -92,6 +92,9 @@ AGENTS.md.bak-*
 DESIGN.md
 ARCHITECTURE.md
 TESTING.md
+# El documento de paso del port a 1.20.1: memoria de trabajo de la rama port/1.20.1,
+# con el mismo estatus que AGENTS.md (se lee en el arbol, no viaja).
+docs/port-1.20.1.md
 
 # Documentacion interna. La de cara al usuario va en docs/custom-weapons.md y
 # docs/custom-weapons.es.md, y esas no se tocan.

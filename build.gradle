@@ -438,7 +438,7 @@ if (!mc121) {
         // Versiona las reglas: el Sync es up-to-date por contenido de entradas, y un cambio solo
         // en el closure del filter no lo invalida. Sin esto, editar las reglas recompila con el
         // arbol viejo y los errores mienten. (μ_μ)
-        inputs.property('renameRules', 'v10-exclude-weapondata')
+                                inputs.property('renameRules', 'v13-exclude-registry');
         // Tres reglas en orden de especificidad, porque el rename 20.1->20.2 no fue un
         // prefijo plano: bus.api cambio de nombre (eventbus) y el `neoforge` del medio se cayo.
         // Un reemplazo ciego de `net.neoforged` produce `net.minecraftforge.neoforge`, que no
@@ -465,6 +465,10 @@ if (!mc121) {
                 // strip porque operan sobre su salida.
                 .replace('net.minecraftforge.common.NeoForge', 'net.minecraftforge.common.MinecraftForge')
                 .replace('net.minecraftforge.common.CommonHooks', 'net.minecraftforge.common.ForgeHooks')
+                // Los call sites nombran el bus por su nombre corto; el import ya apunta a
+                // MinecraftForge pero el uso dice NeoForge. Solo existe esta forma (28 usos,
+                // verificados por grep): cualquier otro `NeoForge.<X>` seria otro rename.
+                .replace('NeoForge.EVENT_BUS', 'MinecraftForge.EVENT_BUS')
                 .replace('JAVA_21', 'JAVA_17') }
         // Root-anchored: the leg's CWD is versions/1.20.1, which has no src of its own.
         //
@@ -480,8 +484,22 @@ if (!mc121) {
                 'com/cortes/combat/platform/ModPlatform.java',
                 'com/cortes/combat/config/ClientConfig.java',
                 'com/cortes/combat/config/ServerConfig.java',
+                'com/cortes/combat/registry/ModCreativeTabs.java',
+                'com/cortes/combat/registry/ModEffects.java',
+                'com/cortes/combat/registry/ModEntities.java',
+                'com/cortes/combat/registry/ModArmor.java',
+                'com/cortes/combat/registry/ModTools.java',
+                'com/cortes/combat/registry/ModBlocks.java',
+                'com/cortes/combat/registry/ModBlockEntities.java',
+                'com/cortes/combat/registry/ModItems.java',
+                'com/cortes/combat/registry/ModDamageTypes.java',
+                'com/cortes/combat/registry/ModParticleTypes.java',
                 'com/cortes/combat/registry/ModComponents.java',
                 'com/cortes/combat/registry/ModAttachments.java',
+                'com/cortes/combat/registry/CortesTier.java',
+                'com/cortes/combat/registry/ArcabuzTier.java',
+                'com/cortes/combat/item/CortesWeaponItem.java',
+                'com/cortes/combat/item/ArcabuzItem.java',
                 'com/cortes/combat/net/ModNetworking.java',
                 'com/cortes/combat/net/SwingPayload.java',
                 'com/cortes/combat/net/GuardInputPayload.java',

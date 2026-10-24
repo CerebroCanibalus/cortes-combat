@@ -179,7 +179,10 @@ public final class CombatTooltipHandler {
      */
     private static com.cortes.combat.item.tooltip.EnchantmentNumbers enchantmentNumbers(
             ItemTooltipEvent event, ItemStack stack) {
-        if (!(event.getEntity() instanceof LivingEntity user)) {
+        // Sin patron instanceof: getEntity() ya es Player (nullable) y el patron contra un
+        // supertipo no compila en JDK 17 aunque el 21 lo deje pasar. Null-check directo.
+        net.minecraft.world.entity.player.Player user = event.getEntity();
+        if (user == null) {
             return com.cortes.combat.item.tooltip.EnchantmentNumbers.base();
         }
         return new com.cortes.combat.item.tooltip.EnchantmentNumbers(

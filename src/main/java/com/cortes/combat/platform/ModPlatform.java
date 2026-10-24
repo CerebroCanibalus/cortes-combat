@@ -79,4 +79,166 @@ public final class ModPlatform {
         com.cortes.combat.core.crafting.ShiftableShapedRecipe.ModRecipes.register(modEventBus);
         modEventBus.addListener(ModNetworking::register);
     }
+
+    /**
+     * The four startup diagnostics, and the only game-bus registrations that name version-coupled
+     * questions. Everything else on the game bus (tickers, guards, handlers, reactor sweep,
+     * commands) stays in the constructor because it compiles on both legs; these four move here
+     * because what they ask differs per Minecraft version. See each method for the difference.
+     */
+    public static void registerDiagnostics() {
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ModPlatform::reportVanillaProfiles);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ModPlatform::reportOurRecipes);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ModPlatform::reportSurvivalSeam);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ModPlatform::reportEnchantmentTags);
+    }
+
+    /**
+     * Prints what every vanilla tool resolves to, once, at startup.
+ *
+ * <p><b>This is a diagnostic that exists because of a bug that produced no symptom a log could
+ * show.</b> Two tag paths were written from memory, they did not exist, and a {@code TagKey} for a
+ * path nothing publishes resolves to "matches nothing" rather than to an error &mdash; so three
+ * weapons went back to vanilla with the build green and the log clean.</p>
+ *
+ * <p>The question a test cannot ask here is "does vanilla publish this tag", because the tags live
+ * in the game's data jar and not on the test classpath. <b>So this asks the question the game can
+ * answer instead</b>, by resolving every vanilla tool through the real pipeline and printing it.</p>
+ *
+ * <p><b>And it runs on {@code ServerStartedEvent}, not on {@code FMLCommonSetupEvent} -- which was
+ * the second bug this line had.</b> Item tags are not bound until the datapack reloads, so asked at
+ * common setup every {@code stack.is(tag)} answered false and the line printed {@code NONE} for all
+ * seven. <b>A diagnostic that lies in exactly the shape of the bug it was built to catch is worse
+ * than no diagnostic</b>: it was read as proof the tag round had failed when the profiles had been
+ * right all along. By the time this fires the world is up and the tags are real.</p>
+ */
+private static void reportVanillaProfiles(
+        net.neoforged.neoforge.event.server.ServerStartedEvent event) {
+    StringBuilder line = new StringBuilder("[perfiles] ");
+    for (net.minecraft.world.item.Item item : new net.minecraft.world.item.Item[]{
+            net.minecraft.world.item.Items.IRON_SWORD, net.minecraft.world.item.Items.IRON_AXE,
+            net.minecraft.world.item.Items.IRON_PICKAXE, net.minecraft.world.item.Items.IRON_SHOVEL,
+            net.minecraft.world.item.Items.IRON_HOE, net.minecraft.world.item.Items.MACE,
+            net.minecraft.world.item.Items.TRIDENT}) {
+        var profile = com.cortes.combat.attack.WeaponStats
+                .of(new net.minecraft.world.item.ItemStack(item)).profile();
+        boolean fights = com.cortes.combat.item.WeaponKinds.fights(profile);
+        line.append(item.getDescription().getString()).append('=').append(profile)
+                .append(fights ? "" : "(NO PELEA) ").append(' ');
+    }
+    org.slf4j.LoggerFactory.getLogger("cortescombat").info(line.toString());
+}
+
+/**
+ * Prints how many of this mod's recipes and advancements the game loaded.
+ *
+ * <p><b>This exists because "zero" and "thirty-four" produced the same log line.</b> The datagen
+ * wrote into {@code data/cortescombat/recipes/} and {@code data/cortescombat/advancements/}, 1.21
+ * renamed every datapack folder to the singular, and the loader never read a file of ours.
+ * {@code Loaded 1290 recipes} in the log was vanilla's own count -- and it was read, by me, as
+ * proof that ours were among them.</p>
+ *
+ * <p>So the question is asked where the game can answer it: the manager's own list, filtered by
+ * namespace. The count is also the assertion a test cannot make, because the datapack folders only
+ * exist once the game has loaded them.</p>
+ */
+private static void reportOurRecipes(
+        net.neoforged.neoforge.event.server.ServerStartedEvent event) {
+    var recipes = event.getServer().getRecipeManager().getRecipes();
+    long ours = recipes.stream()
+            .filter(holder -> CortesCombat.MODID.equals(holder.id().getNamespace()))
+            .count();
+    if (ours == 0L) {
+        CortesCombat.LOGGER.warn("[recetas] NINGUNA receta nuestra cargo, de {} en total. Revisa las carpetas "
+                + "de datapack: 1.21 lee `recipe/` y `advancement/`, no `recipes/` ni "
+                + "`advancements/`.", recipes.size());
+    } else {
+        CortesCombat.LOGGER.info("[recetas] nuestras={} total={}", ours, recipes.size());
+    }
+}
+
+/**
+ * Asks {@code FoodData} itself whether this mod's tick replaced its own, once the world is up.
+ *
+ * <p><b>Three things have to be true for survival to work, and a test can only reach two of
+ * them.</b> The config file has to be in the jar, {@code neoforge.mods.toml}'s {@code [[mixins]]}
+ * block has to name it, and the injection has to match. The first two are asserted at build time
+ * by {@code SurvivalWiringTest}; the third only happens inside a running game, and it happens when
+ * {@code FoodData} is first <em>loaded</em>.</p>
+ *
+ * <p><b>Which is not at startup, and that is the whole problem.</b> Verified with
+ * {@code jcmd GC.class_histogram} against a live dedicated server with nobody connected: neither
+ * {@code FoodData} nor {@code Player} was loaded at all, while {@code ItemStack} already had 4594
+ * instances. So nothing in the boot sequence would have noticed a broken seam until the first
+ * player joined, and the first symptom would have been a crash for whoever was testing. Loading
+ * the class here moves that to world start.</p>
+ *
+ * <p>And it is {@code isAssignableFrom} rather than a bare class literal, on purpose: merely
+ * loading {@code FoodData} and then logging "seam in place" would be <em>true</em> in the case
+ * where the mixin config never registered &mdash; which is precisely the case that produces no
+ * symptom at all. Asking the class what it became is the only version of this line that cannot
+ * lie. See {@code FoodDataSeam}.</p>
+ *
+ * <p><b>It reports and does not crash.</b> A seam that failed to apply leaves vanilla food
+ * working, so the correct response is a line nobody can miss and a game that still runs &mdash;
+ * which is also this project's rule about not crashing over something that could be reported.</p>
+ */
+private static void reportSurvivalSeam(
+        net.neoforged.neoforge.event.server.ServerStartedEvent event) {
+    Class<?> target = net.minecraft.world.food.FoodData.class;
+    if (com.cortes.combat.survival.FoodDataSeam.class.isAssignableFrom(target)) {
+        CortesCombat.LOGGER.info("[supervivencia] FoodDataMixin aplicado: este server corre con la comida "
+                + "reescrita (ciclo cerrado, sin exhaustion).");
+    } else {
+        CortesCombat.LOGGER.error("[supervivencia] FoodDataMixin NO se aplico a {}. La comida corre en vanilla "
+                + "y el exhaustion sigue activo, y el arranque no mostro ningun error. Revisa que "
+                + "neoforge.mods.toml tenga [[mixins]] config=\"{}.mixins.json\" y que "
+                + "FoodDataMixin este en la lista de ese archivo.",
+                target.getName(), CortesCombat.MODID);
+    }
+}
+
+    /**
+     * Asks the game whether every one of our enchantments is actually obtainable, once the world is
+     * up and the tags are real.
+     *
+     * <p><b>This exists because "exists" and "obtainable" are two different questions.</b> An
+     * enchantment with a file, a name and a hook that is not listed in
+     * {@code minecraft:in_enchanting_table} does not error anywhere: the registry loads it, the
+     * table simply never offers it, and the player never finds out. And {@code /enchant} uses the
+     * same tag to decide whether an item accepts it ({@code ItemStack#supportsEnchantment}), so a
+     * missing entry reads as "that enchantment cannot be applied to that item" with no hint of
+     * why.</p>
+     *
+     * <p><b>It reports and does not crash.</b> The game keeps running; the line is the diagnosis,
+     * which is also this project's rule: not crashing over something that can be reported.</p>
+     */
+    private static void reportEnchantmentTags(
+            net.neoforged.neoforge.event.server.ServerStartedEvent event) {
+        var registry = event.getServer().registryAccess()
+                .registryOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT);
+        var tableTag = net.minecraft.tags.EnchantmentTags.IN_ENCHANTING_TABLE;
+        var missing = new java.util.ArrayList<String>();
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        ids.addAll(com.cortes.combat.enchant.CombatEnchantRules.IDS);
+        ids.addAll(com.cortes.combat.enchant.CombatEnchantRules.GOLD_IDS);
+        for (String id : ids) {
+            var key = net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.ENCHANTMENT,
+                    com.cortes.combat.platform.ResourceIds.rl(id));
+            var holder = registry.getHolder(key);
+            if (holder.isEmpty() || !holder.get().is(tableTag)) {
+                missing.add(id);
+            }
+        }
+        if (missing.isEmpty()) {
+            CortesCombat.LOGGER.info("[encantamientos] los {} nuestros estan en in_enchanting_table.",
+                    ids.size());
+        } else {
+            CortesCombat.LOGGER.error("[encantamientos] FALTAN en in_enchanting_table: {}. Sin esa entrada el "
+                    + "jugador no los consigue en la mesa y /enchant dice que el item no los admite. "
+                    + "Revisa data/minecraft/tags/enchantment/in_enchanting_table.json.",
+                    missing);
+        }
+    }
 }

@@ -127,12 +127,14 @@ public final class GoldEnchantmentHandler {
      */
     @net.neoforged.bus.api.SubscribeEvent
     public static void onLivingDrops(LivingDropsEvent event) {
-        if (!(event.getEntity() instanceof LivingEntity victim)
-                || !(victim.level() instanceof ServerLevel level)) {
+        // Sin patron instanceof: el evento ya trae LivingEntity y el patron contra el mismo tipo
+        // no compila en JDK 17 aunque el 21 lo deje pasar.
+        LivingEntity victim = event.getEntity();
+        if (!(victim.level() instanceof ServerLevel level)) {
             return;
         }
-        LivingEntity killer = victim.getKillCredit() instanceof LivingEntity living ? living : null;
-        if (!(killer instanceof Player player)) {
+        LivingEntity living = victim.getKillCredit();
+        if (!(living instanceof Player player)) {
             return;
         }
         ItemStack weapon = player.getMainHandItem();

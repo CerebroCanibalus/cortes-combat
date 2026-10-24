@@ -237,10 +237,10 @@ class SurvivalWiringTest {
                         + "registered and therefore applied nothing");
 
         String entry = read(ROOT.resolve("java").resolve("com").resolve("cortes").resolve("combat")
-                .resolve("CortesCombat.java"));
+                .resolve("platform").resolve("ModPlatform.java"));
         assertTrue(entry.contains("FoodDataSeam.class.isAssignableFrom("),
                 "**and it has to ask that marker**, not just load the class and announce a result");
-        assertTrue(entry.contains("CortesCombat::reportSurvivalSeam"),
+        assertTrue(entry.contains("ModPlatform::reportSurvivalSeam"),
                 "**and the report has to be registered**, or the check runs never: the whole "
                         + "point is that `FoodData` is not loaded until the first player joins, "
                         + "so an unregistered check is a seam nobody ever looks at");
