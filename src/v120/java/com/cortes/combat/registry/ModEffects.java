@@ -123,7 +123,7 @@ public final class ModEffects {
     }
 
     /** Hands the register to the mod bus. Called from the mod's constructor. */
-    public static void register(net.neoforged.bus.api.IEventBus bus) {
+    public static void register(net.minecraftforge.eventbus.api.IEventBus bus) {
         EFFECTS.register(bus);
     }
 }

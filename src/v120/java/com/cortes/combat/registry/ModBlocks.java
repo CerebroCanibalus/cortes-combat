@@ -64,7 +64,8 @@ public final class ModBlocks {
 
     /** The item that places it, named after the block by construction. */
     public static final RegistryObject<BlockItem> FIRESTONE_BLOCK_ITEM =
-            ITEMS.registerSimpleBlockItem("firestone_block", FIRESTONE_BLOCK);
+            ITEMS.register("firestone_block",
+                    () -> new BlockItem(FIRESTONE_BLOCK.get(), new Item.Properties()));
 
     /**
      * The reactor's sounds: lodestone for the two a player causes -- placing it and breaking it --
@@ -111,7 +112,8 @@ public final class ModBlocks {
 
     /** The item that places the reactor. */
     public static final RegistryObject<BlockItem> NETHER_REACTOR_ITEM =
-            ITEMS.registerSimpleBlockItem("nether_reactor", NETHER_REACTOR);
+            ITEMS.register("nether_reactor",
+                    () -> new BlockItem(NETHER_REACTOR.get(), new Item.Properties()));
 
     /** Hands both registers to the mod bus. Called from the mod's constructor. */
     public static void register(IEventBus bus) {

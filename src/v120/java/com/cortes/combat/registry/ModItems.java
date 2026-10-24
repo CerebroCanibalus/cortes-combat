@@ -9,7 +9,6 @@ import com.cortes.combat.item.CortesWeaponItem;
 import com.cortes.combat.item.WeaponFamily;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ItemLike;
 import net.minecraftforge.registries.DeferredRegister;
 
 import java.util.LinkedHashMap;
@@ -160,10 +159,9 @@ public final class ModItems {
         WeaponMaterial material = first.existsIn(WeaponMaterial.STONE)
                 ? WeaponMaterial.STONE
                 : first.materialsInOrder().iterator().next();
-        // Cast to ItemLike explicitly: a DeferredItem is both an ItemLike and a Holder<Item>, so
-        // new ItemStack(holders.get(...)) is ambiguous and the compiler says so.
-        ItemLike like = WEAPONS.get(first.itemName(material));
-        return new ItemStack(like);
+        // 1.20.1's RegistryObject is only a Supplier: .get() hands over the plain item, which
+        // is unambiguous for the ItemStack constructor without any cast.
+        return new ItemStack(WEAPONS.get(first.itemName(material)).get());
     }
 
     private ModItems() {
