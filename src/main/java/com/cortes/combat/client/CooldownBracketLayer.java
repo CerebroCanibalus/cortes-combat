@@ -2,6 +2,7 @@ package com.cortes.combat.client;
 
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.attack.WeaponStats;
+import com.cortes.combat.config.ClientConfig;
 import com.cortes.combat.core.weapon.ReachProfile;
 import com.mojang.blaze3d.systems.RenderSystem;
 import java.util.List;
@@ -55,6 +56,9 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
 
     @Override
     public void render(GuiGraphics graphics, DeltaTracker delta) {
+        if (!ClientConfig.HUD_COOLDOWN_BRACKETS.get()) {
+            return;
+        }
         if (!ClientDebugFlags.hudVisible()) {
             return;
         }

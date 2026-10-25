@@ -1,7 +1,7 @@
 package com.cortes.combat.client;
 
 import com.cortes.combat.platform.ResourceIds;
-
+import com.cortes.combat.config.ClientConfig;
 import com.cortes.combat.guard.GuardHandler;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.DeltaTracker;
@@ -38,6 +38,9 @@ public class GuardOrbsLayer implements LayeredDraw.Layer {
 
     @Override
     public void render(GuiGraphics graphics, DeltaTracker delta) {
+        if (!ClientConfig.HUD_GUARD_ORBS.get()) {
+            return;
+        }
         if (!ClientDebugFlags.hudVisible()) {
             return;
         }

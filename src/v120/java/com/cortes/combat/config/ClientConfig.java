@@ -42,6 +42,11 @@ public final class ClientConfig {
     /** Debug flag, exposed as config so it can be flipped without recompiling. */
     public static final ForgeConfigSpec.BooleanValue DEBUG;
 
+    public static final ForgeConfigSpec.DoubleValue SHAKE_INTENSITY;
+    public static final ForgeConfigSpec.BooleanValue HUD_CROSSHAIR;
+    public static final ForgeConfigSpec.BooleanValue HUD_COOLDOWN_BRACKETS;
+    public static final ForgeConfigSpec.BooleanValue HUD_GUARD_ORBS;
+
     static {
         STARTING_FOV = BUILDER
                 .comment("Field of view the client starts at, on the first launch that still has",
@@ -71,11 +76,44 @@ public final class ClientConfig {
                 .comment("Enables the mod's debug logging. Off by default.")
                 .define("debug", false);
 
+        BUILDER.push("fx");
+        SHAKE_INTENSITY = BUILDER
+                .comment("How strong the camera shakes are, as a multiplier on every impulse:",
+                        "0.0 is off, 1.0 is the tuned default, 2.0 is double.")
+                .defineInRange("shakeIntensity", 1.0, 0.0, 2.0);
+        BUILDER.pop();
+
+        BUILDER.push("hud");
+        HUD_CROSSHAIR = BUILDER
+                .comment("Replace the vanilla crosshair with the combat one.")
+                .define("combatCrosshair", true);
+        HUD_COOLDOWN_BRACKETS = BUILDER
+                .comment("The thin cooldown bracket line around the crosshair")
+                .define("cooldownBrackets", true);
+        HUD_GUARD_ORBS = BUILDER
+                .comment("The guard-hit orbs above the crosshair")
+                .define("guardOrbs", true);
+        BUILDER.pop();
+
         SPEC = BUILDER.build();
     }
 
     /** Vanilla's own default. Checked so a deliberate choice is never stomped. */
     public static final int VANILLA_FOV = 70;
+
+    public static float shakeIntensity() {
+        if (SHAKE_INTENSITY == null) {
+            return 1.0F;
+        }
+        double v = SHAKE_INTENSITY.get();
+        if (v <= 0.0D) {
+            return 0.0F;
+        }
+        if (v >= 2.0D) {
+            return 2.0F;
+        }
+        return (float) v;
+    }
 
     private ClientConfig() {
     }

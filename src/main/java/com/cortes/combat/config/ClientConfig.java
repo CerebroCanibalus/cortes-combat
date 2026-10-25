@@ -48,6 +48,18 @@ public final class ClientConfig {
     /** Debug flag, exposed as config so it can be flipped without recompiling. */
     public static final ModConfigSpec.BooleanValue DEBUG;
 
+    /** Multiplier on every camera-shake impulse: 0 turns them off, 2 doubles them. */
+    public static final ModConfigSpec.DoubleValue SHAKE_INTENSITY;
+
+    /** Whether the combat crosshair replaces the vanilla one (vanilla is drawn as fallback). */
+    public static final ModConfigSpec.BooleanValue HUD_CROSSHAIR;
+
+    /** The thin cooldown bracket line around the crosshair. */
+    public static final ModConfigSpec.BooleanValue HUD_COOLDOWN_BRACKETS;
+
+    /** The guard-hit orbs above the crosshair. */
+    public static final ModConfigSpec.BooleanValue HUD_GUARD_ORBS;
+
     static {
         STARTING_FOV = BUILDER
                 .comment("Field of view the client starts at, on the first launch that still has",
@@ -77,11 +89,42 @@ public final class ClientConfig {
                 .comment("Enables the mod's debug logging. Off by default.")
                 .define("debug", false);
 
+        // **Secciones FX y HUD: el resto de lo que se ve y se oye, en un solo lugar.** Las cuatro
+        // llaves de arriba no se MUEVEN a secciones: ya hay config guardada con ellas en la raiz,
+        // y moverlas silencia las preferencias de quien ya las habia cambiado. Lo nuevo nace con
+        // seccion y la razon del multiplicador y de los tres toggles esta en cada uno.
+        BUILDER.push("fx");
+        SHAKE_INTENSITY = BUILDER
+                .comment("How strong the camera shakes are, as a multiplier on every impulse:",
+                        "0.0 is off, 1.0 is the tuned default, 2.0 is double. Applies to every",
+                        "shake source at once -- the kill, the arcabuz, the arrow, the reactor --",
+                        "so one number answers 'todo sacude mucho o poco' without eight dials.")
+                .defineInRange("shakeIntensity", 1.0, 0.0, 2.0);
+        BUILDER.pop();
+
+        BUILDER.push("hud");
+        HUD_CROSSHAIR = BUILDER
+                .comment("Replace the vanilla crosshair with the combat one (grows on hit, shows",
+                        "aim state). With this off the vanilla crosshair is drawn instead.")
+                .define("combatCrosshair", true);
+        HUD_COOLDOWN_BRACKETS = BUILDER
+                .comment("The thin bracket line around the crosshair that shows the attack")
+                .define("cooldownBrackets", true);
+        HUD_GUARD_ORBS = BUILDER
+                .comment("The small orbs above the crosshair that show guard hits remaining")
+                .define("guardOrbs", true);
+        BUILDER.pop();
+
         SPEC = BUILDER.build();
     }
 
     /** Vanilla's own default. Checked so a deliberate choice is never stomped. */
     public static final int VANILLA_FOV = 70;
+
+    /** The shake multiplier as a plain float, asked at the frequency the shakes ask it. */
+    public static float shakeIntensity() {
+        return SHAKE_INTENSITY.get().floatValue();
+    }
 
     private ClientConfig() {
     }

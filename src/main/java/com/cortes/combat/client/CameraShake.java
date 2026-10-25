@@ -185,7 +185,15 @@ public final class CameraShake {
         if (distance >= reach || reach <= 0.0) {
             return 0.0F;
         }
+        // El multiplicador de config entra aca y no en `degrees`: un impulso con grados 0 es un
+        // impulso muerto antes de la caida, y multiplicar aca respeta el techo de la suma que vive
+        // en ShakePhase -- dos impulsos al 200% de config no pueden pasar el tope absoluto del
+        // tamano de camara, que no depende de lo que el jugador pida.
+        float intensity = ClientConfig.shakeIntensity();
+        if (intensity <= 0.0F) {
+            return 0.0F;
+        }
         float t = (float) (1.0 - distance / reach);
-        return max * t * t;
+        return max * t * t * intensity;
     }
 }

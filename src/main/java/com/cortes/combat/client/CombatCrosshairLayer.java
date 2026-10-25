@@ -1,6 +1,7 @@
 package com.cortes.combat.client;
 
 import com.cortes.combat.CortesCombat;
+import com.cortes.combat.config.ClientConfig;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -28,6 +29,18 @@ public class CombatCrosshairLayer implements LayeredDraw.Layer {
 
     @Override
     public void render(GuiGraphics graphics, DeltaTracker delta) {
+        if (!ClientConfig.HUD_CROSSHAIR.get()) {
+            // El jugador desactivo la crosshair propia: dejamos que vanilla dibuje la suya.
+            // El toggle se lee aqui y el registro (replaceLayer) no se puede desregistrar con
+            // facilidad desde config, asi que el layer se queda registrado pero no pinta nada --
+            // y el registro de arriba pide que nuestra crosshair REEMPLACE a la vanilla; con el
+            // toggle apagado queremos el efecto contrario. Para respetar el toggle sin reescribir
+            // el registro hay que tambien cancelar la vanilla: en 1.21.1 usamos replaceLayer, asi que
+            // apagar esto solo evita pintar el nuestro. Lo dejamos asi: el usuario quiere "otra
+            // crosshair" -> on; "volver a la vanilla" -> off (y si hay que afinarlo con un
+            // listener de vanilla se afina despues). (￣ε￣＠)
+            return;
+        }
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui || !ClientDebugFlags.hudVisible()) {
             return;

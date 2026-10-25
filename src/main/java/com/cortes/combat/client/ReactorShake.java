@@ -103,7 +103,11 @@ public final class ReactorShake {
             BlockPos pos = entry.getKey();
             double distance = Math.sqrt(camera.distanceToSqr(
                     pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
-            float amplitude = ReactorOverload.shakeDegrees(distance, ReactorOverload.QUAKE_MAX_DEGREES);
+            // El multiplicador de config: misma regla que en CameraShake. El reactor es el temblor
+            // mas fuerte del juego, y "todo sacude mucho" empieza por poder bajar ESTE sin
+            // recompilar. (⌓‿⌓)
+            float amplitude = ReactorOverload.shakeDegrees(distance, ReactorOverload.QUAKE_MAX_DEGREES)
+                    * ClientConfig.shakeIntensity();
             if (amplitude <= 0.0F) {
                 continue;
             }
