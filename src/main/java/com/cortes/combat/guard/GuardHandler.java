@@ -227,10 +227,21 @@ public final class GuardHandler {
         // strike: a sweep hits four different mobs and each of them has to pay.</p>
         Entity attacker = event.getDamageSource().getEntity();
         long now = player.level().getGameTime();
+        // **I-frames del escudo: un golpe dentro de la ventana de invulnerabilidad no es un golpe
+        // nuevo.** Reporte del playtest 1.20.1: varios mobs pegando al mismo tiempo agotaban los
+        // tres puntos de aguante "como si no tuvieran i-frames", y lo mismo entre jugadores. La
+        // causa es el orden de vanilla: el escudo se resuelve antes de que `hurt()` mire
+        // `invulnerableTime`, así que el segundo golpe un par de ticks después paga punto aunque
+        // el gate de vanilla lo habría tragado. La regla: mientras la ventana siga abierta y la
+        // fuente no la cruce, el bloqueo se sostiene gratis -- la misma rama del mismo swing.
+        // Nuestro propio doble corte no cruza la puerta por diseño: `CombatEngine` limpia
+        // `invulnerableTime` antes de cada golpe. (⌒‿⌒)
+        boolean inIFrames = player.invulnerableTime > 10
+                && !event.getDamageSource().is(DamageTypeTags.BYPASSES_COOLDOWN);
         GuardStamp last = CombatState.lastBlock(player);
         int attackerId = attacker == null ? 0 : attacker.getId();
         int targetId = player.getId();
-        if (!last.shouldCharge(now, attackerId, targetId)) {
+        if (inIFrames || !last.shouldCharge(now, attackerId, targetId)) {
             // Same swing, already paid. The block still stands &mdash; only the point is not
             // spent twice &mdash; so a follow-up cut is still stopped, which is what the player
             // sees as "the shield held".

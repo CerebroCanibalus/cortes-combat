@@ -229,10 +229,18 @@ public final class GuardHandler {
         // strike: a sweep hits four different mobs and each of them has to pay.</p>
         Entity attacker = event.getSource().getEntity();
         long now = player.level().getGameTime();
+        // **I-frames del escudo: un golpe dentro de la ventana de invulnerabilidad no es un golpe
+        // nuevo.** Mismo arreglo que la pata 1.21.1 (ver el comentario allá): vanilla cobra el
+        // punto aunque su gate de `hurt()` habría tragado el golpe. Aca el evento corre dentro de
+        // `actuallyHurt`, después del gate -- los golpes que el gate traga ni llegan --, pero el
+        // caso del DELTA (un golpe más fuerte que el último dentro de la ventana) sí llega, y ese
+        // tampoco es un golpe nuevo: gratis. (⌒‿⌒)
+        boolean inIFrames = player.invulnerableTime > 10
+                && !event.getSource().is(DamageTypeTags.BYPASSES_COOLDOWN);
         GuardStamp last = CombatState.lastBlock(player);
         int attackerId = attacker == null ? 0 : attacker.getId();
         int targetId = player.getId();
-        if (!last.shouldCharge(now, attackerId, targetId)) {
+        if (inIFrames || !last.shouldCharge(now, attackerId, targetId)) {
             // Same swing, already paid. The block still stands &mdash; only the point is not
             // spent twice &mdash; so a follow-up cut is still stopped, which is what the player
             // sees as "the shield held".
