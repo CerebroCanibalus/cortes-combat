@@ -51,10 +51,10 @@ package com.cortes.combat.survival;
 public record SurvivalTuning(int healInterval, int healFoodCost, int minFoodToHeal,
                              int foodCycleInterval) {
 
-    /** What runs before a config has been read. DESIGN section 5, with the two numbers the
-     *  General tuned on 2026-10-12 already moved. Kept in step with {@code ServerConfig} by
-     *  {@code SurvivalWiringTest.theConfigDefaultsAreTheOnlyTruth}. */
-    public static final SurvivalTuning DEFAULTS = new SurvivalTuning(20, 1, 6, 160);
+    /** What runs before a config has been read. DESIGN section 5; tuned for faster food regen
+     * and slower healing. Kept in step with {@code ServerConfig} by
+     * {@code SurvivalWiringTest.theConfigDefaultsAreTheOnlyTruth}. */
+    public static final SurvivalTuning DEFAULTS = new SurvivalTuning(40, 1, 6, 80);
 
     /** Vanilla's own food ceiling, and {@code FoodData} clamps every write to it. */
     public static final int MAX_FOOD = 20;

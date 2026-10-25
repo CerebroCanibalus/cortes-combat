@@ -70,8 +70,8 @@ public final class ServerConfig {
     static {
         HEAL_INTERVAL = BUILDER
                 .comment("Ticks between one point of natural healing. Vanilla uses 80 (4 seconds);",
-                        "this mod uses 20 (1 second). Lower is faster healing.")
-                .defineInRange("healInterval", 20, 1, 400);
+                        "this mod uses 40 (2 seconds). Lower is faster healing.")
+                .defineInRange("healInterval", 40, 1, 400);
 
         HEAL_FOOD_COST = BUILDER
                 .comment("Food points spent for every point of health healed. This is the price",
@@ -87,10 +87,10 @@ public final class ServerConfig {
         FOOD_REGEN_INTERVAL = BUILDER
                 .comment("Ticks for the food clock to return one food point. It also paces",
                         "starvation. Vanilla has no food regeneration at all and starves every",
-                        "80 ticks. This mod uses 160 (8 seconds). The most important number to",
+                        "80 ticks. This mod uses 80 (4 seconds). The most important number to",
                         "tune in the mod: fast makes food decoration, slow makes fighting a",
                         "dead end.")
-                .defineInRange("foodRegenInterval", 160, 1, 1200);
+                .defineInRange("foodRegenInterval", 80, 1, 1200);
 
         DRINK_TICKS = BUILDER
                 .comment("Ticks to drink a liquid: stews, honey, milk and potions. Vanilla drinks",

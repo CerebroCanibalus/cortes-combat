@@ -316,14 +316,12 @@ class SurvivalRulesTest {
     @Test
     @DisplayName("the defaults are the numbers the game actually runs")
     void theDefaultsAreTheProposals() {
-        assertEquals(20, DEFAULTS.healInterval(),
-                "one point every second -- halved from the design's 40 on 2026-10-12, because "
-                        + "recovering during a fight has to be something a player feels");
+        assertEquals(40, DEFAULTS.healInterval(),
+                "one point every two seconds -- slower healing to leave room for the fight");
         assertEquals(1, DEFAULTS.healFoodCost(), "one food per point healed");
         assertEquals(6, DEFAULTS.minFoodToHeal(), "healing down to six food, against vanilla's 18");
-        assertEquals(160, DEFAULTS.foodCycleInterval(),
-                "one food point every eight seconds -- doubled from the design's 80 on 2026-10-12, "
-                        + "so the food bar decides the fight instead of the clock");
+        assertEquals(80, DEFAULTS.foodCycleInterval(),
+                "one food point every four seconds -- faster food regen to keep the cycle moving");
     }
 
     private static int countHeals(SurvivalTuning tuning, int ticks, int food) {
