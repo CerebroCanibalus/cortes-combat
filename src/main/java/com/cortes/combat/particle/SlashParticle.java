@@ -180,24 +180,42 @@ public class SlashParticle extends TextureSheetParticle {
      *                atlas lookup itself fails still draws what it drew before this round
      */
     private TextureAtlasSprite resolveSprite(SpriteSet sprites) {
-        java.util.function.Function<ResourceLocation, TextureAtlasSprite> atlas =
-                Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_PARTICLES);
+        // **1.20.1**: `getTextureAtlas(LOCATION_PARTICLES)` returns null because the particles
+        // atlas isn't registered in `ModelManager.VANILLA_ATLASES`. The atlas lookup is the door
+        // that works on 1.21, but on 1.20.1 we must fall straight through to the set-index door
+        // or we crash on the render thread the moment the arcabuz fires.
+        java.util.function.Function<ResourceLocation, TextureAtlasSprite> atlas = null;
+        try {
+            atlas = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_PARTICLES);
+        } catch (Exception ignored) {
+            atlas = null;
+        }
+        if (atlas == null) {
+            // Atlas unavailable (1.20.1): fall back to the index-based lookup which is the
+            // mechanism that actually works there. The sprite is still chosen by id via
+            // the list order in particles/slash.json, just reached differently.
+            return setSpriteByIndex(sprites);
+        }
         // `tryParse` and not the constructor: the one-arg constructor is gone from 1.21 on and
         // the two-arg one is private there, while `tryParse` reads on both legs and answers null
         // instead of throwing on the render thread. (μ_μ)
         String raw = SlashTextureId.resolve(options.sprite());
         ResourceLocation id = raw != null ? ResourceLocation.tryParse(raw) : null;
-        if (id != null && !isMissing(atlas.apply(id), id)) {
-            return atlas.apply(id);
-        }
-        if (id != null) {
-            warnMissingSprite(id.toString());
-        }
-        ResourceLocation fallbackId =
-                com.cortes.combat.platform.ResourceIds.rl(SlashSprite.FALLBACK);
-        TextureAtlasSprite fallback = atlas.apply(fallbackId);
-        if (!isMissing(fallback, fallbackId)) {
-            return fallback;
+        try {
+            if (id != null && !isMissing(atlas.apply(id), id)) {
+                return atlas.apply(id);
+            }
+            if (id != null) {
+                warnMissingSprite(id.toString());
+            }
+            ResourceLocation fallbackId =
+                    com.cortes.combat.platform.ResourceIds.rl(SlashSprite.FALLBACK);
+            TextureAtlasSprite fallback = atlas.apply(fallbackId);
+            if (!isMissing(fallback, fallbackId)) {
+                return fallback;
+            }
+        } catch (Exception ignored) {
+            // Atlas lookup threw for some reason; fall through to the index door.
         }
         // The atlas itself is broken past this point; the set-index door is what used to run.
         return setSpriteByIndex(sprites);

@@ -1509,3 +1509,25 @@ fabrica vieja. Migrar la puerta y no la regla es el fix, y es el que se aplico.
 **Nota de sabotaje:** el primer sabotaje del guard de estado reemplazo cinco sitios sin su import y
 murio en compilacion antes de llegar al guard -- sabotaje mal disenado, no guard sordo. El bueno es
 un solo call site fully-qualified, que compila y el guard nombra.
+## Ronda del 2026-10-24 — los tres bugs del playtest 1.20.1, en cliente real
+
+**El playtest en Quick Play (`--quickPlaySingleplayer`, instrumento nuevo en build.gradle con
+`-Pquickplay`) encontro y cerro tres cosas:**
+
+1. **El arcabuz revienta al disparar.** En 1.20.1 `Minecraft.getTextureAtlas(LOCATION_PARTICLES)`
+   tira NPE porque el atlas de particulas no esta en `VANILLA_ATLASES`. Fix: `SlashParticle.resolveSprite`
+   envuelve el lookup en try/catch y cae a `setSpriteByIndex(sprites)`.
+2. **El sprite 2D del arcabuz en GUI mostraba el misket 3D.** En 1.20.1 el `BakedModelWrapper`
+   delega la textura por `getParticleIcon()` (en 1.21.1 es `getTexture()`); el override del wrapper
+   apuntaba a la textura del misket. Fix: override de `getParticleIcon` en `FlatIconFor`.
+3. **La HUD congelada: cooldown a 100% siempre, carga que nunca aparece, especiales sin cooldown.**
+   La copia v120 de `ModNetworking.syncTo` tenia **la condicion invertida**:
+   `if (last.isDirty(...)) return;` en vez de `if (!last.isDirty(...)) return;`. Efecto exacto: si el
+   estado CAMBIA -> no manda nada; si NO cambia -> manda siempre el mismo valor congelado del ultimo
+   save. Los tres sintomas, un boolean mal puesto. Verificado en bytecode que en 1.20.1 el mapa del
+   evento `ModifyBakingResult` es el mapa vivo de `getBakedTopLevelModels` (no copia), y que
+   `ForgeItemModelShaper` cachea por item y se reconstruye con el reload -- por eso el wrapper del
+   icono funciona.
+
+**Verificado en cliente real** (Quick Play): `[sync] primer envio` salio, disparos, recargas,
+`FoodDataMixin aplicado`, cero crash. **1186 tests verdes en 1.21.1.**

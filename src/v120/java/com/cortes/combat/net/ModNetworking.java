@@ -307,7 +307,13 @@ public final class ModNetworking {
         SyncState last = CombatState.lastSynced(player);
         float specialCharge =
                 com.cortes.combat.net.PlayerStateSync.specialChargeRatio(player);
-        if (last.isDirty(charge, cooldown, stamina, max, held, specialCharge, SYNC_EPSILON)) {
+        // **La condicion invertida del port, y por eso el cooldown "no se mueve".** En 1.21.1 el
+        // patron es: si NO dirty -> no mandar nada; si dirty -> setLastSynced + mandar. Aqui quedo
+        // al reves: si dirty -> return (nunca manda cuando el estado cambia) y si NO dirty -> manda
+        // SIEMPRE el mismo valor congelado. El cliente recibe la barra igual al estado del ultimo
+        // world save: cooldown a 100%, carga que nunca aparece y special_charge en cero (sin
+        // cooldown) -- los tres sintomas del playtest, un signo de diferencia. (^o^)
+        if (!last.isDirty(charge, cooldown, stamina, max, held, specialCharge, SYNC_EPSILON)) {
             return;
         }
         CombatState.setLastSynced(player,

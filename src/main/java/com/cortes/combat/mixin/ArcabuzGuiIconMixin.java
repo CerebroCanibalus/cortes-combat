@@ -99,6 +99,7 @@ public class ArcabuzGuiIconMixin {
         }
         Minecraft mc = Minecraft.getInstance();
         BakedModel icon = mc.getModelManager().getModel(ICON);
+        // Guard: sin icono (o ya re-renderizando el icono = segunda visita) no toca nada.
         if (icon == null || icon == p_model) {
             return;
         }
