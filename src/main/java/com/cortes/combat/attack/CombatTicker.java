@@ -41,6 +41,7 @@ public final class CombatTicker {
             return;
         }
         tickCooldown(player);
+        tickSwingBuffer(player);
         tickCharge(player);
         tickGuard(player);
         tickStreak(player);
@@ -119,6 +120,9 @@ public final class CombatTicker {
             AttackCooldown.endCharge(player);
             AttackCooldown.resetCooldown(player);
             GuardHandler.setGuard(player, false);
+            // Y el press estacionado: una sesion que abre con un buffer es un press de una
+            // conexion que ya no existe. Misma regla que el resto del arranque de aca.
+            CombatState.setSwingBuffer(player, PressBuffer.EMPTY);
             // A lunge in progress is a movement that was never finished. Logging out in the middle
             // of one leaves steps owed to a connection that no longer exists, and the player would
             // be teleported the rest of the way on joining.
@@ -137,6 +141,39 @@ public final class CombatTicker {
             return;
         }
         CombatState.setCooldown(player, cooldown.tick());
+    }
+
+    /**
+     * El press que el server rechazo y quedo estacionado, disparado aqui donde el cooldown
+     * expira.
+     *
+     * <p>Va justo despues de {@code tickCooldown} y el orden es la parte de la feature: un
+     * cooldown que muere este tick abre la carga este mismo tick, y "apenas puede" significa
+     * eso. El gate se vuelve a preguntar entero -- el press estacionado paga las mismas cuatro
+     * puertas del press real (cooldown, guardia, item en uso, espectador), no menos y no mas.</p>
+     *
+     * <p>Limpia el buffer ahi mismo, en los dos caminos, porque un press que se tiene que
+     * "recordar para despues de la vida y la muerte de este tick" no es un estado que quiera
+     * sobrevivir a nada.</p>
+     */
+    private static void tickSwingBuffer(ServerPlayer player) {
+        long parked = CombatState.swingBuffer(player);
+        if (parked == PressBuffer.EMPTY) {
+            return;
+        }
+        long now = player.level().getGameTime();
+        if (PressBuffer.expired(parked, now)) {
+            CombatState.setSwingBuffer(player, PressBuffer.EMPTY);
+            return;
+        }
+        boolean gateOpen = AttackCooldown.isReady(player)
+                && !GuardHandler.isGuarding(player)
+                && !player.isUsingItem()
+                && !player.isSpectator();
+        if (PressBuffer.shouldFire(parked, now, gateOpen)) {
+            CombatState.setSwingBuffer(player, PressBuffer.EMPTY);
+            AttackCooldown.beginCharge(player);
+        }
     }
 
     /**

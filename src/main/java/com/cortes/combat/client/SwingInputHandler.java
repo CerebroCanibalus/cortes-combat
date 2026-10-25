@@ -5,6 +5,7 @@ import com.cortes.combat.platform.CombatPackets;
 import com.cortes.combat.CombatTrace;
 
 import com.cortes.combat.attack.AttackTiming;
+import com.cortes.combat.attack.PressBuffer;
 import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.attack.WeaponStats;
 import com.cortes.combat.config.ServerConfig;
@@ -140,6 +141,21 @@ public final class SwingInputHandler {
     private static int tick;
 
     /**
+     * A press that was refused, parked for the length of {@link PressBuffer#WINDOW_TICKS}.
+     *
+     * <p>Value in client ticks, {@link PressBuffer#EMPTY} when nothing is parked. Set by the two
+     * refusal branches a real press can survive waiting -- cooldown and guard -- and fired from
+     * the tick when the same gate it failed would now pass. A click one tick early costs nothing
+     * any more; a click two seconds before the cooldown ends never fires later, because the
+     * window is over.</p>
+     *
+     * <p>It deliberately does <b>not</b> cover the other refusals: "not a weapon", "ranged",
+     * "screen open" and "entity without life" are answers about what the player is pointing at,
+     * and parking one would fire a swing at a thing that never was a swinging target.</p>
+     */
+    private static long parkedPress = PressBuffer.EMPTY;
+
+    /**
      * The verdict on the press currently being processed.
      *
      * <p>Deliberately not cleared by whoever reads it. Vanilla can run the attack path more than
@@ -187,6 +203,8 @@ public final class SwingInputHandler {
             return;
         }
         claim = Claim.NOT_OURS;
+        // A real press under the gates supersedes whatever a previous refusal parked.
+        parkedPress = PressBuffer.EMPTY;
         firedOnPress = false;
         swingTargetId = SwingPayload.NO_TARGET;
         LocalPlayer player = mc.player;
@@ -289,11 +307,13 @@ public final class SwingInputHandler {
         // synced value is a round trip too old to do that.
         if (GuardInputHandler.predictedHolding()) {
             claim = Claim.REFUSED;
+            parkedPress = tick;
             debug("press REFUSADO: cubierto");
             return;
         }
         if (!ready()) {
             claim = Claim.REFUSED;
+            parkedPress = tick;
             debug("press REFUSADO por cooldown: readyAtTick=" + readyAtTick
                     + " tick=" + tick + " ratio=" + ClientCombatState.cooldownRatio());
             return;
@@ -692,6 +712,30 @@ public final class SwingInputHandler {
      *
      * <p>Cheap on purpose: one call per open swing, and only while one is open.</p>
      */
+    /**
+     * The parked press's gate, re-asked at the moment of the fire.
+     *
+     * <p>The window does not rewrite a rule a live press obeys. Every branch here is a gate
+     * {@code press} ran when the click was first refused; this is the same list, which is what
+     * makes the fired press indistinguishable from a fresh one. The button being physically down
+     * is the repented-click rule: a tap that was parked on a refusal must never fire once the
+     * finger is off, because then the buffer would be longer than the player's click.</p>
+     */
+    private static boolean canFireTheParkedPress(Minecraft mc, LocalPlayer player) {
+        if (player == null
+                || mc.screen != null
+                || player.isSpectator()
+                || player.isUsingItem()
+                || holding
+                || GuardInputHandler.predictedHolding()
+                || !ready()
+                || !buttonIsPhysicallyDown()) {
+            return false;
+        }
+        return com.cortes.combat.item.WeaponKinds.fights(
+                com.cortes.combat.attack.WeaponStats.of(player.getMainHandItem()).profile());
+    }
+
     private static boolean buttonIsPhysicallyDown() {
         Minecraft mc = Minecraft.getInstance();
         var window = mc.getWindow();
@@ -785,6 +829,27 @@ public final class SwingInputHandler {
         // produces no release event, so the swing can only be found out about by asking whether
         // the button is still down. See reconcileWithTheButton for the whole story.
         reconcileWithTheButton();
+
+        // **El press que se estaciono hace un rato, disparado aqui en el tick.**
+        //
+        // Un click medio tick antes de que el cooldown termine se tiraba: el gate lo rechazo, el
+        // click murio, y re-clickar es el mismo golpe con otro retraso. Si el gate que lo rechazo
+        // ya No lo rechazaria y el boton sigue apretado, el press se ejecuta entero por el mismo
+        // camino de siempre -- con la misma orden de gates, el mismo objetivo y el mismo paquete.
+        //
+        // En el tick y NO en el evento de click porque la ventana del buffer es corta: dos ticks
+        // despues del press no hay evento que escuche. Y antes de leer `holding`, que es el orden
+        // que el press real ya cumple dentro del frame. El `claim` que esto deja puesto lo limpia
+        // `endTick` del mismo tick -- ese orden es el que hace seguro el fuego desde aca. (⌒‿⌒)
+        if (parkedPress != PressBuffer.EMPTY) {
+            if (PressBuffer.shouldFire(parkedPress, tick, canFireTheParkedPress(mc, player))) {
+                debug("press estacionado (tick " + parkedPress + ") disparado en tick " + tick);
+                parkedPress = PressBuffer.EMPTY;
+                press(mc);
+            } else if (PressBuffer.expired(parkedPress, tick)) {
+                parkedPress = PressBuffer.EMPTY;
+            }
+        }
 
         if (player == null) {
             if (holding) {

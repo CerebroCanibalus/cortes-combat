@@ -49,10 +49,15 @@ public final class AttackCooldown {
      * <p>The client checks the same condition before it ever sends this, from a value that is up
      * to one round trip old. That is why the check is repeated here rather than trusted: the
      * repeat is the rule and the client's copy is only the prediction.</p>
+     *
+     * <p><b>It now answers.</b> The press buffer needs to know whether the click was refused
+     * here -- the one place "this press died" is true -- and a `void` made the call site guess
+     * by asking the same gates a second time. The answer is the whole truth of one call and
+     * nothing else.</p>
      */
-    public static void beginCharge(Player player) {
+    public static boolean beginCharge(Player player) {
         if (!isReady(player)) {
-            return;
+            return false;
         }
         // Covering and swinging are mutually exclusive, and the server is where that is decided.
         //
@@ -61,12 +66,13 @@ public final class AttackCooldown {
         // the check here is the same reason the readiness check is repeated: the repeat is the
         // rule and the client's copy is only the prediction.
         if (GuardHandler.isGuarding(player)) {
-            return;
+            return false;
         }
         ChargeState current = CombatState.charge(player);
         if (!current.holding()) {
             CombatState.setCharge(player, new ChargeState(0, true));
         }
+        return true;
     }
 
     /** Stop accumulating without spending anything, for a press that was abandoned. */

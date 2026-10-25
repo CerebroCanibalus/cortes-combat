@@ -90,7 +90,13 @@ public final class ModNetworking {
                 return;
             }
             if (payload.pressed()) {
-                AttackCooldown.beginCharge(player);
+                boolean opened = AttackCooldown.beginCharge(player);
+                if (!opened) {
+                    // Press estacionado: mismo arreglo que la pata 1.21.1 (ver el comentario
+                    // alla). El cooldown de aca esta un par de ticks por detras del del cliente;
+                    // si el gate pasa dentro de la ventana, el tick de abajo abre la carga.
+                    CombatState.setSwingBuffer(player, player.level().getGameTime());
+                }
                 return;
             }
             float charged = CombatEngine.resolveSwing(player, payload.entityId());

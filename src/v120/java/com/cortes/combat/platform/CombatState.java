@@ -8,6 +8,7 @@ import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.ContragolpeWindow;
 import com.cortes.combat.state.CooldownState;
 import com.cortes.combat.state.CorteGemelo;
+import com.cortes.combat.attack.PressBuffer;
 import com.cortes.combat.state.FallDeferral;
 import com.cortes.combat.state.GuardFree;
 import com.cortes.combat.state.GuardState;
@@ -102,6 +103,19 @@ public final class CombatState {
 
     public static void setPendingHit(Entity entity, PendingHit hit) {
         bag(entity).pendingHit = hit;
+    }
+
+    /**
+     * A refused press, parked for the window of {@link PressBuffer}. Same contract as the
+     * attachment twin: the game tick the press arrived on, {@link PressBuffer#EMPTY} when
+     * nothing is parked, kept out of the serializer by the in-flight rule.
+     */
+    public static long swingBuffer(Entity entity) {
+        return bag(entity).swingBufferTick;
+    }
+
+    public static void setSwingBuffer(Entity entity, long pressTick) {
+        bag(entity).swingBufferTick = pressTick;
     }
 
     // --- the guard ---------------------------------------------------------------------------
@@ -307,6 +321,7 @@ public final class CombatState {
         boolean arcabuzButton = false;
         FallDeferral fallDeferral = FallDeferral.NONE;
         PendingHit pendingHit = PendingHit.NONE;
+        long swingBufferTick = PressBuffer.EMPTY;
         ChargeState specialCharge = ChargeState.EMPTY;
         SecondWindWindow secondWindow = SecondWindWindow.NONE;
         GuardFree guardFree = GuardFree.READY;

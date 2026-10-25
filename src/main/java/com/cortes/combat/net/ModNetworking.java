@@ -290,10 +290,15 @@ public final class ModNetworking {
             return;
         }
         if (payload.pressed()) {
-            AttackCooldown.beginCharge(player);
-            org.slf4j.LoggerFactory.getLogger("cortescombat").info(
-                    "[server] press de " + player.getName().getString()
-                            + " item=" + player.getMainHandItem().getItem());
+            boolean opened = AttackCooldown.beginCharge(player);
+            if (!opened) {
+                // **Press estacionado en el server.** El press del cliente no fue escuchado: el
+                // cooldown del server esta un par de ticks por detras del del cliente (su copia
+                // es mas estricta a proposito), así que un press legal aca puede llegar "antes
+                // de tiempo". Dos ticks: si el gate pasa en ese rango, el buffer abre la carga;
+                // si no, muere y el click fue un click temprano de verdad.
+                CombatState.setSwingBuffer(player, player.level().getGameTime());
+            }
             return;
         }
         org.slf4j.LoggerFactory.getLogger("cortescombat").info(

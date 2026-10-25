@@ -42,6 +42,7 @@ public final class CombatTicker {
             return;
         }
         tickCooldown(player);
+        tickSwingBuffer(player);
         tickCharge(player);
         tickGuard(player);
         tickStreak(player);
@@ -73,6 +74,7 @@ public final class CombatTicker {
             AttackCooldown.endCharge(player);
             AttackCooldown.resetCooldown(player);
             GuardHandler.setGuard(player, false);
+            CombatState.setSwingBuffer(player, PressBuffer.EMPTY);
             com.cortes.combat.special.Lunge.clear(player);
             com.cortes.combat.special.Arcabuz.clear(player);
         }
@@ -84,6 +86,31 @@ public final class CombatTicker {
             return;
         }
         CombatState.setCooldown(player, cooldown.tick());
+    }
+
+    /**
+     * El press estacionado en el server, disparado aqui donde el cooldown expira. Gemelo del
+     * mismo metodo en la pata 1.21.1 (ver el comentario alla): el orden despues del cooldown es
+     * la parte de la feature, y el gate se vuelve a preguntar entero. (⌒‿⌒)
+     */
+    private static void tickSwingBuffer(ServerPlayer player) {
+        long parked = CombatState.swingBuffer(player);
+        if (parked == PressBuffer.EMPTY) {
+            return;
+        }
+        long now = player.level().getGameTime();
+        if (PressBuffer.expired(parked, now)) {
+            CombatState.setSwingBuffer(player, PressBuffer.EMPTY);
+            return;
+        }
+        boolean gateOpen = AttackCooldown.isReady(player)
+                && !GuardHandler.isGuarding(player)
+                && !player.isUsingItem()
+                && !player.isSpectator();
+        if (PressBuffer.shouldFire(parked, now, gateOpen)) {
+            CombatState.setSwingBuffer(player, PressBuffer.EMPTY);
+            AttackCooldown.beginCharge(player);
+        }
     }
 
     /**

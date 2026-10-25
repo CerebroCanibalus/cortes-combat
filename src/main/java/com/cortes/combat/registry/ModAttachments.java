@@ -1,6 +1,7 @@
 package com.cortes.combat.registry;
 
 import com.cortes.combat.CortesCombat;
+import com.cortes.combat.attack.PressBuffer;
 import com.cortes.combat.state.ArcabuzState;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
@@ -279,6 +280,19 @@ public final class ModAttachments {
             ATTACHMENT_TYPES.register("paliza_streak", () -> AttachmentType
                     .<StreakState>builder(() -> StreakState.EMPTY)
                     .serialize(StreakState.CODEC)
+                    .build());
+
+    /**
+     * A press that the readiness gate refused, parked for the window of {@link PressBuffer}.
+     *
+     * <p>Simplest possible shape: it is the game tick the press arrived on, or {@link
+     * PressBuffer#EMPTY} while nothing is parked. A record would carry the same long and a
+     * name for it, and little else; the constant that reads better read from the buffer class
+     * instead.</p>
+     */
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<Long>> SWING_BUFFER =
+            ATTACHMENT_TYPES.register("swing_buffer", () -> AttachmentType
+                    .<Long>builder(() -> PressBuffer.EMPTY)
                     .build());
 
     private ModAttachments() {

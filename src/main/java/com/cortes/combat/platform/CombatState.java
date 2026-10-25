@@ -95,6 +95,23 @@ public final class CombatState {
         entity.setData(ModAttachments.PENDING_HIT.get(), hit);
     }
 
+    /**
+     * A refused press, parked for the length of {@link PressBuffer#WINDOW_TICKS}.
+     *
+     * <p>It is the game tick the press arrived on, {@link PressBuffer#EMPTY} when nothing is
+     * parked. No codec and no {@code copyOnDeath}, by the rule the swing in flight and the
+     * fallen deferral already wrote: this is a confirmation in flight, not a state -- nothing
+     * reads it across a save or a death, and a press interrupted by either should die rather
+     * than resume.</p>
+     */
+    public static long swingBuffer(Entity entity) {
+        return entity.getData(ModAttachments.SWING_BUFFER.get());
+    }
+
+    public static void setSwingBuffer(Entity entity, long pressTick) {
+        entity.setData(ModAttachments.SWING_BUFFER.get(), pressTick);
+    }
+
     // --- the guard ---------------------------------------------------------------------------
 
     /** Remaining guard hits. The maximum comes from the item, never from here. */
