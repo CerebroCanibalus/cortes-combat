@@ -229,6 +229,28 @@ class LanguageFilesTest {
     }
 
     /**
+     * And every family carries its own advancement line, one per family, in both languages.
+     *
+     * <p>The thirty used to share "Hecho a mano.", which is the same as saying nothing thirty
+     * times. The recipe provider now derives the key from the enum
+     * ({@code advancements.cortescombat.familia.<id>}), so a family added to
+     * {@link WeaponFamily} without a story line in a language file lands here as a failure
+     * naming the language and the key, instead of showing a raw key inside a toast.</p>
+     */
+    @Test
+    @DisplayName("every family has its own advancement story line in both languages")
+    void everyFamilyHasItsAdvancementLine() {
+        for (WeaponFamily family : WeaponFamily.values()) {
+            String key = "advancements.cortescombat.familia." + family.id();
+            for (String locale : new String[]{ES, EN}) {
+                assertTrue(read(locale).contains("\"" + key + "\""),
+                        locale + " has no " + key + " -- the family's advancement would show "
+                                + "the raw key in its toast");
+            }
+        }
+    }
+
+    /**
      * And the strings that go with the numbers exist in both.
      *
      * <p>The five format lines, listed by hand because they are five fixed strings and not an

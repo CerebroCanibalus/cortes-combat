@@ -81,8 +81,8 @@ public class CortesRecipeProvider implements DataProvider {
                 .toString().replace(':', '.');
         com.google.gson.JsonObject advancement = RecipeJson.advancement(
                 new net.minecraft.world.item.ItemStack(result),
-                titleKey, "advancements.cortescombat.weapon", id, "has_material",
-                RecipeJson.hasItems(bodyTag));
+                titleKey, "advancements.cortescombat.familia." + family.id(), id,
+                "has_material", RecipeJson.hasItems(bodyTag));
 
         return CompletableFuture.allOf(
                 RecipeJson.write(output, cached, id, "recipes", recipe),

@@ -372,6 +372,22 @@ public class CortesLanguageProvider extends LanguageProvider {
         add("advancements.cortescombat.arcabuz",
                 "Una caña, un mechero, un dispensador y madera. La Firestone es lo caro.");
 
+        // **Una linea de historia por familia, y no una sola para las treinta.** La configuracion
+        // del pedido: las treinta decian "Hecho a mano.", que es lo mismo que decir nada. Cada
+        // familia lleva su frase, y la llave esta en `familia.<id>` para que el provider de
+        // recetas la derive del enum en vez de sextuplicar un string a mano. Un
+        // `ModLocales.ALL` nuevo aqui arriba se cae con LanguageFilesTest, no en juego.
+        add("advancements.cortescombat.familia.ropera",
+                "El acero fino que aprendio a pegar a distancia: alcance antes que todo.");
+        add("advancements.cortescombat.familia.alabarda",
+                "Pica, gancho y filo en un palo: barre lo que haya en el arco.");
+        add("advancements.cortescombat.familia.martillo",
+                "Contra armadura no hay sutileza, hay peso. Y cada golpe seguido suma.");
+        add("advancements.cortescombat.familia.daga",
+                "Rapida por encima de todo, y la unica con la base de madera.");
+        add("advancements.cortescombat.familia.shotel",
+                "La hoja curva del sable: parria, y su carga pega dos cortes.");
+
         // %s and nothing else. TranslatableContents rejects every other format at render time with
         // "Unsupported format", so "%.1f" here would be a line that does not appear rather than a
         // line that is formatted. The numbers arrive pre-rounded as strings.
@@ -459,6 +475,18 @@ public class CortesLanguageProvider extends LanguageProvider {
         add("advancements.cortescombat.weapon", "Made by hand.");
         add("advancements.cortescombat.arcabuz",
                 "A bamboo, a firer, a dispenser and some wood. The Firestone is the expensive part.");
+
+        // One story line per family. See the Spanish block for the why.
+        add("advancements.cortescombat.familia.ropera",
+                "Fine steel that learned to strike at a distance: reach above all.");
+        add("advancements.cortescombat.familia.alabarda",
+                "Spear, hook and edge on one pole: it sweeps whatever the arc holds.");
+        add("advancements.cortescombat.familia.martillo",
+                "Against armour there is no subtlety, only weight. Consecutive hits stack.");
+        add("advancements.cortescombat.familia.daga",
+                "Swift above everything, and the only one with a wooden grip.");
+        add("advancements.cortescombat.familia.shotel",
+                "The curved blade of the sabre: it parries, and a charge lands two cuts.");
 
         add("tooltip.cortescombat.damage", "%s Damage");
         add("tooltip.cortescombat.charged_damage", "%s Charged Damage");

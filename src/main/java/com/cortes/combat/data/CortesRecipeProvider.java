@@ -157,7 +157,7 @@ public class CortesRecipeProvider implements DataProvider {
                 // plain one still works today and stops working the day a recipe needs a loader.
                 DataProvider.saveStable(cached, registries, Recipe.CONDITIONAL_CODEC,
                         Optional.of(new WithConditions<>(recipe)), recipePath(id)),
-                advancement(cached, registries, id, result, material));
+                advancement(cached, registries, id, result, material, family));
     }
 
     private Path recipePath(ResourceLocation id) {
@@ -188,7 +188,8 @@ public class CortesRecipeProvider implements DataProvider {
      */
     private CompletableFuture<?> advancement(CachedOutput cached, HolderLookup.Provider registries,
                                              ResourceLocation recipeId,
-                                             Item result, WeaponMaterial material) {
+                                             Item result, WeaponMaterial material,
+                                             WeaponFamily family) {
         // DATA_PACK for the same reason as the recipe, and `"advancement"` singular for the same
         // reason too -- see recipePath. An advancement in `advancements/` is one the game never
         // loads, and without it the recipe never enters the book even when the recipe itself is
@@ -221,7 +222,8 @@ public class CortesRecipeProvider implements DataProvider {
                 .display(new DisplayInfo(new ItemStack(result),
                         Component.translatable("item." + BuiltInRegistries.ITEM
                                 .getKey(result).toString().replace(':', '.')),
-                        Component.translatable("advancements.cortescombat.weapon"),
+                         Component.translatable("advancements.cortescombat.familia."
+                                 + family.id()),
                         Optional.empty(),
                         AdvancementType.TASK,
                         false, false, true))

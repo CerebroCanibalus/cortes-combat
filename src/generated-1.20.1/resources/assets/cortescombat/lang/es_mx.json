@@ -1,5 +1,10 @@
 {
   "advancements.cortescombat.arcabuz": "Una caña, un mechero, un dispensador y madera. La Firestone es lo caro.",
+  "advancements.cortescombat.familia.alabarda": "Pica, gancho y filo en un palo: barre lo que haya en el arco.",
+  "advancements.cortescombat.familia.daga": "Rapida por encima de todo, y la unica con la base de madera.",
+  "advancements.cortescombat.familia.martillo": "Contra armadura no hay sutileza, hay peso. Y cada golpe seguido suma.",
+  "advancements.cortescombat.familia.ropera": "El acero fino que aprendio a pegar a distancia: alcance antes que todo.",
+  "advancements.cortescombat.familia.shotel": "La hoja curva del sable: parria, y su carga pega dos cortes.",
   "advancements.cortescombat.weapon": "Hecho a mano.",
   "block.cortescombat.firestone_block": "Bloque de Firestone",
   "block.cortescombat.nether_reactor": "Reactor del Nether",

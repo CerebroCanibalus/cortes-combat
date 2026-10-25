@@ -1,5 +1,10 @@
 {
   "advancements.cortescombat.arcabuz": "A bamboo, a firer, a dispenser and some wood. The Firestone is the expensive part.",
+  "advancements.cortescombat.familia.alabarda": "Spear, hook and edge on one pole: it sweeps whatever the arc holds.",
+  "advancements.cortescombat.familia.daga": "Swift above everything, and the only one with a wooden grip.",
+  "advancements.cortescombat.familia.martillo": "Against armour there is no subtlety, only weight. Consecutive hits stack.",
+  "advancements.cortescombat.familia.ropera": "Fine steel that learned to strike at a distance: reach above all.",
+  "advancements.cortescombat.familia.shotel": "The curved blade of the sabre: it parries, and a charge lands two cuts.",
   "advancements.cortescombat.weapon": "Made by hand.",
   "block.cortescombat.firestone_block": "Firestone Block",
   "block.cortescombat.nether_reactor": "Nether Reactor",
