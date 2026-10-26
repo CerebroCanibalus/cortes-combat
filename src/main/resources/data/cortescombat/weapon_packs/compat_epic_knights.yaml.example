@@ -1,0 +1,61 @@
+# ═══ COMPAT: Epic Knights ═══════════════════════════════════════════════════
+# Epic Knights adds shields, armor and weapons (swords, polearms, etc.) with
+# a medieval theme. Weapons come in multiple tiers (iron, gold, diamond, etc.).
+#
+# Epic Knights item IDs follow the pattern: epic_knights:<weapon_name>
+# e.g.: epic_knights:iron_longsword, epic_knights:diamond_halberd
+#
+# To use: copy to config/cortescombat/weapons/, rename to .yaml, replace
+# placeholder IDs with real ones from Epic Knights.
+
+version: 1
+
+weapons:
+  # ── Longswords (sword, single-target) ──
+  - match: { id: "epic_knights:iron_longsword" }
+    archetype: sword
+    stats:
+      charge: { can_charge: true, bonus: 0.5, full_charge_ticks: 40 }
+    reach: { distance: 3.4 }
+    cone: { horizontal: 28, vertical: 22 }
+    special: none
+
+  # ── Halberds (polearm, sweep) ──
+  - match: { id: "epic_knights:iron_halberd" }
+    archetype: polearm
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.8 }
+    cone: { horizontal: 40, vertical: 28 }
+    special: multi_hit
+
+  # ── Rapiers (thrust, lunge) ──
+  - match: { id: "epic_knights:iron_rapier" }
+    archetype: rapier
+    stats:
+      charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 35 }
+    reach: { distance: 3.2 }
+    cone: { horizontal: 16, vertical: 14 }
+    special: lunge
+
+  # ── Daggers (fast) ──
+  - match: { id: "epic_knights:iron_dagger" }
+    archetype: dagger
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 2.4 }
+    cone: { horizontal: 20, vertical: 16 }
+    special: none
+
+  # ── Spears (thrust, no lunge) ──
+  - match: { id: "epic_knights:iron_spear" }
+    archetype: spear
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.6 }
+    cone: { horizontal: 16, vertical: 14 }
+    special: none
+
+  # NOTE: Epic Knights has many more weapons and armor. Add entries following
+  # the same pattern. The mod uses material prefixes: iron_, gold_, diamond_, etc.
+  # Full list: https://www.curseforge.com/minecraft/mc-mods/epic-knights-shields-armor-and-weapons

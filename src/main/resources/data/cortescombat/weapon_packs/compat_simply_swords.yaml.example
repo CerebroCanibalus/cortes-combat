@@ -1,0 +1,84 @@
+# ═══ COMPAT: Simply Swords ═══════════════════════════════════════════════════
+# Simply Swords adds 50+ unique weapons: chakrams, glaives, katanas, rapiers,
+# greathammers, spears, and more. Each has unique abilities and effects.
+#
+# Simply Swords item IDs follow the pattern: simplyswords:<weapon_name>
+# e.g.: simplyswords:iron_chakram, simplyswords:diamond_rapier
+#
+# NOTE: Simply Swords weapons have their own unique abilities (on-hit effects,
+# special attacks). Our system will handle the combat (reach, cone, charge,
+# cooldown) but the unique abilities come from Simply Swords' own code.
+# This means both systems coexist: our cone/charge + their on-hit effects.
+#
+# To use: copy to config/cortescombat/weapons/, rename to .yaml, replace
+# placeholder IDs with real ones from Simply Swords.
+
+version: 1
+
+weapons:
+  # ── Chakrams (ranged, throwing) ──
+  - match: { id: "simplyswords:iron_chakram" }
+    archetype: dagger
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 2.0 }
+    cone: { horizontal: 15, vertical: 15 }
+    special: none
+
+  # ── Glaives (polearm, sweep) ──
+  - match: { id: "simplyswords:iron_glaive" }
+    archetype: polearm
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.6 }
+    cone: { horizontal: 38, vertical: 26 }
+    special: multi_hit
+
+  # ── Katanas (fast, single-target) ──
+  - match: { id: "simplyswords:iron_katana" }
+    archetype: sabre
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.0 }
+    cone: { horizontal: 22, vertical: 18 }
+    special: none
+
+  # ── Rapiers (thrust, lunge) ──
+  - match: { id: "simplyswords:iron_rapier" }
+    archetype: rapier
+    stats:
+      charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 35 }
+    reach: { distance: 3.2 }
+    cone: { horizontal: 16, vertical: 14 }
+    special: lunge
+
+  # ── Greathammers (heavy, charge) ──
+  - match: { id: "simplyswords:iron_greathammer" }
+    archetype: hammer
+    stats:
+      charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 55 }
+    reach: { distance: 3.4 }
+    cone: { horizontal: 30, vertical: 24 }
+    special: none
+
+  # ── Spears (thrust, no lunge) ──
+  - match: { id: "simplyswords:iron_spear" }
+    archetype: spear
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.6 }
+    cone: { horizontal: 16, vertical: 14 }
+    special: none
+
+  # ── Claymores (wide, heavy) ──
+  - match: { id: "simplyswords:iron_claymore" }
+    archetype: sword
+    stats:
+      charge: { can_charge: true, bonus: 0.8, full_charge_ticks: 45 }
+    reach: { distance: 3.8 }
+    cone: { horizontal: 36, vertical: 26 }
+    special: none
+
+  # NOTE: Simply Swords has 50+ weapons. Add entries following the same pattern.
+  # The mod uses material prefixes: iron_, gold_, diamond_, netherite_, etc.
+  # Full list: https://www.curseforge.com/minecraft/mc-mods/simply-swords

@@ -1,0 +1,78 @@
+# ═══ COMPAT: Marium's Soulslike Weaponry ═════════════════════════════════════
+# Marium's Soulslike Weaponry adds 40+ legendary weapons with unique abilities
+# and boss fights. Weapons have special effects (bleed, frost, fire, etc.).
+#
+# Soulslike Weaponry item IDs follow the pattern: soulsweapons:<weapon_name>
+# e.g.: soulsweapons:iron_katana, soulsweapons:moonlight_greatsword
+#
+# NOTE: This mod's weapons have unique on-hit effects and special abilities.
+# Our system handles combat (reach, cone, charge, cooldown) while their code
+# handles the special effects. Both coexist.
+#
+# Some weapons (like the Moonlight Greatsword) have charge attacks that might
+# conflict with our charge system. Adjust per-weapon.
+#
+# To use: copy to config/cortescombat/weapons/, rename to .yaml, replace
+# placeholder IDs with real ones.
+
+version: 1
+
+weapons:
+  # ── Katanas ──
+  - match: { id: "soulsweapons:iron_katana" }
+    archetype: sabre
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.0 }
+    cone: { horizontal: 22, vertical: 18 }
+    special: none
+
+  # ── Greatswords (heavy, wide) ──
+  - match: { id: "soulsweapons:iron_greatsword" }
+    archetype: sword
+    stats:
+      charge: { can_charge: true, bonus: 0.8, full_charge_ticks: 45 }
+    reach: { distance: 3.8 }
+    cone: { horizontal: 36, vertical: 26 }
+    special: none
+
+  # ── Spears ──
+  - match: { id: "soulsweapons:iron_spear" }
+    archetype: spear
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.6 }
+    cone: { horizontal: 16, vertical: 14 }
+    special: none
+
+  # ── Daggers (fast) ──
+  - match: { id: "soulsweapons:iron_dagger" }
+    archetype: dagger
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 2.4 }
+    cone: { horizontal: 20, vertical: 16 }
+    special: none
+
+  # ── Scythes (polearm, sweep) ──
+  - match: { id: "soulsweapons:iron_scythe" }
+    archetype: polearm
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.8 }
+    cone: { horizontal: 42, vertical: 30 }
+    special: multi_hit
+
+  # ── Rapiers ──
+  - match: { id: "soulsweapons:iron_rapier" }
+    archetype: rapier
+    stats:
+      charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 35 }
+    reach: { distance: 3.2 }
+    cone: { horizontal: 16, vertical: 14 }
+    special: lunge
+
+  # NOTE: Soulslike Weaponry has 40+ weapons including legendary ones with
+  # unique charge attacks (Moonlight Greatsword, etc.). Some may need special
+  # handling. Add entries following the same pattern.
+  # Full list: https://www.curseforge.com/minecraft/mc-mods/mariums-soulslike-weaponry

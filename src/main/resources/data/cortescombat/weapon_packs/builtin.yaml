@@ -11,6 +11,11 @@
 # (The nine archetypes are not here: they are code, in ArchetypeSpec.)
 # Los packs oficiales de compat con otros mods se añaden en futuras versiones.
 # Official compat packs with other mods are added in future versions.
+# Compat templates available (copy from src or data/ to config/):
+#   - compat_spartan_weaponry.yaml.example (Spartan Weaponry, 30+ weapon types)
+#   - compat_simply_swords.yaml.example (Simply Swords, 50+ weapons)
+#   - compat_soulslike_weaponry.yaml.example (Marium's Soulslike Weaponry, 40+ weapons)
+#   - compat_example.yaml.example (generic template)
 version: 1
 weapons:
   - match: { tag: "#cortescombat:category/dagger" }

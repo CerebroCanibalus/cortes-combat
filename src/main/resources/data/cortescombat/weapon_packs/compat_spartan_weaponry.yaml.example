@@ -1,0 +1,120 @@
+# ═══ COMPAT: Spartan Weaponry ═══════════════════════════════════════════════
+# Spartan Weaponry adds 30+ weapon types (katanas, halberds, longbows, etc.)
+# in multiple materials (wood, stone, iron, gold, diamond, netherite).
+# 
+# Each weapon type maps to one of our archetypes. The material doesn't change
+# the archetype — only the numbers (damage, speed) change, and those come from
+# the item's own attributes (our system reads ATTACK_SPEED from the holder).
+#
+# To use: copy to config/cortescombat/weapons/, rename to .yaml, replace the
+# placeholder IDs with the real ones from Spartan Weaponry's registry.
+#
+# Spartan Weaponry item IDs follow the pattern: spartanweaponry:<material>_<weapon>
+# e.g.: spartanweaponry:iron_katana, spartanweaponry:diamond_halberd
+#
+# NOTE: Spartan Weaponry has its own combat mechanics (reach, damage). Our system
+# will OVERRIDE those with our cone/reach/damage model. This may feel different
+# from Spartan Weaponry's intended balance. Adjust the YAML to taste.
+
+version: 1
+
+weapons:
+  # ── Katanas (fast, single-target, no charge) ──
+  - match: { id: "spartanweaponry:iron_katana" }
+    archetype: sabre
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.2 }
+    cone: { horizontal: 24, vertical: 20 }
+    special: none
+
+  - match: { id: "spartanweaponry:diamond_katana" }
+    archetype: sabre
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.4 }
+    cone: { horizontal: 24, vertical: 20 }
+    special: none
+
+  - match: { id: "spartanweaponry:netherite_katana" }
+    archetype: sabre
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.6 }
+    cone: { horizontal: 24, vertical: 20 }
+    special: none
+
+  # ── Halberds (wide sweep, multi-hit) ──
+  - match: { id: "spartanweaponry:iron_halberd" }
+    archetype: polearm
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.6 }
+    cone: { horizontal: 40, vertical: 28 }
+    special: multi_hit
+
+  - match: { id: "spartanweaponry:diamond_halberd" }
+    archetype: polearm
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.8 }
+    cone: { horizontal: 40, vertical: 28 }
+    special: multi_hit
+
+  # ── Rapiers (thrust, lunge) ──
+  - match: { id: "spartanweaponry:iron_rapier" }
+    archetype: rapier
+    stats:
+      charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 40 }
+    reach: { distance: 3.4 }
+    cone: { horizontal: 18, vertical: 16 }
+    special: lunge
+
+  # ── Greatswords (heavy, wide) ──
+  - match: { id: "spartanweaponry:iron_greatsword" }
+    archetype: sword
+    stats:
+      charge: { can_charge: true, bonus: 0.8, full_charge_ticks: 50 }
+    reach: { distance: 3.8 }
+    cone: { horizontal: 35, vertical: 25 }
+    special: none
+
+  # ── Daggers (fast, no charge, no special) ──
+  - match: { id: "spartanweaponry:iron_dagger" }
+    archetype: dagger
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 2.4 }
+    cone: { horizontal: 20, vertical: 16 }
+    special: none
+
+  # ── Spears (thrust, no lunge) ──
+  - match: { id: "spartanweaponry:iron_spear" }
+    archetype: spear
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 3.6 }
+    cone: { horizontal: 16, vertical: 14 }
+    special: none
+
+  # ── Hammers (heavy, charge) ──
+  - match: { id: "spartanweaponry:iron_hammer" }
+    archetype: hammer
+    stats:
+      charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 60 }
+    reach: { distance: 3.0 }
+    cone: { horizontal: 28, vertical: 22 }
+    special: none
+
+  # ── Longbows (ranged) ──
+  - match: { id: "spartanweaponry:iron_longbow" }
+    archetype: axe
+    stats:
+      charge: { can_charge: false }
+    reach: { distance: 2.0 }
+    cone: { horizontal: 10, vertical: 10 }
+    special: none
+
+  # NOTE: Spartan Weaponry has MANY more weapons (throwing knives, crossbows,
+  # javelins, etc.). Add entries following the same pattern.
+  # Full list: https://www.minecraft-guides.com/mod/spartan-weaponry/
