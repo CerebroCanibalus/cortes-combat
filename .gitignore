@@ -133,3 +133,6 @@ setup-testworld.ps1
 # cada sync y cambia por desarrollador, asi que no viaja.
 stonecutter.gradle
 
+
+# Mods downloaded for compat investigation (not part of the mod)
+mods-download/
