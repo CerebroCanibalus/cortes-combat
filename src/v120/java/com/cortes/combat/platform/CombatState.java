@@ -74,7 +74,19 @@ public final class CombatState {
     private CombatState() {
     }
 
+    /**
+     * A dead (removed=KILLED) entity loses its capability {@code LazyOptional} before its last
+     * tick fires -- the attach listener invalidates on unload and the tick handler still runs.
+     * The 1.21.1 twin never sees this: attachments live on the object itself. Here a removed
+     * entity reads as its defaults and its writes land nowhere, which is the attachment
+     * semantics on a corpse: no state, no crash.
+     */
+    private static final StateBag DEAD_BAG = new StateBag();
+
     private static StateBag bag(Entity entity) {
+        if (entity.isRemoved()) {
+            return DEAD_BAG;
+        }
         return entity.getCapability(STATE).orElseThrow(() ->
                 new IllegalStateException("cortescombat:state missing on " + entity));
     }

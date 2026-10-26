@@ -1,6 +1,6 @@
 # ═══ COMPAT: Epic Knights ═══════════════════════════════════════════════════
 # Epic Knights adds medieval weapons in multiple materials.
-# Item IDs: epic_knights:<material>_<weapon>
+# Item IDs: magistuarmory:<material>_<weapon>
 # Materials: bronze, copper, iron, gold, diamond, netherite, silver, steel, tin
 # Weapons: ahlspiess, bastardsword, chainmorgenstern, chivalrylance, claymore,
 #          concavehalberd, estoc, flamebladedsword, guisarme, heavymace,
@@ -14,14 +14,14 @@ version: 1
 
 weapons:
   # ── Shortsword (fast, single-target) ──
-  - match: { id: "epic_knights:iron_shortsword" }
+  - match: { id: "magistuarmory:iron_shortsword" }
     archetype: sword
     stats: { charge: { can_charge: true, bonus: 0.5, full_charge_ticks: 35 } }
     reach: { distance: 3.0 }
     cone: { horizontal: 24, vertical: 20 }
     special: none
 
-  - match: { id: "epic_knights:diamond_shortsword" }
+  - match: { id: "magistuarmory:diamond_shortsword" }
     archetype: sword
     stats: { charge: { can_charge: true, bonus: 0.5, full_charge_ticks: 35 } }
     reach: { distance: 3.2 }
@@ -29,14 +29,14 @@ weapons:
     special: none
 
   # ── Bastardsword (heavy, wide) ──
-  - match: { id: "epic_knights:iron_bastardsword" }
+  - match: { id: "magistuarmory:iron_bastardsword" }
     archetype: sword
     stats: { charge: { can_charge: true, bonus: 0.8, full_charge_ticks: 45 } }
     reach: { distance: 3.6 }
     cone: { horizontal: 32, vertical: 24 }
     special: none
 
-  - match: { id: "epic_knights:diamond_bastardsword" }
+  - match: { id: "magistuarmory:diamond_bastardsword" }
     archetype: sword
     stats: { charge: { can_charge: true, bonus: 0.8, full_charge_ticks: 45 } }
     reach: { distance: 3.8 }
@@ -44,7 +44,7 @@ weapons:
     special: none
 
   # ── Claymore (wide, heavy) ──
-  - match: { id: "epic_knights:iron_claymore" }
+  - match: { id: "magistuarmory:iron_claymore" }
     archetype: sword
     stats: { charge: { can_charge: true, bonus: 0.8, full_charge_ticks: 45 } }
     reach: { distance: 3.8 }
@@ -52,7 +52,7 @@ weapons:
     special: none
 
   # ── Zweihander (heavy, very wide) ──
-  - match: { id: "epic_knights:iron_zweihander" }
+  - match: { id: "magistuarmory:iron_zweihander" }
     archetype: sword
     stats: { charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 50 } }
     reach: { distance: 4.0 }
@@ -60,14 +60,14 @@ weapons:
     special: none
 
   # ── Estoc (thrust, rapier) ──
-  - match: { id: "epic_knights:iron_estoc" }
+  - match: { id: "magistuarmory:iron_estoc" }
     archetype: rapier
     stats: { charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 35 } }
     reach: { distance: 3.4 }
     cone: { horizontal: 16, vertical: 14 }
     special: lunge
 
-  - match: { id: "epic_knights:diamond_estoc" }
+  - match: { id: "magistuarmory:diamond_estoc" }
     archetype: rapier
     stats: { charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 35 } }
     reach: { distance: 3.6 }
@@ -75,7 +75,7 @@ weapons:
     special: lunge
 
   # ── Flamebladed Sword (sword) ──
-  - match: { id: "epic_knights:iron_flamebladedsword" }
+  - match: { id: "magistuarmory:iron_flamebladedsword" }
     archetype: sword
     stats: { charge: { can_charge: true, bonus: 0.5, full_charge_ticks: 40 } }
     reach: { distance: 3.4 }
@@ -83,7 +83,7 @@ weapons:
     special: none
 
   # ── Katzbalger (fast, dagger-like) ──
-  - match: { id: "epic_knights:iron_katzbalger" }
+  - match: { id: "magistuarmory:iron_katzbalger" }
     archetype: dagger
     stats: { charge: { can_charge: false } }
     reach: { distance: 2.6 }
@@ -91,7 +91,7 @@ weapons:
     special: none
 
   # ── Concave Halberd (polearm, sweep) ──
-  - match: { id: "epic_knights:iron_concavehalberd" }
+  - match: { id: "magistuarmory:iron_concavehalberd" }
     archetype: polearm
     stats: { charge: { can_charge: false } }
     reach: { distance: 3.8 }
@@ -99,7 +99,7 @@ weapons:
     special: multi_hit
 
   # ── Guisarme (polearm, sweep) ──
-  - match: { id: "epic_knights:iron_guisarme" }
+  - match: { id: "magistuarmory:iron_guisarme" }
     archetype: polearm
     stats: { charge: { can_charge: false } }
     reach: { distance: 3.8 }
@@ -107,7 +107,7 @@ weapons:
     special: multi_hit
 
   # ── Lochaber Axe (polearm, sweep) ──
-  - match: { id: "epic_knights:iron_lochaberaxe" }
+  - match: { id: "magistuarmory:iron_lochaberaxe" }
     archetype: polearm
     stats: { charge: { can_charge: false } }
     reach: { distance: 3.6 }
@@ -115,7 +115,7 @@ weapons:
     special: multi_hit
 
   # ── Lucernhammer (polearm, heavy) ──
-  - match: { id: "epic_knights:iron_lucernhammer" }
+  - match: { id: "magistuarmory:iron_lucernhammer" }
     archetype: polearm
     stats: { charge: { can_charge: true, bonus: 0.8, full_charge_ticks: 50 } }
     reach: { distance: 3.6 }
@@ -123,7 +123,7 @@ weapons:
     special: none
 
   # ── Pike (thrust, long) ──
-  - match: { id: "epic_knights:iron_pike" }
+  - match: { id: "magistuarmory:iron_pike" }
     archetype: spear
     stats: { charge: { can_charge: false } }
     reach: { distance: 4.2 }
@@ -131,7 +131,7 @@ weapons:
     special: none
 
   # ── Ranseur (polearm, thrust) ──
-  - match: { id: "epic_knights:iron_ranseur" }
+  - match: { id: "magistuarmory:iron_ranseur" }
     archetype: polearm
     stats: { charge: { can_charge: false } }
     reach: { distance: 3.8 }
@@ -139,7 +139,7 @@ weapons:
     special: none
 
   # ── AHLspiess (thrust, long) ──
-  - match: { id: "epic_knights:iron_ahlspiess" }
+  - match: { id: "magistuarmory:iron_ahlspiess" }
     archetype: spear
     stats: { charge: { can_charge: false } }
     reach: { distance: 4.0 }
@@ -147,7 +147,7 @@ weapons:
     special: none
 
   # ── Chivalry Lance (thrust, long) ──
-  - match: { id: "epic_knights:iron_chivalrylance" }
+  - match: { id: "magistuarmory:iron_chivalrylance" }
     archetype: spear
     stats: { charge: { can_charge: false } }
     reach: { distance: 4.0 }
@@ -155,7 +155,7 @@ weapons:
     special: none
 
   # ── Heavy Mace (heavy) ──
-  - match: { id: "epic_knights:iron_heavymace" }
+  - match: { id: "magistuarmory:iron_heavymace" }
     archetype: mace
     stats: { charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 50 } }
     reach: { distance: 3.0 }
@@ -163,7 +163,7 @@ weapons:
     special: none
 
   # ── Heavy Warhammer (heavy, charge) ──
-  - match: { id: "epic_knights:iron_heavywarhammer" }
+  - match: { id: "magistuarmory:iron_heavywarhammer" }
     archetype: hammer
     stats: { charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 60 } }
     reach: { distance: 3.0 }
@@ -171,7 +171,7 @@ weapons:
     special: none
 
   # ── Morgenstern (mace) ──
-  - match: { id: "epic_knights:iron_morgenstern" }
+  - match: { id: "magistuarmory:iron_morgenstern" }
     archetype: mace
     stats: { charge: { can_charge: false } }
     reach: { distance: 3.0 }
@@ -179,7 +179,7 @@ weapons:
     special: none
 
   # ── Chain Morgenstern (mace) ──
-  - match: { id: "epic_knights:iron_chainmorgenstern" }
+  - match: { id: "magistuarmory:iron_chainmorgenstern" }
     archetype: mace
     stats: { charge: { can_charge: false } }
     reach: { distance: 3.2 }
@@ -187,7 +187,7 @@ weapons:
     special: none
 
   # ── Stylet (dagger, fast) ──
-  - match: { id: "epic_knights:iron_stylet" }
+  - match: { id: "magistuarmory:iron_stylet" }
     archetype: dagger
     stats: { charge: { can_charge: false } }
     reach: { distance: 2.2 }
