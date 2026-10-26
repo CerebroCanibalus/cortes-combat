@@ -50,6 +50,19 @@ public final class GuardStats {
                     declared.regenTicks() != null ? declared.regenTicks() : base.regenTicks(),
                     declared.stunTicks() != null ? declared.stunTicks() : base.stunTicks());
         }
+        // **Playtest 2026-10-26, reporte "todas se muestran con escudo": el fallback estaba
+        // contestando la pregunta equivocada.** Con una entrada resuelta (match por id o tag),
+        // el default vanilla de "cualquier SwordItem cubre un punto" aplicaba a TODOS los
+        // arquetipos ajenos -- dagas, katanas, guadañas -- porque casi todo arma de mod
+        // extiende SwordItem. El diseño dice otra cosa: la guardia es escudo o espada
+        // ("Ninguna de las cinco familias nuevas cubre"), y la capa de packs ya sabe que
+        // esa daga es una DAGGER. Regla nueva: resuelto el pack sin guardia declarada, el
+        // item vale lo que dice SU perfil resuelto -- SWORD cubre un punto, el resto nada.
+        // Un `guard:` en el YAML sigue mandando encima de todo lo de acá.
+        if (pack != null && pack.profile() != null
+                && com.cortes.combat.core.weapon.WeaponProfile.SWORD != pack.profile()) {
+            return GuardProfile.NONE;
+        }
         return vanillaDefaultFor(stack);
     }
 

@@ -182,10 +182,16 @@ public final class AttackTiming {
      * defecto. Este multiplicador aplica una reduccion ADICIONAL sobre el intervalo:</p>
      *
      * <ul>
-     *   <li>Haste I: 15% menos de cooldown (×0.85)</li>
-     *   <li>Haste II: 30% menos de cooldown (×0.70)</li>
-     *   <li>Haste III: 45% menos de cooldown (×0.55)</li>
+     *   <li>Haste I: 5% menos de cooldown (×0.95)</li>
+     *   <li>Haste II: 10% menos de cooldown (×0.90)</li>
+     *   <li>Haste III: 15% menos de cooldown (×0.85)</li>
      * </ul>
+     *
+     * <p><b>Playtest 2026-10-26: la escala de 15/30/45% era "ridicula" — un Haste II
+     * pegaba treinta por ciento mas rapido que el mismo arma sin prisa, y eso es un efecto
+     * de velocidad de ataque completo por arriba del boost vanilla. Nerfeada con fuerza:
+     * la reduccion nunca pasa de 15%, menos que el boost vanilla de un nivel. La misma
+     * tabla gobierna la carga via {@link #effectiveFullChargeTicks}.</b></p>
      *
      * <p>Se aplica sobre el intervalo en ticks (no sobre la velocidad), porque es lo que
      * el jugador pide: "el cooldown se reduce en X%". Valores por encima de III se clampean
@@ -197,11 +203,37 @@ public final class AttackTiming {
         }
         int clamped = Math.min(hasteLevel, 3);
         return switch (clamped) {
-            case 1 -> 0.85;
-            case 2 -> 0.70;
-            case 3 -> 0.55;
+            case 1 -> 0.95;
+            case 2 -> 0.90;
+            case 3 -> 0.85;
             default -> 1.0;
         };
+    }
+
+    /**
+     * La ventana de carga EFECTIVA bajo Haste.
+     *
+     * <p><b>Haste acelera la carga tambien — peticion de playtest 2026-10-26:</b> sin esto la
+     * prisa aceleraba el swing pero NO el hold, y un arma de carga larga seguia cobrando los
+     * mismos ticks a plena prisa. La ventana se acorta con el MISMO multiplicador nerfeado
+     * del cooldown: 35 ticks × 0.85 (Haste III) = 30 ticks. <b>Multiplicar, no dividir</b>:
+     * la primera version de esta funcion dividia por el multiplicador (35/0.85 = 41) y
+     * AGRANDABA la ventana bajo prisa — el signo equivocado, aguas arriba del assert del
+     * test. (μ_μ)</p>
+     *
+     * <p><b>Se pregunta en lectura, nunca en el dato.</b> {@code ChargeProfile.fullChargeTicks()}
+     * es el componente del item y se usa en el server (dano, cooldown) y en el cliente
+     * (prediccion de la barra); ambos lados llaman esta funcion con SU nivel de Haste, y el
+     * un solo nombre para la cuenta es lo que evita que el jugador vea la barra llena cuando
+     * el server todavia esta contando la mitad. El piso de {@code MIN_CHARGE_HOLD_TICKS}
+     * sigue ahi, y con Haste de sobra no baja del piso.</p>
+     *
+     * @param fullChargeTicks la ventana base del arma, sin Haste
+     * @param hasteLevel nivel de Haste del portador (0 sin el efecto)
+     */
+    public static int effectiveFullChargeTicks(int fullChargeTicks, int hasteLevel) {
+        int shorter = (int) Math.round(fullChargeTicks * hasteCooldownMultiplier(hasteLevel));
+        return Math.max(Math.min(shorter, fullChargeTicks), MIN_CHARGE_HOLD_TICKS);
     }
 
     /**

@@ -196,6 +196,22 @@ public final class GuardHandler {
         float incoming = event.getAmount();
 
         GuardStats.Resolved guard = bestFor(player);
+        GuardState posture = CombatState.guard(player);
+        // **Playtest 2026-10-26: el reporte fue "bloqueo y me da el golpe como si nada", y la
+        //leccion de la ronda de los FX manda el paso siguiente al retunear: MEDIR.** Un solo
+        //log por golpe a jugador con las tres preguntas que deciden el bloqueo -- item,
+        //postura, arco -- para que la próxima misión muestre qué rama se falla sin adivinar
+        //(una rama que no tracea es exactamente el `[flash/bar]` que nunca imprimió).
+        //Instrumento de misión; se saca cuando el playtest del bloqueo cierre. (⌒‿⌒)
+        org.slf4j.LoggerFactory.getLogger("cortescombat").info(
+                "[guardia] golpe: arma={} perfil:{} postura(held={},max={},stam={}) dano={}",
+                guard.item().toString(),
+                guard.profile().points(),
+                posture.held(),
+                posture.max(),
+                posture.stamina(),
+                incoming);
+
         if (!guard.canGuard()) {
             return;
         }

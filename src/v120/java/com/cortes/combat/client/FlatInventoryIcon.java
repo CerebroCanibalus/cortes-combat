@@ -82,18 +82,24 @@ public final class FlatInventoryIcon {
     }
 
     /**
-     * The flat icon, keyed the way item models are keyed.
+     * The flat icon as a PLAIN {@code ResourceLocation}, no variant.
      *
-     * <p><b>Two arguments, and that is the only constructor that exists in 1.21.1.</b>
-     * {@code ModelResourceLocation} is a record of one {@link
-     * net.minecraft.resources.ResourceLocation} and one variant string, and the namespace goes
-     * inside the first. A three-argument form reads more naturally and does not compile, which
-     * is {@code javac} answering a question about an API rather than a guess about it.</p>
+     * <p><b>Verified in the Forge 1.20.1 sources, not inferred:</b> the patch to {@code
+     * ModelBakery} types the additional-models set as {@code Set<ResourceLocation>} and loads
+     * each entry with {@code loadTopLevel(rl)} "without the ModelResourceLocation limitation".
+     * Registering a {@code ModelResourceLocation} with the NeoForge-1.21.1 {@code "standalone"}
+     * variant here landed on vanilla's BLOCKSTATE lookup instead &mdash; the client log carried
+     * the evidence line,</p>
+     *
+     * <pre>Exception loading blockstate definition: 'cortescombat:blockstates/arcabuz_icon.json'
+     * missing model for variant: 'cortescombat:arcabuz_icon#'</pre>
+     *
+     * <p>&mdash; and what got baked under the MRL key was not the icon but the MISSING model:
+     * {@code models.get(ICON)} returned non-null as always, the "listo" line printed as always,
+     * and the slot drew the magenta checkerboard. The map lookup below reads the same plain
+     * {@code ResourceLocation} beside it. (⌒‿⌒)</p>
      */
-    // **Standalone, no inventory:** NeoForge's RegisterAdditional rejects any other variant
-    // ("Side-loaded models must use the 'standalone' variant") -- and this is the file that
-    // threw it the first time the listener below was actually wired.
-    private static final ModelResourceLocation ICON = new ModelResourceLocation(ResourceIds.rl("arcabuz_icon"), "standalone");
+    private static final ResourceLocation ICON = ResourceIds.rl("arcabuz_icon");
 
     /**
      * Ask for the icon, because nothing else does.
@@ -117,6 +123,7 @@ public final class FlatInventoryIcon {
      */
     @SubscribeEvent
     public static void onRegisterAdditional(ModelEvent.RegisterAdditional event) {
+        // 1.20.1: plain ResourceLocation, no variant. See ICON for the client log that proved it.
         event.register(ICON);
     }
 

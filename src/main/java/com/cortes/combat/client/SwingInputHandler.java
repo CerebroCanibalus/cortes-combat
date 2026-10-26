@@ -1021,15 +1021,23 @@ public final class SwingInputHandler {
             return 0.0F;
         }
         ChargeProfile charge = WeaponStats.of(player.getMainHandItem()).charge();
+        // Prediccion con la ventana efectiva de Haste: el mismo nombre que corre el server
+        // (AttackTiming#effectiveFullChargeTicks), si no la barra llena mientras el server
+        // todavia esta contando. (⌒‿⌒)
         return AttackTiming.chargeRatioFor(
-                predictedTicks, charge.fullChargeTicks(), charge.canCharge());
+                predictedTicks,
+                AttackTiming.effectiveFullChargeTicks(charge.fullChargeTicks(),
+                        WeaponStats.hasteLevelOf(player)),
+                charge.canCharge());
     }
 
     private static float predictedRatio(LocalPlayer player) {
         if (!holding || predictedTicks <= 0) {
             return 0.0F;
         }
-        int full = WeaponStats.of(player.getMainHandItem()).charge().fullChargeTicks();
+        ChargeProfile charge = WeaponStats.of(player.getMainHandItem()).charge();
+        int full = AttackTiming.effectiveFullChargeTicks(charge.fullChargeTicks(),
+                WeaponStats.hasteLevelOf(player));
         if (full <= 0) {
             return 0.0F;
         }

@@ -376,8 +376,9 @@ public final class WeaponStats {
         return Math.max(1, (int) Math.round(interval * multiplier));
     }
 
-    /** Nivel de Haste del holder (0 si no tiene el efecto). */
-    private static int hasteLevelOf(LivingEntity holder) {
+    /** Nivel de Haste del holder (0 si no tiene el efecto). Publico: el balance de la carga
+     * lo lee el cliente (prediccion) y el server (dano) por la misma puerta. */
+    public static int hasteLevelOf(LivingEntity holder) {
         net.minecraft.world.effect.MobEffectInstance effect = holder.getEffect(net.minecraft.world.effect.MobEffects.DIG_SPEED);
         if (effect == null) {
             return 0;

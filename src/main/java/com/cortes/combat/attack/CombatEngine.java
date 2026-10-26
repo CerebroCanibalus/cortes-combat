@@ -111,7 +111,7 @@ public final class CombatEngine {
         CombatState.setPendingHit(player,
                 com.cortes.combat.state.PendingHit.NONE);
 
-        float ratio = chargedRatio(charge, stats.charge());
+        float ratio = chargedRatio(player, charge, stats.charge());
         resolveTarget(player, targetId, stats, ratio);
 
         // **La onda de filo sale con el tajo, acierte o no.** Ver fireSweepingWave: vive acá porque
@@ -141,10 +141,21 @@ public final class CombatEngine {
      * <p>The threshold is a hard cut, not a scale. A swing under it is exactly a normal hit,
      * because a click that quietly did a bit more is a click the player cannot learn from
      * watching, and the only way they would find out is by having hit for less than expected.</p>
+     *
+     * <p>Weighs Haste through {@link AttackTiming#effectiveFullChargeTicks}: prisa acelera la
+     * carga (peticion de playtest), y el mismo nombre de la funcion es la cuenta del server.</p>
      */
-    private static float chargedRatio(ChargeState charge, ChargeProfile profile) {
+    private static float chargedRatio(Player player, ChargeState charge, ChargeProfile profile) {
         return AttackTiming.chargeRatioFor(
-                charge.ticks(), profile.fullChargeTicks(), profile.canCharge());
+                charge.ticks(),
+                effectiveHasteWindow(player, profile),
+                profile.canCharge());
+    }
+
+    /** Ventana de carga efectiva bajo Haste; niveles del propio portador. */
+    public static int effectiveHasteWindow(Player player, ChargeProfile profile) {
+        return AttackTiming.effectiveFullChargeTicks(profile.fullChargeTicks(),
+                com.cortes.combat.attack.WeaponStats.hasteLevelOf(player));
     }
 
     private static void resolveTarget(Player player, int targetId, WeaponStats stats,

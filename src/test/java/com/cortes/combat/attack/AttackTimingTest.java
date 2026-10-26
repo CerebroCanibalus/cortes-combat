@@ -244,28 +244,28 @@ class AttackTimingTest {
         }
 
         @Test
-        @DisplayName("Haste I reduce el cooldown un 15% (×0.85)")
+        @DisplayName("Haste I reduce el cooldown un 5% (×0.95)")
         void hasteI() {
-            assertEquals(0.85, AttackTiming.hasteCooldownMultiplier(1), 0.0);
+            assertEquals(0.95, AttackTiming.hasteCooldownMultiplier(1), 0.0);
         }
 
         @Test
-        @DisplayName("Haste II reduce el cooldown un 30% (×0.70)")
+        @DisplayName("Haste II reduce el cooldown un 10% (×0.90)")
         void hasteII() {
-            assertEquals(0.70, AttackTiming.hasteCooldownMultiplier(2), 0.0);
+            assertEquals(0.90, AttackTiming.hasteCooldownMultiplier(2), 0.0);
         }
 
         @Test
-        @DisplayName("Haste III reduce el cooldown un 45% (×0.55)")
+        @DisplayName("Haste III reduce el cooldown un 15% (×0.85)")
         void hasteIII() {
-            assertEquals(0.55, AttackTiming.hasteCooldownMultiplier(3), 0.0);
+            assertEquals(0.85, AttackTiming.hasteCooldownMultiplier(3), 0.0);
         }
 
         @Test
-        @DisplayName("niveles por encima de III se clampean a 45%")
+        @DisplayName("niveles por encima de III se clampean a 15%")
         void clamped() {
-            assertEquals(0.55, AttackTiming.hasteCooldownMultiplier(4), 0.0);
-            assertEquals(0.55, AttackTiming.hasteCooldownMultiplier(10), 0.0);
+            assertEquals(0.85, AttackTiming.hasteCooldownMultiplier(4), 0.0);
+            assertEquals(0.85, AttackTiming.hasteCooldownMultiplier(10), 0.0);
         }
 
         @Test
@@ -273,6 +273,50 @@ class AttackTimingTest {
         void negative() {
             assertEquals(1.0, AttackTiming.hasteCooldownMultiplier(-1), 0.0);
             assertEquals(1.0, AttackTiming.hasteCooldownMultiplier(-5), 0.0);
+        }
+    }
+
+    @Nested
+    @DisplayName("haste carga EFECTIVA (playtest 2026-10-26)")
+    class HasteCharge {
+
+        @Test
+        @DisplayName("sin Haste la ventana es la del arma, sin cambio")
+        void noHaste() {
+            assertEquals(35, AttackTiming.effectiveFullChargeTicks(35, 0));
+            assertEquals(50, AttackTiming.effectiveFullChargeTicks(50, 0));
+        }
+
+        @Test
+        @DisplayName("Haste III acorta una ventana de 35 a 30 (×0.85)")
+        void hasteIII() {
+            assertEquals(30, AttackTiming.effectiveFullChargeTicks(35, 3));
+        }
+
+        @Test
+        @DisplayName("Haste II acorta 35 a 31-32 (×0.90) y I a 33 (×0.95)")
+        void escalation() {
+            assertEquals(32, AttackTiming.effectiveFullChargeTicks(35, 2));
+            assertEquals(33, AttackTiming.effectiveFullChargeTicks(35, 1));
+        }
+
+        @Test
+        @DisplayName("una ventana que se AGRANDA bajo Haste es el bug del cociente al revés")
+        void windowCanOnlyShrink() {
+            // La ventana efectiva nunca es MAYOR que la base. El guard protege el signo,
+            // no el número redondo: si una edición futura invierte otra vez la cuenta
+            // (35/0.95 = 37), este test muere antes que el reloj del playtest. (μ_μ)
+            assertTrue(AttackTiming.effectiveFullChargeTicks(35, 1) < 35);
+            assertTrue(AttackTiming.effectiveFullChargeTicks(35, 2) < 35);
+            assertTrue(AttackTiming.effectiveFullChargeTicks(35, 3) < 35);
+        }
+
+        @Test
+        @DisplayName("el piso de MIN_CHARGE_HOLD_TICKS se respeta: la carga nunca baja de tap")
+        void floorIsHonoured() {
+            int min = 4;
+            assertEquals(min, AttackTiming.effectiveFullChargeTicks(min, 3));
+            assertTrue(AttackTiming.effectiveFullChargeTicks(min, 3) >= min);
         }
     }
 

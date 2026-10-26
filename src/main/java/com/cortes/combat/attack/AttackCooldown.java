@@ -96,9 +96,12 @@ public final class AttackCooldown {
      * readout is the one a player looks at.</p>
      */
     public static float chargeRatio(Player player, ChargeProfile profile) {
+        // Haste acelera la carga: la misma ventana efectiva que el server cobra en el swing
+        // (CombatEngine#effectiveHasteWindow llama a esta funcion hermana).
         return AttackTiming.chargeRatioFor(
                 CombatState.charge(player).ticks(),
-                profile.fullChargeTicks(),
+                AttackTiming.effectiveFullChargeTicks(profile.fullChargeTicks(),
+                        WeaponStats.hasteLevelOf(player)),
                 profile.canCharge());
     }
 
