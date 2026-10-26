@@ -234,6 +234,49 @@ class AttackTimingTest {
     }
 
     @Nested
+    @DisplayName("haste cooldown multiplier")
+    class HasteCooldown {
+
+        @Test
+        @DisplayName("sin Haste el multiplicador es 1.0")
+        void noHaste() {
+            assertEquals(1.0, AttackTiming.hasteCooldownMultiplier(0), 0.0);
+        }
+
+        @Test
+        @DisplayName("Haste I reduce el cooldown un 15% (×0.85)")
+        void hasteI() {
+            assertEquals(0.85, AttackTiming.hasteCooldownMultiplier(1), 0.0);
+        }
+
+        @Test
+        @DisplayName("Haste II reduce el cooldown un 30% (×0.70)")
+        void hasteII() {
+            assertEquals(0.70, AttackTiming.hasteCooldownMultiplier(2), 0.0);
+        }
+
+        @Test
+        @DisplayName("Haste III reduce el cooldown un 45% (×0.55)")
+        void hasteIII() {
+            assertEquals(0.55, AttackTiming.hasteCooldownMultiplier(3), 0.0);
+        }
+
+        @Test
+        @DisplayName("niveles por encima de III se clampean a 45%")
+        void clamped() {
+            assertEquals(0.55, AttackTiming.hasteCooldownMultiplier(4), 0.0);
+            assertEquals(0.55, AttackTiming.hasteCooldownMultiplier(10), 0.0);
+        }
+
+        @Test
+        @DisplayName("niveles negativos no cambian nada")
+        void negative() {
+            assertEquals(1.0, AttackTiming.hasteCooldownMultiplier(-1), 0.0);
+            assertEquals(1.0, AttackTiming.hasteCooldownMultiplier(-5), 0.0);
+        }
+    }
+
+    @Nested
     @DisplayName("spread")
     class Spread {
 

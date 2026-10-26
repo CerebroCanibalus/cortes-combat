@@ -169,6 +169,24 @@ the charge subtract, or pass the knockback ceilings.
 
 ---
 
+## Haste (Mining Fatigue's opposite)
+
+The mod's hard cooldown is normally unaffected by vanilla's Haste effect, because Haste only
+touches the attack speed attribute (which the mod's cooldown already reads). To make Haste
+matter, the mod applies an **additional** cooldown reduction on top of vanilla's +10% per
+level:
+
+| Haste level | Vanilla attack speed | Hard cooldown reduction |
+|---|---|---|
+| I | +10% | −15% (×0.85) |
+| II | +20% | −30% (×0.70) |
+| III | +30% | −45% (×0.55) |
+
+The two effects stack: a Haste III player swings 30% faster (vanilla) AND has a 45% shorter
+hard cooldown. Levels above III are clamped to III.
+
+---
+
 ## Poses (1st person animation)
 
 A pose is a JSON file that describes how the weapon moves in first person. It lives in a

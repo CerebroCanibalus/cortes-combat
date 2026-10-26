@@ -163,6 +163,24 @@ invariante), hacer que la carga reste, ni pasar los techos de knockback.
 
 ---
 
+## Haste (prisa minera)
+
+El cooldown duro del mod normalmente no se ve afectado por el Haste de vanilla, porque el
+Haste solo toca el atributo de velocidad de ataque (que el cooldown del mod ya lee). Para que
+el Haste importe, el mod aplica una reducción de cooldown **adicional** sobre el +10% por
+nivel de vanilla:
+
+| Nivel de Haste | Velocidad de ataque vanilla | Reducción del cooldown duro |
+|---|---|---|
+| I | +10% | −15% (×0.85) |
+| II | +20% | −30% (×0.70) |
+| III | +30% | −45% (×0.55) |
+
+Los dos efectos se acumulan: un jugador con Haste III golpea 30% más rápido (vanilla) Y tiene
+un cooldown duro 45% más corto. Niveles por encima de III se clampean a III.
+
+---
+
 ## Cómo probarlo
 
 | Comando | Qué hace |

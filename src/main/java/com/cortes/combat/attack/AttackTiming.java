@@ -174,6 +174,37 @@ public final class AttackTiming {
     }
 
     /**
+     * Multiplicador del cooldown duro por nivel de Haste (prisa minera).
+     *
+     * <p>El Haste vanilla ya sube la velocidad de ataque (+10% por nivel), que es lo que
+     * modifica el atributo {@code ATTACK_SPEED} y por lo tanto ya reduce el intervalo base.
+     * Pero el mod usa un cooldown duro que se calcula aparte, y el Haste no lo toca por
+     * defecto. Este multiplicador aplica una reduccion ADICIONAL sobre el intervalo:</p>
+     *
+     * <ul>
+     *   <li>Haste I: 15% menos de cooldown (×0.85)</li>
+     *   <li>Haste II: 30% menos de cooldown (×0.70)</li>
+     *   <li>Haste III: 45% menos de cooldown (×0.55)</li>
+     * </ul>
+     *
+     * <p>Se aplica sobre el intervalo en ticks (no sobre la velocidad), porque es lo que
+     * el jugador pide: "el cooldown se reduce en X%". Valores por encima de III se clampean
+     * a III. Sin Haste (nivel 0) el multiplicador es 1.0 (sin cambio).</p>
+     */
+    public static double hasteCooldownMultiplier(int hasteLevel) {
+        if (hasteLevel <= 0) {
+            return 1.0;
+        }
+        int clamped = Math.min(hasteLevel, 3);
+        return switch (clamped) {
+            case 1 -> 0.85;
+            case 2 -> 0.70;
+            case 3 -> 0.55;
+            default -> 1.0;
+        };
+    }
+
+    /**
      * Damage multiplier from a charge ratio. Always at least 1.0: charging only ever adds,
      * it never subtracts, so holding the button is always safe and never a gamble.
      *

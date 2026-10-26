@@ -367,7 +367,22 @@ public final class WeaponStats {
     /** As above, for a profile whose tempo is already known. */
     public static int attackInterval(LivingEntity holder, WeaponProfile profile) {
         double base = holder.getAttributeValue(Attributes.ATTACK_SPEED);
-        return AttackTiming.scaleFor(base, TEMPO.getOrDefault(profile, 1.0F));
+        int interval = AttackTiming.scaleFor(base, TEMPO.getOrDefault(profile, 1.0F));
+        // Haste (prisa minera) reduce el cooldown duro adicionalmente.
+        // El Haste vanilla ya sube ATTACK_SPEED (+10%/nivel), que ya reduce el intervalo base.
+        // Este multiplicador aplica la reduccion extra sobre el cooldown duro.
+        int hasteLevel = hasteLevelOf(holder);
+        double multiplier = AttackTiming.hasteCooldownMultiplier(hasteLevel);
+        return Math.max(1, (int) Math.round(interval * multiplier));
+    }
+
+    /** Nivel de Haste del holder (0 si no tiene el efecto). */
+    private static int hasteLevelOf(LivingEntity holder) {
+        net.minecraft.world.effect.MobEffectInstance effect = holder.getEffect(net.minecraft.world.effect.MobEffects.DIG_SPEED);
+        if (effect == null) {
+            return 0;
+        }
+        return effect.getAmplifier() + 1;
     }
 
     /** Per-profile interval multiplier. 1.0 is vanilla's own tempo, unmodified. */
