@@ -1,0 +1,57 @@
+# ═══ EXAMPLE COMPAT PACK / PACK DE COMPAT DE EJEMPLO ══════════════════════════
+# This file is an EXAMPLE. Copy it to config/cortescombat/weapons/ and rename
+# to .yaml to activate it. The IDs below are fictional: replace them with the
+# ones from the mod you want to compatibilize.
+# Este archivo es un EJEMPLO. Copialo a config/cortescombat/weapons/ y
+# renombra a .yaml para activarlo. Los IDs de abajo son ficticios: sustituye
+# por los del mod que quieras compatibilizar.
+# (Official compat packs ship in future versions. / Los packs oficiales de compat
+# se shippean en futuras versiones.)
+version: 1
+
+weapons:
+  # Ejemplo: espada de Tinkers' Construct (ID ficticio)
+  - match: { id: "tconstruct:broadsword" }
+    archetype: sword
+    stats:
+      damage: 5.0
+      attack_speed: 1.4
+    reach: { distance: 3.2 }
+    cone: { horizontal: 30, vertical: 24 }
+    special: none
+
+  # Ejemplo: hacha de combate de otro mod
+  - match: { tag: "#some_mod:combat_axes" }
+    archetype: axe
+    stats:
+      damage: 6.0
+      attack_speed: 1.2
+    reach: { distance: 2.8 }
+    cone: { horizontal: 26, vertical: 20 }
+    special: none
+
+  # Ejemplo: crear un arma nueva con assets propios
+  - creates: mimod:espada_custom
+    archetype: rapier
+    stats:
+      damage: 7.0
+      attack_speed: 1.8
+      durability: 400
+      charge:
+        can_charge: true
+        bonus: 1.0
+        full_charge_ticks: 40
+    reach: { distance: 3.6 }
+    cone: { horizontal: 28, vertical: 22 }
+    special: lunge
+    display:
+      name: "Espada Custom"
+      tab: cortescombat
+    texture:
+      slash: mimod:textures/particle/slash/espada.png
+    sounds:
+      swing: mimod:espada_swing
+      hit: mimod:espada_hit
+      charged: mimod:espada_charged
+    animation:
+      pose: mimod:espada_custom

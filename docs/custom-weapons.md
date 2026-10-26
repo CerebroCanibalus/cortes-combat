@@ -24,6 +24,10 @@ The first time it starts it also drops an annotated example at
 `config/cortescombat/weapons/ejemplo.yaml.example`, with every field commented in Spanish and
 English. Copy it to `mi_pack.yaml` and start from there.
 
+The first time it starts it also writes `config/cortescombat/weapons/cortescombat_weapons.yaml`
+with all of the mod's own weapons, so you can edit their stats directly. Run `/cc export weapons`
+to generate a timestamped copy instead (useful for backups).
+
 ---
 
 ## Case 1 — Getting another mod's weapons into combat
@@ -104,6 +108,7 @@ What surrounds it (none of it is ours, you make it):
 | Icon | `resourcepacks/.../assets/mitunmod/models/item/cuchillo_de_rubi.json` + its texture |
 | Sounds | `sounds.json` + the `.ogg` files in the same resource pack |
 | Slash sprite | `assets/mitunmod/textures/particle/slash/rubi.png` |
+| Pose (1st person) | `assets/mitunmod/poses/cuchillo.json` (JSON, see below) |
 | Recipe | A normal datapack: `recipes/cuchillo_de_rubi.json` referencing `mitunmod:cuchillo_de_rubi` |
 
 Without an icon the item shows up with the usual purple cube (and complains on its own). Without
@@ -164,11 +169,78 @@ the charge subtract, or pass the knockback ceilings.
 
 ---
 
+## Poses (1st person animation)
+
+A pose is a JSON file that describes how the weapon moves in first person. It lives in a
+resource pack, because it is an asset (like a texture or a sound).
+
+### Where the file goes
+
+```
+resourcepacks/<your-pack>/
+└── assets/<namespace>/
+    └── poses/
+        └── <id>.json          ← the pose file
+```
+
+For example, if your YAML says `animation.pose: mimod:espada_custom`, the file must be at:
+
+```
+resourcepacks/mimod-pack/assets/mimod/poses/espada_custom.json
+```
+
+### What the file looks like
+
+```json
+{
+  "id": "mimod:espada_custom",          // must match the file's address
+  "axes": "first_person",                // reference frame: first_person
+  "rest": {                              // resting position (metres + degrees)
+    "x": 0.0, "y": 0.0, "z": 0.0,
+    "pitch": 0.0, "yaw": 0.0, "roll": 0.0
+  },
+  "tracks": [                            // the movements
+    {
+      "channel": "WINDUP",               // WINDUP | STRIKE | CHOP | RECOVER | COOLDOWN | ...
+      "curve": "expo",                   // linear | back | expo | elastic | bounce | ...
+      "amplitude": {                     // how much it moves
+        "x": 0.0, "y": 0.0, "z": 0.0,
+        "pitch": -20.0, "yaw": 0.0, "roll": 0.0
+      },
+      "tremor": { "x": 0.0, "y": 0.0, "z": 0.0, "pitch": 0.0, "yaw": 0.0, "roll": 0.0 },
+      "tremor_hz": 0.0,                  // vibration frequency
+      "tremor_weight": "linear"          // vibration weight curve
+    }
+  ]
+}
+```
+
+### Available channels
+
+`WINDUP`, `STRIKE`, `CHOP`, `RECOVER`, `COOLDOWN`, `HOLD`, `GUARD`, `BREAK`, `PARRY`,
+`LUNGE`, `SWEEP`, `HELD`, `RELOAD`, `SHOOT`
+
+### How it resolves
+
+1. The weapon's YAML names a pose id (`animation.pose`)
+2. The game looks for `assets/<ns>/poses/<id>.json` in the active resource packs
+3. If found, it is compiled to a viewmodel profile and used for 1st person
+4. If not found, a warning is logged and the archetype's default pose is used
+5. The 3rd person body still uses the archetype's profile (poses only move the hand in 1st person)
+
+### Recarga
+
+- **Stats (YAML)**: `/cc reload` (instant, no restart)
+- **Assets (poses, sprites, sounds)**: `F3+T` (resource reload)
+
+---
+
 ## How to test it
 
 | Command | What it does |
 |---|---|
 | `/cc reload` | Re-reads the YAMLs without restarting (new assets need `F3+T`) |
+| `/cc export weapons` | Dumps all of the mod's own weapons to an editable YAML in `config/cortescombat/weapons/` |
 | `/cc packs` | Lists the loaded packs + which entry matches the weapon in your hand |
 | `/cc stats` | Resolved stats of the weapon in hand, with **`source=`**: `pack id=tercermod:x` means your entry is in charge; `sin pack (tag molde → vanilla → NONE)` means nobody spoke and it fell to the usual tree |
 

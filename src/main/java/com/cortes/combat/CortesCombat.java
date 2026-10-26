@@ -96,6 +96,9 @@ public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         // del reload y no en un lifecycle event: es escritura de disco de una sola vez y aquÃ­
         // ya sabemos que los packs cargaron.
         com.cortes.combat.weaponpack.WeaponPackTemplate.writeIfMissing();
+        // Expone las armas base del mod como YAML editable en config/cortescombat/weapons/.
+        // Solo se genera si no existe (no pisa ediciones del usuario).
+        com.cortes.combat.weaponpack.WeaponPackExporter.exportIfMissing();
         LOGGER.info("CortÃ©s Combat loading");
     }
 }

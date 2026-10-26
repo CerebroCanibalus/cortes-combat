@@ -87,7 +87,9 @@ But be careful of feeding it a bit too much...
 
 You can add your own weapons and compatibility with other mods through a YAML file in `config/cortescombat/weapons/`, describe a weapon by its item id, or invent one that does not exist yet and hand it the stats you like. A datapack tag can point at a weapon and say "treat this like a halberd". It is able to hotreload stat changes and load custom sprites and sounds through a resourcepack.
 
-The first time the mod runs it drops an annotated example at `config/cortescombat/weapons/ejemplo.yaml.example`, with every field commented in Spanish and English.
+The first time the mod runs it drops an annotated example at `config/cortescombat/weapons/`, with every field commented in Spanish and English. A guide is also dropped at `config/cortescombat/weapons/GUIA_WEAPON_PACKS.md`.
+
+The first time the mod runs it writes `config/cortescombat/weapons/cortescombat_weapons.yaml` with all of the mod's own weapons, so you can edit their stats directly. Run `/cc export weapons` to generate a timestamped copy instead (useful for backups). Either way, edit the file and reload with `/cc reload`.
 
 Check the guide in:
 [`docs/custom-weapons.md`](docs/custom-weapons.md), or in Spanish in
@@ -129,6 +131,10 @@ Yes you can comrade. Almost everything the mod adds is configurable.
 **Why does my weapon from another mod hits like a punch?**
 Nothing has claimed it, so it fell back to a bare handed profile. Write a pack entry or a tag for
 it, see [`docs/custom-weapons.md`](docs/custom-weapons.md).
+
+**How do I edit the mod's own weapons?**
+Run `/cc export weapons` in-game. It dumps every weapon to a timestamped YAML in
+`config/cortescombat/weapons/`. Edit the file, then run `/cc reload` to apply.
 
 **Is it multiplayer compatible?**
 Yes and fully tested!

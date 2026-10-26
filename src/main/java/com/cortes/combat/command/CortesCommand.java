@@ -77,6 +77,9 @@ public final class CortesCommand {
                         .executes(CortesCommand::reloadPacks))
                 .then(Commands.literal("packs")
                         .executes(CortesCommand::showPacks))
+                .then(Commands.literal("export")
+                        .then(Commands.literal("weapons")
+                                .executes(CortesCommand::exportWeapons)))
                 .then(Commands.literal("viewmodel")
                         .executes(CortesCommand::showViewmodel))
                 .then(Commands.literal("cone")
@@ -274,6 +277,17 @@ public final class CortesCommand {
                         + " entradas, " + summary.warnings() + " warnings (en el log)."
                         + " Assets nuevos: F3+T."), false);
         return summary.entries();
+    }
+
+    private static int exportWeapons(CommandContext<CommandSourceStack> ctx) {
+        try {
+            var path = com.cortes.combat.weaponpack.WeaponPackExporter.export();
+            ctx.getSource().sendSuccess(() -> Component.literal("Armas propias exportadas a " + path.toAbsolutePath() + ". Edita y usa /cc reload."), false);
+            return 1;
+        } catch (Exception e) {
+            ctx.getSource().sendFailure(Component.literal("Error al exportar: " + e.getMessage()));
+            return 0;
+        }
     }
 
     /** {@code /cc packs}: qué hay cargado, y qué entrada matchea el arma de la mano. */

@@ -19,6 +19,10 @@ La primera vez que el mod arranca te escribe una carpeta de ejemplo en
 `resourcepacks/cortescombat-weapon-pack/` con el `pack.mcmeta` y las carpetas listas —
 activála como resource pack y ahí tirás tus archivos.
 
+La primera vez que arranca también escribe `config/cortescombat/weapons/cortescombat_weapons.yaml`
+con todas las armas propias del mod, para que edites sus stats directamente. Usá `/cc export weapons`
+para generar una copia con timestamp (útil para backups).
+
 ---
 
 ## Caso 1 — Que las armas de otro mod entren al combate
@@ -184,3 +188,69 @@ invariante), hacer que la carga reste, ni pasar los techos de knockback.
 - **No aparece en la pestaña** — `display.tab` sólo conoce `cortescombat`; usá `/give`.
 - **Más detalles**: `docs/weapon-packs-design.md` (diseño completo) y `/cc packs` para ver qué
   hay cargado ahora mismo.
+
+---
+
+## Poses (animación en 1ª persona)
+
+Una pose es un archivo JSON que describe cómo se mueve el arma en primera persona. Vive en un
+resource pack, porque es un asset (igual que una textura o un sonido).
+
+### Dónde va el archivo
+
+```
+resourcepacks/<tu-pack>/
+└── assets/<namespace>/
+    └── poses/
+        └── <id>.json          ← el archivo de pose
+```
+
+Por ejemplo, si tu YAML dice `animation.pose: mimod:espada_custom`, el archivo debe estar en:
+
+```
+resourcepacks/mimod-pack/assets/mimod/poses/espada_custom.json
+```
+
+### Cómo se ve el archivo
+
+```json
+{
+  "id": "mimod:espada_custom",          // debe coincidir con la dirección del archivo
+  "axes": "first_person",                // frame de referencia: first_person
+  "rest": {                              // posición de reposo (metros y grados)
+    "x": 0.0, "y": 0.0, "z": 0.0,
+    "pitch": 0.0, "yaw": 0.0, "roll": 0.0
+  },
+  "tracks": [                            // los movimientos
+    {
+      "channel": "WINDUP",               // WINDUP | STRIKE | CHOP | RECOVER | COOLDOWN | ...
+      "curve": "expo",                   // linear | back | expo | elastic | bounce | ...
+      "amplitude": {                     // cuánto se mueve
+        "x": 0.0, "y": 0.0, "z": 0.0,
+        "pitch": -20.0, "yaw": 0.0, "roll": 0.0
+      },
+      "tremor": { "x": 0.0, "y": 0.0, "z": 0.0, "pitch": 0.0, "yaw": 0.0, "roll": 0.0 },
+      "tremor_hz": 0.0,                  // frecuencia de vibración
+      "tremor_weight": "linear"          // curva de peso de la vibración
+    }
+  ]
+}
+```
+
+### Canales disponibles
+
+`WINDUP`, `STRIKE`, `CHOP`, `RECOVER`, `COOLDOWN`, `HOLD`, `GUARD`, `BREAK`, `PARRY`,
+`LUNGE`, `SWEEP`, `HELD`, `RELOAD`, `SHOOT`
+
+### Cómo se resuelve
+
+1. El YAML del arma nombra un id de pose (`animation.pose`)
+2. El juego busca `assets/<ns>/poses/<id>.json` en los resource packs activos
+3. Si existe, se compila a un perfil de viewmodel y se usa en 1ª persona
+4. Si no existe, se avisa en el log y se usa la pose por defecto del arquetipo
+5. El cuerpo en 3ª persona sigue usando el perfil del arquetipo (las poses solo mueven la mano en 1ª)
+
+### Recarga
+
+- **Stats (YAML)**: `/cc reload` (al instante, sin reiniciar)
+- **Assets (poses, sprites, sonidos)**: `F3+T` (resource reload)
