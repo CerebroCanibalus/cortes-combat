@@ -5,6 +5,9 @@
 # Soulslike Weaponry item IDs follow the pattern: soulsweapons:<weapon_name>
 # e.g.: soulsweapons:iron_katana, soulsweapons:moonlight_greatsword
 #
+# NOTE: Soulslike Weaponry is Fabric-only for 1.21.1. No NeoForge version exists.
+# The template below uses guessed IDs. Verify against the actual mod if available.
+#
 # NOTE: This mod's weapons have unique on-hit effects and special abilities.
 # Our system handles combat (reach, cone, charge, cooldown) while their code
 # handles the special effects. Both coexist.

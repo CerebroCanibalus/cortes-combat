@@ -1,61 +1,199 @@
 # ═══ COMPAT: Epic Knights ═══════════════════════════════════════════════════
-# Epic Knights adds shields, armor and weapons (swords, polearms, etc.) with
-# a medieval theme. Weapons come in multiple tiers (iron, gold, diamond, etc.).
+# Epic Knights adds medieval weapons in multiple materials.
+# Item IDs: epic_knights:<material>_<weapon>
+# Materials: bronze, copper, iron, gold, diamond, netherite, silver, steel, tin
+# Weapons: ahlspiess, bastardsword, chainmorgenstern, chivalrylance, claymore,
+#          concavehalberd, estoc, flamebladedsword, guisarme, heavymace,
+#          heavywarhammer, katzbalger, lochaberaxe, lucernhammer, morgenstern,
+#          pike, ranseur, shortsword, stylet, zweihander
 #
-# Epic Knights item IDs follow the pattern: epic_knights:<weapon_name>
-# e.g.: epic_knights:iron_longsword, epic_knights:diamond_halberd
-#
-# To use: copy to config/cortescombat/weapons/, rename to .yaml, replace
-# placeholder IDs with real ones from Epic Knights.
+# This file covers iron/diamond/netherite for each weapon type.
+# Copy to config/cortescombat/weapons/, rename to .yaml, and adjust.
 
 version: 1
 
 weapons:
-  # ── Longswords (sword, single-target) ──
-  - match: { id: "epic_knights:iron_longsword" }
+  # ── Shortsword (fast, single-target) ──
+  - match: { id: "epic_knights:iron_shortsword" }
     archetype: sword
-    stats:
-      charge: { can_charge: true, bonus: 0.5, full_charge_ticks: 40 }
+    stats: { charge: { can_charge: true, bonus: 0.5, full_charge_ticks: 35 } }
+    reach: { distance: 3.0 }
+    cone: { horizontal: 24, vertical: 20 }
+    special: none
+
+  - match: { id: "epic_knights:diamond_shortsword" }
+    archetype: sword
+    stats: { charge: { can_charge: true, bonus: 0.5, full_charge_ticks: 35 } }
+    reach: { distance: 3.2 }
+    cone: { horizontal: 24, vertical: 20 }
+    special: none
+
+  # ── Bastardsword (heavy, wide) ──
+  - match: { id: "epic_knights:iron_bastardsword" }
+    archetype: sword
+    stats: { charge: { can_charge: true, bonus: 0.8, full_charge_ticks: 45 } }
+    reach: { distance: 3.6 }
+    cone: { horizontal: 32, vertical: 24 }
+    special: none
+
+  - match: { id: "epic_knights:diamond_bastardsword" }
+    archetype: sword
+    stats: { charge: { can_charge: true, bonus: 0.8, full_charge_ticks: 45 } }
+    reach: { distance: 3.8 }
+    cone: { horizontal: 32, vertical: 24 }
+    special: none
+
+  # ── Claymore (wide, heavy) ──
+  - match: { id: "epic_knights:iron_claymore" }
+    archetype: sword
+    stats: { charge: { can_charge: true, bonus: 0.8, full_charge_ticks: 45 } }
+    reach: { distance: 3.8 }
+    cone: { horizontal: 36, vertical: 26 }
+    special: none
+
+  # ── Zweihander (heavy, very wide) ──
+  - match: { id: "epic_knights:iron_zweihander" }
+    archetype: sword
+    stats: { charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 50 } }
+    reach: { distance: 4.0 }
+    cone: { horizontal: 40, vertical: 28 }
+    special: none
+
+  # ── Estoc (thrust, rapier) ──
+  - match: { id: "epic_knights:iron_estoc" }
+    archetype: rapier
+    stats: { charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 35 } }
+    reach: { distance: 3.4 }
+    cone: { horizontal: 16, vertical: 14 }
+    special: lunge
+
+  - match: { id: "epic_knights:diamond_estoc" }
+    archetype: rapier
+    stats: { charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 35 } }
+    reach: { distance: 3.6 }
+    cone: { horizontal: 16, vertical: 14 }
+    special: lunge
+
+  # ── Flamebladed Sword (sword) ──
+  - match: { id: "epic_knights:iron_flamebladedsword" }
+    archetype: sword
+    stats: { charge: { can_charge: true, bonus: 0.5, full_charge_ticks: 40 } }
     reach: { distance: 3.4 }
     cone: { horizontal: 28, vertical: 22 }
     special: none
 
-  # ── Halberds (polearm, sweep) ──
-  - match: { id: "epic_knights:iron_halberd" }
+  # ── Katzbalger (fast, dagger-like) ──
+  - match: { id: "epic_knights:iron_katzbalger" }
+    archetype: dagger
+    stats: { charge: { can_charge: false } }
+    reach: { distance: 2.6 }
+    cone: { horizontal: 22, vertical: 18 }
+    special: none
+
+  # ── Concave Halberd (polearm, sweep) ──
+  - match: { id: "epic_knights:iron_concavehalberd" }
     archetype: polearm
-    stats:
-      charge: { can_charge: false }
+    stats: { charge: { can_charge: false } }
     reach: { distance: 3.8 }
     cone: { horizontal: 40, vertical: 28 }
     special: multi_hit
 
-  # ── Rapiers (thrust, lunge) ──
-  - match: { id: "epic_knights:iron_rapier" }
-    archetype: rapier
-    stats:
-      charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 35 }
-    reach: { distance: 3.2 }
-    cone: { horizontal: 16, vertical: 14 }
-    special: lunge
+  # ── Guisarme (polearm, sweep) ──
+  - match: { id: "epic_knights:iron_guisarme" }
+    archetype: polearm
+    stats: { charge: { can_charge: false } }
+    reach: { distance: 3.8 }
+    cone: { horizontal: 38, vertical: 26 }
+    special: multi_hit
 
-  # ── Daggers (fast) ──
-  - match: { id: "epic_knights:iron_dagger" }
-    archetype: dagger
-    stats:
-      charge: { can_charge: false }
-    reach: { distance: 2.4 }
+  # ── Lochaber Axe (polearm, sweep) ──
+  - match: { id: "epic_knights:iron_lochaberaxe" }
+    archetype: polearm
+    stats: { charge: { can_charge: false } }
+    reach: { distance: 3.6 }
+    cone: { horizontal: 36, vertical: 24 }
+    special: multi_hit
+
+  # ── Lucernhammer (polearm, heavy) ──
+  - match: { id: "epic_knights:iron_lucernhammer" }
+    archetype: polearm
+    stats: { charge: { can_charge: true, bonus: 0.8, full_charge_ticks: 50 } }
+    reach: { distance: 3.6 }
+    cone: { horizontal: 34, vertical: 24 }
+    special: none
+
+  # ── Pike (thrust, long) ──
+  - match: { id: "epic_knights:iron_pike" }
+    archetype: spear
+    stats: { charge: { can_charge: false } }
+    reach: { distance: 4.2 }
+    cone: { horizontal: 14, vertical: 12 }
+    special: none
+
+  # ── Ranseur (polearm, thrust) ──
+  - match: { id: "epic_knights:iron_ranseur" }
+    archetype: polearm
+    stats: { charge: { can_charge: false } }
+    reach: { distance: 3.8 }
     cone: { horizontal: 20, vertical: 16 }
     special: none
 
-  # ── Spears (thrust, no lunge) ──
-  - match: { id: "epic_knights:iron_spear" }
+  # ── AHLspiess (thrust, long) ──
+  - match: { id: "epic_knights:iron_ahlspiess" }
     archetype: spear
-    stats:
-      charge: { can_charge: false }
-    reach: { distance: 3.6 }
-    cone: { horizontal: 16, vertical: 14 }
+    stats: { charge: { can_charge: false } }
+    reach: { distance: 4.0 }
+    cone: { horizontal: 14, vertical: 12 }
     special: none
 
-  # NOTE: Epic Knights has many more weapons and armor. Add entries following
-  # the same pattern. The mod uses material prefixes: iron_, gold_, diamond_, etc.
+  # ── Chivalry Lance (thrust, long) ──
+  - match: { id: "epic_knights:iron_chivalrylance" }
+    archetype: spear
+    stats: { charge: { can_charge: false } }
+    reach: { distance: 4.0 }
+    cone: { horizontal: 14, vertical: 12 }
+    special: none
+
+  # ── Heavy Mace (heavy) ──
+  - match: { id: "epic_knights:iron_heavymace" }
+    archetype: mace
+    stats: { charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 50 } }
+    reach: { distance: 3.0 }
+    cone: { horizontal: 26, vertical: 20 }
+    special: none
+
+  # ── Heavy Warhammer (heavy, charge) ──
+  - match: { id: "epic_knights:iron_heavywarhammer" }
+    archetype: hammer
+    stats: { charge: { can_charge: true, bonus: 1.0, full_charge_ticks: 60 } }
+    reach: { distance: 3.0 }
+    cone: { horizontal: 26, vertical: 20 }
+    special: none
+
+  # ── Morgenstern (mace) ──
+  - match: { id: "epic_knights:iron_morgenstern" }
+    archetype: mace
+    stats: { charge: { can_charge: false } }
+    reach: { distance: 3.0 }
+    cone: { horizontal: 26, vertical: 20 }
+    special: none
+
+  # ── Chain Morgenstern (mace) ──
+  - match: { id: "epic_knights:iron_chainmorgenstern" }
+    archetype: mace
+    stats: { charge: { can_charge: false } }
+    reach: { distance: 3.2 }
+    cone: { horizontal: 26, vertical: 20 }
+    special: none
+
+  # ── Stylet (dagger, fast) ──
+  - match: { id: "epic_knights:iron_stylet" }
+    archetype: dagger
+    stats: { charge: { can_charge: false } }
+    reach: { distance: 2.2 }
+    cone: { horizontal: 18, vertical: 14 }
+    special: none
+
+  # NOTE: Epic Knights has many more weapons and materials.
+  # Add entries following the same pattern.
   # Full list: https://www.curseforge.com/minecraft/mc-mods/epic-knights-shields-armor-and-weapons
