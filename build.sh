@@ -35,6 +35,23 @@ if [ -z "$JAR" ]; then
   exit 1
 fi
 
+# **El refmap es obligatorio en la pata 1.20.1, y se verifica antes de publicar.**
+#
+# Un jar sin `cortescombat.refmap.json` compila perfecto, pesa lo mismo y **no arranca**:
+# los mixins quedan con nombres Mojmap y en produccion son SRG, asi que el primer
+# `@Inject` con nombre de metodo muere con "could not find any targets". Paso una vez, en
+# la ronda del release, con un build incremental que arrastraba el refmap de un build
+# viejo: `clean` lo borro y el jar salio verde y roto. Esta comprobacion es la que hace
+# que ese jar no llegue a una carpeta de mods.
+if [ "$MC" = "1.20.1" ]; then
+  if ! unzip -l "$JAR" | grep -q 'cortescombat.refmap.json'; then
+    echo "FATAL: $JAR no trae cortescombat.refmap.json -- los mixins no van a aplicar en" >&2
+    echo "       produccion (nombres Mojmap contra SRG). Revisa el cableado del" >&2
+    echo "       annotation processor de Mixin en build.gradle." >&2
+    exit 1
+  fi
+fi
+
 mkdir -p "$SERVER/mods"
 find "$SERVER/mods" -iname '*cortes-combat-*.jar' -delete
 cp "$JAR" "$SERVER/mods/"

@@ -34,6 +34,56 @@ if (mc121) {
     // ModDevGradle ya se encarga; aplicar esto alla romperia su pipeline.
     // (verificado en el wiki Mixins-on-Minecraft-Forge de SpongePowered). (⌒‿⌒)
     apply plugin: 'org.spongepowered.mixin'
+    // **El refmap: el AP no lo escribe solo, y cuando lo escribe nadie lo empaqueta.**
+    //
+    // Medido en la ronda del release (Gradle 8.12 + ForgeGradle 6 + MixinGradle 0.7.38):
+    //  1. `compileJava.options.compilerArgs` y `compilerArgumentProviders` quedan
+    //     VACIOS: MixinGradle no inyecta `-AoutRefMapFile`, asi que el AP de Mixin no
+    //     emite `cortescombat.refmap.json`. Los argumentos de abajo son lo que el AP
+    //     pide en modo legacy, con el `.tsrg` MCP->SRG que ForgeGradle ya genera.
+    //  2. Cuando SI lo emite, MixinGradle lo mueve a `build/tmp/compileJava/` y NO lo
+    //     agrega al jar (`mixin { add ... }` no lo hace en esta combinacion). Asi que
+    //     se adjunta a todos los sabores de jar desde ahi.
+    //
+    // Por que nadie lo notaba: el build incremental arrastraba un refmap de un build
+    // viejo en `build/classes`, el jar lo empaquetaba, y todo "andaba". **Un `clean`
+    // lo borro y el jar de release arranco con
+    // `Mixin apply failed ... could not find any targets matching
+    //  'calculateTargetStrength' ... No refMap loaded`** -- los mixins sin traducir a
+    // SRG, o sea el mod entero caido. Un release limpio es lo que lo encontro. (μ_μ)
+    tasks.named('compileJava', JavaCompile).configure {
+        def refmapFile = layout.buildDirectory
+                .file('classes/java/main/cortescombat.refmap.json')
+        def srgMap = layout.buildDirectory.file('createMcpToSrg/output.tsrg')
+        dependsOn 'createMcpToSrg'
+        // **El refmap se declara como OUTPUT y ademas la tarea NO se cachea.**
+        //
+        // `outputs.file` lo pone en la clave y en el restaurado; `cacheIf { false }` es el
+        // cinturon: medido en la ronda del release, un `compileJava` restaurado desde el
+        // build cache devolvio las clases SIN el refmap **incluso con el output
+        // declarado** (`FROM-CACHE`, jar sin refmap, server muerto al arrancar). El
+        // annotation processor escribe un archivo que el cache no reproduce de forma
+        // confiable, asi que esta tarea paga sus diez segundos y deja de mentir: un jar
+        // verde con el mod caido es peor que un build lento. (μ_μ)
+        outputs.file(refmapFile)
+        outputs.cacheIf { false }
+        options.compilerArgs += [
+                '-AoutRefMapFile=' + refmapFile.get().asFile.absolutePath,
+                '-AdefaultObfuscationEnv=searge',
+                '-AmappingTypes=tsrg',
+                '-Amappings=' + srgMap.get().asFile.absolutePath,
+        ]
+    }
+    tasks.withType(Jar).configureEach {
+        // **Y al jar, desde los dos lugares donde puede quedar.** MixinGradle copia el
+        // refmap del AP a `tmp/compileJava/`; cual de los dos existe depende de la
+        // version del plugin, asi que se piden los dos y el primero gana (el contenido
+        // es el mismo archivo, 10 KB). (μ_μ)
+        from(layout.buildDirectory.file('classes/java/main/cortescombat.refmap.json'))
+        from(layout.buildDirectory.file('tmp/compileJava/cortescombat.refmap.json'))
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        dependsOn 'compileJava'
+    }
 }
 
 // The wrapper task lives on the root project only: version subprojects evaluating this
