@@ -55,12 +55,8 @@ public class CombatCrosshairLayer implements IGuiOverlay {
                     ? CrosshairFeedback.shakeX() : 0;
             int shakeY = com.cortes.combat.config.ClientConfig.HUD_CROSSHAIR_SHAKE.get()
                     ? CrosshairFeedback.shakeY() : 0;
-            int idle = HudColors.parse(
-                    com.cortes.combat.config.ClientConfig.HUD_CROSSHAIR_COLOR.get(),
-                    HudColors.WHITE);
-            int aim = HudColors.parse(
-                    com.cortes.combat.config.ClientConfig.HUD_CROSSHAIR_AIM_COLOR.get(),
-                    HudColors.WHITE);
+            int idle = HudPalette.idle();
+            int aim = HudPalette.aim();
             int rgb = HudColors.stateOr(CrosshairFeedback.rgb(), CrosshairFeedback.active(),
                     ClientCombatState.aiming(), idle, aim);
 

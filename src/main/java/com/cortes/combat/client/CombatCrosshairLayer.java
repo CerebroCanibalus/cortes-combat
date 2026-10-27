@@ -50,9 +50,8 @@ public class CombatCrosshairLayer implements LayeredDraw.Layer {
             // solo saca los dos pixeles de jitter, y el crecimiento y el color quedan.
             int shakeX = ClientConfig.HUD_CROSSHAIR_SHAKE.get() ? CrosshairFeedback.shakeX() : 0;
             int shakeY = ClientConfig.HUD_CROSSHAIR_SHAKE.get() ? CrosshairFeedback.shakeY() : 0;
-            int idle = HudColors.parse(ClientConfig.HUD_CROSSHAIR_COLOR.get(), HudColors.WHITE);
-            int aim = HudColors.parse(ClientConfig.HUD_CROSSHAIR_AIM_COLOR.get(),
-                    HudColors.WHITE);
+            int idle = HudPalette.idle();
+            int aim = HudPalette.aim();
             int rgb = HudColors.stateOr(CrosshairFeedback.rgb(), CrosshairFeedback.active(),
                     ClientCombatState.aiming(), idle, aim);
 

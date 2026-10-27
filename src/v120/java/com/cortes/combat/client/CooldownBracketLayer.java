@@ -102,7 +102,7 @@ public class CooldownBracketLayer implements IGuiOverlay {
         float ratio = clamp01(ClientCombatState.cooldownRatio());
         // El color de reposo es config; el flash de un golpe no se tinta (ese color es informacion).
         int rgb = HudColors.flashOr(CrosshairFeedback.rgb(), CrosshairFeedback.active(),
-                HudColors.parse(ClientConfig.HUD_BRACKET_COLOR.get(), HudColors.WHITE));
+                HudPalette.bracket());
 
         RenderSystem.enableBlend();
         drawBar(graphics, centreX, centreY, geometry, ratio, rgb, -1);

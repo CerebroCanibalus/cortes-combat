@@ -80,7 +80,13 @@ class HudConfigWiringTest {
             assertTrue(cross.contains("HUD_CROSSHAIR_SHAKE"),
                     crosshair + " no consulta el shake: apagarlo no hace nada");
             assertTrue(cross.contains("HudColors.stateOr("),
-                    crosshair + " no usa los colores configurados");
+                    crosshair + " no usa el estado flash/aim para elegir el color");
+            assertTrue(cross.contains("HudPalette.idle()") && cross.contains("HudPalette.aim()"),
+                    crosshair + " no lee los dos colores de la crosshair desde el cache: el "
+                            + "parseo volvio al frame");
+
+            assertTrue(code(brackets).contains("HudPalette.bracket()"),
+                    brackets + " no lee el color del bracket desde el cache");
         }
     }
 

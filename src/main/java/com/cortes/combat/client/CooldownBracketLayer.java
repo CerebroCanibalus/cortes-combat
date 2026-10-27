@@ -104,7 +104,7 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
         // su color (rojo, bloqueo, muerte): ese color es informacion. Lo que el jugador elige es
         // como se ve el bracket cuando no esta contando nada.
         int rgb = HudColors.flashOr(CrosshairFeedback.rgb(), CrosshairFeedback.active(),
-                HudColors.parse(ClientConfig.HUD_BRACKET_COLOR.get(), HudColors.WHITE));
+                HudPalette.bracket());
 
         RenderSystem.enableBlend();
         drawBar(graphics, centreX, centreY, geometry, ratio, rgb, -1);

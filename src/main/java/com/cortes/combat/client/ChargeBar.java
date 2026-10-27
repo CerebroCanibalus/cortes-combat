@@ -65,14 +65,12 @@ public final class ChargeBar {
      * cache con invalidacion es estado que hay que mantener para ahorrar nada.</p>
      */
     public static int plainTint() {
-        return 0xFF000000 | HudColors.parse(
-                com.cortes.combat.config.ClientConfig.HUD_CHARGE_BAR_COLOR.get(), 0xFFFFFF);
+        return 0xFF000000 | HudPalette.charge();
     }
 
     /** El tinte de la barra arcana, ya leido de la config (default: el violeta de siempre). */
     public static int arcaneTint() {
-        return 0xFF000000 | HudColors.parse(
-                com.cortes.combat.config.ClientConfig.HUD_ARCANE_BAR_COLOR.get(), 0xC06BFF);
+        return 0xFF000000 | HudPalette.arcane();
     }
 
     private ChargeBar() {
