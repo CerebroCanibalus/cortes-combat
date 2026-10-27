@@ -119,7 +119,7 @@ public class LivingEntityRenderMixin {
                 float cut = DamageFlash.barCut(bounds.minY(), bounds.maxY(),
                         living.getHealth(), living.getMaxHealth());
                 if (living.hurtTime == DamageFlash.FLASH_TICKS - DamageFlash.IMPACT_TICKS) {
-                    com.cortes.combat.CortesCombat.LOGGER.info(
+                    if (com.cortes.combat.config.ClientConfig.DEBUG.get()) com.cortes.combat.CortesCombat.LOGGER.info(
                             "[flash/bar] vida={}/{} Y=[{},{}] corte={}",
                             living.getHealth(), living.getMaxHealth(), bounds.minY(), bounds.maxY(),
                             cut);

@@ -206,6 +206,18 @@ public final class CombatAim {
     }
 
     /**
+     * Vuelve el apuntado a cero, para el cambio de mundo.
+     *
+     * <p>El reloj {@code tick} tambien: un {@code scannedAtTick} de un mundo anterior contra un
+     * contador que sigue subiendo dejaria el "no escanear hasta dentro de tres ticks" apagado para
+     * siempre, que es el throttle entero roto sin un sintoma visible.</p>
+     */
+    public static void reset() {
+        forget();
+        tick = 0;
+    }
+
+    /**
      * Whether the held item is a ranged <b>only</b> weapon: a bow or a crossbow.
      *
      * <p><b>A trident is deliberately not one, and it used to be.</b> The check read

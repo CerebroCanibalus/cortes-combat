@@ -70,11 +70,15 @@ public final class ConeTargeting {
         // que el jugador se va a comer, y un desempate por angulo es volver a tener dos opiniones
         // con un margen mas chico.
         List<LivingEntity> reached = new java.util.ArrayList<>();
+        // Las tangentes del arma, una vez por escaneo: los dos `Math.tan` eran el 92% del costo
+        // del test por candidato (medido, ver `ConeMath#prepare`).
+        com.cortes.combat.reach.ConeMath.Prepared limits =
+                com.cortes.combat.reach.Reach.prepared(reach);
         for (LivingEntity candidate : candidates) {
             if (!isCandidate(player, candidate)) {
                 continue;
             }
-            if (inCone(eye, look, candidate.getBoundingBox(), reach)) {
+            if (inCone(eye, look, candidate.getBoundingBox(), limits)) {
                 reached.add(candidate);
             }
         }
@@ -210,15 +214,21 @@ public final class ConeTargeting {
      * the rule a single "target size" that reads as if it existed.</p>
      */
     private static boolean inCone(Vec3 eye, Vec3 look, AABB box, ReachProfile reach) {
-        return ConeMath.inCone(
+        return inCone(eye, look, box, com.cortes.combat.reach.Reach.prepared(reach));
+    }
+
+    /** La forma que usa un escaneo: límites preparados afuera, una vez por barrido. */
+    private static boolean inCone(Vec3 eye, Vec3 look, AABB box,
+                                  com.cortes.combat.reach.ConeMath.Prepared limits) {
+        return com.cortes.combat.reach.ConeMath.inCone(
                 eye.x, eye.y, eye.z,
                 look.x, look.y, look.z,
-                ConeMath.closestOnAxis(eye.x, box.minX, box.maxX),
-                ConeMath.closestOnAxis(eye.y, box.minY, box.maxY),
-                ConeMath.closestOnAxis(eye.z, box.minZ, box.maxZ),
-                reach.distance(), reach.horizontalAngle(), reach.verticalAngle(),
-                ConeMath.leash(halfWidth(box)),
-                ConeMath.leash(halfHeight(box)));
+                com.cortes.combat.reach.ConeMath.closestOnAxis(eye.x, box.minX, box.maxX),
+                com.cortes.combat.reach.ConeMath.closestOnAxis(eye.y, box.minY, box.maxY),
+                com.cortes.combat.reach.ConeMath.closestOnAxis(eye.z, box.minZ, box.maxZ),
+                limits,
+                com.cortes.combat.reach.ConeMath.leash(halfWidth(box)),
+                com.cortes.combat.reach.ConeMath.leash(halfHeight(box)));
     }
 
     /** The box's half width, taking whichever horizontal axis is the larger one. */

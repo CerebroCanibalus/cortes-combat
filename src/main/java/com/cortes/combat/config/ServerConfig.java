@@ -67,6 +67,17 @@ public final class ServerConfig {
     /** Master toggle for the whole combat rework. Off reverts to vanilla combat. */
     public static final ModConfigSpec.BooleanValue COMBAT_REWORK;
 
+    /**
+     * Las trazas de gameplay (`[guardia]`, `[curar]`, `[pala]`, `[carga]`, `[frenzy]`).
+     *
+     * <p><b>Apagadas por defecto, y la auditoria de rendimiento es la razon.</b> Eran
+     * instrumentacion de playtest encendida siempre: una linea de log por golpe bloqueado, por
+     * curacion y por orbe -- trabajo de I/O en el hilo del server en el camino del combate, y un
+     * `latest.log` de megabytes por sesion de pelea. Una traza sin interruptor no es diagnostico,
+     * es deuda. Se prenden para depurar y se apagan para jugar.</p>
+     */
+    public static final ModConfigSpec.BooleanValue DEBUG;
+
     static {
         HEAL_INTERVAL = BUILDER
                 .comment("Ticks between one point of natural healing. Vanilla uses 80 (4 seconds);",
@@ -114,6 +125,13 @@ public final class ServerConfig {
                         "toggles (particles, damage flash, viewmodel, camera shake) stay independent.")
                 .define("combatRework", true);
 
+        DEBUG = BUILDER
+                .comment("Gameplay trace lines: [guardia] per blocked hit, [curar] per heal,",
+                        "[pala] per orb, [carga] per cancelled charge, [frenzy] per stack milestone.",
+                        "Off by default; these were playtest instrumentation that logged on the",
+                        "combat path every time it ran. Turn on to diagnose, off to play.")
+                .define("debug", false);
+
         SPEC = BUILDER.build();
     }
 
@@ -154,6 +172,14 @@ public final class ServerConfig {
     /** Whether the combat rework is on. Defaults to true before a world loads. */
     public static boolean combatRework() {
         return !SPEC.isLoaded() || COMBAT_REWORK.get();
+    }
+
+    /**
+     * Whether the gameplay traces are on. <b>Off before the config loads</b>, which is the safe
+     * answer: a trace that prints during the loading window is a trace nobody asked for.
+     */
+    public static boolean debug() {
+        return SPEC.isLoaded() && DEBUG.get();
     }
 
     private ServerConfig() {

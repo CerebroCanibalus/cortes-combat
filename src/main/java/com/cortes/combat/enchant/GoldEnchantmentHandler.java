@@ -207,7 +207,7 @@ public final class GoldEnchantmentHandler {
         // ver que la cuenta sube y poco para ahogar el log de una sesion de mineria.
         if (grown.stacks() > current.stacks()
                 && grown.stacks() % GoldEnchantRules.FRENZY_LOG_EVERY == 0) {
-            com.cortes.combat.CortesCombat.LOGGER.info("[frenzy] stacks={} bonus={}%",
+            if (com.cortes.combat.config.ServerConfig.debug()) com.cortes.combat.CortesCombat.LOGGER.info("[frenzy] stacks={} bonus={}%",
                     grown.stacks(),
                     Math.round(GoldEnchantRules.frenzyBonus(frenzy, grown.stacks()) * 100.0F));
         }

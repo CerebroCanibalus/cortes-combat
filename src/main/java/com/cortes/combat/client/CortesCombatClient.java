@@ -50,6 +50,9 @@ public class CortesCombatClient {
         // dos suman al mismo pitch y al mismo roll, asi que se componen solos.
         NeoForge.EVENT_BUS.register(CameraShake.class);
         NeoForge.EVENT_BUS.register(ConeDebugRenderer.class);
+        // **Y el estado de pantalla se tira al cerrar el mundo.** Las tres `clear()` existian y
+        // nadie las llamaba: ver `ClientWorldCleanup`. (⌒‿⌒)
+        NeoForge.EVENT_BUS.addListener(ClientWorldCleanup::onLevelUnload);
         // The weapon tooltips. Registered here rather than through @EventBusSubscriber because
         // this class already is the client's subscription list, and a second list is a second
         // place to forget one.

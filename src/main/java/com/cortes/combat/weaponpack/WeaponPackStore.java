@@ -36,6 +36,17 @@ public final class WeaponPackStore {
     private static volatile boolean empty = true;
     private static final Map<String, TagKey<Item>> TAG_CACHE = new ConcurrentHashMap<>();
 
+    /**
+     * La id de cada item como string, <b>cacheada</b>.
+     *
+     * <p>{@code resolve} corre por frame en el HUD y por golpe en el combate, y
+     * {@code BuiltInRegistries.ITEM.getKey(item).toString()} <b>asignaba un string por
+     * consulta</b>. El registro es finito y las ids no cambian en una sesion, asi que el mapa no
+     * crece despues del primer pase por cada item: un {@code ConcurrentHashMap} de unas pocas
+     * miles de entradas y cero asignaciones por consulta.</p>
+     */
+    private static final Map<Item, String> ITEM_IDS = new ConcurrentHashMap<>();
+
     private WeaponPackStore() {
     }
 
@@ -94,7 +105,8 @@ public final class WeaponPackStore {
         if (empty || stack == null || stack.isEmpty()) {
             return null;
         }
-        String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+        String id = ITEM_IDS.computeIfAbsent(stack.getItem(),
+                item -> BuiltInRegistries.ITEM.getKey(item).toString());
         return PackResolver.resolve(id, tag -> {
             TagKey<Item> key = tagKey(tag);
             return key != INVALID_TAG && stack.is(key);

@@ -1,5 +1,7 @@
 package com.cortes.combat.reach;
 
+import com.cortes.combat.core.weapon.ReachProfile;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,8 +10,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-
-import com.cortes.combat.core.weapon.ReachProfile;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Everything standing in a cone, nearest first.
@@ -59,12 +60,19 @@ public final class ConeTargets {
         // tests the target's bounding box rather than its origin, so an entity standing with its
         // feet just past the limit can still be clipped by the swing.
         AABB box = source.getBoundingBox().inflate(reach.distance() + 1.0);
+        // **Ojo, vista y tangentes UNA vez por escaneo.** `getEyePosition` y `getLookAngle`
+        // alocan un `Vec3` cada uno, y los dos `Math.tan` del test son el 92% de su costo
+        // (medido: 25,5 de 27,8 ns por candidato, ver `ConeMath#prepare`). Un barrido de la
+        // alabarda sobre diez cuerpos pagaba veinte tangentes y veinte `Vec3` por uno.
+        Vec3 eye = source.getEyePosition();
+        Vec3 look = source.getLookAngle();
+        ConeMath.Prepared limits = Reach.prepared(reach);
         for (Entity candidate : level.getEntitiesOfClass(LivingEntity.class, box)) {
             if (candidate == source || !candidate.isAlive()
                     || candidate.isSpectator() || candidate.isRemoved()) {
                 continue;
             }
-            if (Reach.inCone(source, candidate, reach)) {
+            if (Reach.inCone(eye, look, candidate.getBoundingBox(), limits)) {
                 found.add((LivingEntity) candidate);
             }
         }

@@ -226,7 +226,7 @@ public final class GuardHandler {
         //postura, arco -- para que la próxima misión muestre qué rama se falla sin adivinar
         //(una rama que no tracea es exactamente el `[flash/bar]` que nunca imprimió).
         //Instrumento de misión; se saca cuando el playtest del bloqueo cierre. (⌒‿⌒)
-        org.slf4j.LoggerFactory.getLogger("cortescombat").info(
+        if (com.cortes.combat.config.ServerConfig.debug()) org.slf4j.LoggerFactory.getLogger("cortescombat").info(
                 "[guardia] golpe: arma={} perfil:{} postura(held={},max={},stam={}) dano={}",
                 guard.item().toString(),
                 guard.profile().points(),
@@ -290,7 +290,7 @@ public final class GuardHandler {
             event.setAmount(incoming - GuardRules.blockedAmount(incoming, blocked));
             // Instrumento de mision: la rama que decide sin cobra era el punto ciego del
             // trace anterior -- cachaba el valor de postura pero nunca decia por que.
-            org.slf4j.LoggerFactory.getLogger("cortescombat").info(
+            if (com.cortes.combat.config.ServerConfig.debug()) org.slf4j.LoggerFactory.getLogger("cortescombat").info(
                     "[guardia] mis-swing: preInvuln={} dano={} -> no cobra",
                     CombatState.guardPreInvuln(player), incoming);
             return;
@@ -338,7 +338,7 @@ public final class GuardHandler {
         // Instrumento de mision: una linea por golpe cobrado, con la aguante despues del
         // cobro -- el trace viejo imprimia la postura ANTES y la ronda anterior lo dejo
         // sin primer. Se saca cuando el playtest del bloqueo cierre. (^o^)
-        org.slf4j.LoggerFactory.getLogger("cortescombat").info(
+        if (com.cortes.combat.config.ServerConfig.debug()) org.slf4j.LoggerFactory.getLogger("cortescombat").info(
                 "[guardia] cobro: dano={} gratis={} preInvuln={} stam={} -> {}",
                 incoming, gratis, CombatState.guardPreInvuln(player),
                 state.stamina(), after.stamina());

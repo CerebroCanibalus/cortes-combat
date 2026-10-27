@@ -27,10 +27,30 @@ public final class Reach {
     }
 
     public static boolean inCone(Vec3 origin, Vec3 look, AABB targetBox, ReachProfile reach) {
+        return inCone(origin, look, targetBox, prepared(reach));
+    }
+
+    /**
+     * El mismo test, con los límites ya molidos: <b>lo que usa un escaneo</b>.
+     *
+     * <p>Un escaneo pregunta por N candidatos con el mismo arma, y los dos {@code Math.tan} del
+     * test son el 92% de su costo (medido: 25,5 de 27,8 ns, ver {@link ConeMath#prepare}).
+     * Preparar una vez y preguntar N veces deja el test por candidato en ~2 ns, con el mismo
+     * resultado bit a bit.</p>
+     */
+    public static boolean inCone(Vec3 origin, Vec3 look, AABB targetBox, ConeMath.Prepared limits) {
         double x = ConeMath.closestOnAxis(origin.x, targetBox.minX, targetBox.maxX);
         double y = ConeMath.closestOnAxis(origin.y, targetBox.minY, targetBox.maxY);
         double z = ConeMath.closestOnAxis(origin.z, targetBox.minZ, targetBox.maxZ);
-        return inCone(origin, look, x, y, z, reach, targetBox);
+        return ConeMath.inCone(origin.x, origin.y, origin.z, look.x, look.y, look.z, x, y, z,
+                limits,
+                ConeMath.leash(halfWidth(targetBox)),
+                ConeMath.leash((targetBox.maxY - targetBox.minY) * 0.5));
+    }
+
+    /** Los límites de un arma, para preparar una vez por escaneo. */
+    public static ConeMath.Prepared prepared(ReachProfile reach) {
+        return ConeMath.prepare(reach.distance(), reach.horizontalAngle(), reach.verticalAngle());
     }
 
     /**

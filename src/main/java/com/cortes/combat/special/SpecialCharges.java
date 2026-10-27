@@ -87,7 +87,7 @@ public final class SpecialCharges {
         if (state.ticks() < charge.ticks()) {
             // **La linea que dice que la carga se corto, y por eso el aviso es real.** Sin ella, una
             // carga abandonada y una que nunca empezo se ven igual en el log.
-            CortesCombat.LOGGER.info("[carga] CANCELADA (soltada en {} de {})",
+            if (com.cortes.combat.config.ServerConfig.debug()) CortesCombat.LOGGER.info("[carga] CANCELADA (soltada en {} de {})",
                     state.ticks(), charge.ticks());
             return;
         }

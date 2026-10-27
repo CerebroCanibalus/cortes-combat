@@ -19,6 +19,7 @@ import com.cortes.combat.core.weapon.WeaponProfile;
 import com.cortes.combat.net.ArcabuzShotPayload;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.particle.SlashParticles;
+import com.cortes.combat.reach.ConeMath;
 import com.cortes.combat.reach.Reach;
 import com.cortes.combat.registry.ModItems;
 import com.cortes.combat.sound.CombatSounds;
@@ -853,12 +854,16 @@ public final class Arcabuz {
                                                     ReachProfile reach) {
         List<LivingEntity> found = new ArrayList<>();
         var box = player.getBoundingBox().inflate(reach.distance() + 1.0);
+        // Ojo, vista y tangentes una vez por escaneo: ver `ConeMath#prepare`.
+        net.minecraft.world.phys.Vec3 eye = player.getEyePosition();
+        net.minecraft.world.phys.Vec3 lookForCone = player.getLookAngle();
+        ConeMath.Prepared limits = Reach.prepared(reach);
         for (Entity candidate : level.getEntitiesOfClass(LivingEntity.class, box)) {
             if (candidate == player || !candidate.isAlive()
                     || candidate.isSpectator() || candidate.isRemoved()) {
                 continue;
             }
-            if (Reach.inCone(player, candidate, reach)) {
+            if (Reach.inCone(eye, lookForCone, candidate.getBoundingBox(), limits)) {
                 found.add((LivingEntity) candidate);
             }
         }

@@ -74,7 +74,7 @@ public class LivingEntityOverlayMixin {
             return;
         }
         if (entity.hurtTime == DamageFlash.FLASH_TICKS) {
-            com.cortes.combat.CortesCombat.LOGGER.info(
+            if (com.cortes.combat.config.ClientConfig.DEBUG.get()) com.cortes.combat.CortesCombat.LOGGER.info(
                     "[flash] {} hurt={} vida={}/{} fila={}", entity.getType(), entity.hurtTime,
                     entity.getHealth(), entity.getMaxHealth(), DamageFlash.rowFor(entity.hurtTime));
         }

@@ -1593,3 +1593,32 @@ nuevo, la carga por tier y las dagas nerfeadas.
 
 **1243 tests verdes** en 1.21.1 (+11). 1.20.1 compila y el server real arranca `Done (4.077s)`
 con 7 packs / 650 entradas, `Trident=TRIDENT` y el mixin de comida aplicado, cero `Caused by`.
+
+## Auditoría de rendimiento y fugas (2026-10-27)
+
+Cinco hallazgos, todos invisibles desde el juego, todos arreglados:
+
+1. **Tres `clear()` huérfanas** (`CameraShake`, `ReactorShake`, `RemotePoseStates`): existían y
+   nadie las llamaba. Los impulsos de temblor vencen contra `gameTime`, que un mundo nuevo vuelve
+   a cero — la cámara temblaba al entrar a un mundo sin que nada explotara. Los relojes de poses
+   remotas quedaban huérfanos al salir del mundo, con ids de entidad reusadas. Ahora
+   `ClientWorldCleanup` los tira en `LevelEvent.Unload`, en las dos patas.
+2. **Trazas de playtest encendidas siempre sobre el camino del combate**: `[guardia]` por golpe
+   bloqueado, `[curar]` por evento de curación, `[pala]`, `[carga]`, `[frenzy]` y las dos de
+   render. Nuevo `debug` en `ServerConfig` (default `false`, las dos patas) y `ClientConfig.DEBUG`
+   en los mixins: los nueve call sites preguntan antes de loguear.
+3. **`WeaponStats.of` dos veces por frame** en el layer de los brackets → una, reusada.
+4. **`WeaponPackStore.resolve` alocaba un `String` por consulta** → cache por item (`ITEM_IDS`).
+5. **El cono gastaba el 92 % en trigonometría repetida** (medido: 27,8 ns por candidato, 25,5 de
+   `Math.tan`) y además alocaba un `Vec3` por candidato con `getEyePosition`/`getLookAngle`.
+   Ahora `ConeMath.prepare` muele las tangentes una vez por barrido y los cuatro barridos
+   (servidor ×3 y cliente) sacan ojo/vista del loop. **Bit a bit el mismo resultado**, afirmado
+   sobre 8640 casos en `ConeMathPreparedTest`.
+
+Verificado y sin tocar: `RemotePoseStates` borra por stop-tracking, `DelayedSounds` vacía por
+tick, `BodyPoseDispatcher` reconstruye por tick, los caches (`TAG_CACHE`, `WARNED`, `CREATED`,
+`/cc debug`) están acotados, y `CombatAim` ya estaba throttleado. Queda anotado como deuda el
+pase doble de `VertexBounds` (sólo mientras un cuerpo está herido), que pide cliente abierto.
+
+**1252 tests verdes** (+6), 1.20.1 compila, server real `Done (3.899s)`, `Trident=TRIDENT`, cero
+`[guardia]` en el log.

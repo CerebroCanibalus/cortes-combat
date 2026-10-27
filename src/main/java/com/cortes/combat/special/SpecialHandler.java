@@ -18,6 +18,7 @@ import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.core.weapon.ReachProfile;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.particle.SlashParticles;
+import com.cortes.combat.reach.ConeMath;
 import com.cortes.combat.reach.Reach;
 import com.cortes.combat.state.ParryState;
 import net.minecraft.server.level.ServerLevel;
@@ -424,7 +425,7 @@ public final class SpecialHandler {
         // Imprime la puerta y su veredicto, que es el patron de `/cc input`: el numero que consulta
         // y lo que contesto. Sin eso, "no sale el orbe" sigue significando ocho cosas.
         boolean ready = AttackCooldown.isReady(player);
-        com.cortes.combat.CortesCombat.LOGGER.info("[pala] orbe: listo={} item={} nivel={}",
+        if (com.cortes.combat.config.ServerConfig.debug()) com.cortes.combat.CortesCombat.LOGGER.info("[pala] orbe: listo={} item={} nivel={}",
                 ready, player.getMainHandItem().getItem().getDescriptionId(),
                 CombatEnchantments.level(level.registryAccess(), player.getMainHandItem(),
                         CombatEnchantments.PALA_ANTIMATERIAL));
@@ -457,12 +458,18 @@ public final class SpecialHandler {
     private static List<LivingEntity> targetsInCone(ServerPlayer player, ReachProfile reach) {
         List<LivingEntity> found = new java.util.ArrayList<>();
         var box = player.getBoundingBox().inflate(reach.distance() + 1.0);
+        // **Ojo y vista una vez, no una por candidato**, y las tangentes del arma preparadas una
+        // vez por escaneo: `getEyePosition` y `getLookAngle` alocan un `Vec3` cada uno, y los dos
+        // `Math.tan` del test son el 92% de su costo (ver `ConeMath#prepare`).
+        net.minecraft.world.phys.Vec3 eye = player.getEyePosition();
+        net.minecraft.world.phys.Vec3 look = player.getLookAngle();
+        ConeMath.Prepared limits = Reach.prepared(reach);
         for (Entity candidate : player.level().getEntitiesOfClass(LivingEntity.class, box)) {
             if (candidate == player || !candidate.isAlive()
                     || candidate.isSpectator() || candidate.isRemoved()) {
                 continue;
             }
-            if (Reach.inCone(player, candidate, reach)) {
+            if (Reach.inCone(eye, look, candidate.getBoundingBox(), limits)) {
                 found.add((LivingEntity) candidate);
             }
         }

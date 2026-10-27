@@ -48,6 +48,9 @@ public final class ServerConfig {
     /** Master toggle for the whole combat rework. Off reverts to vanilla combat. */
     public static final ForgeConfigSpec.BooleanValue COMBAT_REWORK;
 
+    /** Las trazas de gameplay. Apagadas por defecto: ver la nota del gemelo compartido. */
+    public static final ForgeConfigSpec.BooleanValue DEBUG;
+
     static {
         HEAL_INTERVAL = BUILDER
                 .comment("Ticks between one point of natural healing. Vanilla uses 80 (4 seconds);",
@@ -95,6 +98,13 @@ public final class ServerConfig {
                         "toggles (particles, damage flash, viewmodel, camera shake) stay independent.")
                 .define("combatRework", true);
 
+        DEBUG = BUILDER
+                .comment("Gameplay trace lines: [guardia] per blocked hit, [curar] per heal,",
+                        "[pala] per orb, [carga] per cancelled charge, [frenzy] per stack milestone.",
+                        "Off by default; these were playtest instrumentation that logged on the",
+                        "combat path every time it ran. Turn on to diagnose, off to play.")
+                .define("debug", false);
+
         SPEC = BUILDER.build();
     }
 
@@ -124,6 +134,11 @@ public final class ServerConfig {
     /** Whether the combat rework is on. Defaults to true before a world loads. */
     public static boolean combatRework() {
         return !SPEC.isLoaded() || COMBAT_REWORK.get();
+    }
+
+    /** Si las trazas de gameplay estan encendidas. Off antes de que la config cargue. */
+    public static boolean debug() {
+        return SPEC.isLoaded() && DEBUG.get();
     }
 
     private ServerConfig() {

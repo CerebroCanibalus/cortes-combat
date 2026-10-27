@@ -81,8 +81,10 @@ public class CooldownBracketLayer implements IGuiOverlay {
         // Same door, same reason, third time. The press asks it, the tooltip asks it, and
         // now the HUD asks it. A widget that reports "what your button will do" for an item that
         // has no button is not showing a wrong number, it is inventing one.</p>
-        if (!com.cortes.combat.item.WeaponKinds.fights(
-                WeaponStats.of(player.getMainHandItem()).profile())) {
+        // **Una sola resolucion por frame, no dos** (ver el gemelo compartido): `WeaponStats.of`
+        // recorre los tags del molde y el pack, y pedirlo dos veces por frame era pagar el doble.
+        WeaponStats stats = WeaponStats.of(player.getMainHandItem());
+        if (!com.cortes.combat.item.WeaponKinds.fights(stats.profile())) {
             return;
         }
 
@@ -90,7 +92,7 @@ public class CooldownBracketLayer implements IGuiOverlay {
         int centreY = HudAnchor.centreY(graphics);
         // **displayedReach and not reach.** The brackets measure what the player's button will do, and on the arcabuz that is the barrel: six and a half blocks at thirty two degrees, while the left click is a two and a half block bayonet at fifty. A crosshair that described the bayonet while the player is aiming the gun is a marker lying about the thing they are about to do.
         ReachProfile reach = com.cortes.combat.attack.MaceAir.displayedFor(
-                WeaponStats.of(player.getMainHandItem()), player,
+                stats, player,
                 com.cortes.combat.enchant.CombatEnchantments.barredorLevel(player));
 
         // One geometry, computed once, and the same one the /cc hud diagnostic prints. The bar

@@ -91,6 +91,9 @@ public final class CortesCombatClient {
         modEventBus.addListener(CortesCombatClient::registerPackPoses);
         // The crosshair swap: vanilla's off, ours on. Same tick, same screen.
         MinecraftForge.EVENT_BUS.addListener(CortesCombatClient::hideVanillaCrosshair);
+        // **Y el estado de pantalla se tira al cerrar el mundo.** Las tres `clear()` existian y
+        // nadie las llamaba: ver `ClientWorldCleanup`. (⌒‿⌒)
+        MinecraftForge.EVENT_BUS.addListener(ClientWorldCleanup::onLevelUnload);
     }
 
     /**

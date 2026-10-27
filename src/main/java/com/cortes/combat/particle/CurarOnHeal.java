@@ -56,7 +56,7 @@ public final class CurarOnHeal {
         // motivo entero de elegir el evento --, asi que si el playtest ve una y no la otra, la
         // pregunta no es "cual falta" sino "cual no esta llegando", y esta linea la contesta sola:
         // imprime el monto y la vida en el momento exacto en que el juego decide que hubo una cura.
-        CortesCombat.LOGGER.info("[curar] amount={} vida={}/{}", event.getAmount(),
+        if (com.cortes.combat.config.ServerConfig.debug()) CortesCombat.LOGGER.info("[curar] amount={} vida={}/{}", event.getAmount(),
                 player.getHealth(), player.getMaxHealth());
         CurarParticles.puff(server, player, event.getAmount());
     }
