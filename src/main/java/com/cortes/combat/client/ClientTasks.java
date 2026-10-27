@@ -44,6 +44,13 @@ public final class ClientTasks {
         // tick by tick and the player had no steering against it. It is now one `push` at the press
         // and then the game's own physics, so there is nothing to advance.
         CrosshairFeedback.onTick(ClientCombatState.aiming());
+        // **El reloj de inactividad del HUD, con la misma definicion de "pelear" en las dos
+        // patas.** Actividad = objetivo en el cono, un flash que acaba de llegar (golpe) o una
+        // carga en curso. No cuenta caminar ni girar: si contara, las barras nunca se irian.
+        HudIdle.onTick(ClientCombatState.aiming()
+                || CrosshairFeedback.active()
+                || ClientCombatState.chargeRatio() > 0.0F
+                || ClientCombatState.specialCharge() > 0.0F);
         // Advances the local charge, which the meter and the viewmodel both read.
         //
         // SwingInputHandler.tick reconciles its own swing against the physical button, because it

@@ -38,6 +38,13 @@ public class GuardOrbsLayer implements IGuiOverlay {
 
     @Override
     public void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int screenWidth, int screenHeight) {
+        if (!com.cortes.combat.config.ClientConfig.HUD_GUARD_ORBS.get()) {
+            return;
+        }
+        if (HudIdle.barsHidden()) {
+            // Los orbes son una barra mas: sin pelea, se van.
+            return;
+        }
         if (!ClientDebugFlags.hudVisible()) {
             return;
         }

@@ -30,15 +30,10 @@ public class CombatCrosshairLayer implements LayeredDraw.Layer {
     @Override
     public void render(GuiGraphics graphics, DeltaTracker delta) {
         if (!ClientConfig.HUD_CROSSHAIR.get()) {
-            // El jugador desactivo la crosshair propia: dejamos que vanilla dibuje la suya.
-            // El toggle se lee aqui y el registro (replaceLayer) no se puede desregistrar con
-            // facilidad desde config, asi que el layer se queda registrado pero no pinta nada --
-            // y el registro de arriba pide que nuestra crosshair REEMPLACE a la vanilla; con el
-            // toggle apagado queremos el efecto contrario. Para respetar el toggle sin reescribir
-            // el registro hay que tambien cancelar la vanilla: en 1.21.1 usamos replaceLayer, asi que
-            // apagar esto solo evita pintar el nuestro. Lo dejamos asi: el usuario quiere "otra
-            // crosshair" -> on; "volver a la vanilla" -> off (y si hay que afinarlo con un
-            // listener de vanilla se afina despues). (￣ε￣＠)
+            // **Con el toggle apagado no pintamos nada, y la vanilla vuelve sola.** El registro
+            // envuelve la capa de vanilla (`wrapLayer`) y decide ahi: encendido -> la nuestra,
+            // apagado -> la de vanilla. Este `return` es la mitad del medio, para que el estado
+            // "la config se apago a mitad de frame" no pinte las dos. (￣ε￣＠)
             return;
         }
         Minecraft mc = Minecraft.getInstance();
@@ -48,18 +43,32 @@ public class CombatCrosshairLayer implements LayeredDraw.Layer {
 
         int centreX = HudAnchor.centreX(graphics);
         int centreY = HudAnchor.centreY(graphics);
-        float growth = CrosshairFeedback.growth();
 
-        CrosshairSprites.render(graphics, centreX, centreY, growth,
-                CrosshairFeedback.shakeX(), CrosshairFeedback.shakeY(), CrosshairFeedback.rgb());
+        if (!HudIdle.crosshairHidden()) {
+            float growth = CrosshairFeedback.growth();
+            // **El shake es config y se apaga aca.** El reloj del golpe sigue corriendo: apagarlo
+            // solo saca los dos pixeles de jitter, y el crecimiento y el color quedan.
+            int shakeX = ClientConfig.HUD_CROSSHAIR_SHAKE.get() ? CrosshairFeedback.shakeX() : 0;
+            int shakeY = ClientConfig.HUD_CROSSHAIR_SHAKE.get() ? CrosshairFeedback.shakeY() : 0;
+            int idle = HudColors.parse(ClientConfig.HUD_CROSSHAIR_COLOR.get(), HudColors.WHITE);
+            int aim = HudColors.parse(ClientConfig.HUD_CROSSHAIR_AIM_COLOR.get(),
+                    HudColors.WHITE);
+            int rgb = HudColors.stateOr(CrosshairFeedback.rgb(), CrosshairFeedback.active(),
+                    ClientCombatState.aiming(), idle, aim);
+
+            CrosshairSprites.render(graphics, centreX, centreY, growth, shakeX, shakeY, rgb);
+        }
 
         // **Dos barras, dos botones, dos colores.** La blanca es el golpe cargado y va arriba; la
         // morada es la carga de un arma magica y va debajo. Pueden estar vivas a la vez -- un arma
         // que cargue con los dos botones -- y por eso el `slot` es un parametro y no una constante
         // repetida en cada llamada. Ver {@link ChargeBar}.
+        if (!ClientConfig.HUD_CHARGE_BAR.get() || HudIdle.barsHidden()) {
+            return;
+        }
         ChargeBar.render(graphics, centreX, centreY, ClientCombatState.chargeRatio(),
-                ChargeBar.TINT_PLAIN, 0);
+                ChargeBar.plainTint(), 0);
         ChargeBar.render(graphics, centreX, centreY, ClientCombatState.specialCharge(),
-                ChargeBar.TINT_ARCANE, 1);
+                ChargeBar.arcaneTint(), 1);
     }
 }

@@ -59,6 +59,10 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
         if (!ClientConfig.HUD_COOLDOWN_BRACKETS.get()) {
             return;
         }
+        if (HudIdle.barsHidden()) {
+            // El jugador dejo de pelear: los brackets se van con las barras.
+            return;
+        }
         if (!ClientDebugFlags.hudVisible()) {
             return;
         }
@@ -96,7 +100,11 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
                 graphics.guiWidth(), graphics.guiHeight(),
                 Minecraft.getInstance().options.fov().get(), HudAnchor.crosshairReach());
         float ratio = clamp01(ClientCombatState.cooldownRatio());
-        int rgb = CrosshairFeedback.rgb();
+        // **El color de reposo es config; el flash no.** Un golpe que aterriza sigue pintando
+        // su color (rojo, bloqueo, muerte): ese color es informacion. Lo que el jugador elige es
+        // como se ve el bracket cuando no esta contando nada.
+        int rgb = HudColors.flashOr(CrosshairFeedback.rgb(), CrosshairFeedback.active(),
+                HudColors.parse(ClientConfig.HUD_BRACKET_COLOR.get(), HudColors.WHITE));
 
         RenderSystem.enableBlend();
         drawBar(graphics, centreX, centreY, geometry, ratio, rgb, -1);

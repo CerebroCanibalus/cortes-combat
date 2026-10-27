@@ -1570,3 +1570,26 @@ un solo call site fully-qualified, que compila y el guard nombra.
 con 7 packs / 650 entradas, `FoodDataMixin aplicado`, 46 recetas y 48 encantamientos, cero
 `Caused by`. Playtest pendiente: sprite del arcabuz en GUI/hotbar, un arma de cada arquetipo
 nuevo, la carga por tier y las dagas nerfeadas.
+
+## 1.5.1 — config del HUD y ocultamiento por inactividad (2026-10-27)
+
+1. **`[hud]` ahora se configura.** Tamano de la mira (`crosshairSize`, 0.5–3.0), colores de
+   reposo/apuntado para la crosshair, los brackets y las dos barras (`crosshairColor`,
+   `crosshairAimColor`, `bracketColor`, `chargeBarColor`, `arcaneBarColor`, en `#RRGGBB`), el
+   shake del golpe (`crosshairShake`) y tres toggles por elemento (`combatCrosshair`,
+   `cooldownBrackets`, `guardOrbs`) mas `chargeBar`. Un color mal escrito cae a su default con
+   un fallback explicito, y el flash de un golpe nunca se tinta: ese color es informacion.
+2. **Las barras se ocultan sin pelear.** `hideWhenIdle` + `hideIdleTicks` (default 160 ticks =
+   8 s): sin objetivo en el cono, sin golpe recien aterrizado y sin carga en curso, los brackets,
+   la barra de carga y los orbes de aguante se van. `hideCrosshairWhenIdle` decide si la mira se
+   va con ellos (default no). El borde esta testeado: en el tick del limite ya esta oculto.
+3. **Dos bugs que la config destapo.** (a) La pata 1.20.1 declaraba `cooldownBrackets` y
+   `guardOrbs` y **ninguna capa las leia**: dos opciones sin efecto. (b) Apagar `combatCrosshair`
+   dejaba la pantalla sin mira en las dos patas: la 1.21.1 reemplazaba la capa de vanilla para
+   siempre y la 1.20.1 cancelaba su overlay sin preguntar el toggle. Ahora la 1.21.1 la envuelve
+   (`wrapLayer`) y la 1.20.1 solo cancela con el toggle encendido -- apagado devuelve la vanilla.
+4. **El tamano entra por un solo numero**: `CrosshairSprites.baseSize()` y todo lo que se mide
+   desde la mira lee eso, asi que el hueco de la barra de carga sigue el tamano del arte.
+
+**1243 tests verdes** en 1.21.1 (+11). 1.20.1 compila y el server real arranca `Done (4.077s)`
+con 7 packs / 650 entradas, `Trident=TRIDENT` y el mixin de comida aplicado, cero `Caused by`.

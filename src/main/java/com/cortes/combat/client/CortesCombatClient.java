@@ -182,7 +182,20 @@ public class CortesCombatClient {
     private static void registerLayers(RegisterGuiLayersEvent event) {
         event.registerBelowAll(ResourceIds.rl("damage_overlay"),
                 new DamageOverlayLayer());
-        event.replaceLayer(VanillaGuiLayers.CROSSHAIR, new CombatCrosshairLayer());
+        // **Envuelta y no reemplazada, y ese cambio es una llave de config.**
+        // `replaceLayer` tiraba la capa de vanilla para siempre: con `hud.combatCrosshair`
+        // apagada quedaba la pantalla sin mira, que es lo contrario de lo que el comentario de la
+        // config promete ("con esto apagado se dibuja la vanilla"). `wrapLayer` entrega la capa
+        // vieja y devuelve la nueva, asi que la decision se toma por frame y la vanilla sigue
+        // viva debajo. (⌒‿⌒)
+        CombatCrosshairLayer crosshair = new CombatCrosshairLayer();
+        event.wrapLayer(VanillaGuiLayers.CROSSHAIR, vanilla -> (graphics, delta) -> {
+            if (ClientConfig.HUD_CROSSHAIR.get()) {
+                crosshair.render(graphics, delta);
+            } else {
+                vanilla.render(graphics, delta);
+            }
+        });
         event.registerAbove(VanillaGuiLayers.CROSSHAIR,
                 ResourceIds.rl("cooldown_brackets"),
                 new CooldownBracketLayer());

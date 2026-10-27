@@ -24,6 +24,20 @@ public final class CrosshairSprites {
     public static final int SIZE = 15;
 
     /**
+     * The size the crosshair rests at, after the player's own scale from the config.
+     *
+     * <p><b>Todo lo que se mide desde la crosshair lee este numero, no {@link #SIZE}.</b> El
+     * hueco de la barra de carga, la mitad para centrar y el alcance del crecimiento salen de
+     * aca: si el jugador agranda la mira y esto siguiera siendo quince, la barra de carga
+     * quedaria <em>adentro</em> del sprite. La escala es una multiplicacion, y multiplicar doce
+     * cosas por separado es como se desalinean. (￣ε￣＠)</p>
+     */
+    public static int baseSize() {
+        return Math.max(1, Math.round(SIZE * com.cortes.combat.config.ClientConfig
+                .crosshairScale()));
+    }
+
+    /**
      * Overall opacity of the crosshair.
      *
      * <p>Not one, deliberately. The crosshair sits on top of everything the player is trying to
@@ -86,7 +100,7 @@ public final class CrosshairSprites {
                               int shakeX, int shakeY, int rgb) {
         ResourceLocation texture = forState(ClientCombatState.aiming());
 
-        int size = Math.max(1, Math.round(SIZE * growth));
+        int size = Math.max(1, Math.round(baseSize() * growth));
         // Anchored, not just centred: the sprite is an odd number of pixels, so dividing the
         // grown size by two shifts it by half a pixel as it scales. Growing from the resting
         // position instead keeps the centre pixel on the canonical point at every size, which is

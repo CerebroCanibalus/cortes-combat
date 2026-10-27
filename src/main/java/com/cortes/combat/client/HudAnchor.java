@@ -39,7 +39,7 @@ public final class HudAnchor {
      * reacting to a hit, and reacting to a hit is the crosshair's job.
      */
     public static int crosshairHalf() {
-        return CrosshairSprites.SIZE / 2;
+        return CrosshairSprites.baseSize() / 2;
     }
 
     /**
@@ -50,6 +50,6 @@ public final class HudAnchor {
      * the two things that must not be overlapped use it.</p>
      */
     public static int crosshairReach() {
-        return Math.round(CrosshairSprites.SIZE * CrosshairFeedback.growth() / 2.0F);
+        return Math.round(CrosshairSprites.baseSize() * CrosshairFeedback.growth() / 2.0F);
     }
 }

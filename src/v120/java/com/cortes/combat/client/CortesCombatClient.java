@@ -212,7 +212,11 @@ public final class CortesCombatClient {
      */
     static void hideVanillaCrosshair(
             net.minecraftforge.client.event.RenderGuiOverlayEvent.Pre event) {
-        if (event.getOverlay().id().equals(VanillaGuiOverlay.CROSSHAIR.id())) {
+        if (event.getOverlay().id().equals(VanillaGuiOverlay.CROSSHAIR.id())
+                && com.cortes.combat.config.ClientConfig.HUD_CROSSHAIR.get()) {
+            // **El toggle apagado deja la vanilla viva.** Antes se cancelaba siempre, asi que
+            // `hud.combatCrosshair=false` dejaba la pantalla SIN mira -- lo contrario de lo que
+            // promete el comentario de la config. (⌒‿⌒)
             event.setCanceled(true);
         }
     }

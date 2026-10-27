@@ -41,6 +41,10 @@ public class GuardOrbsLayer implements LayeredDraw.Layer {
         if (!ClientConfig.HUD_GUARD_ORBS.get()) {
             return;
         }
+        if (HudIdle.barsHidden()) {
+            // Los orbes son una barra mas: sin pelea, se van.
+            return;
+        }
         if (!ClientDebugFlags.hudVisible()) {
             return;
         }

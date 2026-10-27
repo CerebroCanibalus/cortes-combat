@@ -58,6 +58,23 @@ public final class ChargeBar {
      */
     public static final int TINT_ARCANE = 0xFFC06BFF;
 
+    /**
+     * El tinte de la barra del golpe cargado, ya leido de la config (default: el arte tal cual).
+     *
+     * <p>Se pregunta por frame en vez de cachearse: son seis caracteres y una comparacion, y un
+     * cache con invalidacion es estado que hay que mantener para ahorrar nada.</p>
+     */
+    public static int plainTint() {
+        return 0xFF000000 | HudColors.parse(
+                com.cortes.combat.config.ClientConfig.HUD_CHARGE_BAR_COLOR.get(), 0xFFFFFF);
+    }
+
+    /** El tinte de la barra arcana, ya leido de la config (default: el violeta de siempre). */
+    public static int arcaneTint() {
+        return 0xFF000000 | HudColors.parse(
+                com.cortes.combat.config.ClientConfig.HUD_ARCANE_BAR_COLOR.get(), 0xC06BFF);
+    }
+
     private ChargeBar() {
     }
 

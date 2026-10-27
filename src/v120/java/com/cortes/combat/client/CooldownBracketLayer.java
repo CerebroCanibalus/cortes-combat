@@ -2,6 +2,7 @@ package com.cortes.combat.client;
 
 import com.cortes.combat.CortesCombat;
 import com.cortes.combat.attack.WeaponStats;
+import com.cortes.combat.config.ClientConfig;
 import com.cortes.combat.core.weapon.ReachProfile;
 import com.mojang.blaze3d.systems.RenderSystem;
 import java.util.List;
@@ -55,6 +56,13 @@ public class CooldownBracketLayer implements IGuiOverlay {
 
     @Override
     public void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int screenWidth, int screenHeight) {
+        if (!ClientConfig.HUD_COOLDOWN_BRACKETS.get()) {
+            return;
+        }
+        if (HudIdle.barsHidden()) {
+            // Sin pelea los brackets se van con las barras; el toggle los apaga del todo.
+            return;
+        }
         if (!ClientDebugFlags.hudVisible()) {
             return;
         }
@@ -92,7 +100,9 @@ public class CooldownBracketLayer implements IGuiOverlay {
                 graphics.guiWidth(), graphics.guiHeight(),
                 Minecraft.getInstance().options.fov().get(), HudAnchor.crosshairReach());
         float ratio = clamp01(ClientCombatState.cooldownRatio());
-        int rgb = CrosshairFeedback.rgb();
+        // El color de reposo es config; el flash de un golpe no se tinta (ese color es informacion).
+        int rgb = HudColors.flashOr(CrosshairFeedback.rgb(), CrosshairFeedback.active(),
+                HudColors.parse(ClientConfig.HUD_BRACKET_COLOR.get(), HudColors.WHITE));
 
         RenderSystem.enableBlend();
         drawBar(graphics, centreX, centreY, geometry, ratio, rgb, -1);

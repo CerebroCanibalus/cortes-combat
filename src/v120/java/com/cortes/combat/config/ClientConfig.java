@@ -46,6 +46,17 @@ public final class ClientConfig {
     public static final ForgeConfigSpec.BooleanValue HUD_CROSSHAIR;
     public static final ForgeConfigSpec.BooleanValue HUD_COOLDOWN_BRACKETS;
     public static final ForgeConfigSpec.BooleanValue HUD_GUARD_ORBS;
+    public static final ForgeConfigSpec.BooleanValue HUD_CHARGE_BAR;
+    public static final ForgeConfigSpec.DoubleValue HUD_CROSSHAIR_SIZE;
+    public static final ForgeConfigSpec.ConfigValue<String> HUD_CROSSHAIR_COLOR;
+    public static final ForgeConfigSpec.ConfigValue<String> HUD_CROSSHAIR_AIM_COLOR;
+    public static final ForgeConfigSpec.ConfigValue<String> HUD_BRACKET_COLOR;
+    public static final ForgeConfigSpec.ConfigValue<String> HUD_CHARGE_BAR_COLOR;
+    public static final ForgeConfigSpec.ConfigValue<String> HUD_ARCANE_BAR_COLOR;
+    public static final ForgeConfigSpec.BooleanValue HUD_CROSSHAIR_SHAKE;
+    public static final ForgeConfigSpec.BooleanValue HUD_HIDE_WHEN_IDLE;
+    public static final ForgeConfigSpec.IntValue HUD_HIDE_IDLE_TICKS;
+    public static final ForgeConfigSpec.BooleanValue HUD_HIDE_CROSSHAIR_WHEN_IDLE;
 
     static {
         STARTING_FOV = BUILDER
@@ -85,14 +96,59 @@ public final class ClientConfig {
 
         BUILDER.push("hud");
         HUD_CROSSHAIR = BUILDER
-                .comment("Replace the vanilla crosshair with the combat one.")
+                .comment("Replace the vanilla crosshair with the combat one (grows on hit, shows",
+                        "aim state). With this off the vanilla crosshair is drawn instead.")
                 .define("combatCrosshair", true);
         HUD_COOLDOWN_BRACKETS = BUILDER
-                .comment("The thin cooldown bracket line around the crosshair")
+                .comment("The thin bracket line around the crosshair that shows the attack")
                 .define("cooldownBrackets", true);
         HUD_GUARD_ORBS = BUILDER
-                .comment("The guard-hit orbs above the crosshair")
+                .comment("The small orbs above the crosshair that show guard hits remaining")
                 .define("guardOrbs", true);
+        HUD_CHARGE_BAR = BUILDER
+                .comment("The charge bar under the crosshair: the hit charge and the arcane one.",
+                        "Off leaves the crosshair and the brackets, and nothing else tells you",
+                        "how far the charge got.")
+                .define("chargeBar", true);
+        HUD_CROSSHAIR_SIZE = BUILDER
+                .comment("How big the crosshair is drawn, as a multiplier on the art's own size.",
+                        "0.5 is half, 1.0 is the drawn size, 3.0 is triple. The hit and aim growth",
+                        "still multiply on top of this, so the reaction never disappears.")
+                .defineInRange("crosshairSize", 1.0, 0.5, 3.0);
+        HUD_CROSSHAIR_COLOR = BUILDER
+                .comment("Crosshair colour while nothing is happening, as #RRGGBB (or RRGGBB).",
+                        "#FFFFFF leaves the art's own colour; any value multiplies it. Invalid",
+                        "text falls back to white.")
+                .define("crosshairColor", "#FFFFFF");
+        HUD_CROSSHAIR_AIM_COLOR = BUILDER
+                .comment("Crosshair colour while a target is in reach, as #RRGGBB.")
+                .define("crosshairAimColor", "#FFFFFF");
+        HUD_BRACKET_COLOR = BUILDER
+                .comment("Cooldown bracket colour while nothing is flashing, as #RRGGBB.",
+                        "A landed hit still overrides it with the hit colour.")
+                .define("bracketColor", "#FFFFFF");
+        HUD_CHARGE_BAR_COLOR = BUILDER
+                .comment("Hit-charge bar colour, as #RRGGBB. #FFFFFF keeps the art as drawn.")
+                .define("chargeBarColor", "#FFFFFF");
+        HUD_ARCANE_BAR_COLOR = BUILDER
+                .comment("Arcane (special) bar colour, as #RRGGBB. The default is the violet the",
+                        "bar has always been.")
+                .define("arcaneBarColor", "#C06BFF");
+        HUD_CROSSHAIR_SHAKE = BUILDER
+                .comment("Whether a landed hit may shake the crosshair a couple of pixels.",
+                        "The camera has its own switch: cameraShake.")
+                .define("crosshairShake", true);
+        HUD_HIDE_WHEN_IDLE = BUILDER
+                .comment("Hide the bars (brackets, charge bar and guard orbs) after a stretch of",
+                        "not hitting anything and not having a target.")
+                .define("hideWhenIdle", true);
+        HUD_HIDE_IDLE_TICKS = BUILDER
+                .comment("How long the bars stay up without activity, in ticks (20 = one second).",
+                        "The default is 160, which is the eight seconds the design asked for.")
+                .defineInRange("hideIdleTicks", 160, 20, 2400);
+        HUD_HIDE_CROSSHAIR_WHEN_IDLE = BUILDER
+                .comment("Whether the idle fade takes the crosshair too. Off by default.")
+                .define("hideCrosshairWhenIdle", false);
         BUILDER.pop();
 
         SPEC = BUILDER.build();
@@ -113,6 +169,22 @@ public final class ClientConfig {
             return 2.0F;
         }
         return (float) v;
+    }
+
+    /** The crosshair size multiplier; the spec already clamps it to 0.5..3.0. */
+    public static float crosshairScale() {
+        if (HUD_CROSSHAIR_SIZE == null) {
+            return 1.0F;
+        }
+        return HUD_CROSSHAIR_SIZE.get().floatValue();
+    }
+
+    /** Ticks without activity before the bars hide. */
+    public static int hideIdleTicks() {
+        if (HUD_HIDE_IDLE_TICKS == null) {
+            return 160;
+        }
+        return HUD_HIDE_IDLE_TICKS.get();
     }
 
     private ClientConfig() {
