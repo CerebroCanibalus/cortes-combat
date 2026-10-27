@@ -49,20 +49,36 @@ public final class WeaponPackExporter {
      * Genera el archivo de armas base con nombre fijo si no existe ya.
      * Así el jugador puede editar las armas del mod directamente.
      * No sobrescribe archivos existentes (el usuario pudo haberlos editado).
+     *
+     * <p><b>Devuelve si escribio, y eso importa:</b> el que llama tiene que recargar la tienda de
+     * packs para que el archivo nuevo se lea en el mismo arranque.</p>
+     *
+     * <p><b>Y se llama desde {@code ServerStartedEvent}, NO desde el constructor del mod.</b>
+     * Ahi los {@code DeferredItem} todavia no estan bindeados, y {@code build()} los recorre:
+     * {@code runData} murio con
+     * {@code NullPointerException: Trying to access unbound value:
+     * ResourceKey[minecraft:item / cortescombat:stone_ropera]}. En el server de prueba no se veia
+     * porque el archivo ya existia y el metodo salia antes de mirar los items: <b>una instalacion
+     * nueva crasheaba al arrancar</b>. Un `return` temprano que depende de un archivo del usuario
+     * es la razon de que esto viviera semanas sin aparecer.</p>
+     *
+     * @return {@code true} si escribio el archivo, {@code false} si ya existia o fallo
      */
-    public static void exportIfMissing() {
+    public static boolean exportIfMissing() {
         try {
             Path dir = FMLPaths.CONFIGDIR.get().resolve(CortesCombat.MODID).resolve("weapons");
             Files.createDirectories(dir);
             Path out = dir.resolve(BASE_WEAPONS_FILE);
             if (Files.exists(out)) {
-                return; // ya existe, no pisar
+                return false; // ya existe, no pisar
             }
             String yaml = build();
             Files.writeString(out, yaml, StandardCharsets.UTF_8);
             CortesCombat.LOGGER.info("[weaponpack] armas base exportadas a {} (primera ejecucion)", out);
+            return true;
         } catch (IOException e) {
             CortesCombat.LOGGER.warn("[weaponpack] no se pudo generar {}: {}", BASE_WEAPONS_FILE, e.getMessage());
+            return false;
         }
     }
 

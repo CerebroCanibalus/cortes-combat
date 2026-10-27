@@ -1594,6 +1594,27 @@ nuevo, la carga por tier y las dagas nerfeadas.
 **1243 tests verdes** en 1.21.1 (+11). 1.20.1 compila y el server real arranca `Done (4.077s)`
 con 7 packs / 650 entradas, `Trident=TRIDENT` y el mixin de comida aplicado, cero `Caused by`.
 
+## Descripciones de encantamiento reescritas, Peso Pluma y el exportador (2026-10-27)
+
+1. **Las descripciones son una tabla.** `data/cortescombat/enchantment_descriptions.yaml` (48
+   entradas, es/en, UTF-8 con acentos) es ahora el único lugar donde se escribe una descripción;
+   el provider la recorre al generar los idiomas y `EnchantmentDescriptionsTest` exige las dos
+   lenguas para los 48 ids. Agregar o corregir una descripción ya no toca Java.
+2. **Texto reescrito entero**: cada línea dice el disparador (matar, bloquear, cargado, minar…),
+   el efecto y la escala por nivel con los números reales de `CombatEnchantRules` /
+   `GoldEnchantRules`. Las anteriores eran tan poéticas que no se entendía qué hacía el
+   encantamiento.
+3. **Peso Pluma daba velocidad de ataque negativa** (−10 % por nivel). Ahora la da: +0,1 por
+   nivel, hasta +0,3.
+4. **El exportador de armas base crasheaba en una instalación nueva**: corría en el constructor
+   del mod, antes de que los ítems existieran (`unbound value: cortescombat:stone_ropera`). Ahora
+   corre en `ServerStartedEvent` y recarga la tienda si escribe el archivo. En la pata 1.20.1 no
+   se llamaba nunca: el log de la primera corrida lo confirma (`armas base exportadas … (primera
+   ejecución)`, de 7 a 8 packs).
+
+**1257 tests verdes**, datagen de las dos patas con las 48 descripciones acentuadas, jars `1.5.1`
+reconstruidos (la 1.20.1 con su refmap) y server real `Done (3.979s)` con el mixin aplicado.
+
 ## Auditoría de rendimiento y fugas (2026-10-27)
 
 Cinco hallazgos, todos invisibles desde el juego, todos arreglados:

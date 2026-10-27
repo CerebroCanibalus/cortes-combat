@@ -96,9 +96,10 @@ public CortesCombat(IEventBus modEventBus, ModContainer modContainer) {
         // del reload y no en un lifecycle event: es escritura de disco de una sola vez y aquÃ­
         // ya sabemos que los packs cargaron.
         com.cortes.combat.weaponpack.WeaponPackTemplate.writeIfMissing();
-        // Expone las armas base del mod como YAML editable en config/cortescombat/weapons/.
-        // Solo se genera si no existe (no pisa ediciones del usuario).
-        com.cortes.combat.weaponpack.WeaponPackExporter.exportIfMissing();
+        // **El exportador de armas base NO va aca.** Necesita los items ya registrados y en el
+        // constructor todavia no lo estan: corria `runData` y moria con
+        // `Trying to access unbound value: cortescombat:stone_ropera`, o sea una instalacion nueva
+        // crasheaba. Vive en `ServerStartedEvent`, junto al generador automatico. (μ_μ)
         LOGGER.info("CortÃ©s Combat loading");
     }
 }

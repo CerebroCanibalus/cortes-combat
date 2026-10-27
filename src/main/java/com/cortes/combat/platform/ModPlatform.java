@@ -140,6 +140,12 @@ private static void reportVanillaProfiles(
      */
     private static void autoPackGenerate(
             net.neoforged.neoforge.event.server.ServerStartedEvent event) {
+        // **Las armas base del mod, en YAML editable, y recien aca.** El constructor no
+        // puede: los items no estan registrados (ver `WeaponPackExporter`). Si escribio,
+        // la tienda se recarga para que el archivo nuevo cuente en este mismo arranque.
+        if (com.cortes.combat.weaponpack.WeaponPackExporter.exportIfMissing()) {
+            com.cortes.combat.weaponpack.WeaponPackStore.reload();
+        }
         com.cortes.combat.weaponpack.AutoPackGenerator.generate();
     }
 

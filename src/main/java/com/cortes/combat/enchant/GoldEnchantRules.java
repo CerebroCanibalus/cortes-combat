@@ -36,8 +36,16 @@ public final class GoldEnchantRules {
     public static final float WIND_MOVEMENT_PER_LEVEL = 0.05F;
     public static final int WIND_MOVEMENT_MAX_LEVELS = 5;
 
-    /** Feather weight: gold is quick but soft, so haste is bought with a slower swing. */
-    public static final float FEATHER_ATTACK_SPEED_PER_LEVEL = -0.10F;
+    /**
+     * Feather weight, per level: the hand is lighter, so the swing comes faster.
+     *
+     * <p><b>Estaba en negativo, y es el reporte del dueno: "quita velocidad de ataque en vez de
+     * darla".</b> El javadoc viejo decia "haste is bought with a slower swing", que al lado del
+     * signo se contradice solo: un encantamiento llamado Peso Pluma que solo frena el brazo es
+     * una desventaja, no un encantamiento. El signo va positivo, y el numero sigue siendo un
+     * offset (ver {@link #featherAttackSpeedOffset}) y no un total.</p>
+     */
+    public static final float FEATHER_ATTACK_SPEED_PER_LEVEL = 0.10F;
     public static final int FEATHER_MAX_LEVELS = 3;
 
     /** Phantom strike, per level: the chance the blow goes through armour completely. */

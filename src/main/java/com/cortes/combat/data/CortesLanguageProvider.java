@@ -197,165 +197,19 @@ public class CortesLanguageProvider extends LanguageProvider {
     add("enchantment.cortescombat.pala_antimaterial", spanish ? "Pala Antimaterial" : "Antimatter Shovel");
     add("enchantment.cortescombat.mungus", spanish ? "Mungus" : "Mungus");
 
-    // **Y las descripciones, que es la compatibilidad con Enchantment Descriptions.** El mod de
-    // Darkhax (295M de descargas, hay version NeoForge 1.21.1) lee `enchantment.<modid>.<enchid>.desc`
-    // del mapa de localizacion y la muestra en el tooltip del item. **Vanilla 1.21.1 no tiene ese
-    // mecanismo**: verificado contra las fuentes, el campo `"description"` del JSON **es** el nombre
-    // (lo usa `Enchantment.getFullname`), y las 28 claves `.desc` que trae vanilla son de **items**
-    // (banner patterns y discos), no de encantamientos. O sea que esto es dato puro: sin la linea,
-    // el mod no tiene nada que mostrar, y el jugador lee un encantamiento sin saber que hace.
+    // **Las descripciones, y viven en una TABLA, no en cuarenta y ocho lineas de Java.**
     //
-    // **Y la clave lleva el id, no el nombre.** El juego resuelve la clave contra el registro, y un
-    // nombre cambiado (o un id renombrado) romperia la descripcion en silencio: el mod no encuentra
-    // la clave y no dice por que. Por eso el test camina `CombatEnchantRules.IDS` y `GOLD_IDS`.
+    // Enchantment Descriptions (Darkhax) lee `enchantment.<modid>.<id>.desc` y lo muestra en el
+    // tooltip. La clave lleva el ID: un nombre cambiado la rompe en silencio, y por eso un test
+    // camina `CombatEnchantRules.IDS` + `GOLD_IDS`.
     //
-    // **Y el texto adivina, no anuncia.** Un numero leido se olvida; una pista que falta el numero
-    // es un jugador que va a medirlo, que es justamente lo que el sistema de este mod pide. (￣ε￣＠)
-    add("enchantment.cortescombat.midas_touch.desc",
-            spanish ? "Los que caen dejan cobre; a veces mas."
-                    : "The fallen leave copper; sometimes more.");
-    add("enchantment.cortescombat.gold_echo.desc",
-            spanish ? "Tu marca es una invitacion que todos atienden."
-                    : "Your mark is an invitation everyone answers.");
-    add("enchantment.cortescombat.life_steal.desc",
-            spanish ? "Lo que le quitas a otros, te quedas un poco."
-                    : "What you take from others, you keep a little.");
-    add("enchantment.cortescombat.wind_walker.desc",
-            spanish ? "El viento te lleva; cuanto mas alto, mas lejos."
-                    : "The wind carries you; the higher, the further.");
-    add("enchantment.cortescombat.feather_weight.desc",
-            spanish ? "La mano pesa menos; el golpe, mas lento."
-                    : "The hand weighs less; the swing, slower.");
-    add("enchantment.cortescombat.phantom_strike.desc",
-            spanish ? "La armadura rival cuenta menos de lo que dice."
-                    : "Enemy armour counts for less than it says.");
-    add("enchantment.cortescombat.midas_tool.desc",
-            spanish ? "La mina entrega su tesoro banado en oro."
-                    : "The mine delivers its treasure bathed in gold.");
-    add("enchantment.cortescombat.miner_frenzy.desc",
-            spanish ? "La piedra cede mas rapido de lo que deberia."
-                    : "The stone yields faster than it should.");
-    add("enchantment.cortescombat.golden_hands.desc",
-            spanish ? "Lo que la pala toca ya es tuyo."
-                    : "What the shovel touches is already yours.");
-    add("enchantment.cortescombat.golden_harvest.desc",
-            spanish ? "Lo cortado vuelve a la tierra; a veces doble."
-                    : "What is cut returns to the earth; sometimes twice.");
-    add("enchantment.cortescombat.phantom_block.desc",
-            spanish ? "A veces el bloque decide dar el doble."
-                    : "Sometimes the block decides to give twice.");
-
-    add("enchantment.cortescombat.steel_reflex.desc",
-            spanish ? "Un acero que aprende de cada golpe que recibe."
-                    : "A steel that learns from every blow it turns aside.");
-    add("enchantment.cortescombat.audacity.desc",
-            spanish ? "Cada cuerpo que atraviesas te devuelve el aire."
-                    : "Every body you pass through gives your breath back.");
-    add("enchantment.cortescombat.adrenalina.desc",
-            spanish ? "El dolor te hace mas rapido; la segunda vez, mas fuerte."
-                    : "Pain makes you quicker; the second time, stronger.");
-    add("enchantment.cortescombat.rhythm_of_iron.desc",
-            spanish ? "La cadena se alarga mientras el ritmo no se rompa."
-                    : "The chain stretches while the rhythm holds.");
-    add("enchantment.cortescombat.riposte.desc",
-            spanish ? "Lo que te devuelven tras cubrirte pesa menos."
-                    : "What comes back after you cover weighs less.");
-    add("enchantment.cortescombat.dry_powder.desc",
-            spanish ? "La segunda carga espera menos que la primera."
-                    : "The second loading waits less than the first.");
-    add("enchantment.cortescombat.punta_fina.desc",
-            spanish ? "Cuanto mas cerca esta, mas hondo muerde."
-                    : "The closer they are, the deeper it bites.");
-    add("enchantment.cortescombat.filo_astillado.desc",
-            spanish ? "La armadura ajena pesa en contra de su dueno."
-                    : "Foreign armour weighs against its owner.");
-    add("enchantment.cortescombat.apunalar.desc",
-            spanish ? "Lo que no te ve venir le duele el doble."
-                    : "What doesn't see it coming hurts twice as much.");
-    add("enchantment.cortescombat.sanguijuela.desc",
-            spanish ? "Su sangre termina en tus venas."
-                    : "Their blood ends up in your veins.");
-    add("enchantment.cortescombat.aventurero.desc",
-            spanish ? "Los que caen dejan experiencia de sobra."
-                    : "The fallen leave experience to spare.");
-    add("enchantment.cortescombat.culata.desc",
-            spanish ? "La bayoneta no empuja: arrolla."
-                    : "The bayonet doesn't shove: it sweeps.");
-    add("enchantment.cortescombat.estocada.desc",
-            spanish ? "Lo que el lunge atraviesa no se esconde tras armadura."
-                    : "What the lunge pierces does not hide behind armour.");
-    add("enchantment.cortescombat.segundo_aliento.desc",
-            spanish ? "Cuando tu guardia cae, tu brazo se aviva."
-                    : "When your guard falls, your arm quickens.");
-    add("enchantment.cortescombat.guardia_firme.desc",
-            spanish ? "El primer aguante de cada rato sale gratis."
-                    : "The first stand of every while is free.");
-    add("enchantment.cortescombat.cicatrizador.desc",
-            spanish ? "Las curas llegan mas flojas de lo prometido."
-                    : "Healing arrives weaker than promised.");
-    add("enchantment.cortescombat.destripamiento.desc",
-            spanish ? "El cargado no mata: deja abierto."
-                    : "The charged hit doesn't kill: it leaves you open.");
-    add("enchantment.cortescombat.quebranto.desc",
-            spanish ? "Cada golpe le arranca un poco de coraza."
-                    : "Each hit peels a little of his shell.");
-    add("enchantment.cortescombat.desvio_vampirico.desc",
-            spanish ? "Cada parry te hace un poco mas grande."
-                    : "Each parry makes you a little greater.");
-    add("enchantment.cortescombat.mecha_corta.desc",
-            spanish ? "La mecha se consume mas aprisa."
-                    : "The fuse burns down faster.");
-    add("enchantment.cortescombat.barredor.desc",
-            spanish ? "El brazo barre mas de lo que parece."
-                    : "The arm sweeps more than it seems.");
-    add("enchantment.cortescombat.astilladora.desc",
-            spanish ? "Bloquear contra este filo cuesta el doble."
-                    : "Blocking against this edge costs double.");
-    add("enchantment.cortescombat.mella.desc",
-            spanish ? "Su armadura se gasta mas rapido que la tuya."
-                    : "Their armour wears faster than yours.");
-    add("enchantment.cortescombat.segunda_pasada.desc",
-            spanish ? "Un barrido que no mato te devuelve el brazo."
-                    : "A sweep that killed nobody gives your arm back.");
-    add("enchantment.cortescombat.santa_muerte.desc",
-            spanish ? "Lo que mata se queda un rato mas."
-                    : "What kills lingers a while longer.");
-    add("enchantment.cortescombat.inercia.desc",
-            spanish ? "La cadena no empuja: levanta."
-                    : "The streak doesn't shove: it lifts.");
-    add("enchantment.cortescombat.ensarte.desc",
-            spanish ? "La estocada no se detiene en el primero."
-                    : "The thrust does not stop at the first.");
-    add("enchantment.cortescombat.paliza.desc",
-            spanish ? "Cerrar una serie tiene su recompensa."
-                    : "Closing a streak has its reward.");
-    add("enchantment.cortescombat.sentencia.desc",
-            spanish ? "Cinco golpes de cadena y el cuerpo se rinde."
-                    : "Five streak hits and the body gives out.");
-    add("enchantment.cortescombat.trabazon.desc",
-            spanish ? "Un cargado no te deja las piernas."
-                    : "A charged hit takes your legs from you.");
-    add("enchantment.cortescombat.gripa.desc",
-            spanish ? "Cada golpe deja al rival mas mocoso."
-                    : "Every hit leaves the target snifflier.");
-    add("enchantment.cortescombat.corte_gemelo.desc",
-            spanish ? "El corte no viene solo."
-                    : "The cut never comes alone.");
-    add("enchantment.cortescombat.capacitor.desc",
-            spanish ? "Lo que te disparan vuelve con intereses."
-                    : "What they fire at you returns with interest.");
-    add("enchantment.cortescombat.rey_de_las_moscas.desc",
-            spanish ? "El disparo no termina donde cae."
-                    : "The shot doesn't end where it lands.");
-    add("enchantment.cortescombat.retirada.desc",
-            spanish ? "Agachate y el lunge hara lo inesperado."
-                    : "Sneak, and the lunge does the unexpected.");
-    add("enchantment.cortescombat.pala_antimaterial.desc",
-            spanish ? "Un orbe que llama a los suyos y no perdona."
-                    : "An orb that calls its own and spares none.");
-    add("enchantment.cortescombat.mungus.desc",
-            spanish ? "Diez Firestones por un tiro que abre la montana."
-                    : "Ten Firestones for one shot that opens the mountain.");
+    // El texto esta en `data/cortescombat/enchantment_descriptions.yaml` (es/en, UTF-8) y
+    // `EnchantmentDescriptions` lo lee: agregar o corregir una descripcion es una entrada en ese
+    // archivo y `runData`, sin tocar Java ni acordarse de dos ternarios en la misma linea.
+    for (var entry : com.cortes.combat.enchant.EnchantmentDescriptions.all().entrySet()) {
+        add("enchantment.cortescombat." + entry.getKey() + ".desc",
+                spanish ? entry.getValue().es() : entry.getValue().en());
+    }
     }
 
     /**
