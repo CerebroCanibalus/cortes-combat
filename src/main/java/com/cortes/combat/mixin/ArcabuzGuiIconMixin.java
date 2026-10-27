@@ -2,7 +2,6 @@ package com.cortes.combat.mixin;
 
 import com.cortes.combat.client.ArcabuzModelProperties;
 import com.cortes.combat.registry.ModItems;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -62,12 +61,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class ArcabuzGuiIconMixin {
 
     /**
-     * The flat sprite's model, at the path the item model has always had. It lives in
-     * {@link ArcabuzModelProperties#ICON_MODEL}, which is also the name the load is registered
-     * under.
+     * The flat sprite's model, asked through the per-leg door.
+     *
+     * <p><b>Y la puerta es una funcion y no una constante, con la razon puesta:</b> las dos
+     * patas archivan el icono con llaves distintas -- 1.21.1 por
+     * {@code ModelResourceLocation} con variante {@code standalone}, 1.20.1 por el
+     * {@code ResourceLocation} pelado que el parche de {@code ModelBakery} usa al cargarlo.
+     * Pedirla con la llave de la otra pata devuelve el missing model sin decir nada, y este
+     * mixin es justo el que lo dibuja. {@code ArcabuzModelProperties#iconModel} es la unica
+     * linea que sabe de la diferencia.</p>
      */
-    private static final net.minecraft.client.resources.model.ModelResourceLocation ICON =
-            ArcabuzModelProperties.ICON_MODEL;
 
     /**
      * In a listing, the stack gets the sprite; in the hand, the gun stays a gun.
@@ -97,8 +100,7 @@ public class ArcabuzGuiIconMixin {
         if (!flat) {
             return;
         }
-        Minecraft mc = Minecraft.getInstance();
-        BakedModel icon = mc.getModelManager().getModel(ICON);
+        BakedModel icon = ArcabuzModelProperties.iconModel();
         // Guard: sin icono (o ya re-renderizando el icono = segunda visita) no toca nada.
         if (icon == null || icon == p_model) {
             return;

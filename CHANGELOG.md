@@ -1531,3 +1531,42 @@ un solo call site fully-qualified, que compila y el guard nombra.
 
 **Verificado en cliente real** (Quick Play): `[sync] primer envio` salio, disparos, recargas,
 `FoodDataMixin aplicado`, cero crash. **1186 tests verdes en 1.21.1.**
+
+## Ronda compat automatica severa + arcabuz GUI (2026-10-27)
+
+1. **Los mods detectados generan su propio weapon pack.** `AutoPackGenerator` (nuevo) escanea el
+   registro en `ServerStartedEvent`, clasifica las armas ajenas y escribe
+   `config/cortescombat/weapons/auto-<modid>.yaml` con una seccion por arquetipo. Solo se escribe
+   si el archivo NO existe (es del usuario desde el primer byte), abstiene del item que un pack
+   ya contesta y del que no tiene dano propio. `AutoPackYaml` arma el texto y es puro: el
+   generador importa Minecraft y la JVM de tests no puede cargarlo (verificado con el
+   `NoClassDefFoundError` real). En el server de prueba: `auto: 3 pack(s) generados` en la
+   primera corrida y **cero** en la segunda, con los tres archivos intactos.
+2. **Lanzas, alabardas y espadas largas, sin enums nuevos.** `spear` ahora mapea a
+   `WeaponProfile.TRIDENT` (era el placeholder de ropera) y el clasificador por nombre cubre
+   `spear/lance/pike/javelin/...`, `halberd/glaive/naginata/...` y `longsword/claymore/...`.
+   La espada larga se escribe como `archetype: sword` + `reach: {distance: 4.1}` en la entrada
+   generada: el alcance es consenso de escritorio, no un dato del juego.
+3. **Tiering automatico por ore, en la carga y no en el dano.** `AutoProfile.OreTier` lee el
+   material del id (netherite +2 ... wood -2) y `WeaponStats.of` escala la carga de las armas
+   ajenas: ticks x (1 - 0.08*delta) con piso 5 y bonus + 0.15*delta con piso 0. Lo que el YAML
+   declaro explicito no se toca. **El dano no se escala a proposito:** el arma ajena ya trae el
+   suyo por material y el golpe lee `ATTACK_DAMAGE`.
+4. **Nerfeo de la daga: -1.2 en todos los tiers.** `WeaponFamily.DAGA.attackDamage` 1.6F -> 0.4F
+   es el unico numero que los siete materiales comparten; el bono de `CortesTier` se suma encima.
+5. **El sprite del arcabuz en la GUI: era una llave, no un modelo.** En 1.20.1 el parche de
+   Forge a `ModelBakery` archiva los modelos adicionales bajo el `ResourceLocation` **pelado**;
+   `ModelResourceLocation.hashCode()` suma la variante, asi que el `getModel(MRL standalone)` del
+   mixin caia en otro balde y `ModelManager` devolvia el **missing model** — el checkerboard del
+   reporte. Fix: `ArcabuzModelProperties.iconModel()` por pata (MRL en 1.21.1, `getModel(RL)` en
+   1.20.1) y el mixin pregunta la puerta. El wrapper del mapa se elimino en la 1.20.1: los
+   overrides de la mecha resuelven despues, y sin override el wrapper dibujaba el sprite **en la
+   mano**.
+6. **Hueco del port que el diagnostico destapo:** `Trident=NONE(NO PELEA)` en 1.20.1 —
+   `enchantable/trident` es tag de 1.21.1 y no existe alla. Cerrado con
+   `instanceof TridentItem` al frente de `deriveProfile`; el log ahora dice `Trident=TRIDENT`.
+
+**1232 tests verdes en 1.21.1** (+18). 1.20.1 compila y el server real arranca `Done (3.072s)`
+con 7 packs / 650 entradas, `FoodDataMixin aplicado`, 46 recetas y 48 encantamientos, cero
+`Caused by`. Playtest pendiente: sprite del arcabuz en GUI/hotbar, un arma de cada arquetipo
+nuevo, la carga por tier y las dagas nerfeadas.

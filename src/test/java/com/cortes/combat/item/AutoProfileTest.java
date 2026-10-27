@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -86,5 +87,102 @@ class AutoProfileTest {
         assertFalse(AutoProfile.isForeign("cortescombat"), "la propia tampoco");
         assertTrue(AutoProfile.isForeign("magistuarmory"), "epic knights es ajena");
         assertTrue(AutoProfile.isForeign("simplyswords"), "simply swords es ajena");
+    }
+
+    // --------------------------------------------------------------------------------
+    // El nombre del id: la unica fuente que dice lo que el mod QUISO fabricar.
+    // --------------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("a spear rides the trident's molde, by the owner's order")
+    void spearsRideTheTrident() {
+        // "Las lanzas usan automaticamente el sistema del tridente": el alcance largo en cono
+        // angosto es la identidad del tipo, y el arquetipo `spear` la entrega entera.
+        assertEquals("spear", AutoProfile.archetypeOf("iron_spear"), "spear es lanza");
+        assertEquals("spear", AutoProfile.archetypeOf("diamond_lance"), "lance es lanza");
+        assertEquals("spear", AutoProfile.archetypeOf("pike_of_doom"), "pike es lanza");
+        assertEquals("spear", AutoProfile.archetypeOf("netherite_trident"),
+                "un tridente ajeno tambien: el nombre pide el sistema entero");
+    }
+
+    @Test
+    @DisplayName("a halberd family name is the polearm, not a spear and not a sword")
+    void polearmsArePolearms() {
+        assertEquals("polearm", AutoProfile.archetypeOf("steel_halberd"), "alabarda es polearm");
+        assertEquals("polearm", AutoProfile.archetypeOf("iron_glaive"), "glaive tambien");
+        assertEquals("polearm", AutoProfile.archetypeOf("naginata"), "y naginata");
+    }
+
+    @Test
+    @DisplayName("a longsword is a sword with a reach of its own")
+    void longswordsAreSwordsWithReach() {
+        // La espada larga NO es un arquetipo nuevo: es la espada con un `reach` escrito en el
+        // archivo generado. "longsword" contiene "sword", asi que la familia larga tiene que
+        // preguntarse ANTES -- si no, caeria en la rama del tag y perderia el alcance.
+        assertEquals("sword", AutoProfile.archetypeOf("steel_longsword"), "la larga es espada");
+        assertTrue(AutoProfile.isLongsword("steel_longsword"), "y se marca como larga");
+        assertEquals("sword", AutoProfile.archetypeOf("diamond_claymore"), "claymore tambien");
+        assertTrue(AutoProfile.isLongsword("diamond_claymore"), "y tambien es larga");
+        assertFalse(AutoProfile.isLongsword("steel_sword"), "una espada comun no lleva reach");
+        assertEquals(4.1F, AutoProfile.LONGSWORD_REACH, 1.0E-4F,
+                "medio bloque mas que la espada, un bloque menos que la alabarda");
+    }
+
+    @Test
+    @DisplayName("the other family names land where their fight says")
+    void theOtherFamiliesLandHome() {
+        assertEquals("dagger", AutoProfile.archetypeOf("silver_katana"),
+                "katana es daga, decision del playtest de la ronda pasada");
+        assertEquals("dagger", AutoProfile.archetypeOf("short_sword"), "la corta tambien");
+        assertEquals("rapier", AutoProfile.archetypeOf("estoc"), "estoc es ropera");
+        assertEquals("sabre", AutoProfile.archetypeOf("iron_scimitar"), "cimitarra es sable");
+        assertEquals("hammer", AutoProfile.archetypeOf("steel_mallet"), "mazo es martillo");
+        assertEquals("mace", AutoProfile.archetypeOf("bone_mace"), "maza es maza");
+        assertEquals("axe", AutoProfile.archetypeOf("battleaxe"), "hacha de batalla es hacha");
+        // Y la espada GENERICA no llega por nombre a proposito: ese volumen lo clasifica el
+        // tag `#minecraft:swords` + los atributos (refineForeignSword), que es mas honesto
+        // que una lista de nombres para la familia mas comun de todas.
+        assertNull(AutoProfile.archetypeOf("diamond_sword"), "una espada comun no dice nada");
+        assertNull(AutoProfile.archetypeOf("mystery_thing"), "y lo desconocido tampoco");
+    }
+
+    @Test
+    @DisplayName("the ore lives in the id, and the ladder is anchored on iron")
+    void theOreComesFromTheName() {
+        assertEquals(AutoProfile.OreTier.NETHERITE, AutoProfile.OreTier.of("netherite_dagger"));
+        assertEquals(2.0F, AutoProfile.OreTier.NETHERITE.delta(), 1.0E-4F);
+        assertEquals(AutoProfile.OreTier.DIAMOND, AutoProfile.OreTier.of("diamond_spear"));
+        assertEquals(1.0F, AutoProfile.OreTier.DIAMOND.delta(), 1.0E-4F);
+        assertEquals(AutoProfile.OreTier.STEEL, AutoProfile.OreTier.of("steel_halberd"));
+        assertEquals(0.5F, AutoProfile.OreTier.STEEL.delta(), 1.0E-4F);
+        // El hierro es el cero de la serie: la espada de vanilla y su dano son la linea.
+        assertEquals(0.0F, AutoProfile.OreTier.of("iron_sabre").delta(), 1.0E-4F);
+        assertEquals(0.0F, AutoProfile.OreTier.of("mystery_blade").delta(),
+                "sin nombre de material no hay tier inventado");
+        assertEquals(-1.5F, AutoProfile.OreTier.of("copper_dagger").delta(), 1.0E-4F);
+        assertEquals(-1.0F, AutoProfile.OreTier.of("stone_maul").delta(), 1.0E-4F);
+        assertEquals(-2.0F, AutoProfile.OreTier.of("wooden_spear").delta(), 1.0E-4F);
+        assertEquals(-1.5F, AutoProfile.OreTier.of("golden_blade").delta(), 1.0E-4F);
+    }
+
+    @Test
+    @DisplayName("a better ore charges faster and harder, and never below the floors")
+    void theTierScalesTheCharge() {
+        // El numero del molde del tridente: 25 ticks y +0.5. Netherite: 21 ticks y +0.8;
+        // madera: 29 y +0.2. El dano no esta aca (el arma ya trae el suyo por material).
+        assertEquals(21, AutoProfile.tieredChargeTicks(25, AutoProfile.OreTier.NETHERITE));
+        assertEquals(29, AutoProfile.tieredChargeTicks(25, AutoProfile.OreTier.WOODEN));
+        assertEquals(25, AutoProfile.tieredChargeTicks(25, AutoProfile.OreTier.IRON),
+                "el cero del tier es identidad, no una ventana distinta");
+        assertEquals(0.8F, AutoProfile.tieredChargeBonus(0.5F, AutoProfile.OreTier.NETHERITE),
+                1.0E-4F);
+        assertEquals(0.2F, AutoProfile.tieredChargeBonus(0.5F, AutoProfile.OreTier.WOODEN),
+                1.0E-4F);
+        // Los dos pisos, los dos afirmados: la ventana no baja de 5 ticks y el bono no resta.
+        assertEquals(AutoProfile.MIN_FULL_CHARGE_TICKS,
+                AutoProfile.tieredChargeTicks(4, AutoProfile.OreTier.NETHERITE),
+                "una carga instantanea no es carga");
+        assertEquals(0.0F, AutoProfile.tieredChargeBonus(0.1F, AutoProfile.OreTier.WOODEN),
+                1.0E-4F, "el bono nunca resta -- el piso es el mismo de la columna del YAML");
     }
 }

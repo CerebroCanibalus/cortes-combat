@@ -98,23 +98,34 @@ public final class ArcabuzModelProperties {
     }
 
     /**
-     * The flat sprite's model, at the path the item model has always had.
+     * **La llave del icono en 1.20.1 es un {@code ResourceLocation} PELADO, y esto esta
+     * verificado en las fuentes de Forge 47.4.28, no supuesto.**
      *
-     * <p>{@code inventory}, and not a bare {@code ResourceLocation}: that is the variant
-     * {@code ModelManager} files its item models under. <b>And it has to be registered as a
-     * load</b> -- {@code FlatInventoryIcon#onRegisterAdditional} -- because an override
-     * target is baked into the parent model and never published, so asking for it by name would
-     * otherwise find the missing model.</p>
+     * <p>El parche de {@code ModelBakery} hace {@code f_119214_.put(rl, unbakedmodel)} con el
+     * {@code ResourceLocation} que devolvio {@code ModelEvent.RegisterAdditional} -- sin
+     * variante, sin envolverlo. Y la busqueda con variante <em>falla</em>:
+     * {@code ModelResourceLocation} sobreescribe {@code hashCode()} sumando su variante, asi
+     * que un {@code get(mrl)} cae en otro balde del {@code HashMap} y devuelve el <b>missing
+     * model</b> por el {@code getOrDefault} de {@code ModelManager}.</p>
+     *
+     * <p>Eso es exactamente lo que se veia: el log decia "icono plano listo" (el otro
+     * mecanismo, el wrapper del mapa, si encontraba la llave) y la GUI seguia sin texturas
+     * porque el mixin -- que corre DESPUES y es el que decide en que contextos va el sprite --
+     * pedia {@code arcabuz_icon#standalone} y recibia el missing model. Dos mecanismos, una
+     * llave mal pedida, y el sintoma final lo escribia el que corria ultimo. (μ_μ)</p>
      */
+    public static final ResourceLocation ICON = ResourceIds.rl("arcabuz_icon");
+
     /**
-     * The flat sprite's model, as a <b>standalone</b> -- the only variant NeoForge accepts in
-     * {@code RegisterAdditional} ("Side-loaded models must use the 'standalone' variant", thrown
-     * the first time the listener was actually wired). Same id as {@code FlatInventoryIcon}'s,
-     * because the mixin asks for exactly the model that got baked.
+     * El modelo del sprite, pedido por la llave con la que el bakery lo archivo.
+     *
+     * <p>{@code getModel(ResourceLocation)} es la sobrecarga que Forge agrega a
+     * {@code ModelManager} justo para esto; la vanilla ({@code m_119422_}) toma
+     * {@code ModelResourceLocation} y es la que fallaba.</p>
      */
-    public static final net.minecraft.client.resources.model.ModelResourceLocation ICON_MODEL =
-            new net.minecraft.client.resources.model.ModelResourceLocation(
-                    ResourceIds.rl("arcabuz_icon"), "standalone");
+    public static net.minecraft.client.resources.model.BakedModel iconModel() {
+        return net.minecraft.client.Minecraft.getInstance().getModelManager().getModel(ICON);
+    }
 
     /**
      * Registers both predicates. Client side, once, at startup.

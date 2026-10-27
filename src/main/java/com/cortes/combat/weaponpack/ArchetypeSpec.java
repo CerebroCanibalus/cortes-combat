@@ -48,8 +48,11 @@ public record ArchetypeSpec(WeaponProfile profile, SpecialType special, Boolean 
         // La carga del WARHAMPER no es gratis: el pack la enciende con stats.charge.
         map.put("hammer", new ArchetypeSpec(WeaponProfile.WARHAMMER, SpecialType.NONE, false, null, null));
         map.put("mace", new ArchetypeSpec(WeaponProfile.MACE, SpecialType.NONE, null, null, null));
-        // La lanza NO hereda el lunge de la ropera: placeholder para las lanzas de versiones futuras.
-        map.put("spear", new ArchetypeSpec(WeaponProfile.ROPERA, SpecialType.NONE, null, null, null));
+        // La lanza usa el sistema del tridente, decision del dueno: el alcance largo en cono
+        // angosto, la carga que estoca y el especial se lo da el mod (vanilla lanza el tridente
+        // por su cuenta -- el click derecho NO es nuestro). El placeholder anterior era ROPERA,
+        // que le prestaba el lunge a un tipo que no pide ese ida y vuelta.
+        map.put("spear", new ArchetypeSpec(WeaponProfile.TRIDENT, SpecialType.NONE, null, null, null));
         map.put("polearm", new ArchetypeSpec(WeaponProfile.HALBERD, SpecialType.MULTI_HIT, null, null, null));
         map.put("axe", new ArchetypeSpec(WeaponProfile.AXE, SpecialType.NONE, null, null, null));
         return Map.copyOf(map);

@@ -155,6 +155,21 @@ public final class WeaponStats {
                         pack.fullChargeTicks() != null ? pack.fullChargeTicks()
                                 : charge.fullChargeTicks());
             }
+            // **El tier (el ore del nombre) escala la carga de las ajenas.** Solo el numero que
+            // sigue viniendo del molde: si el pack declaro bonus o ticks, el pack manda y el
+            // tier no toca ese campo. El dano NO esta aqui: el arma ajena ya trae el suyo por
+            // material, y pisaarlo seria pelear contra el balance del otro mod. (μ_μ)
+            var id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+            AutoProfile.OreTier tier = AutoProfile.OreTier.of(id.getPath());
+            if (AutoProfile.isForeign(id.getNamespace()) && tier.delta() != 0.0F) {
+                charge = new ChargeProfile(charge.canCharge(),
+                        pack == null || pack.chargeBonus() == null
+                                ? AutoProfile.tieredChargeBonus(charge.bonus(), tier)
+                                : charge.bonus(),
+                        pack == null || pack.fullChargeTicks() == null
+                                ? AutoProfile.tieredChargeTicks(charge.fullChargeTicks(), tier)
+                                : charge.fullChargeTicks());
+            }
         }
 
         ReachProfile reach = WeaponData.reachProfile(stack);
@@ -268,6 +283,15 @@ public final class WeaponStats {
      * answer for an unknown item is that it is not a weapon.</p>
      */
     private static WeaponProfile deriveProfile(ItemStack stack) {
+        // **El tridente, por instancia y no por tag.** El tag `enchantable/trident` es de
+        // 1.21.1: en 1.20.1 no existe, y el diagnostico de arranque lo canto --
+        // `Trident=NONE(NO PELEA)` en el server de verdad. `TridentItem` existe en las dos
+        // patas y es la clase que `Items.TRIDENT` instancia, asi que la puerta es una sola, y
+        // de paso cubre a un mod que extienda `TridentItem` en la 1.20.1. Las lanzas ajenas
+        // llegan por otro camino (arquetipo `spear` -> TRIDENT, en el pack). (⌒‿⌒)
+        if (stack.getItem() instanceof net.minecraft.world.item.TridentItem) {
+            return WeaponProfile.TRIDENT;
+        }
         for (Map.Entry<TagKey<net.minecraft.world.item.Item>, WeaponProfile> entry
                 : CORTES_PROFILE_TAGS.entrySet()) {
             if (stack.is(entry.getKey())) {

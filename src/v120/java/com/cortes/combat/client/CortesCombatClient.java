@@ -66,16 +66,14 @@ public final class CortesCombatClient {
         // place to forget one.
         MinecraftForge.EVENT_BUS.register(CombatTooltipHandler.class);
         // **The mod bus and not the game bus, and the difference is not a style choice.**
-        // `ModelEvent.ModifyBakingResult` implements `IModBusEvent`: registering this on
-        // `MinecraftForge.EVENT_BUS` means the listener never fires, so the arcabuz would keep drawing as
-        // a rotating 3D model in every slot and nothing would say so -- the same shape of silent
-        // failure as the missing `@SubscribeEvent` that cost the arcabuz its fuse frames.
-        // **Both listeners, and the second one was the half nobody wired.** `onRegisterAdditional`
-        // is what makes the game BAKE the flat icon (a model nobody references is a file on disk,
-        // not a model), and without it `onBakingResult` ran every launch, found nothing, and said
-        // `icono=false` -- a correct handler asking a map that nothing had filled.
+        // `ModelEvent.RegisterAdditional` implements `IModBusEvent`: registering it on the
+        // Forge bus means the listener never fires and the game never bakes the flat icon --
+        // a model nobody references is a file on disk, not a model.
+        // **Y una sola mitad, por decision.** `onBakingResult` (el wrapper del mapa) se
+        // elimino en la ronda del arcabuz-GUI: los overrides de la mecha resuelven DESPUES
+        // del mapa y se lo comian, y cuando ninguno matcheaba el wrapper dibujaba el sprite
+        // en la MANO. La GUI la decide `ArcabuzGuiIconMixin`, que lee el display context.
         modEventBus.addListener(FlatInventoryIcon::onRegisterAdditional);
-        modEventBus.addListener(FlatInventoryIcon::onBakingResult);
         // **El modelo de la onda de filo, y por la misma razón que el icono del arcabuz.** Un
         // modelo que nada referencia es un archivo en disco: el juego no lo hornea y el renderer
         // recibe el modelo "missing" -- el cubo violeta, sin una línea de error en el log.

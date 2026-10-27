@@ -67,10 +67,16 @@ public final class ModPlatform {
      * check is registry presence instead), and the recipe count by id rather than by holder.
      */
     public static void registerDiagnostics() {
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(ModPlatform::autoPackGenerate);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(ModPlatform::reportVanillaProfiles);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(ModPlatform::reportOurRecipes);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(ModPlatform::reportSurvivalSeam);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(ModPlatform::reportEnchantmentTags);
+    }
+
+    private static void autoPackGenerate(
+            net.minecraftforge.event.server.ServerStartedEvent event) {
+        com.cortes.combat.weaponpack.AutoPackGenerator.generate();
     }
 
     private static void reportVanillaProfiles(

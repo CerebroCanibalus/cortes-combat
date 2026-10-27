@@ -87,6 +87,7 @@ public final class ModPlatform {
      * because what they ask differs per Minecraft version. See each method for the difference.
      */
     public static void registerDiagnostics() {
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ModPlatform::autoPackGenerate);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ModPlatform::reportVanillaProfiles);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ModPlatform::reportOurRecipes);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ModPlatform::reportSurvivalSeam);
@@ -129,10 +130,22 @@ private static void reportVanillaProfiles(
     org.slf4j.LoggerFactory.getLogger("cortescombat").info(line.toString());
 }
 
+    /**
+     * The weapon packs auto-generated from the mods we can see. One {@code auto-<modid>.yaml}
+     * per foreign mod, written only the first time, and reloaded the same tick.
+     *
+     * <p>Runs on the same {@code ServerStartedEvent} the tags lesson asked for: before the
+     * datapack loads there is no sword tag to refine by, and the generator would hand back
+     * nothing while calling it a success. Its javadoc carries the full decision.</p>
+     */
+    private static void autoPackGenerate(
+            net.neoforged.neoforge.event.server.ServerStartedEvent event) {
+        com.cortes.combat.weaponpack.AutoPackGenerator.generate();
+    }
+
 /**
  * Prints how many of this mod's recipes and advancements the game loaded.
- *
- * <p><b>This exists because "zero" and "thirty-four" produced the same log line.</b> The datagen
+ * * <p><b>This exists because "zero" and "thirty-four" produced the same log line.</b> The datagen
  * wrote into {@code data/cortescombat/recipes/} and {@code data/cortescombat/advancements/}, 1.21
  * renamed every datapack folder to the singular, and the loader never read a file of ours.
  * {@code Loaded 1290 recipes} in the log was vanilla's own count -- and it was read, by me, as

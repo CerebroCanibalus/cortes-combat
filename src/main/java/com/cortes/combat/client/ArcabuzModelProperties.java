@@ -117,6 +117,25 @@ public final class ArcabuzModelProperties {
                     ResourceIds.rl("arcabuz_icon"));
 
     /**
+     * El modelo del sprite, pedido a {@code ModelManager} por la misma llave con la que se
+     * registro.
+     *
+     * <p><b>Esta puerta existe porque el mixin es compartido y las dos patas archivan el
+     * icono con llaves distintas.</b> En 1.21.1 el mapa se llavea por
+     * {@code ModelResourceLocation} (la variante {@code standalone} incluida), asi que el
+     * {@code getModel(MRL)} de arriba acierta. En 1.20.1 el parche de {@code ModelBakery}
+     * guarda el modelo adicional bajo el {@code ResourceLocation} pelado y
+     * {@code ModelResourceLocation.hashCode()} suma su variante, asi que esa misma busqueda
+     * caia en otro balde y volvia el <b>missing model</b> -- el checkerboard reportado como
+     * "el arcabuz sigue sin texturas en la GUI". Cada pata pide con su llave y el mixin no
+     * sabe de la diferencia. (￣ε￣＠)</p>
+     */
+    public static net.minecraft.client.resources.model.BakedModel iconModel() {
+        return net.minecraft.client.Minecraft.getInstance().getModelManager()
+                .getModel(ICON_MODEL);
+    }
+
+    /**
      * Registers both predicates. Client side, once, at startup.
      *
      * <p><b>Both read the client's own state and nothing else.</b> No clock, no interpolation: the

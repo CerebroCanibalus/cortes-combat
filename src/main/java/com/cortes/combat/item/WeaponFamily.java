@@ -79,13 +79,20 @@ public enum WeaponFamily {
      * use, which is the dagger's whole argument: a short reach and low damage are only worth
      * something if the hands are quick. Eight ticks is a swing you can see coming.</p>
      *
+     * <p><b>And the damage was cut by order:</b> the playtest asked for a -1.2 nerf on every
+     * tier, and this family damage is the one number every tier shares -- the material bonus is
+     * added on top, so one subtraction lands on all of them. 1.6F became 0.4F (a wooden dagger
+     * is 1.4 damage now, was 2.6). The tempo and the cone are the dagger's argument; the damage
+     * was the part that did not pay for the reach it was missing. If a playtest wants it back,
+     * the revert is this one number.</p>
+     *
      * <p><b>Six is also the last number before the i-frames become a problem</b>, and that is a
      * test rather than a coincidence. {@code AttackTiming.IFRAME_TICKS} is four, and a weapon that
      * swung again inside its own window would silently lose every second hit to it. Six leaves a
      * two tick margin, and {@code IframesTest} fails if anything in the catalogue goes below that.</p>
      */
     DAGA("daga", "Daga", "Dagger", WeaponProfile.DAGGER, WeaponShape.DAGA,
-            1.6F, 3.2F),
+            0.4F, 3.2F),
 
     /**
      * The shotel: the widest cone in the game, the shortest reach that is not the warhammer's,
