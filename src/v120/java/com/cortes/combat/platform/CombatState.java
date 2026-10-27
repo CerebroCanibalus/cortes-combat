@@ -148,6 +148,22 @@ public final class CombatState {
         bag(entity).lastBlock = stamp;
     }
 
+    /**
+     * <code>invulnerableTime</code> as it was when this hurt() started, and not the twenty
+     * the method has already written by the time the guard is asked.
+     *
+     * <p>One capture, {@code -1} between hits. Kept out of the serializer by the in-flight
+     * rule: it is true for the length of one {@code hurt()} call and false for everything
+     * that ever matters outside it.</p>
+     */
+    public static int guardPreInvuln(Entity entity) {
+        return bag(entity).guardPreInvuln;
+    }
+
+    public static void setGuardPreInvuln(Entity entity, int ticks) {
+        bag(entity).guardPreInvuln = ticks;
+    }
+
     public static GuardFree guardFree(Entity entity) {
         return bag(entity).guardFree;
     }
@@ -313,7 +329,7 @@ public final class CombatState {
     }
 
     /**
-     * All 21 states, with the 1.21.1 defaults. The ten with a codec serialize under their
+     * All 22 states, with the 1.21.1 defaults. The ten with a codec serialize under their
      * registry key; the rest live and die with the session, exactly like their twins.
      */
     static final class StateBag implements ICapabilityProvider, INBTSerializable<CompoundTag> {
@@ -322,6 +338,7 @@ public final class CombatState {
         ChargeState charge = ChargeState.EMPTY;
         GuardState guard = GuardState.EMPTY;
         GuardStamp lastBlock = GuardStamp.NONE;
+        int guardPreInvuln = -1;
         CooldownState cooldown = CooldownState.READY;
         StreakState hammerStreak = StreakState.EMPTY;
         ParryState parry = ParryState.READY;

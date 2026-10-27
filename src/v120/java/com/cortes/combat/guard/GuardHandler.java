@@ -23,6 +23,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 
@@ -183,6 +184,28 @@ public final class GuardHandler {
         return entity.isUsingItem() && entity.getUseItem().getUseAnimation() == UseAnim.BLOCK;
     }
 
+    /**
+     * <code>invulnerableTime</code> as <code>hurt()</code> begins, captured while the value is
+     * still the player's own.
+     *
+     * <p>Bytecode-verified (javap, the mapped 1.20.1 jar): <code>hurt()</code> opens with
+     * <code>ForgeHooks.onLivingAttack</code> at offsets 3&ndash;10 &mdash; before the shield, before
+     * the i-frame gate, before the {@code invulnerableTime = 20} the else branch writes. The
+     * <b>pre-write</b> value is the only one that means anything, and it is exactly what NeoForge
+     * 1.21.1 hands the guard by the order of its own damage event.</p>
+     *
+     * <p>Nothing here decides anything. Even a parry whose handler cancels the event has already
+     * handed us the number, and a stored number that nobody reads is harmless &mdash; unlike the
+     * stale one that arrives by not capturing at all.</p>
+     */
+    @SubscribeEvent
+    public static void onAttackStart(LivingAttackEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+        CombatState.setGuardPreInvuln(player, player.invulnerableTime);
+    }
+
     @SubscribeEvent
     public static void onShieldBlock(LivingHurtEvent event) {
         LivingEntity entity = event.getEntity();
@@ -245,13 +268,17 @@ public final class GuardHandler {
         // strike: a sweep hits four different mobs and each of them has to pay.</p>
         Entity attacker = event.getSource().getEntity();
         long now = player.level().getGameTime();
-        // **I-frames del escudo: un golpe dentro de la ventana de invulnerabilidad no es un golpe
-        // nuevo.** Mismo arreglo que la pata 1.21.1 (ver el comentario allá): vanilla cobra el
-        // punto aunque su gate de `hurt()` habría tragado el golpe. Aca el evento corre dentro de
-        // `actuallyHurt`, después del gate -- los golpes que el gate traga ni llegan --, pero el
-        // caso del DELTA (un golpe más fuerte que el último dentro de la ventana) sí llega, y ese
-        // tampoco es un golpe nuevo: gratis. (⌒‿⌒)
-        boolean inIFrames = player.invulnerableTime > 10
+        // **La ventana se lee de la captura, no del campo vivo (2026-10-27).** Se leyia
+        // `player.invulnerableTime` aca, y aca ya no tiene la respuesta: el bytecode (javap,
+        // offsets 303-317 del jar mapeado 1.20.1) muestra que vanilla la sube a 20 en la rama
+        // else ANTES de llamar a `actuallyHurt`, y `LivingHurtEvent` corre dentro de
+        // `actuallyHurt` -- o sea que CADA golpe nuevo llegaba con 20 puesto y este gate lo
+        // leia como "ventana abierta". Ese fue el "sí cubre pero no se consume" del playtest:
+        // el primer bloqueo cobro, y desde entonces ninguno volvio a pagar nada. El valor
+        // que decide es el PREVIO -- el que la pata 1.21.1 ve por el orden de su evento --
+        // y en esta pata llega via `onAttackStart`, que captura al TOP de `hurt()`.
+        // (μ_μ)
+        boolean inIFrames = CombatState.guardPreInvuln(player) > 10
                 && !event.getSource().is(DamageTypeTags.BYPASSES_COOLDOWN);
         GuardStamp last = CombatState.lastBlock(player);
         int attackerId = attacker == null ? 0 : attacker.getId();
@@ -261,6 +288,11 @@ public final class GuardHandler {
             // spent twice &mdash; so a follow-up cut is still stopped, which is what the player
             // sees as "the shield held".
             event.setAmount(incoming - GuardRules.blockedAmount(incoming, blocked));
+            // Instrumento de mision: la rama que decide sin cobra era el punto ciego del
+            // trace anterior -- cachaba el valor de postura pero nunca decia por que.
+            org.slf4j.LoggerFactory.getLogger("cortescombat").info(
+                    "[guardia] mis-swing: preInvuln={} dano={} -> no cobra",
+                    CombatState.guardPreInvuln(player), incoming);
             return;
         }
 
@@ -303,6 +335,13 @@ public final class GuardHandler {
                 com.cortes.combat.state.ContragolpeWindow.armedAt(now));
 
         event.setAmount(incoming - GuardRules.blockedAmount(incoming, blocked));
+        // Instrumento de mision: una linea por golpe cobrado, con la aguante despues del
+        // cobro -- el trace viejo imprimia la postura ANTES y la ronda anterior lo dejo
+        // sin primer. Se saca cuando el playtest del bloqueo cierre. (^o^)
+        org.slf4j.LoggerFactory.getLogger("cortescombat").info(
+                "[guardia] cobro: dano={} gratis={} preInvuln={} stam={} -> {}",
+                incoming, gratis, CombatState.guardPreInvuln(player),
+                state.stamina(), after.stamina());
         // No durability cost on our side: the shield is not an item that wears out from doing
         // the job it exists for. (Vanilla may still take its own cut when it was also
         // blocking -- see the class note. Ours takes none.)

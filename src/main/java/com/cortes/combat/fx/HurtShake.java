@@ -57,6 +57,13 @@ public final class HurtShake {
         if (source.is(net.minecraft.tags.DamageTypeTags.IS_EXPLOSION)) {
             return;
         }
+        // **Dano 0 no es un golpe recibido.** Para el playtest del 2026-10-26 reportado en la
+        // pata 1.20.1 (el temblor de bloqueo con dano final cero): lo mismo puede pasar alla y
+        // aca cuando un bloqueo perfecto o armadura total dejan el dano en 0 -- con atacante,
+        // sin explosion y sacudindo igual. `getNewDamage` es el dano final. (._.)
+        if (event.getNewDamage() <= 0.0F) {
+            return;
+        }
         Shake.to(player, player.getX(), player.getY(), player.getZ(), ShakeKind.HURT);
     }
 }

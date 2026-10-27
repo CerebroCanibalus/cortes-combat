@@ -137,3 +137,4 @@ stonecutter.gradle
 # Mods downloaded for compat investigation (not part of the mod)
 mods-download/
 out
+compressO-*.png

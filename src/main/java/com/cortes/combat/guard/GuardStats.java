@@ -63,7 +63,29 @@ public final class GuardStats {
                 && com.cortes.combat.core.weapon.WeaponProfile.SWORD != pack.profile()) {
             return GuardProfile.NONE;
         }
-        return vanillaDefaultFor(stack);
+        // **Compat automatica (2026-10-27): la capa final pregunta capa arriba de la suya.**
+        // Dos cambios, los dos del mismo reporte ("los escudos de mods no convertidos" y
+        // "todo arma ajena hereda espada"):
+        //
+        // 1. Un escudo vale lo que contesta el CONTRATO y no la clase: EK registra sus
+        //    escudos como Item pelado que responde canPerformAction(DEFAULT_SHIELD_ACTIONS),
+        //    verificado en su jar. instanceof ShieldItem los dejaba fuera de la aguante, y el
+        //    bloqueo lo resolvan las mecanicas vanilla "gratis" -- exactamente lo que el dueño
+        //    llamo "no convertidos".
+        //
+        // 2. Y el resto ya no le pregunta al item su Java, le pregunta al perfil DERIVADO de
+        //    WeaponStats: alla ahora se clasifican las armas ajenas por atributos (daga para la
+        //    veloz, martillo para la pesada), y el fallback "cualquier SwordItem cubre un punto"
+        //    se desincroniza de esa clasificación el mismo día que ella decide daga. Dos cadenas
+        //    de instanceof para el mismo hecho es dos lugares donde se rompe una vez.
+        if (com.cortes.combat.platform.ShieldSeams.canShieldBlock(stack)) {
+            return GuardProfile.SHIELD;
+        }
+        if (com.cortes.combat.attack.WeaponStats.of(stack).profile()
+                == com.cortes.combat.core.weapon.WeaponProfile.SWORD) {
+            return GuardProfile.SWORD;
+        }
+        return GuardProfile.NONE;
     }
 
     /** The strongest guard the two hands are worth. */

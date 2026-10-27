@@ -57,6 +57,16 @@ public final class HurtShake {
         if (source.is(net.minecraft.tags.DamageTypeTags.IS_EXPLOSION)) {
             return;
         }
+        // **Playtest 2026-10-26: el reporte "cubro y me da el efecto del golpe sin recibir
+        // dano" era este handler, no la guardia.** Un golpe parado por el escudo llega aca
+        // con dano cero (verificado en el [guardia] del server: vanilla cobra su bloqueo
+        // ANTES del evento en 1.20.1), con atacante y sin explosion: pasaba los tres filtros
+        // y sacudia como un golpe limpio. Regla: dano 0 no es un golpe recibido -- es un
+        // bloqueo, y ese caso ya tiene su temblor propio (o no lo tiene y no lo debe).
+        // NaMo: getAmount() es el dano final del evento. (μ_μ)
+        if (event.getAmount() <= 0.0F) {
+            return;
+        }
         Shake.to(player, player.getX(), player.getY(), player.getZ(), ShakeKind.HURT);
     }
 }

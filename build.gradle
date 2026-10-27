@@ -526,6 +526,8 @@ if (!mc121) {
         // entero, con un error que apunta a los importadores y no a la causa. (￣ω￣)
         def v120Replaces = ['com/cortes/combat/platform/CombatState.java',
                 'com/cortes/combat/platform/EnchantView.java',
+                'com/cortes/combat/platform/ShieldSeams.java',
+                'com/cortes/combat/platform/WeaponAttr.java',
                 'com/cortes/combat/platform/ResourceIds.java',
                 'com/cortes/combat/platform/CombatPackets.java',
                 'com/cortes/combat/platform/WeaponData.java',

@@ -3,12 +3,14 @@ package com.cortes.combat.attack;
 import com.cortes.combat.platform.WeaponData;
 
 import com.cortes.combat.platform.CombatState;
+import com.cortes.combat.platform.WeaponAttr;
 
 import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.core.weapon.KnockbackProfile;
 import com.cortes.combat.core.weapon.ReachProfile;
 import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.core.weapon.WeaponProfile;
+import com.cortes.combat.item.AutoProfile;
 import com.cortes.combat.item.WeaponProfileTags;
 import com.cortes.combat.item.WeaponTables;
 import com.cortes.combat.weaponpack.ResolvedWeapon;
@@ -275,10 +277,31 @@ public final class WeaponStats {
         for (Map.Entry<TagKey<net.minecraft.world.item.Item>, WeaponProfile> entry
                 : VANILLA_TAGS.entrySet()) {
             if (stack.is(entry.getKey())) {
-                return entry.getValue();
+                return refineForeignSwordTag(stack, entry.getValue());
             }
         }
         return WeaponProfile.NONE;
+    }
+
+    /**
+     * **Compat automatica (2026-10-27): el tag de espada identificado y corregido.** Lo unico
+     * que llego por un tag de VANILLA con namespace ajeno deja de heredar la espada completa y
+     * se clasifica por sus atributos (dano y velocidad, escala del tooltip -- ver
+     * {@link AutoProfile}). El resto: los nuestros, los de minecraft y los que llegaron por
+     * otros tags siguen con el valor del tag, porque ese tag lo lleno alguien que tuvo una
+     * opinion. Exclusivo el SWORD: el tag espada es el de la herencia ciega -- "casi cualquier
+     * arma de mod se declara en #minecraft:swords" -- y ningun otro tag de vanilla es abuso
+     * por falso defecto: se lo lleno alguien con una opinion. (μ_μ)
+     */
+    private static WeaponProfile refineForeignSwordTag(ItemStack stack, WeaponProfile tagProfile) {
+        if (tagProfile != WeaponProfile.SWORD
+                || !AutoProfile.isForeign(
+                        net.minecraft.core.registries.BuiltInRegistries.ITEM
+                                .getKey(stack.getItem()).getNamespace())) {
+            return tagProfile;
+        }
+        WeaponAttr.Hand hand = WeaponAttr.of(stack);
+        return AutoProfile.refineForeignSword(hand.damage(), hand.speed());
     }
 
     /**
