@@ -112,4 +112,41 @@ class EnchantmentDescriptionsTest {
                             + "cortarse mal -> " + text);
         }
     }
+
+    /**
+     * Las construcciones que el dueno veto por nombre, comprobadas sobre el texto real.
+     *
+     * <p><b>Una regla de estilo sin guard es una regla que se pierde en la tercera reescritura.</b>
+     * Las tres familias vetadas: <b>epanortosis</b> (corregirse a mitad de frase), <b>coordinadas
+     * adversativas</b> ({@code pero/sino/aunque}) y las <b>rhetoricas de contraste</b>
+     * ({@code No es X, sino Y} / {@code No solo X, sino tambien Y} / {@code Mas que X, es Y}).
+     * El registro buscado es el de un objeto del juego que se recuerda, no el de un manual; una
+     * descripcion afirmativa dice lo mismo sin la muleta del contraste.</p>
+     *
+     * <p>Se busca por palabra completa y en minusculas: {@code sino} como subcadena vive dentro de
+     * {@code destino}, y un guard que se dispara con una palabra legitima se termina apagando.</p>
+     */
+    @Test
+    @DisplayName("no adversatives, no contrast rhetoric, no self-correction")
+    void noVetoedConstructions() throws IOException {
+        String[] bannedEs = {"pero", "sino", "aunque", "sin embargo", "no obstante", "mas bien",
+                "más bien", "no solo", "digamos"};
+        String[] bannedEn = {"but", "however", "although", "rather", "not only", "i mean"};
+        for (String line : Files.readAllLines(TABLE, StandardCharsets.UTF_8)) {
+            String s = line.strip();
+            if (!s.startsWith("es:") && !s.startsWith("en:")) {
+                continue;
+            }
+            boolean spanish = s.startsWith("es:");
+            String text = s.substring(3).strip().toLowerCase();
+            String[] banned = spanish ? bannedEs : bannedEn;
+            for (String word : banned) {
+                boolean hit = spanish
+                        ? (" " + text + " ").contains(" " + word + " ")
+                        : java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(word)
+                                + "\\b").matcher(text).find();
+                assertFalse(hit, "la descripcion usa '" + word + "', vetado por el dueno: " + s);
+            }
+        }
+    }
 }

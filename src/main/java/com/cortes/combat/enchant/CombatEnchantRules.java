@@ -216,16 +216,21 @@ public final class CombatEnchantRules {
     public static final int AUDACITY_MAX_LEVEL = 2;
 
     /** Cuánto baja el cooldown por nivel, como fracción del total. */
-    public static final float AUDACITY_REDUCTION_PER_LEVEL = 0.20F;
+    public static final float AUDACITY_REDUCTION_PER_LEVEL = 0.28F;
 
     /**
-     * El cooldown del lunge con Audacia: el 20 % menos por nivel (80 → 64 → 48 ticks).
+     * El cooldown del lunge con Audacia: el 28 % menos por nivel (80 -> 58 -> 35 ticks).
      *
      * <p><b>Por fracción y no por ticks fijos, a diferencia del parry, y la diferencia es del
      * diseño.</b> El cooldown del lunge ya se deriva del intervalo del arma
      * ({@code LungeDamage.COOLDOWN_FACTOR}), así que un descuento fijo chocaría con la escala del
      * tempo: en un arma lenta el mismo −20 ticks sería casi gratis y en una rápida sería todo. La
      * fracción deja el encantamiento proporcional a lo que el arma ya cuesta.</p>
+     *
+     * <p><b>De 20 % a 28 %, pedido del dueño:</b> "reduce muy poquito". El 28 % deja el lunge en
+     * un nivel en 58 ticks y en dos en 35, o sea que la ropera encantada vuelve a moverse casi al
+     * ritmo de su propio cooldown de ataque. El tope sigue siendo dos niveles: la reducción es
+     * multiplicativa sobre el intervalo, así que un tercer nivel ya sería un lunge gratis.</p>
      */
     public static int lungeCooldown(int baseTicks, int level) {
         int clamped = clamp(level, AUDACITY_MAX_LEVEL);

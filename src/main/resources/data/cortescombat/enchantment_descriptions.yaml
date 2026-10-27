@@ -1,206 +1,210 @@
 # Descripciones de encantamientos -- Cortes Combat
 #
 # **Este archivo es la tabla, y es el unico lugar donde se escribe una descripcion.**
-# El mod lo lee al generar los idiomas y escribe `enchantment.cortescombat.<id>.desc`,
-# que es la clave que lee Enchantment Descriptions (Darkhax) para mostrarla en el tooltip.
+# El mod lo lee al generar los idiomas y escribe `enchantment.cortescombat.<id>.desc`, que es la
+# clave que lee Enchantment Descriptions (Darkhax) para mostrarla en el tooltip.
 #
 # Agregar o corregir una descripcion NO toca Java: una entrada aca y `runData`.
-# `EnchantmentDescriptionsTest` camina los 48 ids y exige las DOS lenguas, asi que una
-# entrada que falte rompe el build en vez de dejar un encantamiento mudo.
+# `EnchantmentDescriptionsTest` camina los 48 ids y exige las DOS lenguas, asi que una entrada que
+# falte rompe el build en vez de dejar un encantamiento mudo.
 #
-# Criterio: la primera palabra es el DISPARADOR (matar, bloquear, cargado, minar...),
-# despues el EFECTO, y al final la ESCALA por nivel con los numeros de
-# `CombatEnchantRules`/`GoldEnchantRules`. Sin acertijos: es la unica explicacion que
-# el jugador va a leer.
+# Criterio (ronda del 2026-10-27, segunda pasada): **enigma con el mecanismo adentro.** Cada linea
+# dice cual es el disparador y que se siente, con la escala sugerida por palabras (nivel, pausa,
+# cadena). Sin fichas tecnicas y sin estas construcciones, que el dueno veto por nombre:
+#   - epanortosis enfatica ("o mas bien", "digamos");
+#   - coordinadas adversativas ("pero", "sino", "aunque");
+#   - retoricas de contraste ("No es X, sino Y", "No solo X, sino tambien Y", "Mas que X, es Y").
+# El registro es el de un objeto del juego que se recuerda, no el de un manual.
+
 
 midas_touch:
-  es: "Matar deja pepitas de oro; con nivel, lingotes y hasta manzanas doradas."
-  en: "Kills leave gold nuggets; higher levels add ingots and even golden apples."
+  es: "Cada cuerpo que cae escupe oro, y mientras más hondo el nivel, más oro."
+  en: "Every body that falls spits gold, and the deeper the level, the more gold."
 
 gold_echo:
-  es: "Tu golpe lo marca y lo hace brillar: recibe un 20 % más de daño de todos."
-  en: "Your hit marks it and makes it glow: it takes 20% more damage from everything."
+  es: "Tu golpe lo enciende: brilla para todos y el mundo le pega más fuerte."
+  en: "Your hit sets it alight: it glows for everyone, and the world hits it harder."
 
 life_steal:
-  es: "Un 5 % del daño que haces por nivel vuelve a tu vida."
-  en: "5% of the damage you deal per level comes back to you as health."
+  es: "Cada tajo te devuelve un hilo de la vida que quitaste."
+  en: "Every cut gives you back a thread of the life you took."
 
 wind_walker:
-  es: "Mientras lo lleves, +5 % de velocidad al caminar por nivel, hasta +25 %."
-  en: "While held, +5% walking speed per level, up to +25%."
+  es: "El viento camina contigo; cada nivel alarga el paso."
+  en: "The wind walks with you; each level lengthens your stride."
 
 feather_weight:
-  es: "El arma se siente liviana: +0,1 de velocidad de ataque por nivel, hasta +0,3."
-  en: "The weapon feels light: +0.1 attack speed per level, up to +0.3."
+  es: "El arma se vuelve pluma y el brazo llega antes."
+  en: "The weapon turns to feather and the arm arrives sooner."
 
 phantom_strike:
-  es: "15 % por nivel de que el golpe ignore la armadura por completo."
-  en: "A 15% per level chance the blow ignores armour completely."
+  es: "A veces el filo encuentra el hueco de la armadura, y cada nivel lo encuentra más seguido."
+  en: "Sometimes the edge finds the gap in the armour, and each level finds it more often."
 
 midas_tool:
-  es: "Las menas que picas pueden salir como oro: 25, 50 o 75 %; al nivel 3, una pepita extra."
-  en: "Ores you mine may come out as gold: 25, 50 or 75%, plus a nugget at level 3."
+  es: "La mena sale dorada de la piedra, y el nivel decide cuántas veces."
+  en: "The ore comes out of the stone golden, and the level decides how often."
 
 miner_frenzy:
-  es: "Cada bloque roto acelera el siguiente: +8 %, hasta cinco por nivel; si te detienes, se pierde."
-  en: "Each block broken speeds up the next: +8%, up to five per level; stop and it is gone."
+  es: "La piedra cede más aprisa con cada bloque roto; la pausa borra la cuenta."
+  en: "Stone gives way faster with every block broken; a pause wipes the count."
 
 golden_hands:
-  es: "Lo que rompe la pala va derecho al inventario, no al suelo."
-  en: "What the shovel breaks goes straight into your inventory, not the ground."
+  es: "Lo que la pala arranca aterriza en tu bolsillo."
+  en: "What the shovel tears loose lands in your pocket."
 
 golden_harvest:
-  es: "La azada replanta lo que cosecha; al nivel 2 la cosecha además sale doble."
-  en: "The hoe replants what it harvests; at level 2 the crop also drops twice."
+  es: "La azada devuelve la semilla a la tierra, y el nivel alto cobra doble."
+  en: "The hoe puts the seed back in the earth, and the high level collects twice."
 
 phantom_block:
-  es: "Uno de cada diez bloques entrega su drop dos veces."
-  en: "One block in ten gives up its drops twice."
+  es: "Algunos bloques entregan su tesoro por duplicado."
+  en: "Some blocks hand over their treasure doubled."
 
 steel_reflex:
-  es: "El parry vuelve un segundo antes por nivel: 100, 80 y 60 ticks de espera."
-  en: "Parry comes back a second sooner per level: 100, 80 and 60 ticks."
+  es: "El desvío vuelve antes con cada nivel: el acero recuerda el golpe."
+  en: "The parry returns sooner with each level: the steel remembers the blow."
 
 audacity:
-  es: "El lunge cuesta un 20 % menos de cooldown por nivel."
-  en: "The lunge's cooldown is 20% cheaper per level."
+  es: "El lunge cuesta menos con cada nivel; la audacia se paga sola."
+  en: "The lunge costs less with each level; audacity pays for itself."
 
 adrenalina:
-  es: "Al recibir daño duele 25 % menos (35 % al nivel 2) y ganas velocidad 5 s; al 2, lo ahorrado se cobra en tu próximo golpe."
-  en: "Taking a hit hurts 25% less (35% at level 2) and speeds you up for 5 s; level 2 adds the saving to your next hit."
+  es: "El dolor te endereza: el golpe entra más suave y tus piernas despiertan. Al nivel mayor, la deuda vuelve contigo."
+  en: "Pain straightens you: the blow lands softer and your legs wake up. At the higher level, the debt comes back with you."
 
 rhythm_of_iron:
-  es: "La cadena del martillo aguanta más: 80, 100 o 120 ticks según nivel."
-  en: "The hammer's streak holds longer: 80, 100 or 120 ticks by level."
+  es: "La cadena del martillo aguanta un compás más con cada nivel."
+  en: "The hammer's chain holds one more beat with each level."
 
 riposte:
-  es: "Después de bloquear de verdad, tu siguiente golpe ignora 25 % de armadura (50 % al nivel 2)."
-  en: "After a real block, your next hit ignores 25% of armour (50% at level 2)."
+  es: "Tras tu guardia, el golpe busca la juntura de la armadura."
+  en: "After your guard, the blow looks for the seam in the armour."
 
 dry_powder:
-  es: "Recargar el arcabuz tarda 50, 40 o 30 ticks según nivel."
-  en: "Reloading the arcabuz takes 50, 40 or 30 ticks by level."
+  es: "La pólvora seca recarga antes: el arcabuz vuelve a hablar."
+  en: "Dry powder reloads sooner: the arcabuz speaks again."
 
 punta_fina:
-  es: "A 1,5 bloques o menos: +15 % de daño, o +25 % al nivel 2."
-  en: "At 1.5 blocks or closer: +15% damage, or +25% at level 2."
+  es: "De cerca, la punta encuentra la carne."
+  en: "Up close, the point finds the flesh."
 
 filo_astillado:
-  es: "Cada pieza de armadura del rival suma 6 % de daño (10 % al nivel 2), hasta cuatro."
-  en: "Each piece of the target's armour adds 6% damage (10% at level 2), up to four."
+  es: "Cada placa del rival trabaja para tu filo."
+  en: "Every plate on the target works for your edge."
 
 apunalar:
-  es: "Pegar desde atrás, con más de 90 grados de ventaja: +60 % de daño, o +90 % al nivel 2."
-  en: "Hitting from behind, more than 90 degrees off: +60% damage, or +90% at level 2."
+  es: "El que no te ve recibe el doble."
+  en: "The one who does not see you takes double."
 
 sanguijuela:
-  es: "Un 8 % del daño del golpe (14 % al nivel 2) vuelve a tu vida."
-  en: "8% of the hit's damage (14% at level 2) returns to you as health."
+  es: "Su sangre termina en tu herida."
+  en: "Their blood ends up in your wound."
 
 aventurero:
-  es: "Los mobs que matas sueltan un 20 % más de experiencia por nivel."
-  en: "The mobs you kill drop 20% more experience per level."
+  es: "Los que caen por tu mano dejan más experiencia."
+  en: "Those who fall by your hand leave more experience."
 
 culata:
-  es: "La bayoneta del arcabuz empuja 25, 50 o 75 % más según nivel."
-  en: "The arcabuz bayonet shoves 25%, 50% or 75% harder by level."
+  es: "La culata golpea como un ariete."
+  en: "The stock strikes like a ram."
 
 estocada:
-  es: "El golpe del lunge ignora 15 % de la armadura (30 % al nivel 2)."
-  en: "The lunge's hit ignores 15% of armour (30% at level 2)."
+  es: "La estocada del lunge se cuela entre las placas."
+  en: "The lunge's thrust slips between the plates."
 
 segundo_aliento:
-  es: "Si te rompen la guardia, tu siguiente golpe en 3 s pega +15 % (+25 % al nivel 2) y empuja +50 %."
-  en: "Break your guard and your next hit within 3 s deals +15% (+25% at level 2) and shoves +50%."
+  es: "Cuando cae tu guardia, el brazo se enciende una última vez."
+  en: "When your guard falls, the arm catches fire one last time."
 
 guardia_firme:
-  es: "El primer bloqueo de cada 3 segundos no gasta aguante."
-  en: "The first block of every 3 seconds costs no stamina."
+  es: "El primer golpe de cada tregua se estrella sin cobrar."
+  en: "The first blow of each truce breaks without a price."
 
 cicatrizador:
-  es: "El golpe deja anti-curación: −15 % por nivel a cualquier cura, durante 5 s."
-  en: "The hit leaves anti-healing: -15% per level to any healing, for 5 s."
+  es: "La herida que abres cierra mal."
+  en: "The wound you open closes badly."
 
 destripamiento:
-  es: "El cargado deja sangrado: 1 corazón cada 2 s, 6 s (10 s al nivel 2)."
-  en: "The charged hit leaves bleeding: 1 heart every 2 s for 6 s (10 s at level 2)."
+  es: "El golpe cargado deja la herida abierta, y la herida sigue sangrando."
+  en: "The charged blow leaves the wound open, and the wound keeps bleeding."
 
 quebranto:
-  es: "Cada golpe le quita 8 % de armadura, hasta tres veces; volver a pegarle lo refresca."
-  en: "Each hit strips 8% of their armour, up to three times; hitting again refreshes it."
+  es: "Cada golpe afloja una placa."
+  en: "Every hit loosens a plate."
 
 desvio_vampirico:
-  es: "Cada parry te roba 1 corazón de vida máxima, hasta el nivel en corazones, por 10 s."
-  en: "Each parry steals 1 heart of max health, up to the level in hearts, for 10 s."
+  es: "Cada desvío te roba un aliento de vida."
+  en: "Every parry steals a breath of life."
 
 mecha_corta:
-  es: "La mecha del arcabuz dura 20, 15 o 10 ticks según nivel."
-  en: "The arcabuz fuse burns for 20, 15 or 10 ticks by level."
+  es: "La mecha se consume antes de lo que el ojo espera."
+  en: "The fuse burns down before the eye expects it."
 
 barredor:
-  es: "El barrido de la alabarda llega y abre 15 % más (30 % al nivel 2)."
-  en: "The halberd's sweep reaches and spreads 15% wider (30% at level 2)."
+  es: "El barrido alcanza donde no estabas mirando."
+  en: "The sweep reaches where you were not looking."
 
 astilladora:
-  es: "Bloquear este filo gasta dos de aguante en vez de uno."
-  en: "Blocking this edge costs two stamina instead of one."
+  es: "Bloquear este filo cansa el doble."
+  en: "Blocking this edge tires you twice as fast."
 
 mella:
-  es: "La armadura rival se gasta ×1,5, ×2, ×2,5 o ×3; el hacha cargada ya desgasta doble."
-  en: "Enemy armour wears x1.5, x2, x2.5 or x3 faster; the charged axe already doubles the wear."
+  es: "La armadura del rival se deshace en tus manos."
+  en: "The target's armour comes apart in your hands."
 
 segunda_pasada:
-  es: "Un barrido que no mató a nadie devuelve 30 % del cooldown (50 % al nivel 2)."
-  en: "A sweep that killed nobody refunds 30% of its cooldown (50% at level 2)."
+  es: "El barrido que no mata devuelve parte de tu brazo."
+  en: "The sweep that kills nobody gives part of your arm back."
 
 santa_muerte:
-  es: "Matar deja una nube podrida: marchitamiento 5 s en un radio de 3."
-  en: "Killing leaves a rotten cloud: wither for 5 s in a radius of 3."
+  es: "Lo que matas deja un aire que apesta."
+  en: "What you kill leaves a reeking air behind."
 
 inercia:
-  es: "El empuje de la cadena del martillo se va al aire: +10 % vertical por nivel y nada horizontal."
-  en: "The hammer's streak push goes upwards: +10% vertical per level and nothing horizontal."
+  es: "El empuje de la cadena levanta al rival del suelo."
+  en: "The chain's shove lifts the target off the ground."
 
 ensarte:
-  es: "La estocada atraviesa: 50 % del daño (100 % al nivel 2) a un cuerpo alineado detrás."
-  en: "The thrust pierces: 50% of the damage (100% at level 2) to one body lined up behind."
+  es: "La estocada sigue de largo y encuentra otro cuerpo."
+  en: "The thrust carries on and finds another body."
 
 paliza:
-  es: "El cargado que cierra la serie empuja 2,4 bloques y levanta 0,6; al nivel 2 la serie es más corta."
-  en: "The charged hit that closes a streak shoves 2.4 blocks and lifts 0.6; level 2 needs a shorter streak."
+  es: "El golpe que cierra la serie despide al rival."
+  en: "The blow that closes the streak sends the target away."
 
 sentencia:
-  es: "Al quinto golpe de cadena el cuerpo revienta: 8 de daño (12 al nivel 2) y 4 a lo que esté a 2,5 bloques."
-  en: "On the fifth streak hit the body bursts: 8 damage (12 at level 2) and 4 to everything within 2.5 blocks."
+  es: "Al quinto golpe de la cadena, el cuerpo revienta."
+  en: "On the fifth hit of the chain, the body bursts."
 
 trabazon:
-  es: "El cargado lo deja sin saltar; el nivel 2 también sin correr. Dura 1,5 s."
-  en: "The charged hit keeps it from jumping; level 2 also from sprinting. It lasts 1.5 s."
+  es: "El golpe cargado clava al rival en el sitio."
+  en: "The charged blow pins the target in place."
 
 gripa:
-  es: "Los golpes dejan moco: 1 de daño por stack cada 20 ticks (15 al nivel 2), hasta 4 stacks (6)."
-  en: "Hits leave muck: 1 damage per stack every 20 ticks (15 at level 2), up to 4 stacks (6)."
+  es: "Los golpes dejan moco, y el moco pesa."
+  en: "Hits leave muck, and muck weighs."
 
 corte_gemelo:
-  es: "El golpe normal repite al 50 %: cada 4 s al nivel 1, siempre al nivel 2."
-  en: "A normal hit cuts again for 50%: every 4 s at level 1, always at level 2."
+  es: "El corte llama a su gemelo."
+  en: "The cut calls its twin."
 
 capacitor:
-  es: "El proyectil que desvías vuelve como rayo: 3 de daño (4 al nivel 2) más el del arma, y quema 4 s."
-  en: "A parried projectile returns as lightning: 3 damage (4 at level 2) plus the weapon's, and burns for 4 s."
+  es: "Lo que te lanzan vuelve como rayo."
+  en: "What they throw at you comes back as lightning."
 
 rey_de_las_moscas:
-  es: "El disparo deja moscas sobre cada cuerpo del cono: 4 de daño cada 10 ticks, durante 4 s."
-  en: "The shot leaves flies on every body in the cone: 4 damage every 10 ticks, for 4 s."
+  es: "El disparo deja moscas donde toca, y las moscas se quedan."
+  en: "The shot leaves flies where it lands, and the flies stay."
 
 retirada:
-  es: "Agachado, el lunge sale hacia atrás y el golpe frontal se cobra al apretar."
-  en: "While sneaking, the lunge goes backwards and the forward hit lands on the press."
+  es: "Agachado, el lunge salta hacia atrás y el golpe espera en la mano."
+  en: "Crouched, the lunge leaps backwards and the blow waits in your hand."
 
 pala_antimaterial:
-  es: "El click derecho cargado tira un orbe que atrae y revienta lo que queda cerca."
-  en: "The charged right click throws an orb that pulls in and blows up whatever is near."
+  es: "El orbe llama a su alrededor y lo borra."
+  en: "The orb calls everything around it and erases it."
 
 mungus:
-  es: "Diez Firestones cargan un tiro único que abre el terreno en un cráter."
-  en: "Ten Firestones load one shot that opens the ground into a crater."
+  es: "Diez Firestones compran un cráter."
+  en: "Ten Firestones buy a crater."

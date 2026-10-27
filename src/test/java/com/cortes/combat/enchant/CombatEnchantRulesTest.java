@@ -34,10 +34,13 @@ class CombatEnchantRulesTest {
     }
 
     @Test
-    @DisplayName("Audacia: 80 -> 64 -> 48 ticks, un quinto por nivel")
+    @DisplayName("Audacia: 80 -> 58 -> 35 ticks, casi el 30 % por nivel")
     void audacityLevels() {
-        assertEquals(64, CombatEnchantRules.lungeCooldown(80, 1));
-        assertEquals(48, CombatEnchantRules.lungeCooldown(80, 2));
+        // De 20 % a 28 % por nivel, pedido del dueno: "reduce muy poquito". 80 * 0,72 = 57,6 -> 58
+        // y 80 * 0,44 = 35,2 -> 35. El tope sigue en dos niveles porque la reduccion es
+        // multiplicativa y un tercero dejaria el lunge gratis.
+        assertEquals(58, CombatEnchantRules.lungeCooldown(80, 1));
+        assertEquals(35, CombatEnchantRules.lungeCooldown(80, 2));
     }
 
     @Test
@@ -61,8 +64,8 @@ class CombatEnchantRulesTest {
         // La misma fraccion sobre otro tempo: el encantamiento tiene que escalar con lo que el arma
         // ya cuesta. Un descuento fijo de ticks seria casi gratis en un arma lenta y seria todo en
         // una rapida, y el cooldown del lunge se deriva del intervalo por diseno.
-        assertEquals(40, CombatEnchantRules.lungeCooldown(50, 1),
-                "la mitad de base, la misma fraccion");
+        assertEquals(36, CombatEnchantRules.lungeCooldown(50, 1),
+                "la mitad de base, la misma fraccion: 50 * 0,72 = 36");
         assertEquals(100 - CombatEnchantRules.STEEL_REFLEX_TICKS_PER_LEVEL,
                 CombatEnchantRules.parryCooldown(100, 1),
                 "y el parry, en cambio, descuenta ticks: su base no depende del arma");
