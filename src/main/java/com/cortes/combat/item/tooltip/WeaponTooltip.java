@@ -2,6 +2,7 @@ package com.cortes.combat.item.tooltip;
 
 import com.cortes.combat.attack.DamageResolver;
 import com.cortes.combat.attack.Knockback;
+import com.cortes.combat.attack.WarhammerTuning;
 import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.core.weapon.ConeSize;
 import com.cortes.combat.core.weapon.KnockbackProfile;
@@ -165,7 +166,8 @@ public final class WeaponTooltip {
                                              int maxDamage,
                                              boolean hasShotCone,
                                              boolean fights,
-                                             EnchantmentNumbers numbers) {
+                                             EnchantmentNumbers numbers,
+                                             WarhammerTuning tuning) {
 
         if (profile == WeaponProfile.NONE || reach == null) {
             return NOTHING;
@@ -195,7 +197,8 @@ public final class WeaponTooltip {
             return List.copyOf(lines);
         }
 
-        lines.add(TooltipLine.of(DAMAGE, decimal(damageFor(profile, charge, attackDamage, 0.0F)),
+        lines.add(TooltipLine.of(DAMAGE,
+                decimal(damageFor(profile, charge, attackDamage, 0.0F, tuning)),
                 TooltipColor.DAMAGE));
 
         // Only for a weapon that charges. Printing "cargado" next to a ropera's damage would be a
@@ -203,7 +206,7 @@ public final class WeaponTooltip {
         // the two weapons in the set where a player most needs to know that.
         if (charge != null && charge.canCharge()) {
             lines.add(TooltipLine.of(CHARGED_DAMAGE,
-                    decimal(chargedTotalFor(profile, charge, attackDamage)),
+                    decimal(chargedTotalFor(profile, charge, attackDamage, tuning)),
                     TooltipColor.CHARGED));
         }
 
@@ -354,8 +357,23 @@ public final class WeaponTooltip {
      */
     public static float damageFor(WeaponProfile profile, ChargeProfile charge,
                                   float attackDamage, float chargeRatio) {
+        return damageFor(profile, charge, attackDamage, chargeRatio, WarhammerTuning.DEFAULT);
+    }
+
+    /**
+     * One swing at a given charge, per cut, with the warhammer's cap in hand.
+     *
+     * <p><b>The tuning travels because the cap travels.</b> A capped warhammer hits for twenty
+     * whatever the weapon says, and a tooltip that printed the uncapped number would be a number
+     * the player reads and the game does not produce -- the exact bug this class was rewritten to
+     * stop. The version without it answers with {@link WarhammerTuning#DEFAULT}, which is "no
+     * cap".</p>
+     */
+    public static float damageFor(WeaponProfile profile, ChargeProfile charge,
+                                  float attackDamage, float chargeRatio,
+                                  WarhammerTuning tuning) {
         return DamageResolver.resolve(attackDamage, charge, profile, chargeRatio,
-                StreakState.EMPTY).damage();
+                StreakState.EMPTY, 0.0F, 0, 0.0F, tuning).damage();
     }
 
     /**
@@ -374,8 +392,14 @@ public final class WeaponTooltip {
      */
     public static float chargedTotalFor(WeaponProfile profile, ChargeProfile charge,
                                         float attackDamage) {
+        return chargedTotalFor(profile, charge, attackDamage, WarhammerTuning.DEFAULT);
+    }
+
+    /** The same, with the warhammer's cap in hand. See {@link #damageFor}. */
+    public static float chargedTotalFor(WeaponProfile profile, ChargeProfile charge,
+                                        float attackDamage, WarhammerTuning tuning) {
         int cuts = SlashTiming.hitsAt(profile, charge, DamageResolver.FULL_CHARGE);
-        return damageFor(profile, charge, attackDamage, DamageResolver.FULL_CHARGE) * cuts;
+        return damageFor(profile, charge, attackDamage, DamageResolver.FULL_CHARGE, tuning) * cuts;
     }
 
     /** The inverse of the interval, which is what the game's own attack speed attribute means. */

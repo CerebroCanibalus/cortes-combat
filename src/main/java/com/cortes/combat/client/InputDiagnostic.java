@@ -96,7 +96,8 @@ public final class InputDiagnostic {
                 .append("  claim=").append(SwingInputHandler.claim())
                 .append("\n");
         out.append("boton fisico izq=").append(SwingInputHandler.buttonDownForDebug())
-                .append("  der=").append(GuardInputHandler.buttonDownForDebug())
+                .append("  use=").append(GuardInputHandler.buttonDownForDebug())
+                .append("  esperando=").append(SwingInputHandler.waiting())
                 .append("\n");
         out.append("guardia predicha=").append(GuardInputHandler.predictedHolding())
                 .append("  aguante=").append(ClientCombatState.guardStamina())
@@ -128,7 +129,7 @@ public final class InputDiagnostic {
             return "BLOQUEADO por pantalla abierta: " + mc.screen.getClass().getSimpleName();
         }
         if (GuardInputHandler.predictedHolding()) {
-            return "BLOQUEADO por la guardia predicha (boton derecho pegado?)";
+            return "BLOQUEADO por la guardia predicha (¿la tecla de usar quedo pegada?)";
         }
         if (!SwingInputHandler.readyAtTickPassed()) {
             return "BLOQUEADO por el latch local del cooldown";

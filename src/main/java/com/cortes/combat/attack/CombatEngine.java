@@ -244,13 +244,18 @@ public final class CombatEngine {
 
         float base = (float) player.getAttributeValue(Attributes.ATTACK_DAMAGE);
         StreakState streak = CombatState.hammerStreak(player);
+        // **Los dos numeros del martillo, leidos una vez por golpe.** El tope va dentro de la
+        // formula del dano, asi que la formula la tiene que recibir; y la penetracion decide que
+        // fuente de dano se construye, que es la misma pregunta para todos los cuerpos del
+        // golpe. (^o^)
+        WarhammerTuning tuning = com.cortes.combat.config.ServerConfig.warhammerTuning();
         // **The flags first, because the damage source they choose is what the enchantment hooks
         // need.** Whether this swing bypasses armour is a property of the weapon and the charge and
         // has nothing to do with the enchantments on it, so a bonus-free resolve is the honest way
         // to ask -- and the source it builds is the same one every target is hit with.
         AttackResult flags = DamageResolver.resolve(base, stats.charge(), stats.profile(),
-                chargeRatio, streak, player.fallDistance);
-        DamageSource source = damageSource(player, flags.kind());
+                chargeRatio, streak, player.fallDistance, 0, 0.0F, tuning);
+        DamageSource source = damageSource(player, flags.kind(), tuning);
 
         // **Per target, because the enchantment does not have one answer.** Sharpness is the same
         // for every body the swing touches, but Smite is not, and neither is a crowd charge that
@@ -262,7 +267,7 @@ public final class CombatEngine {
         int density = CombatEnchantments.densityLevel(player);
         AttackResult result = DamageResolver.resolve(base, stats.charge(), stats.profile(),
                 chargeRatio, streak, player.fallDistance, density,
-                enchantBonus(player, target, source, base));
+                enchantBonus(player, target, source, base), tuning);
 
         // **The one the player was aiming at pays first, and the area weapons add the rest.**
         //
@@ -282,7 +287,7 @@ public final class CombatEngine {
         // the same way -- see `MaceSmash.Landing`. Created here, before the bodies are applied.
         MaceSmash.Landing smash = smashLanding(player, stats);
 
-        apply(player, target, stats, result, chargeRatio, smash);
+        apply(player, target, stats, result, chargeRatio, smash, tuning);
 
         // **La onda de filo NO se dispara acá, a propósito.** Este método corre dos veces para un
         // solo tajo cuando la ventana de coyote confirma el golpe diferido, así que dispararla acá
@@ -307,8 +312,8 @@ public final class CombatEngine {
                 // being hit. The source does not change: it is still the player's swing.
                 AttackResult otherResult = DamageResolver.resolve(base, stats.charge(),
                         stats.profile(), chargeRatio, streak, player.fallDistance, density,
-                        enchantBonus(player, other, source, base));
-                apply(player, other, stats, otherResult, chargeRatio, smash);
+                        enchantBonus(player, other, source, base), tuning);
+                apply(player, other, stats, otherResult, chargeRatio, smash, tuning);
                 landed++;
             }
             debug(player, "area: " + landed + "/" + extra + " objetivos extra (tope "
@@ -342,7 +347,8 @@ public final class CombatEngine {
     }
 
     private static void apply(Player player, Entity target, WeaponStats stats,
-                              AttackResult result, float chargeRatio, MaceSmash.Landing smash) {
+                              AttackResult result, float chargeRatio, MaceSmash.Landing smash,
+                              WarhammerTuning tuning) {
         // Read before the hit: afterwards a dead mob reads 0 health and there is no way to tell
         // "the swing killed it" from "the swing finished it off". Only a living thing has health
         // to read, and only a living thing can be in the cone to be hit, so the cast is safe
@@ -380,6 +386,30 @@ public final class CombatEngine {
             if (pierced != null) {
                 armour.addTransientModifier(pierced);
             }
+            // **La penetracion del martillo: la armadura que este golpe ignora, en fraccion.**
+            //
+            // <p>Es el mismo camino que Contragolpe -- el atributo del objetivo se baja por este
+            // golpe y se devuelve en el `finally` -- y por el mismo motivo: la cuenta de la
+            // armadura la hace vanilla y una copia se desincroniza sola. Lo que cambia es la
+            // pregunta: no "la armadura entera" sino "la mitad de la armadura". (⌒‿⌒)
+            //
+            // <p>Con una penetracion de cien no hay modificador ninguno: la fuente del golpe ya
+            // ignora la armadura entera, y un modificador de -1 seria una segunda cuenta de lo
+            // mismo.
+            net.minecraft.world.entity.ai.attributes.AttributeModifier hammerPierce =
+                    result.kind() == DamageKind.PURE
+                            ? com.cortes.combat.attack.ArmourPierce.warhammer(tuning, armour)
+                            : null;
+            if (hammerPierce != null) {
+                armour.addTransientModifier(hammerPierce);
+            }
+            // **La armadura que el golpe realmente encontro.** Se lee con los modificadores puestos
+            // y se pasa a la lectura del impacto, porque esa lectura se hace despues del `finally` --
+            // con los modificadores ya salidos, leeria la armadura entera y diria que la
+            // armadura comio mas de lo que comio.
+            float effectiveArmour = armoured == null ? -1.0F
+                    : (float) armoured.getAttributeValue(
+                            net.minecraft.world.entity.ai.attributes.Attributes.ARMOR);
             // **La vida de ESTE golpe, no la del swing.** El sable cargado pega dos veces, y tomar
             // esto una sola vez antes del bucle haría que la segunda lectura restara las dos --
             // o sea que el segundo corte se cobraría el daño del primero.
@@ -387,7 +417,7 @@ public final class CombatEngine {
             // **La fuente, una sola vez.** La necesitan el `hurt` y la lectura del impacto, y dos
             // llamadas al mismo método serían dos lugares donde las dos pueden discrepar -- y
             // discreparían justo cuando alguien agregue un arma con otro tipo de daño.
-            DamageSource hitSource = damageSource(player, result.kind());
+            DamageSource hitSource = damageSource(player, result.kind(), tuning);
             boolean hurt;
             try {
                 hurt = target.hurt(hitSource, result.damage());
@@ -395,6 +425,9 @@ public final class CombatEngine {
                 // En un `finally` y no después: `hurt` puede tirar por un mod de terceros, y una
                 // armadura que queda baja para siempre es exactamente el bug que este encantamiento
                 // no puede dejar atrás.
+                if (hammerPierce != null) {
+                    armour.removeModifier(hammerPierce);
+                }
                 if (pierced != null) {
                     armour.removeModifier(pierced);
                 }
@@ -430,7 +463,7 @@ public final class CombatEngine {
                         && player.level() instanceof net.minecraft.server.level.ServerLevel server) {
                     com.cortes.combat.particle.HitParticles.impact(server, armoured,
                             DamageSplit.of(armoured, hitSource, result.damage(),
-                                    beforeThisHit, armoured.getHealth()),
+                                    beforeThisHit, armoured.getHealth(), effectiveArmour),
                             chargeRatio >= DamageResolver.FULL_CHARGE);
                 }
                 // **The wear the replaced flow dropped, and the reason nothing in this game has
@@ -1406,8 +1439,30 @@ public final class CombatEngine {
  * they are two entries in this method rather than one rule with a flag.</p>
  */
     private static DamageSource damageSource(Player player, DamageKind kind) {
+        return damageSource(player, kind,
+                com.cortes.combat.config.ServerConfig.warhammerTuning());
+    }
+
+    /**
+     * La fuente del golpe, y la fuente depende de <b>cuanta armadura</b> atraviesa.
+     *
+     * <p><b>Dos fuentes para el martillo, y no una con un parametro.</b> La que ignora la
+     * armadura entera es una etiqueta del tipo de dano ({@code bypasses_armor}), y una etiqueta
+     * es binaria: no hay forma de decir "la mitad" con ella. Asi que la penetracion parcial usa
+     * otra fuente -- una que no ignora la armadura -- y la armadura del objetivo se baja por
+     * fraccion durante el golpe, en {@code ArmourPierce}.</p>
+     *
+     * <p><b>Lo que NO cambia con la penetracion</b>: el golpe cargado del martillo sigue
+     * atravesando el escudo y sigue vaciando la guardia, porque eso no lo decide la
+     * penetracion sino el arma. Un numero de configuracion que cambiara el escudo seria
+     * cambiar el arma entera.</p>
+     */
+    private static DamageSource damageSource(Player player, DamageKind kind,
+                                              WarhammerTuning tuning) {
         return switch (kind) {
-            case PURE -> ModDamageTypes.warhammerIgnoredArmour(player);
+            case PURE -> tuning != null && tuning.bypassesArmour()
+                    ? ModDamageTypes.warhammerIgnoredArmour(player)
+                    : ModDamageTypes.warhammerPartial(player);
             case AXE_CHARGED -> ModDamageTypes.axeCharged(player);
             case NORMAL -> player.damageSources().playerAttack(player);
         };

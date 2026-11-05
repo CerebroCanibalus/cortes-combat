@@ -26,6 +26,16 @@ public final class ModDamageTypes {
             Registries.DAMAGE_TYPE,
             ResourceIds.rl("axe_charged"));
 
+    /**
+     * El golpe cargado del martillo cuando la penetracion de armadura no es entera.
+     *
+     * <p>El tercer tipo, y el unico que existe por una pregunta de fraccion: el tipo del
+     * martillo esta en {@code bypasses_armor}, que es binaria. Ver el gemelo compartido.</p>
+     */
+    public static final ResourceKey<DamageType> WARHAMMER_PARTIAL = ResourceKey.create(
+            Registries.DAMAGE_TYPE,
+            ResourceIds.rl("warhammer_partial"));
+
     private ModDamageTypes() {
     }
 
@@ -35,6 +45,11 @@ public final class ModDamageTypes {
 
     public static DamageSource axeCharged(Player player) {
         return new DamageSource(holderFor(player, AXE_CHARGED), player, player);
+    }
+
+    /** La fuente del golpe cargado del martillo cuando la armadura cuenta en parte. */
+    public static DamageSource warhammerPartial(Player player) {
+        return new DamageSource(holderFor(player, WARHAMMER_PARTIAL), player, player);
     }
 
     private static net.minecraft.core.Holder<DamageType> holderFor(Player player,

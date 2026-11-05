@@ -96,6 +96,23 @@ public record DamageSplit(float dealt, float armour, float effect, boolean pierc
      */
     public static DamageSplit of(LivingEntity target, DamageSource source, float raw,
                                  float healthBefore, float healthAfter) {
+        return of(target, source, raw, healthBefore, healthAfter, -1.0F);
+    }
+
+    /**
+     * Mide el impacto de un golpe que ya se aplicó, con la armadura que el golpe realmente encontró.
+     *
+     * <p><b>La armadura que el golpe encontró y la que el objetivo tiene ahora no son la misma.</b>
+     * Los modificadores transitorios -- el de Contragolpe, el de Estocada y ahora el de la
+     * penetración parcial del martillo -- se sacan en el {@code finally} que rodea al
+     * {@code hurt}, y esta lectura corre después: sin el número que se pasó, el cálculo leería
+     * la armadura <em>entera</em> y diría que la armadura comió más de lo que comió.</p>
+     *
+     * @param armourValue la armadura que el golpe encontró, o negativo para leer el atributo del
+     *                    objetivo tal como está ahora
+     */
+    public static DamageSplit of(LivingEntity target, DamageSource source, float raw,
+                                 float healthBefore, float healthAfter, float armourValue) {
         if (!(raw > 0.0F)) {
             return NONE;
         }
@@ -107,9 +124,11 @@ public record DamageSplit(float dealt, float armour, float effect, boolean pierc
         // el golpe encontró.
         float afterArmour = raw;
         if (!pierced) {
-            float armourValue = (float) target.getAttributeValue(Attributes.ARMOR);
+            float armour = armourValue >= 0.0F
+                    ? armourValue
+                    : (float) target.getAttributeValue(Attributes.ARMOR);
             float toughness = (float) target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
-            afterArmour = CombatRules.getDamageAfterAbsorb(target, raw, source, armourValue, toughness);
+            afterArmour = CombatRules.getDamageAfterAbsorb(target, raw, source, armour, toughness);
         }
         float lostToArmour = Math.max(0.0F, raw - afterArmour);
 

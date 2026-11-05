@@ -27,6 +27,28 @@ public final class PressBuffer {
      */
     public static final int WINDOW_TICKS = 2;
 
+    /**
+     * Cada cuántos ticks un botón que <b>sigue apretado</b> vuelve a intentar el press.
+     *
+     * <p>Es otra pregunta que {@link #WINDOW_TICKS} y por eso es otra constante: aquél es "el
+     * click fue un pelín temprano", éste es "el jugador sigue apretando y la puerta todavía no
+     * abrió". Dos ticks es imperceptible para el jugador (100 ms) y evita un barrido del cono por
+     * tick mientras sostiene el botón contra una pared o esperando aguante.</p>
+     */
+    public static final int RETRY_TICKS = 2;
+
+    /**
+     * Cuántos ticks seguidos sin un bloque bajo la mira antes de que el botón sostenido arranque
+     * un golpe sin objetivo.
+     *
+     * <p><b>Es el colchón de la minería.</b> Quien sostiene el ataque para picar pasa uno o dos
+     * ticks con la mira en el aire entre bloque y bloque; sin este margen, el reintento abriría
+     * un swing en ese hueco, `continueAttack` se cancelaría mientras el swing está abierto y la
+     * minería se cortaría sola. Cuatro ticks (200 ms) es más largo que el hueco típico y más
+     * corto que darse la vuelta. (μ_μ)</p>
+     */
+    public static final int OFF_BLOCK_TICKS = 4;
+
     private PressBuffer() {
     }
 

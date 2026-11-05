@@ -185,4 +185,52 @@ class AutoProfileTest {
         assertEquals(0.0F, AutoProfile.tieredChargeBonus(0.1F, AutoProfile.OreTier.WOODEN),
                 1.0E-4F, "el bono nunca resta -- el piso es el mismo de la columna del YAML");
     }
+
+    // --------------------------------------------------------------------------------
+    // La ronda de compatibilidad ancha: Simply Swords y lo que llega sin tag.
+    // --------------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("the Simply Swords families the old list did not name now land")
+    void theMissingSimplySwordsFamiliesLand() {
+        // El reporte "solo la mitad de Simply Swords" tenia dos causas: el mod declara en
+        // #c:swords (que ahora WeaponStats pregunta) y cuatro nombres no estaban en la lista.
+        assertEquals("dagger", AutoProfile.archetypeOf("iron_sai"),
+                "un sai es una daga de parada, no una espada");
+        assertEquals("dagger", AutoProfile.archetypeOf("gold_chakram"),
+                "el chakram es ligero y rapido; el ejemplo de compat ya lo trataba asi");
+        assertEquals("dagger", AutoProfile.archetypeOf("netherite_twinblade"),
+                "la twinblade es la variante de dos hojas de la daga larga");
+        assertEquals("polearm", AutoProfile.archetypeOf("diamond_warglaive"),
+                "warglaive ya caia en glaive, y se afirma para que no se rompa al reordenar");
+        assertEquals("axe", AutoProfile.archetypeOf("netherite_greataxe"),
+                "greataxe es un hacha por nombre, y el tier lo escala igual");
+    }
+
+    @Test
+    @DisplayName("a weapon with no tag and no telling name is classified by what it does")
+    void statsClassifyTheNamelessWeapon() {
+        // El pedido: "agregar el arquetipo a otras armas sin necesidad de que sean la
+        // herramienta en cuestion". Rapida y liviana -> daga; lenta y pesada -> martillo.
+        assertEquals("dagger", AutoProfile.archetypeFromStats(5.0F, 2.4F));
+        assertEquals("sword", AutoProfile.archetypeFromStats(6.5F, 1.6F));
+        assertEquals("hammer", AutoProfile.archetypeFromStats(11.0F, 0.9F));
+    }
+
+    @Test
+    @DisplayName("a tool is vetoed before the stat fallback can hand it a sword")
+    void toolsAreVetoed() {
+        // El generador automatico pregunta dano > 1 y una azada de mod pasa ese piso. Sin este
+        // veto, el archivo generado ensenaria a pelear a lo que no es un arma -- la invariante
+        // "lo que no pelea no pelea", que ya se pago una vez con el pico.
+        assertTrue(AutoProfile.isToolLike("steel_pickaxe"));
+        assertTrue(AutoProfile.isToolLike("iron_shovel"));
+        assertTrue(AutoProfile.isToolLike("diamond_hoe"));
+        assertTrue(AutoProfile.isToolLike("oak_bow"));
+        assertTrue(AutoProfile.isToolLike("round_shield"));
+        assertFalse(AutoProfile.isToolLike("steel_halberd"),
+                "una alabarda no es una herramienta aunque la palabra 'tool' exista en la lista");
+        assertFalse(AutoProfile.isToolLike("iron_warhammer"));
+        assertFalse(AutoProfile.isToolLike("diamond_spear"));
+    }
 }

@@ -38,6 +38,18 @@ class PressBufferWiringTest {
     private static final Path TICKER_120 = Path.of("src", "v120", "java", "com", "cortes",
             "combat", "net", "ModNetworking.java");
 
+    private static final Path BRACKETS = Path.of("src", "main", "java", "com", "cortes",
+            "combat", "client", "CooldownBracketLayer.java");
+
+    private static final Path BRACKETS_120 = Path.of("src", "v120", "java", "com", "cortes",
+            "combat", "client", "CooldownBracketLayer.java");
+
+    private static final Path CLIENT_TASKS = Path.of("src", "main", "java", "com", "cortes",
+            "combat", "client", "ClientTasks.java");
+
+    private static final Path CLIENT_TASKS_120 = Path.of("src", "v120", "java", "com", "cortes",
+            "combat", "client", "ClientTasks.java");
+
     /**
      * Both refusal branches a parked press can survive -- cooldown and guard -- park the press.
      *
@@ -120,6 +132,58 @@ class PressBufferWiringTest {
             assertTrue(park >= 0, hand + " parks nothing");
             assertTrue(source.contains("setSwingBuffer(player, player.level().getGameTime())"),
                     hand + " parks without the tick, which is what the window is measured from");
+        }
+    }
+
+    /**
+     * <b>Un boton que sigue abajo sigue intentando, sin una ventana que se venza.</b>
+     *
+     * <p>El reporte: mirar un bloque y despues apartarse, o esperar que la aguante rellene,
+     * dejaba el boton mudo hasta soltarlo y volver a apretar. La ventana de dos ticks no cubre
+     * eso porque no es un click temprano: es una intencion sostenida. Las tres piezas que lo
+     * hacen posible son el flag, el reintento y la senal del HUD, y las tres se afirman aca
+     * porque sin cliente no hay forma de verlas. (⌒‿⌒)</p>
+     */
+    @Test
+    @DisplayName("a held attack button keeps retrying through the same gates")
+    void theHeldButtonKeepsTrying() {
+        String source = read(SWING);
+        assertTrue(source.contains("attackHeld = true;"),
+                "el press no marca la intencion sostenida: el boton mudo es el bug original");
+        assertTrue(source.contains("attackHeld = false;"),
+                "el release no la baja: la intencion sobreviviria al dedo");
+        assertTrue(source.contains("heldIntentShouldTry(mc, player)"),
+                "el tick no reintenta el boton sostenido");
+        String helper = source.substring(source.indexOf("heldIntentShouldTry(Minecraft"));
+        assertTrue(helper.contains("canFireTheParkedPress(mc, player)"),
+                "**el reintento inventa sus propias puertas.** Tiene que pasar por las mismas "
+                        + "que un press vivo, o la ventana reescribe la regla");
+        assertTrue(helper.contains("PressBuffer.RETRY_TICKS"),
+                "sin el throttle el barrido del cono corre por tick mientras el jugador sostiene");
+        assertTrue(helper.contains("lastOnBlockTick"),
+                "**el reintento no tiene colchon de mineria**: al picar, el hueco de aire entre "
+                        + "dos bloques abriria un swing y `continueAttack` cancelaria la mineria");
+        assertTrue(helper.contains("PressBuffer.OFF_BLOCK_TICKS"),
+                "el colchon de mineria no esta cuantificado");
+        assertTrue(source.contains("public static boolean waiting()"),
+                "falta la senal que el HUD lee para latir");
+    }
+
+    /** El latido del HUD, en las dos patas, y la inactividad que no esconde la espera. */
+    @Test
+    @DisplayName("the waiting pulse is drawn and it counts as fighting")
+    void theWaitingPulseIsWired() {
+        for (Path layer : List.of(BRACKETS, BRACKETS_120)) {
+            String source = read(layer);
+            assertTrue(source.contains("SwingInputHandler.waiting()"),
+                    layer + " no pregunta si el jugador esta esperando");
+            assertTrue(source.contains("HudPulse.waiting("),
+                    layer + " pregunta la espera y no la dibuja");
+        }
+        for (Path tasks : List.of(CLIENT_TASKS, CLIENT_TASKS_120)) {
+            assertTrue(read(tasks).contains("SwingInputHandler.waiting()"),
+                    tasks + " no cuenta la espera como actividad: las barras se irian mientras "
+                            + "el jugador sostiene el boton");
         }
     }
 

@@ -156,6 +156,31 @@ public final class SwingInputHandler {
     private static long parkedPress = PressBuffer.EMPTY;
 
     /**
+     * Si el boton de ataque sigue fisicamente abajo, aunque no haya un swing abierto.
+     *
+     * <p><b>El pedido del playtest, en una linea de estado.</b> Antes, un press rechazado tenia
+     * una ventana de dos ticks para volver a intentarse; si el jugador seguia apretando mas que
+     * eso -- esperando que la aguante rellene, o mirando un bloque y despues apartandose -- el
+     * boton quedaba mudo hasta soltarlo y volver a apretar. <b>Un boton sostenido es una
+     * intencion sostenida</b>, y este flag es lo que la conserva: mientras siga abajo, el tick
+     * reintenta el press entero por el mismo camino de gates que un press real. (⌒‿⌒)</p>
+     */
+    private static boolean attackHeld;
+
+    /** El ultimo tick en que el reintento del boton sostenido corrio, para no tantear por tick. */
+    private static int lastHeldRetry;
+
+    /**
+     * El ultimo tick con un bloque bajo la mira.
+     *
+     * <p>Alimenta {@link PressBuffer#OFF_BLOCK_TICKS}: quien pica sostiene el boton y cruza un
+     * hueco de aire entre bloque y bloque. Sin este registro, el reintento abriria un swing en
+     * ese hueco y la mineria se cortaria sola. Arranca bien lejos para no bloquear el primer
+     * segundo de una sesion. (⌒‿⌒)</p>
+     */
+    private static int lastOnBlockTick = -100;
+
+    /**
      * The verdict on the press currently being processed.
      *
      * <p>Deliberately not cleared by whoever reads it. Vanilla can run the attack path more than
@@ -181,8 +206,10 @@ public final class SwingInputHandler {
             return;
         }
         if (event.getAction() == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+            attackHeld = true;
             press(Minecraft.getInstance());
         } else {
+            attackHeld = false;
             release(Minecraft.getInstance());
         }
     }
@@ -736,6 +763,47 @@ public final class SwingInputHandler {
                 com.cortes.combat.attack.WeaponStats.of(player.getMainHandItem()).profile());
     }
 
+    /**
+     * Si toca reintentar el press de un boton que sigue apretado.
+     *
+     * <p>Reusa {@link #canFireTheParkedPress} a proposito: <b>el reintento no inventa una puerta
+     * nueva</b>, pregunta las mismas que un press vivo. Lo unico que agrega es el gate barato de
+     * "estoy picando un bloque sin nada en el cono", que evita un barrido del cono por tick
+     * mientras el jugador sostiene el boton minando. Usa el scan CACHEADO
+     * ({@code ClientCombatState.aiming}, refrescado por {@code CombatAim}) porque justamente no
+     * quiere pagar otro. (μ_μ)</p>
+     */
+    private static boolean heldIntentShouldTry(Minecraft mc, LocalPlayer player) {
+        if (!attackHeld
+                || holding
+                || firedOnPress
+                || parkedPress != PressBuffer.EMPTY
+                || tick - lastHeldRetry < PressBuffer.RETRY_TICKS
+                || !canFireTheParkedPress(mc, player)) {
+            return false;
+        }
+        if (ClientCombatState.aiming()) {
+            // Hay un cuerpo en el cono: la puerta del press decide, igual que en un click vivo.
+            return true;
+        }
+        // Sin objetivo, el colchon de mineria: no abrir un swing en el hueco de aire entre dos
+        // bloques de una veta. (μ_μ)
+        return !isOnBlock(mc) && tick - lastOnBlockTick >= PressBuffer.OFF_BLOCK_TICKS;
+    }
+
+    /**
+     * Si el jugador esta sosteniendo el boton de ataque sin un swing abierto.
+     *
+     * <p>Es la senal que el HUD usa para latir: "te escuche, estoy esperando la puerta". No
+     * decide nada del juego, y por eso no viaja ni se guarda. (⌒‿⌒)</p>
+     */
+    public static boolean waiting() {
+        if (!ServerConfig.combatRework()) {
+            return false;
+        }
+        return attackHeld && !holding && buttonIsPhysicallyDown();
+    }
+
     private static boolean buttonIsPhysicallyDown() {
         Minecraft mc = Minecraft.getInstance();
         var window = mc.getWindow();
@@ -762,6 +830,9 @@ public final class SwingInputHandler {
             return false;
         }
         debug("release PERDIDO (el boton ya no esta apretado): lo resuelve el tick");
+        // El release fisico se perdio; la intencion sostenida tambien: no hay boton que la
+        // respalde. (⌒‿⌒)
+        attackHeld = false;
         // Abandoned rather than released: the player let go of the button some time ago and we
         // only just noticed, so paying a swing against a world they have since walked away from
         // would be the wrong answer. Nothing is spent, and the swing closes.
@@ -858,6 +929,23 @@ public final class SwingInputHandler {
             }
             pressStrikePending = false;
             return;
+        }
+        // El registro del colchon de mineria: se actualiza SIEMPRE, no solo cuando el reintento
+        // mira. Ver PressBuffer.OFF_BLOCK_TICKS. (⌒‿⌒)
+        if (isOnBlock(mc)) {
+            lastOnBlockTick = tick;
+        }
+        // **El boton que sigue abajo y todavia no abrio un swing.**
+        //
+        // El buffer de dos ticks cubre "apreté un pelo antes"; esto cubre "sigo apretando". Los
+        // dos casos del reporte caen aca y ninguno tenia camino antes: mirar un bloque y despues
+        // apartarse (el press murio en "minando"), y esperar que la aguante rellene (murio en el
+        // gate de la guardia). Se reintenta el `press` ENTERO, con su misma lista de puertas, y
+        // solo cada dos ticks: el barrido del cono no tiene por que correr veinte veces por
+        // segundo para contestar la misma pregunta. (￣ε￣＠)
+        if (heldIntentShouldTry(mc, player)) {
+            lastHeldRetry = tick;
+            press(mc);
         }
         if (holding && player.getMainHandItem().getItem() != openItem) {
             // The swing was opened with a different weapon in hand, which happens when a player
@@ -1067,6 +1155,8 @@ public final class SwingInputHandler {
     /** Test hook and logout path: forget the open swing rather than leaving it dangling. */
     public static void reset() {
         holding = false;
+        attackHeld = false;
+        lastOnBlockTick = -100;
         predictedTicks = 0;
         openItem = null;
         firedOnPress = false;

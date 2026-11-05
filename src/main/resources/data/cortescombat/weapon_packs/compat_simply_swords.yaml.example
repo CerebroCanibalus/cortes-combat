@@ -10,6 +10,13 @@
 #
 # This file covers iron/diamond/netherite for each weapon type.
 # Copy to config/cortescombat/weapons/, rename to .yaml, and adjust.
+#
+# NOTE (1.6.0): the mod now writes an `auto-simplyswords.yaml` on the first world start
+# covering EVERY item this mod can detect, and it asks the common `#c:swords` tag -- which is
+# where Simply Swords declares its weapons -- so the families the old example missed (sai,
+# chakram, twinblade, warglaive) get a profile out of the box. This example is only useful when
+# you want to hand-tune the numbers of a few weapons; any id listed here wins over the
+# generated file.
 
 version: 1
 

@@ -1643,3 +1643,147 @@ pase doble de `VertexBounds` (sólo mientras un cuerpo está herido), que pide c
 
 **1252 tests verdes** (+6), 1.20.1 compila, server real `Done (3.899s)`, `Trident=TRIDENT`, cero
 `[guardia]` en el log.
+
+## Ronda del crash de caps en VIVO — release 1.5.2 (2026-11-01)
+
+**Dos servidores de terceros cayeron** con `IllegalStateException: cortescombat:state missing on
+ServerPlayer` y un jugador **VIVO** (sin `removed=`): uno con Forge 47.4.20 + neruina (que lo
+atrapo y pateo al jugador) y otro con Forge 47.4.28 sin neruina (crash real, `Stopping server`),
+justo despues de un teletransporte entre dimensiones custom.
+
+**La causa no era un bug nuestro, sino el modelo de capabilities de Forge 1.20.1** (verificado
+contra las fuentes 47.4.28): `Entity#setRemoved` invalida las caps y solo `Entity#revive()` las
+restaura, y los teletransportes de dimension custom que mueven al jugador a mano no lo llaman --
+`invalidateCaps()` es publico y el javadoc de `reviveCaps` documenta el hueco. Our `SurvivalTicker`
+(via `FoodDataMixin`, corre por tick) era el PRIMER lector: el que convierte un estado raro en
+una excepcion por tick. En 1.21.1 la clase no existe (los attachments viven en el objeto).
+
+**El fix:** `CombatState.bag` (pata v120) lee la capability con `orElse(null)` y cae a `DEAD_BAG`
+-- defaults y escrituras al limbo, como un cadaver -- con un aviso **una sola vez**
+(`WARNED_MISSING.compareAndSet`). Cero cambios en la facade ni en los 42 accesores.
+
+**El guard (`CapFallbackWiringTest`, 5):** la capacidad no se puede cargar en la JVM de tests, asi
+que el guard mira **la forma de la fuente**: sin `orElseThrow`, **dos** salidas a `DEAD_BAG`, el
+aviso con latch, `getCapability(STATE)` **una sola vez** en todo el arbol v120, y la pata 1.21.1
+sin dead bag. **3 sabotajes, 3 muertes por su razon** (`orElseThrow`, `WARNED_MISSING.get()`,
+`return bag`).
+
+**Y el hallazgo que nadie buscaba: un guard que Gradle puede saltarse NO es un guard.** Los guards
+leen el codigo como TEXTO y Gradle no lo sabe: con la rama saboteada, `:1.21.1:test` dio
+`UP-TO-DATE` y **no ejecuto nada** -- build verde con el fix revertido. Fix en `build.gradle`: los
+arboles que los guards leen son **inputs** del task `test`, asi que cualquier cambio de fuente
+re-corre la suite. Esto tapa de una vez el mismo punto ciego de los ~15 guards de fuente.
+
+**Y dos trampas del shell en `build.sh`, misma familia:** `unzip -l | grep -q` bajo `pipefail`
+mata a `unzip` con SIGPIPE y hacia abortar un jar **PERFECTO** con "no trae el refmap"; y el
+primer glob (`*-all.jar`) no existe en la pata 1.21.1, asi que `set -e` mataba el script **antes**
+del fallback. Los dos: `grep -c` y `|| true`. *Un guard que bloquea lo sano entrena a la gente a
+saltearlo.*
+
+**El release 1.5.2** verificado **sobre el jar**: refmap con 22 mixins mapeados, `mods.toml` con
+`version="1.5.2"` y `Cort\xc3\xa9s` en UTF-8, y la clase `CombatState` del jar sin `orElseThrow`.
+**1263 tests verdes**, server 1.20.1 real `Done (4.111s)` con el mixin aplicado, 8 packs, 46
+recetas, 48 encantamientos y un solo ERROR (el loot table de `simplyswords`, ajeno). Cliente y
+server con el **mismo jar**, comprobado por SHA-256.
+
+## 1.6.0 — la tecla de usar, los tags comunes y el boton sostenido (2026-11-04)
+
+**Cuatro bugs y una mejora, y el primero era el que dejaba el mod roto para quien no usa el boton
+derecho para "usar".**
+
+### El binding y no el raton
+
+La guardia, la especial y el flag de "boton sostenido" escuchaban `MOUSE_BUTTON_RIGHT` a mano,
+mientras vanilla mueve el item con `options.keyUse`. Un jugador que rebindea "usar" quedaba con la
+**animacion de escudo sin bloqueo** (la tecla real arrancaba el uso de vanilla, la guardia nunca
+subia) y un arcabuz que **solo cargaba mirando un bloque** con el sonido de recarga en bucle.
+
+- `UseInput` pregunta `matchesMouse`, `matches(keysym, scancode)` e `isDown()`, y confirma el
+  estado fisico contra GLFW (el release se pierde al perder foco).
+- `GuardInputHandler` y `SpecialInputHandler` ganaron `onKey` y perdieron el boton derecho, en las
+  dos patas.
+- **Un press es UNA especial.** Leido en `Minecraft#handleKeybinds`: sostener `keyUse` repite
+  `startUseItem` cada 4 ticks, y el mixin de `useItemOn`/`interact` disparaba la especial cinco
+  veces por segundo. Ese era el "spam de sonidos". `firedThisHold` lo hace edge-triggered.
+
+### "Solo la mitad de Simply Swords" era un tag
+
+Ese mod declara sus **167 armas en `#c:swords`**, no en `#minecraft:swords`, y el clasificador
+solo preguntaba los tags de vanilla. Ahora `WeaponStats` pregunta `c:swords`, `forge:swords`,
+`c:tools/spear`, `forge:tools/tridents`, `c:tools/mace` y `c:tools/melee_weapon` (este ultimo
+**ultimo** y con el mapa en `LinkedHashMap`: el tag ancho incluye hachas y espadas juntas).
+`AutoProfile` sumo `sai`, `chakram` y `twinblade`, y `archetypeFromStats` clasifica por atributos
+lo que no dice su nombre, con `isToolLike` vetando herramientas.
+
+### El generador se abstenia de su propia salida
+
+El marcador `# generator: 2` hace que una partida vieja reciba las reglas nuevas (con respaldo
+`.bak`). Al verificarlo: `auto-magistuarmory` de ~170 entradas a **1**. La abstencion por cobertura
+consultaba el store con el auto archivo viejo cargado. `resolveForGeneration` filtra los
+`auto-*.yaml`; los packs de persona y el builtin siguen mandando. Resultado en el server: **8
+packs / 787 entradas** (205 / 94 / 372 generadas).
+
+### El boton sostenido
+
+`attackHeld` + reintento del `press` entero cada 2 ticks mientras el boton siga abajo, con
+colchon de 4 ticks sin bloque para no cortar la mineria en el hueco entre bloques. `HudPulse`
+hace latir los corchetes (1.0x-1.9x) mientras se espera, y la espera cuenta como actividad para
+`HudIdle`.
+
+**1280 tests verdes**, `:1.20.1` compila limpio, server real `Done (3.9s)` con `Trident=TRIDENT`,
+`FoodDataMixin aplicado` y cero `Caused by`. Jars `1.6.0` en `dist/`, mismo SHA-256 entre build,
+server y `.minecraft`.
+
+## 1.6.0 (bis) - el tope de dano y la penetracion de armadura del martillo (2026-11-05)
+
+**Dos numeros que el administrador controla, y los dos sobre el martillo.**
+
+### El tope de dano
+
+`warhammerDamageCap` (default **0 = sin tope**, que es el comportamiento de siempre). El tope se
+aplica al **dano crudo del golpe, antes de la armadura**: un golpe topado que ademas come armadura
+queda por debajo del tope.
+
+**El tope vive en la formula, no en el motor.** `DamageResolver.resolve` recibe el
+`WarhammerTuning` y recorta ahi, asi que el **tooltip imprime el numero topado**: un martillo con
+tope de 5 que dice "45 de dano" seria el bug exacto que la clase del tooltip existe para evitar
+(un numero que el jugador lee y el juego no produce). Y el tope es **del martillo, no del juego**:
+una espada con el mismo tope hypothetical sigue dando lo que siempre dio.
+
+### La penetracion de armadura
+
+`warhammerArmourPenetration` (default **100 = la armadura no participa**, que es lo de siempre).
+El default de 100 es el que mantiene **el camino de hoy intacto**: el tipo de dano
+`warhammer_ignored_armour`, que esta en `bypasses_armor`.
+
+Con una penetracion parcial hacen falta **dos cosas**, y por eso hay un **tercer tipo de dano**
+(`warhammer_partial`):
+
+- **La etiqueta es binaria.** `bypasses_armor` no sabe decir "la mitad": o la armadura no
+  participa o participa entera. Asi que la penetracion parcial usa **otra fuente**, que no ignora
+  la armadura, y la armadura del objetivo **se baja por fraccion durante el golpe** --
+  `ArmourPierce`, el mismo mecanismo (atributo transitorio, se saca en el `finally`) que usan
+  Contragolpe y Estocada Perforante. La cuenta de la armadura la sigue haciendo vanilla.
+- **El escudo sigue salvo.** El tipo nuevo esta en `bypasses_shield`, asi que el golpe cargado
+  del martillo sigue atravesando un escudo levantado y sigue vaciando la guardia, como siempre.
+  Un numero de configuracion que cambiara el escudo seria cambiar el arma entera.
+
+**La lectura del impacto se corrigio con esto.** El `DamageSplit` se corria **despues** del
+`finally` que saca los modificadores, asi que leia la armadura **entera** y decia que la armadura
+comio mas de lo que comio. Ahora recibe la armadura que el golpe realmente encontro.
+
+### Lo que quedo anotado
+
+- **El cliente 1.20.1 no recibe la config del server.** NeoForge 1.21.1 **sincroniza** la config del
+  server al cliente (`ConfigSync` -> `ConfigFilePayload` -> `ConfigTracker.acceptSyncedConfig`,
+  verificado en el jar), asi que el tooltip del cliente 1.21.1 es exacto. Forge 1.20.1 **no tiene
+  sincronizacion**: el cliente usa su propia copia y, en un server dedicado, el tooltip puede
+  mostrar el numero **sin topar**. El numero que manda es el del server.
+- **`/cc stats` muestra los dos numeros** cuando el arma en mano es del perfil del martillo: es
+  el comando del server, asi que lee la config que el server esta usando.
+
+**1298 tests verdes** (+18: `WarhammerTuningTest` 5, `DamageResolverTest` 4, `WarhammerWiringTest`
+7, `WeaponTooltipTest` 1, `DamageTypeDeclarationTest` 1), `:1.20.1` compila limpio, server real
+`Done (3.198s)` con la config nueva puesta (tope 5, penetracion 50) y **cero `Caused by`**.
+Jars `1.6.0` reconstruidos en `dist/`, server y `.minecraft` con el **mismo SHA-256**.
+

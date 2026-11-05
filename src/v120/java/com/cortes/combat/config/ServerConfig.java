@@ -1,5 +1,6 @@
 package com.cortes.combat.config;
 
+import com.cortes.combat.attack.WarhammerTuning;
 import com.cortes.combat.survival.SurvivalTuning;
 
 import net.minecraftforge.common.ForgeConfigSpec;
@@ -47,6 +48,12 @@ public final class ServerConfig {
 
     /** Master toggle for the whole combat rework. Off reverts to vanilla combat. */
     public static final ForgeConfigSpec.BooleanValue COMBAT_REWORK;
+
+    /** Tope de dano de un golpe del martillo. Cero es "sin tope". Ver el gemelo compartido. */
+    public static final ForgeConfigSpec.DoubleValue WARHAMMER_DAMAGE_CAP;
+
+    /** Porcentaje de la armadura que el golpe cargado del martillo ignora. Ver el gemelo. */
+    public static final ForgeConfigSpec.DoubleValue WARHAMMER_ARMOUR_PENETRATION;
 
     /** Las trazas de gameplay. Apagadas por defecto: ver la nota del gemelo compartido. */
     public static final ForgeConfigSpec.BooleanValue DEBUG;
@@ -98,6 +105,21 @@ public final class ServerConfig {
                         "toggles (particles, damage flash, viewmodel, camera shake) stay independent.")
                 .define("combatRework", true);
 
+        WARHAMMER_DAMAGE_CAP = BUILDER
+                .comment("Maximum damage of one warhammer hit, in points of damage.",
+                        "0 means no cap, which is the default: the warhammer was never capped.",
+                        "The cap applies to the raw damage of the hit, before armour, so a capped",
+                        "hit is reduced further by whatever armour it does not ignore.")
+                .defineInRange("warhammerDamageCap", 0.0D, 0.0D, 1000.0D);
+
+        WARHAMMER_ARMOUR_PENETRATION = BUILDER
+                .comment("Percentage of the target's armour that the warhammer's fully charged",
+                        "hit ignores. 100 is the default and means the armour does not take part",
+                        "at all; 50 means half of the armour still counts; 0 makes the charged",
+                        "hit an ordinary hit against the armour.",
+                        "Only the fully charged hit is affected: a tap never ignored armour.")
+                .defineInRange("warhammerArmourPenetration", 100.0D, 0.0D, 100.0D);
+
         DEBUG = BUILDER
                 .comment("Gameplay trace lines: [guardia] per blocked hit, [curar] per heal,",
                         "[pala] per orb, [carga] per cancelled charge, [frenzy] per stack milestone.",
@@ -134,6 +156,15 @@ public final class ServerConfig {
     /** Whether the combat rework is on. Defaults to true before a world loads. */
     public static boolean combatRework() {
         return !SPEC.isLoaded() || COMBAT_REWORK.get();
+    }
+
+    /** Los dos numeros del martillo. Ver el gemelo compartido para el porque. */
+    public static WarhammerTuning warhammerTuning() {
+        if (!SPEC.isLoaded()) {
+            return WarhammerTuning.DEFAULT;
+        }
+        return new WarhammerTuning(WARHAMMER_DAMAGE_CAP.get().floatValue(),
+                (float) (WARHAMMER_ARMOUR_PENETRATION.get() / 100.0D));
     }
 
     /** Si las trazas de gameplay estan encendidas. Off antes de que la config cargue. */

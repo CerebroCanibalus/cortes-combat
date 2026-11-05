@@ -1,6 +1,7 @@
 package com.cortes.combat.item.tooltip;
 
 import com.cortes.combat.attack.DamageResolver;
+import com.cortes.combat.attack.WarhammerTuning;
 import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.core.weapon.ConeSize;
 import com.cortes.combat.core.weapon.ReachProfile;
@@ -36,12 +37,20 @@ class WeaponTooltipTest {
 
     private static List<TooltipLine> linesFor(WeaponProfile profile, float attackDamage,
                                              int intervalTicks, int maxDamage) {
+        return linesFor(profile, attackDamage, intervalTicks, maxDamage,
+                WarhammerTuning.DEFAULT);
+    }
+
+    /** The same, with the warhammer's own numbers in hand. */
+    private static List<TooltipLine> linesFor(WeaponProfile profile, float attackDamage,
+                                             int intervalTicks, int maxDamage,
+                                             WarhammerTuning tuning) {
         return WeaponTooltip.linesFor(profile, attackDamage, intervalTicks,
                 WeaponTables.reach(profile), WeaponTables.charge(profile),
                 WeaponTables.special(profile), WeaponTables.knockback(profile),
                 WeaponTables.maxTargets(profile), maxDamage, maxDamage,
                 !WeaponTables.shotReach(profile).isNone(), WeaponKinds.fights(profile),
-                EnchantmentNumbers.base());
+                EnchantmentNumbers.base(), tuning);
     }
 
     /**
@@ -61,7 +70,7 @@ class WeaponTooltipTest {
                         WeaponTables.charge(WeaponProfile.NONE),
                         SpecialType.NONE, WeaponTables.knockback(WeaponProfile.NONE),
                         1, 0, 0, false, false,
-                        EnchantmentNumbers.base()),
+                        EnchantmentNumbers.base(), WarhammerTuning.DEFAULT),
                 "NONE is not a weapon. Printing numbers on it is the tooltip form of the bug that "
                         + "made a dirt block inherit a sword's charge");
 
@@ -176,7 +185,8 @@ class WeaponTooltipTest {
                         WeaponTables.maxTargets(WeaponProfile.SABRE), 250, 250, false, true,
                         new EnchantmentNumbers(
                                 com.cortes.combat.state.ArcabuzState.RELOAD_TICKS, shortened,
-                                com.cortes.combat.state.StreakState.WINDOW_TICKS))),
+                                com.cortes.combat.state.StreakState.WINDOW_TICKS),
+                        WarhammerTuning.DEFAULT)),
                 "**y con Reflejo de Acero II el mismo renglon dice tres.** El numero tiene que venir "
                         + "del arma que el jugador tiene en la mano");
     }
@@ -210,6 +220,53 @@ class WeaponTooltipTest {
                         "tooltip.cortescombat.charged_damage"),
                 "the tooltip prints the first hit's number, because that is the weapon and not "
                         + "the reader's current combo");
+    }
+
+    /**
+     * **El tope del martillo aparece en el tooltip.**
+     *
+     * <p>Un martillo con tope de veinte que dice "45 de dano" en el tooltip es el bug exacto que
+     * esta clase existe para evitar: un numero que el jugador lee y el juego no produce. El
+     * tooltip imprime lo que la formula imprime, y la formula ahora conoce el tope.</p>
+     *
+     * <p>Y el tope es <b>solo del martillo</b>: una espada con el mismo tope hypothetical
+     * seguiria dando lo que siempre dio, porque el tope es una decision sobre esa arma.</p>
+     */
+    @Test
+    @DisplayName("el tope del martillo se ve en el tooltip, y solo en el martillo")
+    void theCapShowsInTheTooltip() {
+        // Un tope de cinco sobre un martillo de siete base: el tope muerde, porque si no el
+        // test de arriba probaria que el tooltip dice lo mismo con y sin tope.
+        WarhammerTuning capped = new WarhammerTuning(5.0F, 1.0F);
+        float damage = 7.0F;
+
+        String hammerCharged = argumentOf(
+                linesFor(WeaponProfile.WARHAMMER, damage, 19, 250, capped),
+                "tooltip.cortescombat.charged_damage");
+        float expected = WeaponTooltip.damageFor(WeaponProfile.WARHAMMER,
+                WeaponTables.charge(WeaponProfile.WARHAMMER), damage,
+                DamageResolver.FULL_CHARGE, capped);
+
+        assertEquals(WeaponTooltip.decimal(expected), hammerCharged,
+                "el renglon tiene que decir lo que el golpe hace, con el tope puesto");
+
+        assertTrue(expected < WeaponTooltip.damageFor(WeaponProfile.WARHAMMER,
+                        WeaponTables.charge(WeaponProfile.WARHAMMER), damage,
+                        DamageResolver.FULL_CHARGE),
+                "**y el tope tiene que recortar de verdad**, o el test de arriba no probaria nada");
+
+        assertEquals("5.0", hammerCharged,
+                "y el numero es el tope: siete de base con la carga del martillo dan 11.2, y el "
+                        + "tope los deja en 5");
+
+        // Y una espada no cambia: el tope es del martillo, no del juego.
+        assertEquals(WeaponTooltip.decimal(
+                        WeaponTooltip.damageFor(WeaponProfile.SWORD,
+                                WeaponTables.charge(WeaponProfile.SWORD), damage, 0.0F)),
+                argumentOf(linesFor(WeaponProfile.SWORD, damage, 10, 250, capped),
+                        "tooltip.cortescombat.damage"),
+                "el tope es una decision sobre el martillo: una espada con el mismo tope hypothetical "
+                        + "sigue dando lo que siempre dio");
     }
 
     /**
@@ -422,7 +479,7 @@ class WeaponTooltipTest {
                         WeaponTables.charge(WeaponProfile.SWORD),
                         WeaponTables.special(WeaponProfile.SWORD),
                         WeaponTables.knockback(WeaponProfile.SWORD), 1, 250, 250, false, true,
-                EnchantmentNumbers.base()),
+                EnchantmentNumbers.base(), WarhammerTuning.DEFAULT),
                 "the reach comes off a component any mod can write; a null one must not take the "
                         + "render thread down");
     }

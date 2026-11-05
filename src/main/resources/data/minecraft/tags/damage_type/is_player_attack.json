@@ -2,6 +2,7 @@
   "replace": false,
   "values": [
     "cortescombat:warhammer_ignored_armour",
+    "cortescombat:warhammer_partial",
     "cortescombat:axe_charged"
   ]
 }

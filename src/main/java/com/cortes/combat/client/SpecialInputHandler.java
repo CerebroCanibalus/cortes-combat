@@ -7,14 +7,19 @@ import com.cortes.combat.core.weapon.SpecialType;
 import com.cortes.combat.guard.GuardStats;
 import com.cortes.combat.net.SpecialHeldPayload;
 import com.cortes.combat.net.SpecialPayload;
-import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 
 /**
- * The right button, when it means a special instead of a guard.
+ * The player's <b>use binding</b>, when it means a special instead of a guard.
+ *
+ * <p><b>"Use" is the binding and not the right mouse button.</b> The report that made this
+ * explicit: a player who rebinds use held the arcabuz, pressed their real use key on a block,
+ * and got a press that only worked facing a block plus a reload sound repeating without ever
+ * loading -- because the press paths disagreed about which physical input "use" was. Reading
+ * {@code options.keyUse} makes the press and vanilla's own use the same question.</p>
  *
  * <p><b>The guard is asked first and wins if it can.</b> The guard reads either hand, so a player
  * holding a halberd with a shield in the off hand presses the right button and gets a block: that
@@ -40,6 +45,19 @@ public final class SpecialInputHandler {
      */
     private static boolean lastSentHeld;
 
+    /**
+     * Si la especial de ESTE press ya se disparo.
+     *
+     * <p><b>Existe porque vanilla repite el uso mientras la tecla esta abajo.</b> Leido en
+     * {@code Minecraft#handleKeybinds}: cuando el jugador sostiene {@code keyUse}, cada cuatro
+     * ticks vuelve a llamar {@code startUseItem}, y en un arma que no arranca un uso de item eso
+     * significa un {@code useItemOn}/{@code interact} nuevo cada cuatro ticks. Sin este latch, la
+     * especial se dispara cinco veces por segundo mientras el jugador mantiene apretado -- y en
+     * el arcabuz eso es el sonido de recarga arrancando y cortandose en bucle, que es exactamente
+     * el "spam de sonidos sin cargar" del reporte. <b>Un press es una especial.</b> (⌒‿⌒)</p>
+     */
+    private static boolean firedThisHold;
+
     private SpecialInputHandler() {
     }
 
@@ -59,7 +77,35 @@ public final class SpecialInputHandler {
      */
     @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
-        if (event.getButton() != InputConstants.MOUSE_BUTTON_RIGHT) {
+        if (!UseInput.matchesMouse(event.getButton())) {
+            return;
+        }
+        if (event.getAction() == org.lwjgl.glfw.GLFW.GLFW_RELEASE) {
+            // El release rearma la especial: sin esto, un press dentro del mismo tick del release
+            // se perderia contra el latch del hold anterior. (⌒‿⌒)
+            firedThisHold = false;
+            return;
+        }
+        if (event.getAction() != org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+            return;
+        }
+        press();
+    }
+
+    /**
+     * La mitad de teclado del binding de usar.
+     *
+     * <p>Sin esto, un jugador que puso "usar" en una letra seguia disparando la especial solo por
+     * el camino del mundo ({@code useItemOn}/{@code interact}) -- de ahi el "solo funciona mirando
+     * un bloque" del reporte: el aire no pasa por ninguno de esos dos. (⌒‿⌒)</p>
+     */
+    @SubscribeEvent
+    public static void onKey(InputEvent.Key event) {
+        if (!UseInput.matchesKey(event.getKey(), event.getScanCode())) {
+            return;
+        }
+        if (event.getAction() == org.lwjgl.glfw.GLFW.GLFW_RELEASE) {
+            firedThisHold = false;
             return;
         }
         if (event.getAction() != org.lwjgl.glfw.GLFW.GLFW_PRESS) {
@@ -136,6 +182,10 @@ public final class SpecialInputHandler {
         if (player == null || mc.screen != null || player.isSpectator() || player.isUsingItem()) {
             return;
         }
+        // Una tecla sostenida es una sola especial. Ver el javadoc del campo. (￣ε￣＠)
+        if (firedThisHold) {
+            return;
+        }
         WeaponStats stats = WeaponStats.of(player.getMainHandItem());
         // **La puerta tiene que preguntar QUIEN da el boton, y no que dice el perfil.**
         //
@@ -170,6 +220,8 @@ public final class SpecialInputHandler {
         // not send this a second time.
         lastSentHeld = true;
         CombatPackets.sendToServer(new SpecialHeldPayload(true));
+        // Y el press queda gastado: la repeticion de vanilla no es otra intencion. (⌒‿⌒)
+        firedThisHold = true;
 
         // The sweep's arc, predicted on the press.
         //
@@ -256,15 +308,16 @@ public final class SpecialInputHandler {
     public static boolean reconcileWithTheButton() {
         Minecraft mc = Minecraft.getInstance();
 
-        // A window that is gone answers "not down", which sends the release and stops a reload
-        // rather than leaving it waiting. Same safe direction as every other question in
-        // InputLiveness, and for the same reason.
-        var window = mc.getWindow();
-        boolean down = InputLiveness.buttonIsDown(window != null,
-                window != null
-                        && org.lwjgl.glfw.GLFW.glfwGetMouseButton(window.getWindow(),
-                                org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT)
-                        != org.lwjgl.glfw.GLFW.GLFW_RELEASE);
+        // **La tecla de usar, no el boton derecho.** Ver UseInput: el binding es lo que mueve el
+        // item y lo que el jugador aprieta; el raton es solo su valor por defecto. Y sigue
+        // preguntando el dispositivo, porque un release perdido al perder foco dejaria la recarga
+        // esperando para siempre. (μ_μ)
+        boolean down = UseInput.isDown();
+        if (!down) {
+            // La tecla se solto (o la pantalla la consumio): el proximo press es una especial
+            // nueva. (μ_μ)
+            firedThisHold = false;
+        }
 
         if (mc.getConnection() == null || mc.level == null || mc.player == null) {
             // Nothing to talk to. The mirror is cleared rather than kept, because the window it

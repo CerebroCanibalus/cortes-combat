@@ -49,6 +49,24 @@ public final class ModDamageTypes {
             Registries.DAMAGE_TYPE,
             ResourceIds.rl("axe_charged"));
 
+    /**
+     * El golpe cargado del martillo cuando la penetracion de armadura no es entera.
+     *
+     * <p><b>El tercer tipo, y el unico que existe por una pregunta de fraccion.</b> El tipo del
+     * martillo esta en {@code bypasses_armor}, y esa etiqueta es binaria: o la armadura no
+     * participa o participa entera. Una penetracion del 50 % no se puede decir con una
+     * etiqueta, asi que hace falta otra fuente: una que <em>no</em> ignora la armadura (y por lo
+     * tanto la armadura del objetivo se baja por fraccion durante el golpe) y que <em>si</em>
+     * atraviesa el escudo, como el tipo del martillo.</p>
+     *
+     * <p>Que atraviese el escudo no es un capricho: es lo que hacia el golpe cargado del
+     * martillo, y cambiarlo seria cambiar el arma entera por un numero de configuracion. El
+     * escudo de vanilla lee {@code bypasses_shield}, y este tipo esta en esa etiqueta.</p>
+     */
+    public static final ResourceKey<DamageType> WARHAMMER_PARTIAL = ResourceKey.create(
+            Registries.DAMAGE_TYPE,
+            ResourceIds.rl("warhammer_partial"));
+
     private ModDamageTypes() {
     }
 
@@ -67,6 +85,17 @@ public final class ModDamageTypes {
     /** The same source for the axe's charged swing, which keeps its armour and loses it twice over. */
     public static DamageSource axeCharged(Player player) {
         return player.damageSources().source(AXE_CHARGED, player);
+    }
+
+    /**
+     * La fuente del golpe cargado del martillo cuando la armadura cuenta en parte.
+     *
+     * <p>El jugador es el causante y el directo, igual que en las otras dos: el credito de
+     * muerte, los encantamientos que disparan con un ataque de jugador y el mensaje de muerte
+     * se leen de ahi, no del tipo.</p>
+     */
+    public static DamageSource warhammerPartial(Player player) {
+        return player.damageSources().source(WARHAMMER_PARTIAL, player);
     }
 
     /**

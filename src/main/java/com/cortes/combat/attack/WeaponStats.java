@@ -346,7 +346,7 @@ public final class WeaponStats {
 
     /** Vanilla's tags, asked only when ours answer nothing. See {@link #deriveProfile}. */
     private static final Map<TagKey<net.minecraft.world.item.Item>, WeaponProfile>
-            VANILLA_TAGS = new HashMap<>();
+            VANILLA_TAGS = new LinkedHashMap<>();
 
     static {
         for (WeaponProfile profile : WeaponProfile.values()) {
@@ -373,10 +373,41 @@ public final class WeaponStats {
     // netherite hoe removes three points of damage and a diamond one swings four times a second.
     // The tag was already missing, which meant a hoe resolved to NONE and did not fight at all.
     VANILLA_TAGS.put(itemTag("hoes"), WeaponProfile.HOE);
+    // **Los tags comunes, que son la mitad de Simply Swords y de medio ecosistema.**
+    //
+    // El reporte de "solo la mitad de Simply Swords tiene stats" no era un bug de balance: era
+    // que ese mod declara sus 167 armas en `#c:swords` (y `#simplyswords:swords`), **no** en
+    // `#minecraft:swords`. Nuestro clasificador solo preguntaba los tags de vanilla, asi que las
+    // armas cuyo nombre no delataba un arquetipo caian a NONE y no peleaban -- la mitad exacta
+    // que el jugador veia muerta. Los tags que no existen responden falso, asi que preguntar los
+    // dos nombres (el nuevo `c:` y el viejo `forge:`) en las dos patas es una linea y no un
+    // facade. (⌒‿⌒)
+    VANILLA_TAGS.put(commonTag("c:swords"), WeaponProfile.SWORD);
+    VANILLA_TAGS.put(commonTag("forge:swords"), WeaponProfile.SWORD);
+    VANILLA_TAGS.put(commonTag("c:tools/spear"), WeaponProfile.TRIDENT);
+    VANILLA_TAGS.put(commonTag("forge:tools/tridents"), WeaponProfile.TRIDENT);
+    VANILLA_TAGS.put(commonTag("c:tools/mace"), WeaponProfile.MACE);
+    // **Y el tag ancho, al final y a proposito.** `c:tools/melee_weapon` incluye espadas y hachas
+    // juntas; si se preguntara antes, un hacha ajena sin `#minecraft:axes` se clasificaria como
+    // espada. Preguntado ultimo solo agarra lo que ningun otro tag reclamó, y el refine por
+    // atributos de abajo es el que decide que clase de arma es. (￣ε￣＠)
+    VANILLA_TAGS.put(commonTag("c:tools/melee_weapon"), WeaponProfile.SWORD);
     }
+
 
     private static TagKey<net.minecraft.world.item.Item> itemTag(String path) {
         return TagKey.create(Registries.ITEM, ResourceLocation.withDefaultNamespace(path));
+    }
+
+    /**
+     * Un tag con namespace explicito, para los comunes ({@code c:} y {@code forge:}).
+     *
+     * <p>{@code tryParse} existe en las dos patas y no es la fabrica acoplada a la version, asi
+     * que no necesita gemelo. Un tag que un datapack no publica responde falso: preguntar los dos
+     * nombres cuesta una linea y cubre los dos ecosistemas. (⌒‿⌒)</p>
+     */
+    private static TagKey<net.minecraft.world.item.Item> commonTag(String id) {
+        return TagKey.create(Registries.ITEM, ResourceLocation.tryParse(id));
     }
 
     /**

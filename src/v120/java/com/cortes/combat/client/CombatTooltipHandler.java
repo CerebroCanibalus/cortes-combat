@@ -117,7 +117,13 @@ public final class CombatTooltipHandler {
                 stack.getMaxDamage(),
                 stats.hasOwnShotCone(),
                 fights,
-                enchantmentNumbers(event, stack));
+                enchantmentNumbers(event, stack),
+                // **El tope del martillo, leido del mismo lugar que lo lee el server.** Sin esto el
+                // tooltip imprime el dano sin topar y el jugador lee un numero que el golpe no
+                // hace. En 1.20.1 Forge no hay sincronizacion de la config del server: el cliente
+                // usa su propia copia, asi que en un server dedicado el tooltip puede mostrar el
+                // numero sin topar. Ver AGENTS.md.
+                com.cortes.combat.config.ServerConfig.warhammerTuning());
 
         if (lines.isEmpty()) {
             return;

@@ -124,6 +124,37 @@ public final class DamageResolver {
             float fallDistance,
             int densityLevel,
             float enchantBonus) {
+        return resolve(baseDamage, charge, profile, chargeRatio, streak, fallDistance,
+                densityLevel, enchantBonus, WarhammerTuning.DEFAULT);
+    }
+
+    /**
+     * The same, with the warhammer's two configurable numbers in hand.
+     *
+     * <p><b>The overload exists because the cap belongs to the formula and not to the caller.</b>
+     * A cap applied by whoever fires the swing would be a cap that the tooltip -- which calls this
+     * very method to print the damage -- would not know about, and the player would read "45 de
+     * dano" on a weapon whose hit does 20. That is the exact bug this class was extracted to
+     * prevent: a second opinion about the game's damage.</p>
+     *
+     * <p>The eight-argument version keeps answering with {@link WarhammerTuning#DEFAULT}, which is
+     * "no cap and the armour ignored" -- the behaviour of always, so every existing caller and
+     * every existing test keeps meaning what it meant.</p>
+     *
+     * @param tuning the warhammer's cap and penetration. Only the cap is read here; the
+     *               penetration is a question about the damage <em>source</em>, and it is asked
+     *               where the source is built -- see {@code CombatEngine#damageSource}
+     */
+    public static AttackResult resolve(
+            double baseDamage,
+            ChargeProfile charge,
+            WeaponProfile profile,
+            float chargeRatio,
+            StreakState streak,
+            float fallDistance,
+            int densityLevel,
+            float enchantBonus,
+            WarhammerTuning tuning) {
 
         if (charge != null && !charge.canCharge()) {
             chargeRatio = 0.0F;
@@ -169,6 +200,19 @@ public final class DamageResolver {
         // player tapped or charged -- see the argument's own note. It sits after the fall for the
         // same reason the fall sits after the multiplier: it is a flat bonus, not a scale.
         damage += Math.max(0.0F, enchantBonus);
+
+        // **Y el tope del martillo, aqui y no en el motor.** El tope es una regla del arma, asi
+        // que vive en la formula que el arma usa: un tope aplicado por el que dispara el golpe
+        // seria un tope que el tooltip -- que llama a ESTE metodo para imprimir el dano -- no
+        // sabria, y el jugador leeria "45 de dano" en un arma cuyo golpe hace 20. (^o^)
+        //
+        // **Solo el martillo**, y solo cuando el perfil es del martillo: el tope es una decision
+        // sobre esa arma, no sobre el juego. Un martillo de otro mod entra por el mismo perfil y
+        // por lo tanto por el mismo tope, que es lo que un jugador espera cuando cambia el
+        // martillo de guerra de un mod por el de otro.
+        if (profile == WeaponProfile.WARHAMMER && tuning != null) {
+            damage = tuning.capDamage(damage);
+        }
 
         // Two weapons, two different consequences of a full charge, and they are not the same one.
         //

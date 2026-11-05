@@ -153,7 +153,12 @@ public final class AutoProfile {
             return "sword"; // con reach especial: el generador pregunta longswordReach aparte
         }
         if (contains(path, "dagger", "dirk", "stiletto", "katar", "shiv", "knife", "kunai",
-                "katana", "shortsword", "short_sword", "main gauche", "maingauche")) {
+                "katana", "shortsword", "short_sword", "main gauche", "maingauche",
+                // Sais y chakrams: armas ligeras y rapidas; el ejemplo de compat de Simply
+                // Swords ya las trataba asi, y su velocidad de ataque cae en la misma banda.
+                "sai", "chakram",
+                // Twinblades: la variante de dos hojas de la daga larga del catalogo ajeno.
+                "twinblade", "twin_blade")) {
             return "dagger";
         }
         if (contains(path, "rapier", "estoc", "fleuret", "foil", "smallsword")) {
@@ -202,6 +207,39 @@ public final class AutoProfile {
             case SWORD -> "sword";
             default -> null;
         };
+    }
+
+    /**
+     * <b>El arquetipo de un arma ajena que no dice lo que es ni esta en ningun tag que lo diga.</b>
+     *
+     * <p>Es la mitad del pedido "agregar el arquetipo de estas herramientas a otras armas de
+     * otros mods sin necesidad de que sean la herramienta en cuestion": un item no tiene que
+     * llamarse sword ni estar en {@code #minecraft:swords} para pelear con nuestro sistema -- si
+     * tiene dano de ataque propio, se clasifica por lo que <em>hace</em>. Puro: dos floats
+     * entran, un nombre de arquetipo sale. (⌒‿⌒)</p>
+     *
+     * <p><b>Solo lo usa el generador, no {@code WeaponStats}.</b> El generador escribe una linea
+     * en un archivo que el usuario puede borrar; el clasificador en runtime no puede regalarle el
+     * combate a cada llave inglesa con dos de dano, que es exactamente la invariante "lo que no
+     * pelea no pelea" que el proyecto ya pago una vez. (￣ε￣＠)</p>
+     */
+    public static String archetypeFromStats(float damage, float speed) {
+        return archetypeFromProfile(refineForeignSword(damage, speed));
+    }
+
+    /**
+     * Si el nombre del id delata una herramienta o un consumible que <b>no</b> es un arma.
+     *
+     * <p>El generador automatico pregunta el dano de ataque para decidir "esto pelea", y una
+     * azada o un cubo modificados por otro mod pasan ese piso. Esta lista es el veto barato para
+     * que el archivo generado no llene la categoria de espada de herramientas: nada de aca
+     * aparece en un yaml de arquetipo por accidente. (μ_μ)</p>
+     */
+    public static boolean isToolLike(String path) {
+        return contains(path, "pickaxe", "pick_axe", "shovel", "spade", "hoe", "shears",
+                "fishing_rod", "fishing", "bow", "crossbow", "arrow", "bolt", "shield",
+                "helmet", "chestplate", "leggings", "boots", "horse_armor", "elytra",
+                "bucket", "potion", "totem", "tool");
     }
 
     private static boolean contains(String path, String... keywords) {

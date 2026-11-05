@@ -1,6 +1,7 @@
 package com.cortes.combat.registry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -39,6 +40,16 @@ class DamageTypeDeclarationTest {
      * by a diamond plate and breaks a guard by hand rather than by asking a tag to do it.</p>
      */
     private static final String AXE_ID = "cortescombat:axe_charged";
+
+    /**
+     * El tercer tipo: el golpe cargado del martillo cuando la armadura cuenta en parte.
+     *
+     * <p><b>Existe por una fraccion.</b> Los otros dos son todo o nada: el del martillo ignora
+     * la armadura entera y el del hacha no la ignora nada. Una penetracion del 50 % no se puede
+     * decir con una etiqueta, asi que hace falta una fuente que no ignore la armadura pero que
+     * atraviese el escudo -- y el ataque tiene que seguir siendo del jugador.</p>
+     */
+    private static final String PARTIAL_ID = "cortescombat:warhammer_partial";
 
     private static final Path DATA = Path.of("src", "main", "resources", "data");
     private static final Path TYPE_FILE =
@@ -99,7 +110,8 @@ class DamageTypeDeclarationTest {
         try (var files = Files.list(DATA.resolve("cortescombat").resolve("damage_type"))) {
             var declared = files.map(p -> p.getFileName().toString().replace(".json", "")).sorted()
                     .toList();
-            assertEquals(List.of("axe_charged", "warhammer_ignored_armour"), declared,
+            assertEquals(List.of("axe_charged", "warhammer_ignored_armour", "warhammer_partial"),
+                    declared,
                     "the declared damage types. This test checks them by name, so a new one has to "
                             + "be added here to be checked at all");
         }
@@ -187,6 +199,35 @@ class DamageTypeDeclarationTest {
         assertTrue(tag("is_player_attack").contains(ID),
                 "it is a player attack. Vanilla reads this tag in one place and cannot fire it, "
                         + "but it is the answer other code asks for");
+    }
+
+    /**
+     * The third type, and the one that exists for a fraction.
+     *
+     * <p><b>It does NOT ignore armour, and it DOES ignore a shield.</b> Those two tags are the
+     * whole design: a partial penetration has to leave the armour in the game (reduced by a
+     * fraction for that hit) while keeping the warhammer's charged hit going through a raised
+     * shield, which is what the tag means and what the weapon has always done.</p>
+     *
+     * <p>It is also a player attack, like the other two: the kill credit, the enchantments that
+     * fire on one and the death message all read from that.</p>
+     */
+    @Test
+    @DisplayName("the partial one keeps the armour in the game and still goes through a shield")
+    void thePartialOneIsInShieldAndNotInArmour() {
+        assertFalse(tag("bypasses_armor").contains(PARTIAL_ID),
+                "**it must not ignore the armour**: por eso existe, para que la armadura cuente en "
+                        + "parte en vez de no contar");
+
+        assertTrue(tag("bypasses_shield").contains(PARTIAL_ID),
+                "and it must go through a shield, like the warhammer's charged hit always did. A "
+                        + "shield stopping it would change the weapon, not a setting");
+
+        assertTrue(tag("is_player_attack").contains(PARTIAL_ID),
+                "and it is a player attack, so the kill credit and the enchantments still work");
+
+        assertTrue(!tag("bypasses_shield").contains("\"replace\": true"),
+                "the tag extends the vanilla one instead of replacing it");
     }
 
     /**

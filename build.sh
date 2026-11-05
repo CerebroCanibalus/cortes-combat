@@ -25,10 +25,20 @@ esac
 # shellcheck disable=SC2086
 ./gradlew ":$MC:build" $CC
 
-JAR=$(ls -t "versions/$MC/build/libs/"*cortes-combat-*-all.jar 2>/dev/null | grep -v -e '-sources' -e '-javadoc' | head -n 1)
+# **Tres trampas del shell en dos lineas, y las tres matan un build sano.** (2026-11-01)
+#
+# 1. Un glob SIN coincidencias hace que `ls` salga 2: con `set -e` + `pipefail` eso aborta el
+#    script ANTES de que el `if [ -z "$JAR" ]` pueda probar el fallback. La pata 1.21.1 no
+#    produce un jar `-all` (alla JarJar esta deshabilitado), asi que el primer glob SIEMPRE
+#    fallaba y el fallback -- escrito, pero inalcanzable -- nunca corria.
+# 2. `head -n 1` sale tras la primera linea y mata a `ls` con SIGPIPE (141): con `pipefail`,
+#    eso tambien es fallo.
+# 3. `|| true` al final de cada sustitucion es lo que deja que el veredicto sea el del
+#    CONTENIDO (¿existe el jar?) y no el de la tuberia.
+JAR=$(ls -t "versions/$MC/build/libs/"*cortes-combat-*-all.jar 2>/dev/null | grep -v -e '-sources' -e '-javadoc' | head -n 1 || true)
 if [ -z "$JAR" ]; then
   # Sin clasificador -all: pata sin JarJar (o jar viejo de antes del cambio).
-  JAR=$(ls -t "versions/$MC/build/libs/"*cortes-combat-*.jar 2>/dev/null | grep -v -e '-sources' -e '-javadoc' -e '-all' | head -n 1)
+  JAR=$(ls -t "versions/$MC/build/libs/"*cortes-combat-*.jar 2>/dev/null | grep -v -e '-sources' -e '-javadoc' -e '-all' | head -n 1 || true)
 fi
 if [ -z "$JAR" ]; then
   echo "No jar found in versions/$MC/build/libs" >&2
@@ -44,7 +54,18 @@ fi
 # viejo: `clean` lo borro y el jar salio verde y roto. Esta comprobacion es la que hace
 # que ese jar no llegue a una carpeta de mods.
 if [ "$MC" = "1.20.1" ]; then
-  if ! unzip -l "$JAR" | grep -q 'cortescombat.refmap.json'; then
+  # **`grep -q` + `set -o pipefail` = un guard que bloquea los jars buenos.** (2026-11-01)
+  #
+  # `grep -q` sale en el primer match, `unzip` sigue escribiendo la lista, recibe SIGPIPE y
+  # sale con 141; `pipefail` convierte eso en "el pipeline fallo", y el script abortaba un jar
+  # PERFECTO con "no trae cortescombat.refmap.json". No es cosa de Windows: el mismo caso
+  # pasa en Linux (el listing del jar no entra en el buffer de 64 KB de la tuberia).
+  #
+  # `grep -c` se queda hasta el final: unzip sale 0 y el veredicto es el del CONTENIDO, no el
+  # de la tuberia. `|| true` evita que `set -e` aborte el script cuando no hay coincidencias
+  # (grep -c sale 1), que es justo el caso que este guard quiere detectar. (μ_μ)
+  REFMAP_ENTRIES=$(unzip -l "$JAR" | grep -c 'cortescombat.refmap.json' || true)
+  if [ "$REFMAP_ENTRIES" -eq 0 ]; then
     echo "FATAL: $JAR no trae cortescombat.refmap.json -- los mixins no van a aplicar en" >&2
     echo "       produccion (nombres Mojmap contra SRG). Revisa el cableado del" >&2
     echo "       annotation processor de Mixin en build.gradle." >&2

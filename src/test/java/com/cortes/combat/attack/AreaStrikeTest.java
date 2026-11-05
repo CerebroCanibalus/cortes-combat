@@ -82,7 +82,10 @@ class AreaStrikeTest {
     void theAimedOnePaysFirst() {
         String engine = read();
 
-        int aimed = engine.indexOf("apply(player, target, stats, result, chargeRatio, smash);");
+        // The call, not the whole argument list: the aimed target is applied before the extras
+        // are walked, and a guard that spells the arguments has to be rewritten every time one
+        // of them is added -- which is how a guard ends up protecting nothing.
+        int aimed = engine.indexOf("apply(player, target, stats, result,");
         int extras = engine.indexOf("ConeTargets.nearestInCone(");
         assertTrue(aimed > 0 && extras > 0,
                 "**both halves have to be there**: one apply for the target the client named, and "

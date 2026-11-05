@@ -110,6 +110,51 @@ class AutoCompatWiringTest {
         assertTrue(stripped.length() > 1000, "el archivo descascarado conserva el cuerpo");
     }
 
+    @Test
+    @DisplayName("the common tags are asked, in a deterministic order")
+    void theCommonTagsAreAsked() {
+        // El reporte "solo la mitad de Simply Swords": ese mod declara sus 167 armas en
+        // #c:swords, no en #minecraft:swords. Y el orden importa porque c:tools/melee_weapon
+        // incluye hachas y espadas juntas: preguntado antes, un hacha se vuelve espada.
+        String code = code(WEAPON_STATS);
+        assertTrue(code.contains("commonTag(\"c:swords\")"),
+                WEAPON_STATS + " no pregunta el tag comun de espadas: Simply Swords entero "
+                        + "depende de esa linea");
+        assertTrue(code.contains("commonTag(\"forge:swords\")"),
+                WEAPON_STATS + " no pregunta el nombre viejo del mismo tag (Forge 1.20.1)");
+        assertTrue(code.contains("commonTag(\"c:tools/spear\")"),
+                WEAPON_STATS + " no pregunta el tag comun de lanzas");
+        assertTrue(code.contains("commonTag(\"c:tools/melee_weapon\")"),
+                WEAPON_STATS + " no pregunta el tag ancho de melé");
+        assertTrue(code.contains("VANILLA_TAGS = new LinkedHashMap<>()"),
+                "**el mapa de tags se volvio un HashMap**: el orden de primera coincidencia deja "
+                        + "de estar escrito, y el tag ancho de melé tiene que preguntarse ultimo");
+        int broad = code.indexOf("commonTag(\"c:tools/melee_weapon\")");
+        int swords = code.indexOf("commonTag(\"c:swords\")");
+        assertTrue(broad > swords,
+                "el tag ancho se pregunta antes que el de espadas: un hacha ajena se clasificaria "
+                        + "como espada");
+    }
+
+    @Test
+    @DisplayName("the generator classifies by stats instead of demanding a sword tag")
+    void theGeneratorDoesNotDemandASwordTag() {
+        String generator = code(Path.of("src", "main", "java", "com", "cortes", "combat",
+                "weaponpack", "AutoPackGenerator.java"));
+        assertTrue(generator.contains("AutoProfile.archetypeFromStats("),
+                "el generador volvio a exigir tag o nombre: el pedido era clasificar por lo que "
+                        + "el arma hace");
+        assertTrue(generator.contains("AutoProfile.isToolLike("),
+                "el generador perdio el veto de herramientas: una azada ajenas entraria como "
+                        + "espada");
+        assertTrue(generator.contains("AutoPackYaml.isCurrent("),
+                "el generador perdio el marcador de version: una partida vieja no recibiria las "
+                        + "reglas nuevas");
+        assertFalse(generator.contains("ItemTags.SWORDS"),
+                "el generador volvio a depender solo del tag de vanilla: eso es lo que dejaba "
+                        + "fuera a Simply Swords");
+    }
+
     private static String methodBody(Path file, String method) {
         String source = code(file);
         int start = source.indexOf(method);

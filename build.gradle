@@ -423,6 +423,25 @@ tasks.named('test', Test).configure {
     // working directory is the root, on every leg: both legs assert the same shared sources, and
     // the chiseled copies are a build detail tests never observe. (⌒‿⌒)
     workingDir = rootProject.projectDir
+    // **Y los fuentes que los guards leen son INPUTS del task, no un detalle.** (2026-11-01)
+    //
+    // Los guards de este proyecto leen el codigo como TEXTO: abren el .java del disco y buscan
+    // una cadena. Gradle no sabe eso, asi que el `test` task se declaraba UP-TO-DATE con el
+    // classpath sin cambios y **no ejecutaba nada**: el sabotage de una rama (volver a
+    // `orElseThrow` en la lectura de la capability) dejo el build en verde y el test sin correr.
+    // Medido: `:1.21.1:test` -> "Task :1.21.1:test UP-TO-DATE" con el fuente cambiado, y el
+    // sabotage solo muerdo con `--rerun-tasks`.
+    //
+    // Declarar los arboles como inputs cierra eso: cualquier cambio de fuente re-corre la
+    // suite, y un guard verde es un guard que CORRIO. (Es la misma clase de error que el
+    // refmap residuo: un artefacto que "anda" sin ser el que se midio.) (μ_μ)
+    inputs.files(
+            fileTree(rootProject.file('src/main/java')),
+            fileTree(rootProject.file('src/main/resources')),
+            fileTree(rootProject.file('src/v120/java')),
+            fileTree(rootProject.file('src/v120/resources')),
+            fileTree(rootProject.file('src/test/java')),
+    ).withPropertyName('guardedSources').withPathSensitivity(PathSensitivity.RELATIVE)
     testLogging {
         events "passed", "skipped", "failed"
     }
@@ -677,6 +696,7 @@ if (!mc121) {
                 'com/cortes/combat/survival/EatInterruptHandler.java',
                 'com/cortes/combat/particle/OnAnyDamage.java',
                 'com/cortes/combat/attack/DamageSplit.java',
+                'com/cortes/combat/attack/ArmourPierce.java',
                 'com/cortes/combat/entity/AntimatterOrb.java',
                 'com/cortes/combat/entity/MobCloud.java',
                 'com/cortes/combat/entity/MungusShell.java',

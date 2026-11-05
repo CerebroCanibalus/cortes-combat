@@ -31,6 +31,8 @@ import net.minecraftforge.common.capabilities.CapabilityToken;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.util.INBTSerializable;
 import net.minecraftforge.common.util.LazyOptional;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -87,9 +89,27 @@ public final class CombatState {
         if (entity.isRemoved()) {
             return DEAD_BAG;
         }
-        return entity.getCapability(STATE).orElseThrow(() ->
-                new IllegalStateException("cortescombat:state missing on " + entity));
+        StateBag bag = entity.getCapability(STATE).orElse(null);
+        if (bag == null) {
+            // Un jugador VIVO sin capability: el ciclo de vida de Forge 1.20.1 permite que
+            // alguien llame a invalidateCaps() sobre una entidad que sigue siendo ticked
+            // (la llamada es publica) y quien la toco no llamo a reviveCaps() -- ver
+            // CapabilityProvider#reviveCaps: "revivir para copiar y volver a invalidar".
+            // Lanzar aqui convierte cada tick en una excepcion que Neruina atrapa y en el
+            // peor caso cierra el server por umbral; el jugador vivo pierde el estado pero
+            // Mismo contrato que el muerto: defaults y escrituras al limbo. (μ_μ)
+            if (WARNED_MISSING.compareAndSet(false, true)) {
+                CortesCombat.LOGGER.warn(
+                        "[estado] capability ausente en una entidad VIVA (que no esta removed): "
+                                + entity + " -- leyendo defaults; el que la invalido no revivio las caps");
+            }
+            return DEAD_BAG;
+        }
+        return bag;
     }
+
+    /** Aviso una sola vez por arranque -- un sin-caps vivo sigue siendo sin-caps hasta que alguien llame a reviveCaps. */
+    private static final AtomicBoolean WARNED_MISSING = new AtomicBoolean(false);
 
     // --- the left button: charge, cooldown, the swing in flight ------------------------------
 

@@ -10,6 +10,11 @@ run-data/
 runs/
 runs-1.20.1/
 
+# El cliente de dev (carpeta del juego con mods, saves, config y options del usuario).
+# Sin esto, un `git add -A` se lleva el mods/ del cliente -- y con el, el jar que el
+# dueno tiene instalado. Ya entro un PNG del usuario por la misma via (2026-10-27).
+.minecraft/
+
 # Test servers
 test-server/
 test-server-*/

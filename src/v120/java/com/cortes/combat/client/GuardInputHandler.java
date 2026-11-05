@@ -5,7 +5,6 @@ import com.cortes.combat.guard.GuardRules;
 import com.cortes.combat.guard.GuardStats;
 import com.cortes.combat.config.ServerConfig;
 import com.cortes.combat.net.GuardInputPayload;
-import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -15,14 +14,20 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Turns the right mouse button into guard input.
+ * Turns the player's <b>use binding</b> into guard input.
  *
- * <p>Predicted locally so the guard pose and the orbs react on the same frame as the click, and
+ * <p><b>"Use" and not "right mouse", and that distinction cost a report.</b> Vanilla's item use
+ * is {@code options.keyUse}; a player who rebinds it keeps using shields, doors and food through
+ * that binding. This class listened for {@code MOUSE_BUTTON_RIGHT} instead, so a rebinded player
+ * got vanilla's shield animation started by the real use key with our guard never raised --
+ * blocking nothing and still paying the movement penalty.</p>
+ *
+ * <p>Predicted locally so the guard pose and the orbs react on the same frame as the press, and
  * sent to the server, which is the only thing that counts. Same shape as
  * {@link SwingInputHandler}, on purpose: two input systems that differ in how they lie to the
  * client are two things to debug.</p>
  *
- * <p>It ignores the click entirely unless a guard item is in hand, so holding right with bread
+ * <p>It ignores the press entirely unless a guard item is in hand, so holding use with bread
  * does not put the guard up and does not send a packet.</p>
  */
 public final class GuardInputHandler {
@@ -34,19 +39,43 @@ public final class GuardInputHandler {
 
     @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
-        if (!ServerConfig.combatRework()) {
+        if (!UseInput.matchesMouse(event.getButton())) {
             return;
         }
-        if (event.getButton() != InputConstants.MOUSE_BUTTON_RIGHT) {
+        handle(event.getAction() == GLFW.GLFW_PRESS);
+    }
+
+    /**
+     * La otra mitad del binding: la tecla de usar puede ser una tecla de teclado.
+     *
+     * <p>Sin este metodo la guardia volvia a depender del raton, que es el bug entero. Los
+     * {@code REPEAT} se ignoran: son la tecla sostenida, no un press nuevo. (⌒‿⌒)</p>
+     */
+    @SubscribeEvent
+    public static void onKey(InputEvent.Key event) {
+        if (event.getAction() == GLFW.GLFW_REPEAT) {
+            return;
+        }
+        if (!UseInput.matchesKey(event.getKey(), event.getScanCode())) {
+            return;
+        }
+        handle(event.getAction() == GLFW.GLFW_PRESS);
+    }
+
+    private static void handle(boolean pressed) {
+        if (!ServerConfig.combatRework()) {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
         // Same reason as the charge handler: the button can be pressed on the title screen or
         // while a world loads, and a null connection there takes the render thread with it.
-        if (mc.getConnection() == null || mc.player == null) {
+        //
+        // **Y una pantalla abierta consume la tecla, no la accion.** Vanilla no mueve el item
+        // mientras hay interfaz; una tecla de usar bindeada a una letra escribiria en el chat y
+        // levantaria la guardia a la vez sin este gate. (￣ε￣＠)
+        if (mc.getConnection() == null || mc.player == null || mc.screen != null) {
             return;
         }
-        boolean pressed = event.getAction() == GLFW.GLFW_PRESS;
         if (pressed) {
             if (!canGuard(mc.player)) {
                 setHolding(false);
@@ -129,12 +158,8 @@ public final class GuardInputHandler {
      * cannot break, cannot interact" report, and this flag is one of its two causes.</p>
      */
     private static boolean buttonIsPhysicallyDown() {
-        var window = Minecraft.getInstance().getWindow();
-        return InputLiveness.buttonIsDown(window != null,
-                window != null && org.lwjgl.glfw.GLFW.glfwGetMouseButton(
-                        window.getWindow(),
-                        org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT)
-                        != org.lwjgl.glfw.GLFW.GLFW_RELEASE);
+        // La pregunta va al binding de usar, no al boton derecho: ver UseInput. (§3)
+        return UseInput.isDown();
     }
 
     /**

@@ -214,6 +214,58 @@ class DamageResolverTest {
     }
 
     @Nested
+    @DisplayName("the warhammer's damage cap")
+    class Cap {
+
+        private static final ChargeProfile HAMMER = new ChargeProfile(true, 0.6F, 32);
+
+        private static AttackResult hammer(WarhammerTuning tuning) {
+            return DamageResolver.resolve(20.0, HAMMER, WeaponProfile.WARHAMMER, 1.0F,
+                    StreakState.EMPTY, 0.0F, 0, 0.0F, tuning);
+        }
+
+        @Test
+        @DisplayName("the cap truncates the charged hit")
+        void truncates() {
+            float uncapped = hammer(WarhammerTuning.DEFAULT).damage();
+            assertTrue(uncapped > 20.0F,
+                    "a full charge on twenty base passes the cap, or the test proves nothing");
+
+            assertEquals(20.0F, hammer(new WarhammerTuning(20.0F, 1.0F)).damage(), 1.0E-6,
+                    "**el tope recorta el golpe**");
+        }
+
+        @Test
+        @DisplayName("a cap above the hit changes nothing")
+        void aboveTheHit() {
+            assertEquals(hammer(WarhammerTuning.DEFAULT).damage(),
+                    hammer(new WarhammerTuning(1000.0F, 1.0F)).damage(), 1.0E-6,
+                    "un tope que no se alcanza no recorta nada");
+        }
+
+        @Test
+        @DisplayName("the cap is the warhammer's and not the game's")
+        void onlyTheWarhammer() {
+            AttackResult sword = DamageResolver.resolve(20.0, SWORD, WeaponProfile.SWORD, 1.0F,
+                    StreakState.EMPTY, 0.0F, 0, 0.0F, new WarhammerTuning(5.0F, 1.0F));
+
+            assertEquals(30.0F, sword.damage(), 1.0E-6,
+                    "**una espada con el mismo tope hypothetical sigue dando lo que siempre dio.** "
+                            + "El tope es una decision sobre el martillo, no sobre el juego");
+        }
+
+        @Test
+        @DisplayName("the cap applies to the tap too")
+        void theTapIsCappedToo() {
+            AttackResult tap = DamageResolver.resolve(20.0, HAMMER, WeaponProfile.WARHAMMER, 0.0F,
+                    StreakState.EMPTY, 0.0F, 0, 0.0F, new WarhammerTuning(5.0F, 1.0F));
+
+            assertEquals(5.0F, tap.damage(), 1.0E-6,
+                    "el tope es del golpe, no de la carga: un tap que pasa el tope tambien se topa");
+        }
+    }
+
+    @Nested
     @DisplayName("misses")
     class Misses {
 

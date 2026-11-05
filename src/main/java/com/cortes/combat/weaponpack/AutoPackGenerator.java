@@ -5,7 +5,6 @@ import com.cortes.combat.item.AutoProfile;
 import com.cortes.combat.platform.WeaponAttr;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.loading.FMLPaths;
@@ -24,16 +23,18 @@ import java.util.TreeMap;
  * por arma ajena agrupada por arquetipo.
  *
  * <p><b>Corre en {@code ServerStartedEvent} y no antes, por la leccion ya pagada</b>: en
- * common setup los tags de items no estan bindeados, asi que ahi el {@code stack.is(ItemTags
- * .SWORDS)} responde falso para todos y el generador produce cero entradas con el build verde.
- * Un diagnosticador que miente en la forma del bug que cacha es peor que ningun diagnosticador
- * (ModPlatform ya lo pago una vez).</p>
+ * common setup los tags de items no estan bindeados y {@code stack.is(tag)} responde falso para
+ * todos -- el generador produce cero entradas con el build verde, y la abstencion por pack
+ * cargado tambien miente. Un diagnosticador que miente en la forma del bug que cacha es peor que
+ * ningun diagnosticador (ModPlatform ya lo pago una vez).</p>
  *
  * <h2>Las tres reglas del archivo que sale</h2>
  *
  * <ol>
- *   <li><b>Solo se escribe si no existe</b> -- es del usuario desde el primer byte; se borra
- *       para regenerar, se edita para balancear. Un archivo que existe no se pisa nunca.</li>
+ *   <li><b>Se escribe una vez y despues es del usuario</b> -- se borra para regenerar, se edita
+ *       para balancear. La unica excepcion es un salto de version del generador, que respalda el
+ *       archivo viejo como {@code .bak} y escribe uno nuevo: sin eso, las reglas nuevas de
+ *       deteccion no llegan nunca a una partida ya creada. (μ_μ)</li>
  *   <li><b>No declara dano ni velocidad</b> -- el arma ajena ya trae los suyos por material, y
  *       pisarlos seria pelear contra el balance del otro mod. El tier escala la CARGA en el
  *       codigo ({@code AutoProfile.tieredChargeTicks/Bonus}), que era el numero ciego al
@@ -43,12 +44,17 @@ import java.util.TreeMap;
  *       la regla de oro de la capa 2.</li>
  * </ol>
  *
+ * <p><b>Y clasifica sin exigir el tag de espada.</b> El nombre del id manda (es lo que el mod
+ * quiso fabricar); si no dice nada, los atributos deciden; y una herramienta se veta antes de
+ * que el fallback la convierta en arma. Ese orden es el que hace que Simply Swords entero tenga
+ * stats aunque la mitad de sus armas no digan "sword" en el id. (⌒‿⌒)</p>
+ *
  * <p><b>El texto lo arma {@link AutoPackYaml}, que es puro.</b> Esta clase es el adaptador al
  * juego y nada mas: escanea el registro, clasifica, y delega el formato. (￣ε￣＠)</p>
  */
 public final class AutoPackGenerator {
 
-    static final String PREFIX = "auto-";
+    static final String PREFIX = AutoPackYaml.AUTO_PREFIX;
 
     /** El piso de dano de la escala del tooltip por debajo del cual el item es un juguete. */
     static final float MIN_WEAPON_DAMAGE = 1.0F;
@@ -84,19 +90,27 @@ public final class AutoPackGenerator {
                 }
                 String archetype = AutoProfile.archetypeOf(id.getPath());
                 if (archetype == null) {
-                    if (!stack.is(ItemTags.SWORDS)) {
+                    // **El veto de herramienta va antes del fallback por atributos.** Sin esto,
+                    // una azada o un cubo ajenos con dano de ataque entrarian como espada: el
+                    // unico filtro que habia era el nombre, y la lista negra es lo que evita que
+                    // el archivo generado ensene a pelear a lo que no es un arma. (μ_μ)
+                    if (AutoProfile.isToolLike(id.getPath())) {
                         continue;
                     }
-                    // El tag de vanilla clasifica por omision (casi todo arma entra en
-                    // #minecraft:swords): el refine por atributos es la devolucion del favor.
-                    archetype = AutoProfile.archetypeFromProfile(
-                            AutoProfile.refineForeignSword(hand.damage(), hand.speed()));
-                    if (archetype == null) {
-                        continue;
-                    }
+                    // **Y la mitad del pedido "sin necesidad de que sean la herramienta".** Si el
+                    // item tiene dano propio y no es herramienta, se clasifica por lo que HACE:
+                    // rapido y liviano -> daga; lento y pesado -> martillo; el resto -> espada.
+                    // Es exactamente lo que el refine del tag espada ya hacia en runtime, ahora
+                    // tambien para lo que llega sin tag. (⌒‿⌒)
+                    archetype = AutoProfile.archetypeFromStats(hand.damage(), hand.speed());
                 }
-                if (WeaponPackStore.resolve(stack) != null) {
-                    // Ya contestado por un pack existente (a mano o el builtin): abstener.
+                if (archetype == null) {
+                    continue;
+                }
+                if (WeaponPackStore.resolveForGeneration(stack) != null) {
+                    // Un pack ESCRITO POR UNA PERSONA ya contesta este item: abstener. Los
+                    // `auto-*` no cuentan, o el generador se abstendria de su propia salida y
+                    // el archivo nuevo saldria casi vacio. (μ_μ)
                     continue;
                 }
                 Float longReach = AutoProfile.isLongsword(id.getPath())
@@ -106,10 +120,20 @@ public final class AutoPackGenerator {
                                 AutoProfile.OreTier.of(id.getPath())));
             }
             int written = 0;
+            int replaced = 0;
             for (Map.Entry<String, List<AutoPackYaml.Detected>> entry : byMod.entrySet()) {
                 Path file = dir.resolve(PREFIX + entry.getKey() + ".yaml");
                 if (Files.exists(file)) {
-                    continue;
+                    // **Un archivo de una version vieja del generador se respalda y se
+                    // reescribe.** Es la unica excepcion a "nunca piso el archivo del usuario",
+                    // y existe porque las reglas de deteccion cambian: sin esto, las armas que
+                    // hoy sabemos clasificar no llegan nunca a una partida ya creada. El `.bak`
+                    // conserva lo que el usuario habia editado. (￣ε￣＠)
+                    if (AutoPackYaml.isCurrent(file)) {
+                        continue;
+                    }
+                    backup(file);
+                    replaced++;
                 }
                 Files.writeString(file, AutoPackYaml.of(entry.getKey(), entry.getValue()),
                         StandardCharsets.UTF_8);
@@ -119,11 +143,28 @@ public final class AutoPackGenerator {
                 WeaponPackStore.reload();
                 CortesCombat.LOGGER.info(
                         "[weaponpack] auto: {} pack(s) generados para mods detectados "
-                                + "(borra el archivo para regenerar)", written);
+                                + "({} reemplazados por version nueva; borra el archivo para "
+                                + "regenerar)", written, replaced);
             }
         } catch (Exception e) {
             // Un warning con nombre y nada mas: el mundo arranca igual.
             CortesCombat.LOGGER.warn("[weaponpack] auto: fallo el generador: {}", e.toString());
+        }
+    }
+
+    /**
+     * Guarda la version anterior al lado, <b>antes</b> de reescribir.
+     *
+     * <p>Sobrescribe un `.bak` previo a proposito: el que interesa es el de la version que se
+     * esta reemplazando ahora, no el de hace tres upgrades. (￣ε￣＠)</p>
+     */
+    private static void backup(Path file) {
+        try {
+            Files.copy(file, file.resolveSibling(file.getFileName() + ".bak"),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception e) {
+            CortesCombat.LOGGER.warn("[weaponpack] auto: no se pudo respaldar {}: {}",
+                    file.getFileName(), e.toString());
         }
     }
 }

@@ -179,6 +179,13 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
             return;
         }
         float presence = ConeGauge.bracketAlpha();
+        // **El latido del boton sostenido.** Si el jugador esta apretando y el golpe todavia no
+        // pudo empezar (aguante, cooldown, mirando un bloque), los corchetes respiran. Es el
+        // "te escuche" que el reporte pedia que se notara, y desaparece en cuanto el swing abre.
+        // El piso del factor es 1.0: nunca se apagan. (⌒‿⌒)
+        if (SwingInputHandler.waiting()) {
+            presence = Math.min(1.0F, presence * HudPulse.waiting(net.minecraft.Util.getMillis()));
+        }
         int spriteHeight = BracketMask.height();
         int y0 = centreY - spriteHeight / 2;
         // Each bracket's ink centre is placed on the cone's projected edge, so the pair is

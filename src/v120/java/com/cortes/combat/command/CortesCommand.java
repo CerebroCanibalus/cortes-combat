@@ -352,6 +352,20 @@ public final class CortesCommand {
                 "source=" + (pack != null ? "pack " + pack.source()
                         : "sin pack (tag molde → vanilla → NONE)")), false);
 
+        // **El martillo y sus dos numeros configurables.** Son los unicos dos numeros de balance
+        // que el administrador puede cambiar, asi que el comando tiene que mostrarlos: un
+        // "/cc stats" que no los nombrara obligaria a abrir el archivo de configuracion para
+        // saber si el tope esta puesto. El server es la fuente de verdad -- aca se lee la config
+        // que el server esta usando, no la del cliente.
+        if (stats.profile() == com.cortes.combat.core.weapon.WeaponProfile.WARHAMMER) {
+            var tuning = com.cortes.combat.config.ServerConfig.warhammerTuning();
+            ctx.getSource().sendSuccess(() -> Component.literal(
+                    "martillo: tope=" + (tuning.damageCap() > 0.0F
+                            ? String.valueOf(tuning.damageCap()) : "sin tope")
+                            + " armadura ignorada="
+                            + Math.round(tuning.armourPenetration() * 100.0F) + "%"), false);
+        }
+
         // The charge a swing is being held to right now, in the numbers the rule uses. The report
         // that prompted this was "every click registers as a charge", and a tap being read as a
         // full charge is not something a damage number can explain: it needs the count and the
