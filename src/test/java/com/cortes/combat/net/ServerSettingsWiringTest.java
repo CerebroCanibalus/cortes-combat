@@ -139,16 +139,48 @@ class ServerSettingsWiringTest {
     }
 
     @Test
-    @DisplayName("en 1.21.1 el payload es opcional, para no caer la conexion de un cliente viejo")
+    @DisplayName("en 1.21.1 el payload se registra POR EL REGISTRAR OPCIONAL, no por el original")
     void theNewLegPayloadIsOptional() {
         String networking = codeOf(MAIN, "com/cortes/combat/net/ModNetworking.java");
 
-        int optional = networking.indexOf("registrar.optional()");
-        int payload = networking.indexOf("playToClient(ServerSettingsPayload.TYPE");
-        assertTrue(optional > 0 && payload > optional,
-                "**el payload tiene que estar marcado como opcional.** Un cliente con un jar "
-                        + "anterior no lo conoce, y si el server lo manda como obligatorio la "
-                        + "conexion se cae");
+        // **El metodo devuelve una COPIA**, no el mismo registrar: clona con la bandera puesta
+        // y devuelve el clon (verificado en el fuente de NeoForge 21.1.250,
+        // PayloadRegistrar#optional). Un `registrar.optional();` solo deja la copia en el aire,
+        // y el payload queda OBLIGATORIO: el handshake de NeoForge cae la conexion de un cliente
+        // con un jar anterior en vez de ignorarlo. Eso es exactamente el bug que el mensaje
+        // queria evitar, y el codigo lo tenia.
+        //
+        // **Por que este guard no mira el texto "registrar.optional()"**: el guard anterior lo
+        // hacia, y el codigo roto lo pasaba igual. Un guard que no puede fallar no protege
+        // nada -- la misma leccion que el refmap residuo y que el guard que findsu su propia
+        // explicacion.
+        java.util.regex.Matcher clone = java.util.regex.Pattern
+                .compile("(\\w+)\\s*=\\s*registrar\\.optional\\(\\)\\s*;")
+                .matcher(networking);
+        assertTrue(clone.find(),
+                "**el registro tiene que pasar por el registrar que devuelve optional()**");
+
+        String variable = clone.group(1);
+        assertTrue(networking.contains(variable + ".playToClient(ServerSettingsPayload.TYPE"),
+                "**y el payload tiene que registrarse por ESE clon.** `optional()` devuelve una "
+                        + "copia (fuente de NeoForge 21.1.250, PayloadRegistrar#optional): "
+                        + "registrar por el original deja el payload OBLIGATORIO, y un cliente "
+                        + "con un jar anterior no lo tiene -- el handshake cae la conexion en "
+                        + "vez de ignorarlo");
+    }
+
+    @Test
+    @DisplayName("la pata de 1.20.1 no llama a optional(): ese metodo no existe en Forge")
+    void theOldLegHasNoNeoForgeOnlyCall() {
+        String networking = codeOf(V120, "com/cortes/combat/net/ModNetworking.java");
+
+        assertTrue(!networking.contains(".optional("),
+                "**Forge 1.20.1 no tiene `PayloadRegistrar#optional`**: su canal es un "
+                        + "SimpleChannel, donde un id desconocido se loguea y se tira "
+                        + "(verificado en el fuente de 47.4.28, IndexedMessageCodec#consume). "
+                        + "Copiar la llamada de NeoForge aca no compila, y por eso la "
+                        + "compatibilidad del cliente viejo en esta pata no depende de "
+                        + "marcarla: no hay nada que marcar");
     }
 
     @Test

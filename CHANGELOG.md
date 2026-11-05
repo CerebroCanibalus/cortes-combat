@@ -1844,3 +1844,61 @@ sin salida a internet (`Failed to request yggdrasil public key ... Connect timed
 `runClient` muere antes de cargar un mundo. Para cerrarlo: `debug = true` en la config del
 cliente y entrar a un mundo; en el log aparece `[config] server: tope=... penetracion=...%`, que
 es la prueba de que el mensaje **llego**.
+
+## 1.6.0 (bis 3) - la revision del codigo nuevo (2026-11-05)
+
+**El pedido: "revisa el codigo nuevo, sobre todo la 1.20.1 que es mas inestable". La revision
+encontro UN bug de caida de conexion, y no estaba en la 1.20.1.**
+
+### El bug: `optional()` devuelve una COPIA, y el codigo la tiraba
+
+En 1.21.1 el mensaje de la config del server se registraba asi:
+
+```java
+registrar.optional();
+registrar.playToClient(ServerSettingsPayload.TYPE, ...);
+```
+
+**Verificado en el fuente de NeoForge 21.1.250**: `PayloadRegistrar#optional()` **clona** el
+registrar con la bandera puesta y **devuelve el clon**. La llamada sin usar el retorno deja la
+copia en el aire, y el payload queda **OBLIGATORIO**: el handshake de NeoForge **cae la conexion**
+de un cliente con un jar anterior, en vez de ignorarlo como queria el comentario al lado.
+
+**Fix**: el registro va por el clon (`PayloadRegistrar optional = registrar.optional();`), en una
+variable aparte para que un mensaje futuro no sea opcional sin que nadie lo pida.
+
+### El guard que no moria
+
+El guard viejo afirmaba que `registrar.optional()` aparecia **antes** del `playToClient` en el
+texto -- y el codigo roto pasaba. **Miraba el TEXTO y el texto estaba bien; lo que estaba mal
+era que registro se usaba.** El guard nuevo exige que la variable que recibe el clon sea la que
+registra el payload. Saboteado y verificado: `1310 tests completed, 1 failed`.
+
+### La pata de 1.20.1 no necesita (ni puede) marcar nada
+
+Forge 1.20.1 no tiene `optional()`: su canal es un `SimpleChannel`, donde un id desconocido **se
+loguea y se tira** (verificado en `IndexedMessageCodec#consume` del fuente de Forge 47.4.28).
+Un guard nuevo afirma que la pata de 1.20.1 no llama a `optional()`, para que nadie copie la
+llamada de NeoForge ahi.
+
+### El tipo de dano nuevo, verificado en el server real
+
+`cortescombat:warhammer_partial` (el golpe cargado del martillo con penetracion parcial) nunca
+se habia ejecutado. Verificado con `/forge tags` del server de Forge 1.20.1, cuyo subcomando
+`query` valida el elemento contra el registro:
+
+```
+minecraft:damage_type : cortescombat:warhammer_partial
+- minecraft:bypasses_shield
+- minecraft:is_player_attack
+```
+
+El tipo **existe** en el registro de 1.20.1, atraviesa el escudo como el de siempre y **no**
+ignora la armadura (que es lo que permite la penetracion parcial). El camino que faltaba
+ejecutar ya no puede reventar.
+
+### Estado
+
+**1310 tests verdes** (+1: el guard de la forma del registro), las dos patas compilan, jars
+`1.6.0` reconstruidos (el de 1.20.1 queda **byte a byte igual** -- el fix es de la pata de
+1.21.1 -- y el de 1.21.1 cambia).

@@ -101,8 +101,20 @@ public final class ModNetworking {
         // anterior no lo conoce, y si el server lo mandara como obligatorio la conexion se
         // caeria. Opcional significa que el cliente viejo lo ignora y sigue jugando con su
         // copia -- que es lo de siempre.
-        registrar.optional();
-        registrar.playToClient(ServerSettingsPayload.TYPE, ServerSettingsPayload.STREAM_CODEC,
+        //
+        // <p><b>Y el registro va por el registrar que DEVUELVE {@code optional()}</b>, que es
+        // una <em>copia</em>: el metodo clona el registrar con la bandera puesta y devuelve el
+        // clon (verificado en el fuente de NeoForge 21.1.250,
+        // {@code PayloadRegistrar#optional}). Un {@code registrar.optional();} solo, sin usar lo
+        // que devuelve, deja la copia en el aire y registra el payload como <b>obligatorio</b>:
+        // el cliente viejo no lo tiene, y el handshake de NeoForge <b>cae la conexion</b> en vez
+        // de dejarla pasar. Era exactamente el bug que este mensaje queria evitar.
+        //
+        // <p>El clon es una variable aparte a proposito: si el registro se hiciera con
+        // {@code registrar = registrar.optional()}, cualquier mensaje que se agregara despues
+        // en este metodo seria opcional sin que nadie lo pidiera.</p>
+        PayloadRegistrar optional = registrar.optional();
+        optional.playToClient(ServerSettingsPayload.TYPE, ServerSettingsPayload.STREAM_CODEC,
                 ModNetworking::handleServerSettings);
     }
 
