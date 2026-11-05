@@ -257,7 +257,7 @@ public final class ClientArcabuzShot {
      * for a fuse it never saw struck.</p>
      */
     public static void sparkIfTheFuseWasJustLit(Minecraft mc) {
-        if (!com.cortes.combat.config.ServerConfig.particles()) {
+        if (!com.cortes.combat.client.SyncedSettings.particles()) {
             wasLit = ArcabuzFuseState.isBurning();
             return;
         }

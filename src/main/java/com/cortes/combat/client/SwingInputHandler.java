@@ -8,7 +8,6 @@ import com.cortes.combat.attack.AttackTiming;
 import com.cortes.combat.attack.PressBuffer;
 import com.cortes.combat.core.weapon.ChargeProfile;
 import com.cortes.combat.attack.WeaponStats;
-import com.cortes.combat.config.ServerConfig;
 import com.cortes.combat.sound.ModSounds;
 import com.cortes.combat.net.SwingPayload;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -225,7 +224,7 @@ public final class SwingInputHandler {
      * move is the bracket bar filling up.</p>
      */
     private static void press(Minecraft mc) {
-        if (!ServerConfig.combatRework()) {
+        if (!SyncedSettings.combatRework()) {
             claim = Claim.NOT_OURS;
             return;
         }
@@ -798,7 +797,7 @@ public final class SwingInputHandler {
      * decide nada del juego, y por eso no viaja ni se guarda. (⌒‿⌒)</p>
      */
     public static boolean waiting() {
-        if (!ServerConfig.combatRework()) {
+        if (!SyncedSettings.combatRework()) {
             return false;
         }
         return attackHeld && !holding && buttonIsPhysicallyDown();
@@ -875,7 +874,7 @@ public final class SwingInputHandler {
     }
 
     public static boolean holding() {
-        if (!ServerConfig.combatRework()) {
+        if (!SyncedSettings.combatRework()) {
             return false;
         }
         return holding;

@@ -1774,11 +1774,12 @@ comio mas de lo que comio. Ahora recibe la armadura que el golpe realmente encon
 
 ### Lo que quedo anotado
 
-- **El cliente 1.20.1 no recibe la config del server.** NeoForge 1.21.1 **sincroniza** la config del
-  server al cliente (`ConfigSync` -> `ConfigFilePayload` -> `ConfigTracker.acceptSyncedConfig`,
-  verificado en el jar), asi que el tooltip del cliente 1.21.1 es exacto. Forge 1.20.1 **no tiene
-  sincronizacion**: el cliente usa su propia copia y, en un server dedicado, el tooltip puede
-  mostrar el numero **sin topar**. El numero que manda es el del server.
+- **El cliente 1.20.1 recibe la config del server por el mensaje de la ronda siguiente.** En este
+  momento de la historia el cliente usaba su propia copia: NeoForge 1.21.1 sincroniza la config
+  del server al cliente (ConfigSync -> ConfigFilePayload -> ConfigTracker.acceptSyncedConfig,
+  verificado en el jar), pero Forge 1.20.1 no tiene esa feature. La ronda de abajo lo resuelve
+  con un mensaje propio, en las dos patas.
+
 - **`/cc stats` muestra los dos numeros** cuando el arma en mano es del perfil del martillo: es
   el comando del server, asi que lee la config que el server esta usando.
 
@@ -1787,3 +1788,59 @@ comio mas de lo que comio. Ahora recibe la armadura que el golpe realmente encon
 `Done (3.198s)` con la config nueva puesta (tope 5, penetracion 50) y **cero `Caused by`**.
 Jars `1.6.0` reconstruidos en `dist/`, server y `.minecraft` con el **mismo SHA-256**.
 
+## 1.6.0 (bis 2) - la config del server, sincronizada con el cliente (2026-11-05)
+
+**El bug de fondo: en 1.20.1 el cliente tiene SU PROPIA config del server.**
+
+### El diagnostico
+
+Forge 1.20.1 **carga el spec de SERVER tambien en el cliente**, desde `config/`: el cliente tiene
+`%APPDATA%/.minecraft/config/cortescombat-server.toml` con las mismas llaves que el del server
+(`world/serverconfig/...`). **Dos copias de un numero que deberia tener un solo dueno**, y nada
+las mantiene juntas.
+
+Y el cliente **no solo la leia: la usaba**. Los gates de input (`GuardInputHandler`,
+`SpecialInputHandler`, `SwingInputHandler`) leian `combatRework`, y el tooltip leia los numeros
+del martillo. Con el server en `combatRework = false` y el cliente en `true`, el cliente mandaba
+swings que el server ignoraba; con un tope puesto en el server, el tooltip prometia un dano que
+el golpe no hacia. **Dos bugs de la misma familia: dos copias de un numero.**
+
+(NeoForge 1.21.1 ya lo resuelve con su `ConfigSync`; Forge 1.20.1 no tiene esa feature.)
+
+### La solucion: un mensaje y una puerta
+
+- **`net/ServerSettings`**: cuatro valores (`combatRework`, `particles`, tope y penetracion) y
+  **el orden en que viajan, escrito en un solo archivo** -- las dos patas leen de aca, asi que no
+  hay dos opiniones sobre en que campo va primero.
+- **`net/ServerSettingsPayload`**: gemelo por pata (1.21.1 `CustomPacketPayload` + `StreamCodec`;
+  1.20.1 un record con `encode`/`decode` a mano).
+- **`client/SyncedSettings`**: **la puerta**. Una regla y una: *si el server me mando el valor,
+  ese; si no, mi copia local*. El fallback es lo que el cliente hacia siempre, asi que entrar a
+  un mundo antes de que llegue el mensaje no cambia nada.
+- **El envio**: `PlayerLoggedInEvent` -> `CombatPackets.sendToPlayer`. Una vez al entrar alcanza:
+  la config del server no cambia sin reiniciar el server.
+- **La limpieza**: `ClientWorldCleanup` -> `SyncedSettings.clear()` (si no, el inventario creativo
+  mostraria el numero del ultimo server).
+
+**Los cinco lectores client-side ahora preguntan la puerta** y ninguno dice `ServerConfig.`:
+un guard lo verifica sobre el texto del paquete `client`.
+
+### Compatibilidad con un cliente viejo
+
+- **1.20.1**: un id de mensaje desconocido **se loguea y se tira, no desconecta** (verificado en
+  el fuente de Forge 47.4.28, `IndexedMessageCodec#consume`). Por eso el mensaje va **al final**
+  de la lista del canal.
+- **1.21.1**: el payload se registra como **opcional** (`registrar.optional()`), que es lo mismo:
+  un cliente con un jar anterior lo ignora y sigue jugando con su copia.
+
+### Verificacion
+
+**1309 tests verdes** (+11: `ServerSettingsTest` 3, `ServerSettingsWiringTest` 8), las dos patas
+compilan, y el **server 1.20.1 real arranca limpio** con el mensaje registrado (`Done (3.040s)`,
+cero `Caused by`).
+
+**El cierre en cliente quedo pendiente por el entorno**: el cliente de dev no puede autenticarse
+sin salida a internet (`Failed to request yggdrasil public key ... Connect timed out`) y el
+`runClient` muere antes de cargar un mundo. Para cerrarlo: `debug = true` en la config del
+cliente y entrar a un mundo; en el log aparece `[config] server: tope=... penetracion=...%`, que
+es la prueba de que el mensaje **llego**.

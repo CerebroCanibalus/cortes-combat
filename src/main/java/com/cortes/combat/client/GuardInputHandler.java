@@ -3,7 +3,6 @@ package com.cortes.combat.client;
 import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.guard.GuardRules;
 import com.cortes.combat.guard.GuardStats;
-import com.cortes.combat.config.ServerConfig;
 import com.cortes.combat.net.GuardInputPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -64,7 +63,7 @@ public final class GuardInputHandler {
     }
 
     private static void handle(boolean pressed) {
-        if (!ServerConfig.combatRework()) {
+        if (!SyncedSettings.combatRework()) {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
@@ -138,7 +137,7 @@ public final class GuardInputHandler {
     }
 
     public static boolean predictedHolding() {
-        if (!ServerConfig.combatRework()) {
+        if (!SyncedSettings.combatRework()) {
             return false;
         }
         return predictedHolding;
@@ -204,7 +203,7 @@ public final class GuardInputHandler {
      */
     @SubscribeEvent
     public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
-        if (!ServerConfig.combatRework()) {
+        if (!SyncedSettings.combatRework()) {
             return;
         }
         LocalPlayer player = event.getEntity() instanceof LocalPlayer local ? local : null;

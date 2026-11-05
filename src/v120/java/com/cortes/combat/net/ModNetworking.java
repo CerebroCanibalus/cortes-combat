@@ -79,6 +79,27 @@ public final class ModNetworking {
                 .decoder(ArcabuzShotPayload::decode).consumerMainThread(ModNetworking::handleArcabuzShot).add();
         CHANNEL.messageBuilder(DelayedSoundPayload.class, id++).encoder(DelayedSoundPayload::encode)
                 .decoder(DelayedSoundPayload::decode).consumerMainThread(ModNetworking::handleDelayedSound).add();
+        // **La config del server, para que el cliente no lea la suya.** Al final de la lista: un
+        // id desconocido en un canal de Forge se loguea y se tira (verificado en el fuente de
+        // 47.4.28, IndexedMessageCodec#consume), asi que un cliente con un jar anterior no se
+        // desconecta -- simplemente no recibe el mensaje y sigue con su copia local.
+        CHANNEL.messageBuilder(ServerSettingsPayload.class, id++)
+                .encoder(ServerSettingsPayload::encode).decoder(ServerSettingsPayload::decode)
+                .consumerMainThread(ModNetworking::handleServerSettings).add();
+    }
+
+    /**
+     * El server mando su config: la puerta del cliente pasa a responder con esto.
+     *
+     * <p>Dentro de {@code enqueueWork}, como el resto de los handlers: este corre en el hilo de
+     * la red y lo que escribe es estado que leen el render y el input.</p>
+     */
+    private static void handleServerSettings(ServerSettingsPayload payload,
+            java.util.function.Supplier<net.minecraftforge.network.NetworkEvent.Context> ctx) {
+        net.minecraftforge.network.NetworkEvent.Context context = ctx.get();
+        context.enqueueWork(() -> com.cortes.combat.client.SyncedSettings.accept(
+                payload.settings()));
+        context.setPacketHandled(true);
     }
 
     private static void handleSwing(SwingPayload payload,

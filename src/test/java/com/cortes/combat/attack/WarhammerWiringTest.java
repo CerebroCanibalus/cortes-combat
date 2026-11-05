@@ -116,9 +116,10 @@ class WarhammerWiringTest {
         assertTrue(tooltip.contains("WarhammerTuning tuning"),
                 "el tooltip recibe los numeros del martillo");
 
-        assertTrue(handler.contains("ServerConfig.warhammerTuning()"),
-                "**y el cliente los lee de la config del servidor**, que es de donde sale el numero "
-                        + "que el jugador ve. En 1.21.1 NeoForge sincroniza esa config al cliente");
+        assertTrue(handler.contains("SyncedSettings.warhammerTuning()"),
+                "**y el cliente los lee de la puerta**, que es lo que el server le mando: el "
+                        + "numero que el jugador ve tiene que ser el numero que el server va a "
+                        + "cobrar");
     }
 
     @Test

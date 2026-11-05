@@ -53,5 +53,9 @@ public final class ClientWorldCleanup {
         HudIdle.reset();
         CrosshairFeedback.reset();
         CombatAim.reset();
+        // **Y la config que el server nos mando.** Sin esto la puerta sigue respondiendo con los
+        // numeros del ultimo server en el que estuvimos, y el inventario creativo -- que no
+        // tiene server -- mostraria el dano de una partida que ya termino.
+        SyncedSettings.clear();
     }
 }

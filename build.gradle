@@ -755,7 +755,8 @@ if (!mc121) {
                 'com/cortes/combat/net/PlayerCombatStatePayload.java',
                 'com/cortes/combat/net/CombatEventPayload.java',
                 'com/cortes/combat/net/ArcabuzShotPayload.java',
-                'com/cortes/combat/net/DelayedSoundPayload.java']
+                'com/cortes/combat/net/DelayedSoundPayload.java',
+                'com/cortes/combat/net/ServerSettingsPayload.java']
         into('java') {
             from(rootProject.file('src/main/java')) {
                 include '**/*.java'

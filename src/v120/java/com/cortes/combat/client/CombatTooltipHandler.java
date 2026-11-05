@@ -123,7 +123,7 @@ public final class CombatTooltipHandler {
                 // hace. En 1.20.1 Forge no hay sincronizacion de la config del server: el cliente
                 // usa su propia copia, asi que en un server dedicado el tooltip puede mostrar el
                 // numero sin topar. Ver AGENTS.md.
-                com.cortes.combat.config.ServerConfig.warhammerTuning());
+                com.cortes.combat.client.SyncedSettings.warhammerTuning());
 
         if (lines.isEmpty()) {
             return;

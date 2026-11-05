@@ -132,6 +132,13 @@ public final class CombatTicker {
             // gun is a free shot nobody paid a firestone for, and it is the guard's `held` bug in
             // a different item.
             com.cortes.combat.special.Arcabuz.clear(player);
+            // **Y la config del server, que es lo unico que el cliente no puede leer del server.**
+            // Sin este mensaje el cliente usa su propia copia del archivo, y los dos lados
+            // cuentan cosas distintas: el tooltip promete un dano que el golpe no hace, y los
+            // gates de input mandan swings a un server que los ignora.
+            com.cortes.combat.platform.CombatPackets.sendToPlayer(player,
+                    new com.cortes.combat.net.ServerSettingsPayload(
+                            com.cortes.combat.config.ServerConfig.settings()));
         }
     }
 

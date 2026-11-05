@@ -235,6 +235,18 @@ public final class ServerConfig {
     }
 
     /**
+     * Los valores que el cliente necesita, en un valor solo.
+     *
+     * <p><b>Esto es lo que viaja al cliente</b> cuando entra a un mundo, y es la unica forma de
+     * que el cliente y el server sean la misma config: en 1.20.1 el cliente tiene su propia copia
+     * de este archivo, y sin este mensaje los dos lados cuentan cosas distintas.</p>
+     */
+    public static com.cortes.combat.net.ServerSettings settings() {
+        return new com.cortes.combat.net.ServerSettings(combatRework(), particles(),
+                warhammerTuning());
+    }
+
+    /**
      * Whether the gameplay traces are on. <b>Off before the config loads</b>, which is the safe
      * answer: a trace that prints during the loading window is a trace nobody asked for.
      */

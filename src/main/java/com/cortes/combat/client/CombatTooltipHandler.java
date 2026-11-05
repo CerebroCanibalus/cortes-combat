@@ -153,7 +153,7 @@ public final class CombatTooltipHandler {
                 // tooltip imprime el dano sin topar y el jugador lee un numero que el golpe no
                 // hace. En 1.21.1 NeoForge sincroniza la config del server al cliente, asi que los
                 // dos lados cuentan lo mismo.
-                com.cortes.combat.config.ServerConfig.warhammerTuning());
+                com.cortes.combat.client.SyncedSettings.warhammerTuning());
 
         List<Component> tooltip = event.getToolTip();
         if (lines.isEmpty()) {

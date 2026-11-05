@@ -9,6 +9,8 @@ import com.cortes.combat.guard.GuardStats;
 import com.cortes.combat.client.RemotePoseStates;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.net.PlayerStateSync;
+import com.cortes.combat.net.ServerSettingsPayload;
+import com.cortes.combat.platform.CombatPackets;
 import com.cortes.combat.state.ChargeState;
 import com.cortes.combat.state.CooldownState;
 import com.cortes.combat.state.GuardState;
@@ -77,6 +79,12 @@ public final class CombatTicker {
             CombatState.setSwingBuffer(player, PressBuffer.EMPTY);
             com.cortes.combat.special.Lunge.clear(player);
             com.cortes.combat.special.Arcabuz.clear(player);
+            // **Y la config del server, que es lo unico que el cliente no puede leer del server.**
+            // En 1.20.1 el cliente tiene su propia copia de este archivo, y sin este mensaje los
+            // dos lados cuentan cosas distintas: el tooltip promete un dano que el golpe no hace y
+            // los gates de input mandan swings a un server que los ignora.
+            CombatPackets.sendToPlayer(player, new ServerSettingsPayload(
+                    com.cortes.combat.config.ServerConfig.settings()));
         }
     }
 

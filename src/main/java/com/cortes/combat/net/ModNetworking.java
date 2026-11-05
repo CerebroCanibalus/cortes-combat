@@ -94,6 +94,28 @@ public final class ModNetworking {
                                 1.0F, payload.pitch(), payload.delayTicks());
                     }
                 });
+
+        // **La config del server, para que el cliente no lea la suya.**
+        //
+        // <p>El mensaje va al FINAL de la lista y es <b>opcional</b>: un cliente con un jar
+        // anterior no lo conoce, y si el server lo mandara como obligatorio la conexion se
+        // caeria. Opcional significa que el cliente viejo lo ignora y sigue jugando con su
+        // copia -- que es lo de siempre.
+        registrar.optional();
+        registrar.playToClient(ServerSettingsPayload.TYPE, ServerSettingsPayload.STREAM_CODEC,
+                ModNetworking::handleServerSettings);
+    }
+
+    /**
+     * El server mando su config: la puerta del cliente pasa a responder con esto.
+     *
+     * <p><b>Dentro de {@code enqueueWork}</b>, como todos los handlers: este corre en el hilo de
+     * la red y lo que escribe es estado que lee el render y el input.</p>
+     */
+    private static void handleServerSettings(ServerSettingsPayload payload,
+            IPayloadContext context) {
+        context.enqueueWork(() -> com.cortes.combat.client.SyncedSettings.accept(
+                payload.settings()));
     }
 
     private static void handleParryState(ParryStatePayload payload, IPayloadContext context) {

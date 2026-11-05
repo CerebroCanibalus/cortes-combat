@@ -167,6 +167,12 @@ public final class ServerConfig {
                 (float) (WARHAMMER_ARMOUR_PENETRATION.get() / 100.0D));
     }
 
+    /** Los valores que el cliente necesita. Ver el gemelo compartido. */
+    public static com.cortes.combat.net.ServerSettings settings() {
+        return new com.cortes.combat.net.ServerSettings(combatRework(), particles(),
+                warhammerTuning());
+    }
+
     /** Si las trazas de gameplay estan encendidas. Off antes de que la config cargue. */
     public static boolean debug() {
         return SPEC.isLoaded() && DEBUG.get();
