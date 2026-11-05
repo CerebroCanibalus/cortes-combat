@@ -41,7 +41,10 @@ public class GuardOrbsLayer implements IGuiOverlay {
         if (!com.cortes.combat.config.ClientConfig.HUD_GUARD_ORBS.get()) {
             return;
         }
-        if (HudIdle.barsHidden()) {
+        // **La visibilidad es un alpha, no un booleano.** Los orbes son una barra mas y se
+        // desvancen con las demas (el fade pedido), en vez de desaparecer de golpe.
+        float visibility = HudIdle.visibility();
+        if (visibility <= 0.0F) {
             // Los orbes son una barra mas: sin pelea, se van.
             return;
         }
@@ -81,7 +84,7 @@ public class GuardOrbsLayer implements IGuiOverlay {
         // White with a varying alpha: the orbs have no colour of their own, they only dim. The
         // crosshair and the brackets are the two things that carry the hit colour, and leaving
         // these untinted is what keeps a blocked hit from painting three different things red.
-        graphics.setColor(1.0F, 1.0F, 1.0F, alpha / 255.0F);
+        graphics.setColor(1.0F, 1.0F, 1.0F, alpha / 255.0F * visibility);
 
         for (int i = 0; i < max; i++) {
             int x = startX + i * (ORB_SIZE + SPACING);

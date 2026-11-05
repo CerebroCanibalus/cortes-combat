@@ -81,16 +81,20 @@ public final class ChargeBar {
      *
      * <p>Se sale sin dibujar si la carga es cero: una barra vacia dibujada en el zocalo es una barra
      * que aparece cuando el jugador todavia no apreto nada.</p>
+     *
+     * @param visibility cuanto esta presente la barra ahora, de 0 a 1. Es el fade del reloj de
+     *                   inactividad, y multiplica el alpha del tinte: la barra que se desvanece
+     *                   es la misma barra, menos presente.
      */
     public static void render(GuiGraphics graphics, int centreX, int centreY, float ratio, int tint,
-                              int slot) {
+                              int slot, float visibility) {
         if (ratio <= 0.0F) {
             return;
         }
         int x = centreX - WIDTH / 2;
         int y = centreY + HudAnchor.crosshairReach() + GAP + slot * (HEIGHT + STACK_GAP);
 
-        float alpha = ((tint >>> 24) & 0xFF) / 255.0F;
+        float alpha = ((tint >>> 24) & 0xFF) / 255.0F * visibility;
         float red = ((tint >> 16) & 0xFF) / 255.0F;
         float green = ((tint >> 8) & 0xFF) / 255.0F;
         float blue = (tint & 0xFF) / 255.0F;

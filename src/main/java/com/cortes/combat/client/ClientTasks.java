@@ -45,15 +45,16 @@ public final class ClientTasks {
         // and then the game's own physics, so there is nothing to advance.
         CrosshairFeedback.onTick(ClientCombatState.aiming());
         // **El reloj de inactividad del HUD, con la misma definicion de "pelear" en las dos
-        // patas.** Actividad = objetivo en el cono, un flash que acaba de llegar (golpe) o una
-        // carga en curso. No cuenta caminar ni girar: si contara, las barras nunca se irian.
+        // patas.** Actividad = **intencion de pelear**: un objetivo en el cono o una carga en
+        // curso. No cuenta caminar ni girar: si contara, las barras nunca se irian.
+        //
+        // **Y no cuenta ni el golpe ni el boton sostenido**, que es un cambio pedido por el
+        // dueno: el HUD no debe reaparecer por golpear ni por picar un bloque. Un HUD que
+        // vuelve con cada golpe es un HUD que esta siempre en pantalla, que es justo lo que
+        // el ocultamiento por inactividad vino a resolver.
         HudIdle.onTick(ClientCombatState.aiming()
-                || CrosshairFeedback.active()
                 || ClientCombatState.chargeRatio() > 0.0F
-                || ClientCombatState.specialCharge() > 0.0F
-                // El boton sostenido que todavia no pudo empezar tambien es pelear: esconderle
-                // el HUD a alguien que esta esperando la puerta es esconderle la respuesta.
-                || SwingInputHandler.waiting());
+                || ClientCombatState.specialCharge() > 0.0F);
         // Advances the local charge, which the meter and the viewmodel both read.
         //
         // SwingInputHandler.tick reconciles its own swing against the physical button, because it

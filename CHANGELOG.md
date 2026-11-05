@@ -1902,3 +1902,42 @@ ejecutar ya no puede reventar.
 **1310 tests verdes** (+1: el guard de la forma del registro), las dos patas compilan, jars
 `1.6.0` reconstruidos (el de 1.20.1 queda **byte a byte igual** -- el fix es de la pata de
 1.21.1 -- y el de 1.21.1 cambia).
+
+## 1.6.0 (bis 4) - HUD mas transparente, con fade y mas presente recargando (2026-11-05)
+
+**Tres pedidos del dueno, sobre la mira y las barras de cooldown.**
+
+### 1. Fade suave cuando se ocultan
+
+El HUD **se apagaba de golpe**: un elemento que desaparece de un frame al otro se lee como un
+fallo de dibujo. Ahora la visibilidad es **un alpha (0 a 1)**, no un booleano, y el HUD se
+desvanece en **320 ms** al irse y vuelve en **150 ms** -- volver es mas corto porque es
+urgencia: el jugador vuelve a pelear y la informacion tiene que estar ahi cuando la mira.
+
+El fade se calcula **por reloj y no por frame**, y las tres capas (mira, brackets, orbes)
+multiplican su alpha por **el mismo numero**: con tres multiplicadores distintos, un HUD que
+se desvanece son tres widgets que se desvanecen distinto.
+
+### 2. El HUD no reaparece por golpear ni por picar un bloque
+
+La actividad del reloj de inactividad cambio: **el golpe y el boton sostenido ya no cuentan**.
+Cuenta la **intencion de pelear**: un objetivo en el cono o una carga en curso.
+
+El latido de los corchetes mientras se espera la puerta **no se toco**: latir no es volver.
+
+### 3. Mas transparente en reposo, mas presente recargando
+
+| | Antes | Ahora | Recargando |
+|---|---|---|---|
+| Mira | 0,85 | **0,62** | -- |
+| Barra | 0,55 | **0,42** | 73 -> **113**/255 |
+| Corchetes | 0,30 | **0,22** | 56 -> **87**/255 |
+
+Mientras el arma se recarga el widget **sube de presencia** (hasta x1,55, proporcional a lo que
+falta de cooldown) y **se aclara un poco** hacia el blanco (14 % como maximo): el color sigue
+siendo el que eligio el jugador, solo un rato mas brillante.
+
+### Estado
+
+**1324 tests verdes** (+14), las dos patas compilan, server 1.20.1 real `Done (3.287s)` con
+cero `Caused by`, jars reconstruidos y desplegados.

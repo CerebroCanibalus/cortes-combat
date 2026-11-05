@@ -48,7 +48,11 @@ public class CombatCrosshairLayer implements IGuiOverlay {
         int centreX = HudAnchor.centreX(graphics);
         int centreY = HudAnchor.centreY(graphics);
 
-        if (!HudIdle.crosshairHidden()) {
+        // **La visibilidad es un alpha, no un booleano.** El ocultamiento por inactividad se
+        // desvanece en vez de desaparecer de golpe (el fade pedido), asi que lo que se dibuja
+        // es "cuanto presente esta la mira ahora", y el mismo numero multiplica el alpha.
+        float crosshairVisibility = HudIdle.crosshairVisibility();
+        if (crosshairVisibility > 0.0F) {
             float growth = CrosshairFeedback.growth();
             // El shake es config; el reloj del golpe sigue corriendo (crecimiento y color quedan).
             int shakeX = com.cortes.combat.config.ClientConfig.HUD_CROSSHAIR_SHAKE.get()
@@ -60,19 +64,21 @@ public class CombatCrosshairLayer implements IGuiOverlay {
             int rgb = HudColors.stateOr(CrosshairFeedback.rgb(), CrosshairFeedback.active(),
                     ClientCombatState.aiming(), idle, aim);
 
-            CrosshairSprites.render(graphics, centreX, centreY, growth, shakeX, shakeY, rgb);
+            CrosshairSprites.render(graphics, centreX, centreY, growth, shakeX, shakeY, rgb,
+                    crosshairVisibility);
         }
 
         // **Dos barras, dos botones, dos colores.** La blanca es el golpe cargado y va arriba; la
         // morada es la carga de un arma magica y va debajo. Pueden estar vivas a la vez -- un arma
         // que cargue con los dos botones -- y por eso el `slot` es un parametro y no una constante
         // repetida en cada llamada. Ver {@link ChargeBar}.
-        if (!com.cortes.combat.config.ClientConfig.HUD_CHARGE_BAR.get() || HudIdle.barsHidden()) {
+        float visibility = HudIdle.visibility();
+        if (!com.cortes.combat.config.ClientConfig.HUD_CHARGE_BAR.get() || visibility <= 0.0F) {
             return;
         }
         ChargeBar.render(graphics, centreX, centreY, ClientCombatState.chargeRatio(),
-                ChargeBar.plainTint(), 0);
+                ChargeBar.plainTint(), 0, visibility);
         ChargeBar.render(graphics, centreX, centreY, ClientCombatState.specialCharge(),
-                ChargeBar.arcaneTint(), 1);
+                ChargeBar.arcaneTint(), 1, visibility);
     }
 }

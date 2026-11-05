@@ -48,8 +48,12 @@ public final class CrosshairSprites {
      * <p>Multiplied into the feedback colour rather than applied to alpha, so a hit still tints
      * the crosshair fully red and then dims it: the flash is a colour change, this is a constant
      * weight on whatever colour is showing.</p>
+     *
+     * <p><b>El numero vive en {@link HudAlpha}</b>, que es pura: el test que compara la mira
+     * con el widget no puede cargar esta clase (usa {@code GuiGraphics}), y un numero escrito
+     * a mano en el test es una copia que se desactualiza en silencio.</p>
      */
-    private static final float ALPHA = 0.85F;
+    public static final float ALPHA = HudAlpha.CROSSHAIR;
 
     public static final ResourceLocation IDLE = sprite("crosshair");
     /** A target is reachable: the cone has something in it, or a shot is being drawn. */
@@ -95,9 +99,12 @@ public final class CrosshairSprites {
      * @param shakeX horizontal shake in GUI pixels, 0 when nothing landed
      * @param shakeY vertical shake in GUI pixels
      * @param rgb 24 bit tint, {@code 0xFFFFFF} for untinted
+     * @param visibility how present the crosshair is right now, 0 to 1. It is the fade of the
+     *                   idle clock, and it multiplies the constant opacity above: the crosshair
+     *                   that is fading out is the same crosshair, less present.
      */
     public static void render(GuiGraphics graphics, int centreX, int centreY, float growth,
-                              int shakeX, int shakeY, int rgb) {
+                              int shakeX, int shakeY, int rgb, float visibility) {
         ResourceLocation texture = forState(ClientCombatState.aiming());
 
         int size = Math.max(1, Math.round(baseSize() * growth));
@@ -110,7 +117,7 @@ public final class CrosshairSprites {
 
         RenderSystem.enableBlend();
         graphics.setColor(((rgb >> 16) & 0xFF) / 255.0F, ((rgb >> 8) & 0xFF) / 255.0F,
-                (rgb & 0xFF) / 255.0F, ALPHA);
+                (rgb & 0xFF) / 255.0F, ALPHA * visibility);
         graphics.blit(texture, x, y, size, size,
                 0.0F, 0.0F, SIZE, SIZE, SIZE, SIZE);
         graphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);

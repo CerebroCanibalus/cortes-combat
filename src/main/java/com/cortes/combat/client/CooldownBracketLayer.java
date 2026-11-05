@@ -59,7 +59,11 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
         if (!ClientConfig.HUD_COOLDOWN_BRACKETS.get()) {
             return;
         }
-        if (HudIdle.barsHidden()) {
+        // **La visibilidad es un alpha, no un booleano.** El reloj de inactividad desvanece el
+        // HUD en vez de apagarlo de golpe (el fade pedido), asi que lo que se dibuja es "cuanto
+        // presente esta el widget ahora".
+        float visibility = HudIdle.visibility();
+        if (visibility <= 0.0F) {
             // El jugador dejo de pelear: los brackets se van con las barras.
             return;
         }
@@ -109,11 +113,20 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
         // como se ve el bracket cuando no esta contando nada.
         int rgb = HudColors.flashOr(CrosshairFeedback.rgb(), CrosshairFeedback.active(),
                 HudPalette.bracket());
+        // **Y mientras se recarga, el widget sube de presencia y se aclara un poco.** El HUD de
+        // reposo esta mas transparente a proposito (esta en pantalla cada frame y compite con la
+        // mira), pero mientras el golpe esta en cooldown el widget es la unica respuesta a "puedo
+        // tirar o no", y ahi mas presencia es informacion y no ruido. Ver ConeGauge.
+        float emphasis = ConeGauge.reloadEmphasis(ratio);
+        rgb = ConeGauge.highlight(rgb, emphasis);
+        // **Un solo factor para las tres mitades**: el fade y el emphasis multiplican juntos, y
+        // que la barra y los brackets multiplicen por cosas distintas los haria dos widgets.
+        float presence = visibility * emphasis;
 
         RenderSystem.enableBlend();
-        drawBar(graphics, centreX, centreY, geometry, ratio, rgb, -1);
-        drawBar(graphics, centreX, centreY, geometry, ratio, rgb, 1);
-        drawBrackets(graphics, centreX, centreY, geometry.halfSpan(), rgb);
+        drawBar(graphics, centreX, centreY, geometry, ratio, rgb, -1, presence);
+        drawBar(graphics, centreX, centreY, geometry, ratio, rgb, 1, presence);
+        drawBrackets(graphics, centreX, centreY, geometry.halfSpan(), rgb, presence);
         RenderSystem.disableBlend();
     }
 
@@ -134,9 +147,11 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
      * moving edge and made the unfilled half look like a separate, broken object.</p>
      *
      * @param side -1 for the left bar, 1 for the right
+     * @param presence el fade de la inactividad multiplicado por el emphasis de la recarga
      */
     private static void drawBar(GuiGraphics graphics, int centreX, int centreY,
-                                ConeGauge.Geometry geometry, float ratio, int rgb, int side) {
+                                ConeGauge.Geometry geometry, float ratio, int rgb, int side,
+                                float presence) {
         int length = geometry.barLength();
         if (length <= 0) {
             return;
@@ -150,7 +165,11 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
         int originX = centreX + side * (geometry.barOuter() + 1);
 
         for (int i = 0; i < length; i++) {
-            int alpha = ConeGauge.barAlpha(i, length, filled);
+            int shape = ConeGauge.barAlpha(i, length, filled);
+            if (shape <= 0) {
+                continue;
+            }
+            int alpha = Math.round(shape * presence);
             if (alpha <= 0) {
                 continue;
             }
@@ -172,13 +191,14 @@ public class CooldownBracketLayer implements LayeredDraw.Layer {
      * widget's two halves are drawn by the same call, which is worth having on its own.</p>
      */
     private static void drawBrackets(GuiGraphics graphics, int centreX, int centreY,
-                                     int halfSpan, int rgb) {
+                                     int halfSpan, int rgb, float presenceFactor) {
         List<BracketMask.Run> runs = BracketMask.runs();
         BracketMask.Anchors anchors = BracketMask.anchors();
         if (runs.isEmpty() || anchors.left() == BracketMask.NO_INK) {
             return;
         }
-        float presence = ConeGauge.bracketAlpha();
+        // El alpha propio del bracket, multiplicado por el fade y por el emphasis de la recarga.
+        float presence = ConeGauge.bracketAlpha() * presenceFactor;
         // **El latido del boton sostenido.** Si el jugador esta apretando y el golpe todavia no
         // pudo empezar (aguante, cooldown, mirando un bloque), los corchetes respiran. Es el
         // "te escuche" que el reporte pedia que se notara, y desaparece en cuanto el swing abre.

@@ -59,21 +59,21 @@ class HudConfigWiringTest {
     void theLayersAskTheToggles() {
         for (String leg : new String[]{"main", "v120"}) {
             Path brackets = layer(leg, "CooldownBracketLayer.java");
-            assertTrue(code(brackets).contains("HudIdle.barsHidden()"),
+            assertTrue(code(brackets).contains("HudIdle.visibility()"),
                     brackets + " no consulta el reloj de inactividad: las barras se quedan para "
                             + "siempre y el pedido del dueno no existe en esa pata");
             assertTrue(code(brackets).contains("HUD_COOLDOWN_BRACKETS"),
                     brackets + " no consulta su toggle (la 1.20.1 lo tenia declarado y sin leer)");
 
             Path orbs = layer(leg, "GuardOrbsLayer.java");
-            assertTrue(code(orbs).contains("HudIdle.barsHidden()"),
+            assertTrue(code(orbs).contains("HudIdle.visibility()"),
                     orbs + " no consulta el reloj: los orbes son una barra mas");
             assertTrue(code(orbs).contains("HUD_GUARD_ORBS"),
                     orbs + " no consulta su toggle");
 
             Path crosshair = layer(leg, "CombatCrosshairLayer.java");
             String cross = code(crosshair);
-            assertTrue(cross.contains("HudIdle.crosshairHidden()"),
+            assertTrue(cross.contains("HudIdle.crosshairVisibility()"),
                     crosshair + " no consulta el ocultamiento de la crosshair");
             assertTrue(cross.contains("HUD_CHARGE_BAR"),
                     crosshair + " no consulta el toggle de la barra de carga");
@@ -91,6 +91,29 @@ class HudConfigWiringTest {
     }
 
     @Test
+    @DisplayName("las capas multiplican su alpha por la visibilidad, no la esconden de golpe")
+    void theLayersFadeInsteadOfVanishing() {
+        // **El fade pedido**: el HUD se desvanece en vez de desaparecer de un frame al otro.
+        // Un elemento que se apaga de golpe se lee como un fallo de dibujo, y el jugador pierde
+        // la referencia de donde estaba.
+        //
+        // Y el guard mira que el alpha se MULTIPLIQUE, no que el booleano exista: con un
+        // booleano el fade no se puede dibujar.
+        for (String leg : new String[]{"main", "v120"}) {
+            Path brackets = layer(leg, "CooldownBracketLayer.java");
+            assertTrue(code(brackets).contains("ConeGauge.reloadEmphasis("),
+                    brackets + " no sube la presencia del widget mientras se recarga");
+            assertTrue(code(brackets).contains("ConeGauge.highlight("),
+                    brackets + " no aclara el color mientras se recarga");
+
+            Path crosshair = layer(leg, "CombatCrosshairLayer.java");
+            assertTrue(code(crosshair).contains("crosshairVisibility"),
+                    crosshair + " no multiplica su alpha por la visibilidad: la mira se apaga "
+                            + "de golpe en vez de desvanecerse");
+        }
+    }
+
+    @Test
     @DisplayName("both legs feed the idle clock, with the same idea of fighting")
     void bothLegsFeedTheClock() {
         for (String leg : new String[]{"main", "v120"}) {
@@ -98,13 +121,34 @@ class HudConfigWiringTest {
             String body = code(tasks);
             assertTrue(body.contains("HudIdle.onTick("),
                     tasks + " no tickea el reloj de inactividad");
-            assertTrue(body.contains("ClientCombatState.aiming()"),
+
+            String activity = activityCall(body);
+            assertTrue(activity.contains("ClientCombatState.aiming()"),
                     tasks + " no cuenta 'hay un objetivo' como actividad: el reloj correria "
                             + "mientras el jugador esta apuntando a un mob");
-            assertTrue(body.contains("CrosshairFeedback.active()"),
-                    tasks + " no cuenta el golpe: la barra se iria mientras el flash del golpe "
-                            + "todavia esta en pantalla");
+            assertTrue(activity.contains("ClientCombatState.chargeRatio()"),
+                    tasks + " no cuenta la carga como actividad: la barra que el jugador esta "
+                            + "llenando se le iria debajo");
+
+            // **Y lo que NO cuenta, que es un cambio pedido por el dueno**: ni el golpe ni el
+            // boton sostenido (picar un bloque). Un HUD que vuelve con cada golpe es un HUD
+            // que esta siempre en pantalla, que es lo que el ocultamiento vino a resolver.
+            assertFalse(activity.contains("CrosshairFeedback.active()"),
+                    tasks + " cuenta el golpe como actividad: el HUD reaparece por golpear, y el "
+                            + "dueno pidio que no");
+            assertFalse(activity.contains("SwingInputHandler.waiting()"),
+                    tasks + " cuenta el boton sostenido como actividad: el HUD reaparece por "
+                            + "picar un bloque, y el dueno pidio que no");
         }
+    }
+
+    /** Los argumentos de la llamada al reloj, y nada mas. */
+    private static String activityCall(String body) {
+        int start = body.indexOf("HudIdle.onTick(");
+        assertTrue(start >= 0, "no hay llamada al reloj de inactividad");
+        int end = body.indexOf(");", start);
+        assertTrue(end > start, "la llamada al reloj esta sin cerrar");
+        return body.substring(start, end);
     }
 
     @Test

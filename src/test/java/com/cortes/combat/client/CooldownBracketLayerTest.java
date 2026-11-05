@@ -213,13 +213,94 @@ class CooldownBracketLayerTest {
         // The lower bound matters as much as the upper one. Below about a quarter the brackets
         // stop reading as a position at all, and the cone width is the one thing in this widget
         // that is not a moment-to-moment reading.
-        float crosshairAlpha = 0.85F;
+        //
+        // **El numero de la mira sale de {@link HudAlpha}**, que es pura: la clase que la dibuja
+        // usa GuiGraphics y un test no puede cargarla, asi que el numero vive en la clase pura
+        // justamente para que esta comparacion no sea contra una copia escrita a mano.
+        float crosshairAlpha = HudAlpha.CROSSHAIR;
         assertTrue(ConeGauge.WIDGET_ALPHA < crosshairAlpha,
                 "the crosshair is " + crosshairAlpha + " and the bar is " + ConeGauge.WIDGET_ALPHA
                         + "; the aim point has to win");
         assertTrue(ConeGauge.bracketAlpha() >= 0.2F,
                 "and " + ConeGauge.bracketAlpha() + " is below the point where a bracket still "
                         + "reads as a position rather than as nothing");
+    }
+
+    @Test
+    @DisplayName("el widget esta mas presente recargando que en reposo")
+    void theReloadIsLouderThanTheRest() {
+        // El pedido: "mas transparentes, pero que al recargarse suban su transparencia y
+        // resalten muy sutilmente". O sea: en reposo el widget esta mas apagado de lo que
+        // estaba, y mientras el arma se recarga vuelve a estar presente.
+        //
+        // La cuenta: el emphasis es proporcional a lo que falta de cooldown, asi que recien
+        // golpeado es el maximo y se va apagando hasta volver al reposo.
+        float rest = ConeGauge.reloadEmphasis(1.0F);
+        float fresh = ConeGauge.reloadEmphasis(0.0F);
+
+        assertEquals(1.0F, rest, 1.0E-6,
+                "con el arma lista el widget esta en su alpha de reposo");
+        assertTrue(fresh > rest,
+                "recargando tiene que estar mas presente: " + fresh + " contra " + rest);
+        assertEquals(1.0F + ConeGauge.RELOAD_EMPHASIS, fresh, 1.0E-6,
+                "y el maximo es el emphasis del archivo");
+    }
+
+    @Test
+    @DisplayName("el emphasis baja de a uno, sin saltos")
+    void theEmphasisFallsBackToOne() {
+        float previous = ConeGauge.reloadEmphasis(0.0F);
+        for (int step = 1; step <= 20; step++) {
+            float ratio = step / 20.0F;
+            float emphasis = ConeGauge.reloadEmphasis(ratio);
+            assertTrue(emphasis <= previous,
+                    "el emphasis tiene que bajar de a uno, y en " + ratio + " subio");
+            assertTrue(emphasis >= 1.0F,
+                    "y nunca puede estar por debajo de uno: " + emphasis);
+            previous = emphasis;
+        }
+        assertEquals(1.0F, ConeGauge.reloadEmphasis(1.0F), 1.0E-6);
+    }
+
+    @Test
+    @DisplayName("el emphasis aguanta los ratios raros que llegan del servidor")
+    void theEmphasisSurvivesWildRatios() {
+        // El ratio viene de la red. Un ratio fuera de rango no puede hacer que el widget se
+        // apague de golpe ni que se vuelva loco.
+        assertEquals(ConeGauge.reloadEmphasis(0.0F), ConeGauge.reloadEmphasis(-3.0F), 1.0E-6);
+        assertEquals(ConeGauge.reloadEmphasis(1.0F), ConeGauge.reloadEmphasis(7.0F), 1.0E-6);
+    }
+
+    @Test
+    @DisplayName("el destello de la recarga aclara el color, no lo cambia")
+    void theHighlightLightensTheColourWithoutTouchingTheAlpha() {
+        int white = 0xFFFFFF;
+        int red = 0xFF0000;
+        int dark = 0x203040;
+
+        // En reposo el color es exactamente el de la config.
+        assertEquals(white, ConeGauge.highlight(white, 1.0F));
+        assertEquals(red, ConeGauge.highlight(red, 1.0F));
+        assertEquals(dark, ConeGauge.highlight(dark, 1.0F));
+
+        // Recargando se aclara un poco: mas claro, nunca mas oscuro.
+        int lit = ConeGauge.highlight(red, ConeGauge.reloadEmphasis(0.0F));
+        assertTrue(lit > red, "el rojo tiene que aclararse, no oscurecerse: " + lit);
+        assertEquals(0xFF, (lit >> 16) & 0xFF, "el rojo puro se queda rojo");
+        assertTrue(((lit >> 8) & 0xFF) > 0, "y el verde sube: " + lit);
+
+        // El blanco no tiene a donde aclararse: aclararlo mas no lo hace mas blanco.
+        assertEquals(white, ConeGauge.highlight(white, ConeGauge.reloadEmphasis(0.0F)));
+    }
+
+    @Test
+    @DisplayName("el destello devuelve 24 bits, para no pisar el alpha del color")
+    void theHighlightKeepsTheAlphaByteClear() {
+        // El widget empaqueta el alpha y el color en un int: (alpha << 24) | rgb. Si el
+        // destello devolviera un color con bits de alpha, el alpha del widget seria otra cosa.
+        int rgb = 0x00FF8000;
+        int lit = ConeGauge.highlight(rgb, ConeGauge.reloadEmphasis(0.0F));
+        assertEquals(0, lit >>> 24, "el color tiene que quedar en 24 bits: " + lit);
     }
 
     @Test

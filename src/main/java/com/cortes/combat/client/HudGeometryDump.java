@@ -71,6 +71,15 @@ public final class HudGeometryDump {
         say("corchete sprite: " + BracketMask.runs().size() + " runs, alto="
                 + BracketMask.height() + ", pico alpha=" + BracketMask.peakAlpha()
                 + " -> " + Math.round(ConeGauge.bracketAlpha() * 255.0F) + "/255");
+        // **El estado de la transparencia, que es lo que se pidio cambiar.** La geometria dice
+        // donde esta el widget; esto dice cuanto se ve. Los dos numeros que se multiplican:
+        // la visibilidad (el fade de la inactividad) y el emphasis (la recarga).
+        say("hud: visible=" + HudIdle.visibility()
+                + " oculta=" + HudIdle.barsHidden()
+                + "  barra=" + Math.round(ConeGauge.peakBarAlpha()) + "/255"
+                + "  corchete=" + Math.round(ConeGauge.bracketAlpha() * 255.0F) + "/255"
+                + "  emphasis=" + ConeGauge.reloadEmphasis(ClientCombatState.cooldownRatio())
+                + "  mira=" + Math.round(HudAlpha.CROSSHAIR * 255.0F) + "/255");
     }
 
     private static void say(String line) {

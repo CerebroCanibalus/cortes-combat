@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -169,9 +170,9 @@ class PressBufferWiringTest {
                 "falta la senal que el HUD lee para latir");
     }
 
-    /** El latido del HUD, en las dos patas, y la inactividad que no esconde la espera. */
+    /** El latido del HUD, en las dos patas, y la espera que ya no esconde el HUD. */
     @Test
-    @DisplayName("the waiting pulse is drawn and it counts as fighting")
+    @DisplayName("the waiting pulse is drawn, and the wait no longer counts as fighting")
     void theWaitingPulseIsWired() {
         for (Path layer : List.of(BRACKETS, BRACKETS_120)) {
             String source = read(layer);
@@ -180,10 +181,19 @@ class PressBufferWiringTest {
             assertTrue(source.contains("HudPulse.waiting("),
                     layer + " pregunta la espera y no la dibuja");
         }
+        // **Y la espera ya no cuenta como actividad**, que es un cambio pedido por el dueno:
+        // el HUD no debe reaparecer por picar un bloque ni por apretar el boton y esperar.
+        // El latido sigue dibujandose -- el corchete late mientras el jugador espera -- pero
+        // latir no es volver: un HUD que reaparece con cada apretada es un HUD permanent.
         for (Path tasks : List.of(CLIENT_TASKS, CLIENT_TASKS_120)) {
-            assertTrue(read(tasks).contains("SwingInputHandler.waiting()"),
-                    tasks + " no cuenta la espera como actividad: las barras se irian mientras "
-                            + "el jugador sostiene el boton");
+            String source = read(tasks);
+            int start = source.indexOf("HudIdle.onTick(");
+            assertTrue(start >= 0, tasks + " no tickea el reloj de inactividad");
+            int end = source.indexOf(");", start);
+            String activity = source.substring(start, end);
+            assertFalse(activity.contains("SwingInputHandler.waiting()"),
+                    tasks + " cuenta la espera como actividad: las barras vuelven a aparecer por "
+                            + "picar un bloque, y el dueno pidio que no");
         }
     }
 

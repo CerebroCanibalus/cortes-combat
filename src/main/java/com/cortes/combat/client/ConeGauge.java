@@ -96,7 +96,7 @@ public final class ConeGauge {
      * every GUI scale: these are a spatial reading, and position survives dimming far better
      * than brightness does. A faint marker in the right place still tells you your spacing.</p>
      */
-    public static final float WIDGET_ALPHA = 0.55F;
+    public static final float WIDGET_ALPHA = 0.42F;
 
     /**
      * How present the brackets are, which is lower than the bar's peak and it is not a fudge.
@@ -136,11 +136,78 @@ public final class ConeGauge {
      * widget "perfecto" at a fraction of the bar's brightness, and nothing about the new art is a
      * reason to start competing with the crosshair.</p>
      */
-    public static final float BRACKET_ALPHA = 0.30F;
+    public static final float BRACKET_ALPHA = 0.22F;
+
+    /**
+     * Cuanto mas fuerte se ve el widget <b>mientras el arma se recarga</b>.
+     *
+     * <p><b>El widget esta mas presente cuando esta recargando que cuando esta listo.</b> Es la
+     * misma inversion de la que habla el dueno: el HUD de reposo se backing off a proposito
+     * (esta en pantalla cada frame de cada sesion, en el mismo lugar, y compite con la mira),
+     * pero mientras el golpe esta en cooldown el widget es la unica respuesta a "puedo tirar o
+     * no", y ahi mas presencia es informacion y no ruido.</p>
+     *
+     * <p><b>Y elemphasis es proporcional a lo que falta de cooldown</b>: fuerte recien golpeado,
+     * y bajando a uno solo cuando el arma vuelve a estar lista. Al reves -- mas fuerte
+     * cuando esta a punto de estar lista -- el widget estaria mas presente justo cuando el
+     * jugador ya sabe que puede tirar.</p>
+     */
+    public static final float RELOAD_EMPHASIS = 0.55F;
+
+    /**
+     * Cuanto se acerca al blanco el widget mientras se recarga.
+     *
+     * <p><b>Un destello, no un cambio de color.</b> El widget tiene su color en la config y el
+     * jugador lo eligio; tintearlo de otro color seria decidir por el jugador. Aclararlo un
+     * poco es lo mismo que dice "mira aca" sin quitarle la identidad que el jugador le dio.</p>
+     *
+     * <p>Y es chico a proposito: el brillo extra es un acento, no un estado nuevo.</p>
+     */
+    public static final float RELOAD_HIGHLIGHT = 0.25F;
 
     /** The alpha the brackets are drawn at. One definition, so the layer and the test agree. */
     public static float bracketAlpha() {
         return BRACKET_ALPHA;
+    }
+
+    /**
+     * Cuanto mas presente se ve el widget, dado cuanto cooldown le queda.
+     *
+     * <p><b>Uno cuando el arma esta lista, y hasta {@link #RELOAD_EMPHASIS} mas cuando recien
+     * golpeo.</b> El factor es multiplicativo sobre el alpha del widget, asi que el widget en
+     * reposo queda en su alpha bajo y el widget recargando pasa de ese nivel, que es lo que el
+     * dueno pidio: mas transparente en reposo, mas presente recargando.</p>
+     *
+     * @param ratio el cooldown, de 0 (recien golpeado) a 1 (listo)
+     */
+    public static float reloadEmphasis(float ratio) {
+        float r = clamp01(ratio);
+        return 1.0F + RELOAD_EMPHASIS * (1.0F - r);
+    }
+
+    /**
+     * El color del widget con el destello de la recarga, aclarado un poco.
+     *
+     * <p><b>Mezcla hacia el blanco, no un color nuevo.</b> El color es de la config y el
+     * jugador lo eligio; esto solo le sube el brillo un rato, y vuelve a ser el suyo en
+     * cuanto el arma queda lista.</p>
+     *
+     * @param rgb      el color del widget, 24 bits
+     * @param emphasis el factor de {@link #reloadEmphasis(float)}
+     * @return el color aclarado, 24 bits
+     */
+    public static int highlight(int rgb, float emphasis) {
+        float t = clamp01(emphasis - 1.0F) * RELOAD_HIGHLIGHT;
+        if (t <= 0.0F) {
+            return rgb & 0xFFFFFF;
+        }
+        int red = (rgb >> 16) & 0xFF;
+        int green = (rgb >> 8) & 0xFF;
+        int blue = rgb & 0xFF;
+        red = Math.round(red + (255 - red) * t);
+        green = Math.round(green + (255 - green) * t);
+        blue = Math.round(blue + (255 - blue) * t);
+        return (red << 16) | (green << 8) | blue;
     }
 
     private ConeGauge() {
