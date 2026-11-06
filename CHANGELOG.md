@@ -1977,3 +1977,82 @@ Sin jerga interna: ni clases, ni rondas, ni nombres de metodo.
 **Lo que NO se toco**: `main` sigue 51 commits atras (la decision de si `main` recibe la rama
 `port/1.20.1` sigue abierta). El precedente manda: el tag v1.5.1 tambien salio de
 `port/1.20.1`.
+
+## Ronda del crash del server dedicado - un `instanceof` contra una clase de cliente (2026-11-06)
+
+**El reporte:** un server dedicado de 1.21.1 se caia con el primer jugador que se conectaba.
+El log traia la excepcion y el frame:
+
+```
+Attempted to load class net/minecraft/client/player/LocalPlayer for invalid dist DEDICATED_SERVER
+    at com.cortes.combat.attack.CombatTicker.onStopTracking(CombatTicker.java:92)
+Encountered an unexpected exception  ->  Stopping server
+```
+
+### La causa
+
+`CombatTicker` esta registrado en el **game bus**, que corre en los dos lados, y su handler
+`onStopTracking` comparaba contra `LocalPlayer`:
+
+```java
+if (event.getEntity() instanceof net.minecraft.client.player.LocalPlayer) { ... }
+```
+
+En un server dedicado cargar esa clase es un error: NeoForge lo convierte en
+`RuntimeException` y tumba el tick del jugador; el watchdog termina matando el server.
+
+**Y el evento no llegaba nunca al cliente.** Verificado sobre las fuentes de las dos patas:
+`PlayerEvent.StopTracking` lo postea el **server** y el unico que lo dispara es
+`ServerEntity.removePairing` (NeoForge 21.1.250: `EventHooks.onStopEntityTracking`; Forge
+47.4.28: el parche de `ServerEntity`). O sea que la comparacion se evaluaba siempre en el
+servidor, y el reloj de poses que el handler pretendia limpiar jamas se limpio desde el cliente.
+
+**Por que el build verde no lo vio:** el evento necesita un cliente conectado, y el server de
+pruebas nunca tuvo uno.
+
+### El arreglo
+
+- `CombatTicker` (las dos patas) pierde el handler: era codigo muerto en el cliente y una mina en
+  el servidor.
+- La limpieza se mudo a `client/RemotePoseCleanup`, con `EntityLeaveLevelEvent`, que **las dos
+  patas** postean desde el `ClientLevel` cuando el cliente deja de trackear una entidad. Es un
+  archivo **compartido** (el rename traduce el nombre del evento y la API es la misma) y se
+  registra **solo en el cliente**.
+
+### La reproduccion, en un server dedicado de verdad
+
+Una sonda temporal (no commiteada) posteo el evento exacto desde el tick del server, con un
+`FakePlayer`, en el `runServer` de la pata 1.21.1:
+
+| Codigo | Resultado |
+|---|---|
+| con el handler defectuoso | el crash **exacto** del reporte, y `Stopping server` |
+| con el arreglo | `[probe] StopTracking posteado y sobrevivido`, el server sigue de pie |
+
+### El guard (4)
+
+`ServerSideSafetyGuardTest` afirma que **ninguna clase que el server registra puede nombrar una
+clase de cliente** (la lista se camina del punto de entrada de cada pata, no esta escrita a
+mano), que los dos `CombatTicker` no nombran ni `LocalPlayer` ni `StopTracking`, que la limpieza
+nueva esta cableada en las dos patas, y que los handlers `playToServer` de `ModNetworking` -- que
+corren en el servidor aunque no esten en el game bus -- tampoco.
+
+**Sabotaje verificado (3 de 3):** un `LocalPlayer` de vuelta en el `CombatTicker` mata 2 guards;
+desregistrar la limpieza mata el tercero; un `LocalPlayer` en `handleSwing` mata el cuarto.
+
+**La trampa de la ronda:** el `git checkout` de los sabotajes **volvio el arreglo atras**, porque
+todavia no estaba commiteado, y el guard "pasaba" con el codigo roto. Commit primero, sabotaje
+despues.
+
+### Y el cambio de ramas
+
+- `port/1.20.1` -> `main`: **fast-forward limpio** (52 commits). `main` estaba atras desde la
+  ronda de portabilidad, y los tags v1.5.1 y v1.6.0 salieron de `port/1.20.1`.
+- **`dev` nace de `main`** para los cambios experimentales.
+
+### Estado
+
+**1328 tests verdes** (+4), las dos patas compilan, `javap` de los dos `CombatTicker.class` da
+`LocalPlayer=0 StopTracking=0 RemotePoseStates=0`, server 1.20.1 real `Done (3.675s)` con cero
+`Caused by`, server 1.21.1 dev `Done (1.380s)` con el evento que antes lo mataba sobrevivido, y
+los jars redesplegados con el mismo hash en los cinco lugares.
