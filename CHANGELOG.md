@@ -1941,3 +1941,39 @@ siendo el que eligio el jugador, solo un rato mas brillante.
 
 **1324 tests verdes** (+14), las dos patas compilan, server 1.20.1 real `Done (3.287s)` con
 cero `Caused by`, jars reconstruidos y desplegados.
+
+## 1.6.0 (release) - publicada en GitHub (2026-11-05)
+
+**La release publica:** https://github.com/CerebroCanibalus/cortes-combat/releases/tag/v1.6.0
+
+**Artefactos** (verificados SOBRE EL JAR, no sobre el codigo):
+
+| Archivo | Bytes | SHA-256 (16) |
+|---|---|---|
+| `cortescombat-1.6.0-1.20.1.jar` | 4.201.707 | `42CAB053706AA4E6` |
+| `cortescombat-1.6.0-1.21.1.jar` | 4.176.675 | `D645CCC8BAC2EBDB` |
+
+- Build **limpio** de las dos patas (el aviso de la ronda del release 1.5.1: un build
+  incremental arrastra un residuo y el jar sale verde y roto).
+- `META-INF/mods.toml` en la pata de 1.20.1: `modId="cortescombat"`, `version="1.6.0"`,
+  `loaderVersion="[47,)"`, `forge [47,)`, `minecraft [1.20.1]`.
+- `META-INF/neoforge.mods.toml` en la de 1.21.1: `version="1.6.0"`, `neoforge [21.1.250,)`,
+  `minecraft [1.21.1]`.
+- **El `displayName` esta en UTF-8 de verdad**: los bytes crudos son `C3 A9` (la `e` con
+  acento). La consola lo muestra como `Cort?s` y el archivo esta bien -- verificado por byte.
+- **Refmap presente** en el jar de 1.20.1 (10.386 bytes). Es la comprobacion que el
+  `build.sh` hace antes de publicar, y la que una vez evito un jar verde y muerto.
+- **Cero clases de test** en los dos jars.
+- El mismo hash en los tres lugares: build, `dist/` y la carpeta de mods del cliente.
+
+**La nota de release para el jugador** esta en `docs/release-notes-1.6.0.md` y es el cuerpo de
+la release de GitHub. **En ingles**, como las notas de la v1.5.1 y como las dos paginas de
+plataforma (que son inglesas); el `CHANGELOG.md` sigue siendo la historia interna, en espanol.
+Sin jerga interna: ni clases, ni rondas, ni nombres de metodo.
+
+**Y los bloques de changelog para pegar** en `docs/modrinth-page.md` y
+`docs/curseforge-page.md`, en ingles como el resto de esas dos paginas.
+
+**Lo que NO se toco**: `main` sigue 51 commits atras (la decision de si `main` recibe la rama
+`port/1.20.1` sigue abierta). El precedente manda: el tag v1.5.1 tambien salio de
+`port/1.20.1`.
