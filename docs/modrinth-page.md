@@ -164,6 +164,32 @@ Los mismos seis archivos que usa el README, con el pie de foto corto que corresp
 - Two playtest reports, the /kill command and the item frames.
 ```
 
+## Changelog de la 1.6.0
+
+```markdown
+## 1.6.0
+
+### Added
+- The warhammer's damage can be capped and its armour penetration tuned, from the server's config.
+- The bars fade out instead of blinking out, they no longer come back when you hit something or
+  mine a block, and the crosshair and the brackets are more transparent.
+- While the weapon reloads, the brackets and the bar step forward and settle back down once it
+  is ready.
+- Blocking and the special abilities follow the use key from the Controls menu, and one press is
+  one special.
+- More weapons from other mods are detected, including the collections that were only
+  half-detected: 120 of the 122 weapons in Simply Swords' sword tag now fight with their own
+  reach, cone and charge.
+- Holding the attack button retries the swing instead of going mute.
+- The server's settings travel to the client, so the tooltip shows the numbers the server charges.
+
+### Fixed
+- No more crash in 1.20.1 when another mod moves you between worlds.
+```
+
+> La nota larga de la 1.6.0 esta en `docs/release-notes-1.6.0.md`, que es tambien el cuerpo de
+> la release de GitHub.
+
 ## Notas de publicación
 
 - El icono es `docs/media/icon.png`, que son 160x160. Modrinth acepta cualquier tamaño y lo
