@@ -200,6 +200,17 @@ Fixed
 > La nota larga de la 1.6.0 esta en `docs/release-notes-1.6.0.md`, que es tambien el cuerpo de
 > la release de GitHub.
 
+## Changelog de la 1.6.1 (hotfix)
+
+```
+1.6.1
+
+Fixed
+- Dedicated servers no longer crash when a player connects.
+```
+
+> La nota del hotfix esta en `docs/release-notes-1.6.1.md`, que es el cuerpo de la release.
+
 ## Notas de publicación
 
 - El jar se sube con el nombre `Cortes-combat-1.4.12-1.21.1.jar`, que es como lo produce el build.

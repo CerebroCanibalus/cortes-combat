@@ -2056,3 +2056,28 @@ despues.
 `LocalPlayer=0 StopTracking=0 RemotePoseStates=0`, server 1.20.1 real `Done (3.675s)` con cero
 `Caused by`, server 1.21.1 dev `Done (1.380s)` con el evento que antes lo mataba sobrevivido, y
 los jars redesplegados con el mismo hash en los cinco lugares.
+
+## Release 1.6.1 - HOTFIX (2026-11-06)
+
+**Publicada:** https://github.com/CerebroCanibalus/cortes-combat/releases/tag/v1.6.1
+(tag `v1.6.1`, rama `main`).
+
+**Un hotfix de verdad:** el contenido de la 1.6.0 entra entero y lo unico que cambia es el crash
+del server dedicado de la ronda anterior.
+
+| Archivo | SHA-256 (16) |
+|---|---|
+| `cortescombat-1.6.1-1.20.1.jar` | `C78FF6EDFF95825E` |
+| `cortescombat-1.6.1-1.21.1.jar` | `2C25F645EA85B8C5` |
+
+- Build **limpio** de las dos patas, `mods.toml` con `version="1.6.1"` en las dos, `displayName`
+  en UTF-8 real (`C3 A9`), refmap presente en el jar de 1.20.1, **cero clases de test** adentro.
+- `javap` del `CombatTicker.class` **del jar**: `LocalPlayer=0 StopTracking=0`.
+- **1328 tests verdes**; server 1.20.1 real `Done (3.624s)` con cero `Caused by`.
+
+**La trampa de la ronda:** el cliente quedo con **las dos versiones** (1.6.0 y 1.6.1) en
+`%APPDATA%/.minecraft/mods`, que es un "Duplicate mod" y no deja arrancar el juego. El `build.sh`
+limpia la carpeta de mods del server y no conoce la del cliente: esa se limpia a mano, siempre.
+
+**Las ramas:** `main` es la de los releases, `dev` la de los cambios experimentales. Las tres
+(`main`, `dev`, `port/1.20.1`) quedaron en el mismo commit.

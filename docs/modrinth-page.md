@@ -190,6 +190,17 @@ Los mismos seis archivos que usa el README, con el pie de foto corto que corresp
 > La nota larga de la 1.6.0 esta en `docs/release-notes-1.6.0.md`, que es tambien el cuerpo de
 > la release de GitHub.
 
+## Changelog de la 1.6.1 (hotfix)
+
+```markdown
+## 1.6.1
+
+### Fixed
+- Dedicated servers no longer crash when a player connects.
+```
+
+> La nota del hotfix esta en `docs/release-notes-1.6.1.md`, que es el cuerpo de la release.
+
 ## Notas de publicación
 
 - El icono es `docs/media/icon.png`, que son 160x160. Modrinth acepta cualquier tamaño y lo
