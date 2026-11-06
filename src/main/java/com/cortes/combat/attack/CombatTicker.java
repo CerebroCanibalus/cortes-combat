@@ -6,7 +6,6 @@ import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.guard.GuardRules;
 import com.cortes.combat.guard.GuardStats;
-import com.cortes.combat.client.RemotePoseStates;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.net.PlayerStateSync;
 import com.cortes.combat.state.ChargeState;
@@ -74,25 +73,29 @@ public final class CombatTicker {
     }
 
     /**
-     * A player stopped being watched, so this client should stop remembering them.
+     * <b>Lo que antes vivia aca, y por que no puede volver.</b>
      *
-     * <p><b>Without this, every player who walks out of range leaves a clock behind.</b> Not a
-     * crash and not a visible bug: an entity id is never reused within a session, so the stale
-     * entry is only memory. A server with players coming and going accumulates one
-     * {@code ViewModelMotion}, one previous pose and one current pose per player who has ever been
-     * in range, for as long as the process runs.</p>
+     * <p>Hubo un {@code onStopTracking(PlayerEvent.StopTracking)} que hacia una cosa: cuando un
+     * jugador remoto dejaba de estar a la vista, el cliente olvidaba su reloj de poses. La
+     * <i>intencion</i> era correcta y el <i>sitio</i> no: el handler comparaba contra
+     * {@code LocalPlayer}, que es una clase de cliente, y esta clase la corre el <b>server</b>.</p>
      *
-     * <p>It is registered on the game bus and reads a client-side class, and that is the same
-     * asymmetry every other handler here has: the class is loaded on a dedicated server and this
-     * method is never reached there, because the event that reaches it only fires where there are
-     * players watching.</p>
+     * <p>El evento no llega nunca al cliente: en las dos versiones lo dispara unicamente
+     * {@code ServerEntity.removePairing}, o sea el servidor dejando de trackear una entidad para
+     * un jugador. Verificado en las fuentes de las dos patas (NeoForge 21.1.250 y Forge 47.4.28):
+     * es el unico que postea {@code PlayerEvent.StopTracking}, y corre en el servidor.</p>
+     *
+     * <p>Asi que la linea {@code event.getEntity() instanceof LocalPlayer} se evaluaba SIEMPRE en
+     * un server dedicado, y cargar esa clase ahi es un error: en NeoForge el {@code
+     * RuntimeDistCleaner} lo convierte en un {@code RuntimeException} que tumba el tick del
+     * jugador, y en Forge 1.20.1 seria un {@code NoClassDefFoundError}. El sintoma era un crash
+     * de server dedicado con la primera linea apuntando a un {@code instanceof} que parece
+     * inocuo -- y el server de pruebas no lo vio nunca porque nunca se le conecto un jugador.</p>
+     *
+     * <p>La limpieza vive ahora donde el evento de verdad llega: el cliente, en
+     * {@code client/RemotePoseCleanup}, con {@code EntityLeaveLevelEvent}, que las dos patas
+     * postean desde el {@code ClientLevel} cuando la entidad deja de estar a la vista.</p>
      */
-    @SubscribeEvent
-    public static void onStopTracking(PlayerEvent.StopTracking event) {
-        if (event.getEntity() instanceof net.minecraft.client.player.LocalPlayer) {
-            RemotePoseStates.forget(event.getTarget().getId());
-        }
-    }
 
     /**
      * A session starts with nothing open.

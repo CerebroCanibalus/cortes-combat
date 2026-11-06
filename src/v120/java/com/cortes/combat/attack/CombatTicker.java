@@ -6,7 +6,6 @@ import com.cortes.combat.core.weapon.GuardProfile;
 import com.cortes.combat.guard.GuardHandler;
 import com.cortes.combat.guard.GuardRules;
 import com.cortes.combat.guard.GuardStats;
-import com.cortes.combat.client.RemotePoseStates;
 import com.cortes.combat.net.ModNetworking;
 import com.cortes.combat.net.PlayerStateSync;
 import com.cortes.combat.net.ServerSettingsPayload;
@@ -57,14 +56,17 @@ public final class CombatTicker {
     }
 
     /**
-     * A player stopped being watched, so this client should stop remembering them.
+     * <b>Lo que antes vivia aca, y por que no puede volver.</b>
+     *
+     * <p>Hubo un {@code onStopTracking(PlayerEvent.StopTracking)} que comparaba contra
+     * {@code LocalPlayer}, que es una clase de cliente, y esta clase la corre el <b>server</b>.
+     * En 1.20.1 la clase no esta en el jar del server, asi que la linea tiraba
+     * {@code NoClassDefFoundError}. El evento solo lo dispara {@code ServerEntity.removePairing}
+     * (verificado en el parche de Forge 47.4.28), o sea el servidor, y nunca el cliente.</p>
+     *
+     * <p>La limpieza vive ahora en el cliente, en {@code client/RemotePoseCleanup}, con
+     * {@code EntityLeaveLevelEvent}. Ver el gemelo compartido para la historia completa.</p>
      */
-    @SubscribeEvent
-    public static void onStopTracking(PlayerEvent.StopTracking event) {
-        if (event.getEntity() instanceof net.minecraft.client.player.LocalPlayer) {
-            RemotePoseStates.forget(event.getTarget().getId());
-        }
-    }
 
     /**
      * A session starts with nothing open: charge, cooldown, guard, lunge and arcabuz all

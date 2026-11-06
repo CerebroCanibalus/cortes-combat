@@ -57,6 +57,13 @@ public class CortesCombatClient {
         // this class already is the client's subscription list, and a second list is a second
         // place to forget one.
         NeoForge.EVENT_BUS.register(CombatTooltipHandler.class);
+        // **El reloj de un jugador remoto que dejo de estar a la vista.** Esta limpieza estaba en
+        // el `CombatTicker` -- que corre en el SERVER -- escuchando `PlayerEvent.StopTracking`, un
+        // evento que el server postea y el cliente nunca recibe. El `instanceof LocalPlayer` de
+        // ahi cargaba una clase de cliente en un server dedicado y lo tumbaba. El mismo hecho,
+        // del lado donde ocurre: `EntityLeaveLevelEvent`, que el `ClientLevel` postea cuando deja
+        // de trackear una entidad. Ver `RemotePoseCleanup`.
+        NeoForge.EVENT_BUS.register(RemotePoseCleanup.class);
         // **The mod bus and not the game bus, and the difference is not a style choice.**
         // `ModelEvent.ModifyBakingResult` implements `IModBusEvent`: registering this on
         // `NeoForge.EVENT_BUS` means the listener never fires, so the arcabuz would keep drawing as
